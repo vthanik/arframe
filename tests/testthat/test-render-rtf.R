@@ -1029,9 +1029,17 @@ test_that("rtf_title_rows appends continuation text to first title", {
   colors <- tlframe:::collect_colors(spec)
   color_info <- tlframe:::build_rtf_colortbl(colors)
 
-  result <- tlframe:::rtf_title_rows(spec, spec$columns, color_info)
-  expect_true(grepl("Table 1", result, fixed = TRUE))
-  expect_true(grepl("(continued)", result, fixed = TRUE))
+  # Panel 1: no continuation text
+  result1 <- tlframe:::rtf_title_rows(spec, spec$columns, color_info,
+                                       panel_idx = 1L)
+  expect_true(grepl("Table 1", result1, fixed = TRUE))
+  expect_false(grepl("(continued)", result1, fixed = TRUE))
+
+  # Panel 2+: continuation text appended
+  result2 <- tlframe:::rtf_title_rows(spec, spec$columns, color_info,
+                                       panel_idx = 2L)
+  expect_true(grepl("Table 1", result2, fixed = TRUE))
+  expect_true(grepl("(continued)", result2, fixed = TRUE))
 })
 
 test_that("rtf_title_rows applies bold and alignment", {
@@ -1436,8 +1444,7 @@ test_that("col_split creates multiple panels with \\sect", {
   )
   data |>
     fr_table() |>
-    fr_page(col_split = TRUE, stub_cols = "param") |>
-    fr_cols(.width = "auto") |>
+    fr_cols(param = fr_col(stub = TRUE), .width = "auto", .split = TRUE) |>
     fr_render(tmp)
 
   txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
@@ -1629,7 +1636,7 @@ test_that("single-column table renders without \\clmrg in titles", {
   expect_false(any(grepl("\\clmrg", title_row, fixed = TRUE)))
 })
 
-test_that("row height from fr_row_style emits \\trrh", {
+test_that("row height from fr_row_style emits custom \\trrh value", {
   tmp <- tempfile(fileext = ".rtf")
   on.exit(unlink(tmp), add = TRUE)
 
@@ -1640,10 +1647,53 @@ test_that("row height from fr_row_style emits \\trrh", {
     fr_render(tmp)
 
   txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
-  expect_true(grepl("\\trrh", txt, fixed = TRUE))
+  # fr_row_style height = 0.5 inches = 720 twips
+  expect_true(grepl("\\trrh720", txt, fixed = TRUE))
 })
 
-test_that("continuation text only appears on first title row", {
+test_that("deterministic row height: all body rows have \\trrh-N at 9pt", {
+  tmp <- tempfile(fileext = ".rtf")
+  on.exit(unlink(tmp), add = TRUE)
+
+  data.frame(a = c("x", "y"), stringsAsFactors = FALSE) |>
+    fr_table() |>
+    fr_cols(.width = "equal") |>
+    fr_render(tmp)
+
+  txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
+  # row_height_twips(9) = 1.0 * (1.0 + 1.2 * 9) * 20 = 236 twips, exact = -236
+
+  expect_true(grepl("\\trrh-236", txt, fixed = TRUE))
+})
+
+test_that("deterministic row height: zero cell padding on all rows", {
+  tmp <- tempfile(fileext = ".rtf")
+  on.exit(unlink(tmp), add = TRUE)
+
+  data.frame(a = "x", stringsAsFactors = FALSE) |>
+    fr_table() |>
+    fr_cols(.width = "equal") |>
+    fr_render(tmp)
+
+  txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
+  expect_true(grepl("\\trpaddt0\\trpaddft3\\trpaddb0\\trpaddfb3", txt, fixed = TRUE))
+})
+
+test_that("deterministic row height: exact line spacing on cell paragraphs", {
+  tmp <- tempfile(fileext = ".rtf")
+  on.exit(unlink(tmp), add = TRUE)
+
+  data.frame(a = "x", stringsAsFactors = FALSE) |>
+    fr_table() |>
+    fr_cols(.width = "equal") |>
+    fr_render(tmp)
+
+  txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
+  # baseline_skip_twips(9) = 1.2 * 9 * 20 = 216, negative = -216
+  expect_true(grepl("\\sb0\\sa0\\sl-216\\slmult0", txt, fixed = TRUE))
+})
+
+test_that("continuation text does not appear on panel 1 (single-panel table)", {
   tmp <- tempfile(fileext = ".rtf")
   on.exit(unlink(tmp), add = TRUE)
 
@@ -1654,9 +1704,6 @@ test_that("continuation text only appears on first title row", {
     fr_render(tmp)
 
   txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
-  # Count occurrences of "(cont.)"
-  cont_count <- length(gregexpr("\\(cont\\.\\)", txt)[[1]])
-  expect_equal(cont_count, 1L)
-  # Should appear with first title
-  expect_true(grepl("Title 1.*(cont.)", txt, fixed = FALSE))
+  # Panel 1: continuation should NOT appear
+  expect_false(grepl("(cont.)", txt, fixed = TRUE))
 })

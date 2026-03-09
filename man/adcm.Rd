@@ -5,7 +5,7 @@
 \alias{adcm}
 \title{Concomitant Medications Analysis Dataset (ADCM)}
 \format{
-A data frame with approximately 550 rows and 13 variables:
+A data frame with approximately 600 rows and 13 variables:
 \describe{
 \item{STUDYID}{Study identifier}
 \item{USUBJID}{Unique subject identifier}
@@ -25,7 +25,7 @@ e.g. \code{"PARACETAMOL"}, \code{"ATORVASTATIN"}, \code{"VITAMIN D"}}
 }
 }
 \source{
-Synthetic data generated in \code{data-raw/create_datasets.R}.
+Synthetic data generated in \code{data-raw/create_adam_datasets.R}.
 }
 \usage{
 adcm

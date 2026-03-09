@@ -48,7 +48,7 @@ lower scores indicate greater cognitive impairment}
 }
 }
 \source{
-Synthetic data generated in \code{data-raw/create_datasets.R}.
+Synthetic data generated in \code{data-raw/create_adam_datasets.R}.
 No real patient data. Follows CDISC ADaM ADSL specifications.
 }
 \usage{
@@ -62,11 +62,11 @@ mild-to-moderate Alzheimer's Disease.
 
 Contains one row per subject (N = 135). Used for:
 \itemize{
-\item \strong{Demographics table} (Table 14.1.1): age, sex, race, BMI by treatment arm
-\item \strong{Disposition table} (Table 14.1.4): completion, discontinuation reasons
+\item \strong{Demographics table} (Table 14.1.5): age, sex, race, BMI by treatment arm
+\item \strong{Disposition table} (Table 14.1.3): completion, discontinuation reasons
 }
 
-Variable names follow the CDISC ADaM Implementation Guide.
+Variable names follow the CDISC ADaM Implementation Guide v1.3.
 }
 \examples{
 # Quick look

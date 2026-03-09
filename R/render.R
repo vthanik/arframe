@@ -45,9 +45,9 @@
 #' page-by column value is printed as a bold label above each group's table.
 #'
 #' @section Column splitting:
-#' When `fr_page(col_split = TRUE)` is set and the total column width
+#' When `fr_cols(.split = TRUE)` is set and the total column width
 #' exceeds the printable page area, columns are automatically split into
-#' panels. Stub columns (set via `fr_page(stub_cols = ...)`) are repeated
+#' panels. Stub columns (set via `fr_col(stub = TRUE)`) are repeated
 #' in every panel. Each panel is rendered as a separate section.
 #'
 #' @examples
@@ -135,7 +135,8 @@ fr_render <- function(spec, path, format = NULL, ...) {
       render_figure_rtf(spec, path)
     } else {
       cli_abort(
-        "Figure rendering is only supported for {.val pdf} and {.val rtf} output.",
+        c("Figure rendering is only supported for {.val pdf} and {.val rtf} output.",
+          "x" = "You requested format {.val {format}}."),
         call = call
       )
     }
@@ -146,10 +147,15 @@ fr_render <- function(spec, path, format = NULL, ...) {
   page_groups <- prepare_pages(spec)
   col_panels <- calculate_col_panels(spec)
 
-  # When col_split produces multiple panels, scale each panel's column widths
-  # to fill the printable page width (AutoFit to Window per panel)
-  if (isTRUE(spec$page$col_split) && length(col_panels) > 1L) {
-    spec <- fit_panel_widths(spec, col_panels)
+  # When split produces multiple panels, scale based on width mode
+  if (isTRUE(spec$columns_meta$split) && length(col_panels) > 1L) {
+    wm <- spec$columns_meta$width_mode
+    if (identical(wm, "fit")) {
+      spec <- fit_panel_widths(spec, col_panels)
+    } else if (identical(wm, "equal")) {
+      spec <- equal_panel_widths(spec, col_panels)
+    }
+    # "auto" and "fixed" — no panel scaling
   }
 
   backend <- get_backend(format, call = call)
@@ -276,10 +282,12 @@ fr_register_backend <- function(format, extensions, render_fn,
   call <- caller_env()
   check_scalar_chr(format, arg = "format", call = call)
   if (!is.character(extensions) || length(extensions) == 0L) {
-    cli_abort("{.arg extensions} must be a non-empty character vector.", call = call)
+    cli_abort(c("{.arg extensions} must be a non-empty character vector.",
+                "x" = "You supplied {.obj_type_friendly {extensions}}."), call = call)
   }
   if (!is.function(render_fn)) {
-    cli_abort("{.arg render_fn} must be a function.", call = call)
+    cli_abort(c("{.arg render_fn} must be a function.",
+                "x" = "You supplied {.obj_type_friendly {render_fn}}."), call = call)
   }
   check_scalar_chr(description, arg = "description", call = call)
 
@@ -422,17 +430,43 @@ finalize_columns <- function(spec) {
     }
   }
 
-  # Scale auto widths to fit printable area (skip when col_split is on —
+  # Apply theme/config stub column names (deferred until columns are built)
+  theme_stubs <- spec$columns_meta$stub
+  if (is.character(theme_stubs) && length(theme_stubs) > 0L) {
+    for (nm in theme_stubs) {
+      if (!is.null(spec$columns[[nm]]) && !isTRUE(spec$columns[[nm]]$stub)) {
+        spec$columns[[nm]]$stub <- TRUE
+      }
+    }
+    # Clean up — stubs are now on the column objects
+    spec$columns_meta$stub <- NULL
+  }
+
+  # Auto-infer stub columns when split is enabled but none marked
+  split_mode <- spec$columns_meta$split
+  if (!identical(split_mode, FALSE) && !is.null(split_mode)) {
+    stub_names <- stub_column_names(spec$columns)
+    if (length(stub_names) == 0L) {
+      auto_stubs <- unique(c(spec$body$group_by, spec$body$indent_by))
+      if (length(auto_stubs) == 0L) {
+        auto_stubs <- names(spec$columns)[1L]
+      }
+      for (nm in auto_stubs) {
+        if (!is.null(spec$columns[[nm]])) {
+          spec$columns[[nm]]$stub <- TRUE
+        }
+      }
+    }
+  }
+
+  # Scale auto widths to fit printable area (skip when split is on —
   # columns must keep natural widths so calculate_col_panels() can split them)
-  if (!isTRUE(spec$page$col_split)) {
+  if (identical(split_mode, FALSE) || is.null(split_mode)) {
     spec$columns <- distribute_auto_widths(spec$columns, spec$page)
   }
 
   # Inject gap columns between adjacent spanning headers
   spec <- inject_span_gaps(spec)
-
-  # Inject gap columns between adjacent right→left aligned columns
-  spec <- inject_align_gaps(spec)
 
   spec
 }
@@ -490,7 +524,15 @@ finalize_rows <- function(spec) {
   # Insert blank rows at group boundaries. group_by auto-implies blank_after
   # for visual separation between groups.
   blank_cols <- union(spec$body$group_by, spec$body$blank_after)
-  spec$data <- insert_blank_after(spec$data, blank_cols)
+  blank_result <- insert_blank_after(spec$data, blank_cols)
+  spec$data <- blank_result$data
+
+  # Remap style row indices to account for inserted blank rows
+  if (length(blank_result$insert_positions) > 0L) {
+    spec$cell_styles <- remap_style_indices(
+      spec$cell_styles, blank_result$insert_positions
+    )
+  }
 
   # Apply indent_by as cell styles (after blank_after so indices are correct)
   spec <- apply_indent_by(spec)
@@ -729,23 +771,25 @@ prepare_pages <- function(spec) {
 
 #' Calculate column panels for wide tables
 #'
-#' When col_split = TRUE and total width exceeds printable area,
+#' When col_split is enabled and total width exceeds printable area,
 #' splits columns into panels with stub columns repeated in each.
 #'
 #' @param spec An fr_spec object (finalized).
 #' @return List of character vectors (column names per panel).
 #' @noRd
 calculate_col_panels <- function(spec) {
-  if (!isTRUE(spec$page$col_split)) {
+  split_mode <- spec$columns_meta$split
+  if (identical(split_mode, FALSE) || is.null(split_mode)) {
     # Single panel with all visible columns
-    vis_names <- names(Filter(function(c) !isFALSE(c$visible), spec$columns))
+    vis_names <- names(visible_columns(spec$columns))
     return(list(vis_names))
   }
 
   printable <- printable_area_inches(spec$page)[["width"]]
-  stub_cols <- spec$page$stub_cols
-  vis_cols <- Filter(function(c) !isFALSE(c$visible), spec$columns)
+  # Get stub columns from column-level stub = TRUE
+  vis_cols <- visible_columns(spec$columns)
   vis_names <- names(vis_cols)
+  stub_cols <- stub_column_names(vis_cols)
 
   # Calculate stub width
   stub_width <- sum(vapply(
@@ -769,20 +813,23 @@ calculate_col_panels <- function(spec) {
     return(list(vis_names))
   }
 
-  # Greedy left-to-right packing
+  # Build atomic column groups from level-1 spans (spanner-aware packing)
+  groups <- build_atomic_groups(data_cols, spec$header$spans)
+
+  # Greedy left-to-right packing of groups
   panels <- list()
   current <- character(0)
   current_width <- 0
 
-  for (col in data_cols) {
-    w <- vis_cols[[col]]$width
-    if (current_width + w > available && length(current) > 0L) {
+  for (grp in groups) {
+    grp_width <- sum(vapply(vis_cols[grp], function(c) c$width, numeric(1)))
+    if (current_width + grp_width > available && length(current) > 0L) {
       panels <- c(panels, list(c(intersect(stub_cols, vis_names), current)))
-      current <- col
-      current_width <- w
+      current <- grp
+      current_width <- grp_width
     } else {
-      current <- c(current, col)
-      current_width <- current_width + w
+      current <- c(current, grp)
+      current_width <- current_width + grp_width
     }
   }
   if (length(current) > 0L) {
@@ -790,6 +837,58 @@ calculate_col_panels <- function(spec) {
   }
 
   panels
+}
+
+
+#' Build atomic column groups from level-1 spans
+#'
+#' Returns a list of character vectors where each vector is an atomic group
+#' of columns that must stay together during panel splitting. Columns covered
+#' by a level-1 span form one group; unspanned columns are singletons.
+#'
+#' @param data_cols Character vector of non-stub visible column names.
+#' @param spans List of fr_span objects (may be empty).
+#' @return Ordered list of character vectors.
+#' @noRd
+build_atomic_groups <- function(data_cols, spans) {
+  if (length(spans) == 0L || length(data_cols) == 0L) {
+    return(as.list(data_cols))
+  }
+
+  # Get level-1 spans (lowest/innermost level)
+  lvl1_spans <- Filter(function(s) s$level == 1L, spans)
+  if (length(lvl1_spans) == 0L) {
+    return(as.list(data_cols))
+  }
+
+  assigned <- character(0)
+  groups <- list()
+
+  for (col in data_cols) {
+    if (col %in% assigned) next
+
+    # Check if this column belongs to a level-1 span
+    matching_span <- NULL
+    for (sp in lvl1_spans) {
+      if (col %in% sp$columns) {
+        matching_span <- sp
+        break
+      }
+    }
+
+    if (!is.null(matching_span)) {
+      # Take all columns from this span that are in data_cols
+      grp <- intersect(matching_span$columns, data_cols)
+      groups <- c(groups, list(grp))
+      assigned <- c(assigned, grp)
+    } else {
+      # Singleton (unspanned column)
+      groups <- c(groups, list(col))
+      assigned <- c(assigned, col)
+    }
+  }
+
+  groups
 }
 
 
@@ -809,7 +908,7 @@ calculate_col_panels <- function(spec) {
 #' @noRd
 fit_panel_widths <- function(spec, col_panels) {
   printable <- printable_area_inches(spec$page)[["width"]]
-  stub_cols <- spec$page$stub_cols %||% character(0)
+  stub_cols <- stub_column_names(spec$columns)
 
   # Compute stub width (constant across panels)
   stub_width <- sum(vapply(
@@ -820,9 +919,7 @@ fit_panel_widths <- function(spec, col_panels) {
   if (available <= 0) return(spec)
 
   # For each panel, find its data columns and compute the scale factor.
-  # Data columns are unique per panel (non-stub), so scaling them won't
-
-  # conflict across panels.
+  # Data columns are unique per panel (non-stub), so scaling won't conflict.
   for (panel_cols in col_panels) {
     data_cols <- setdiff(panel_cols, stub_cols)
     if (length(data_cols) == 0L) next
@@ -836,6 +933,44 @@ fit_panel_widths <- function(spec, col_panels) {
     scale_factor <- available / panel_data_width
     for (nm in data_cols) {
       spec$columns[[nm]]$width <- spec$columns[[nm]]$width * scale_factor
+    }
+  }
+
+  spec
+}
+
+
+#' Distribute equal widths per panel for unfixed data columns
+#'
+#' When `.width = "equal"` + `.split = TRUE`, each panel's unfixed data
+#' columns get an equal share of the remaining space after stub and
+#' fixed-width columns.
+#'
+#' @param spec Finalized fr_spec with resolved column widths.
+#' @param col_panels List of character vectors (column names per panel).
+#' @return Modified fr_spec with adjusted column widths.
+#' @noRd
+equal_panel_widths <- function(spec, col_panels) {
+  printable <- printable_area_inches(spec$page)[["width"]]
+  stub_cols <- stub_column_names(spec$columns)
+
+  stub_width <- sum(vapply(
+    spec$columns[intersect(stub_cols, names(spec$columns))],
+    function(c) c$width, numeric(1)
+  ))
+
+  for (panel_cols in col_panels) {
+    data_cols <- setdiff(panel_cols, stub_cols)
+    if (length(data_cols) == 0L) next
+
+    parts <- separate_fixed_auto_cols(spec$columns, data_cols)
+    if (length(parts$auto_names) == 0L) next
+
+    remaining <- printable - stub_width - parts$fixed_sum
+    if (remaining <= 0) next
+    equal_w <- remaining / length(parts$auto_names)
+    for (nm in parts$auto_names) {
+      spec$columns[[nm]]$width <- equal_w
     }
   }
 
@@ -937,69 +1072,6 @@ inject_span_gaps <- function(spec) {
   spec
 }
 
-
-#' Inject gap columns between adjacent right-aligned and left-aligned columns
-#'
-#' When column A is right-aligned and column B (immediately to its right) is
-#' left-aligned, their content can appear visually merged. This inserts a thin
-#' empty gap column between such pairs, following the same pattern as
-#' inject_span_gaps().
-#'
-#' @noRd
-inject_align_gaps <- function(spec) {
-  if (!isTRUE(spec$header$align_gap %||% TRUE)) return(spec)
-
-  col_names <- names(spec$columns)
-  vis_names <- col_names[vapply(spec$columns, function(c) {
-    !isFALSE(c$visible) && !isTRUE(c$is_gap)
-  }, logical(1))]
-  nc <- length(vis_names)
-  if (nc < 2L) return(spec)
-
-  # Find adjacent right→left pairs
-  gap_after <- character(0)
-  for (i in seq_len(nc - 1L)) {
-    align_i <- spec$columns[[vis_names[i]]]$align %||% "left"
-    align_j <- spec$columns[[vis_names[i + 1L]]]$align %||% "left"
-    if (align_i == "right" && align_j == "left") {
-      gap_after <- c(gap_after, vis_names[i])
-    }
-  }
-
-  if (length(gap_after) == 0L) return(spec)
-
-  # Gap width: font_size * 0.5 / 72 inches (same as span gaps)
-  fs <- spec$page$font_size %||% 9
-  gap_width <- fs * 0.5 / fr_env$points_per_inch
-
-  # Insert gap columns in reverse order to preserve indices
-  gap_positions <- match(gap_after, names(spec$columns))
-  sorted_idx <- order(gap_positions, decreasing = TRUE)
-
-  for (i in sorted_idx) {
-    pos <- gap_positions[i]
-    gap_name <- paste0(".__align_gap_", pos, "__")
-
-    gap_col <- fr_col(label = "", width = gap_width, align = "center")
-    gap_col$id <- gap_name
-    gap_col$is_gap <- TRUE
-    gap_col$gap_type <- "align"
-
-    cols <- spec$columns
-    n_cols <- length(cols)
-    gap_list <- list(gap_col)
-    names(gap_list) <- gap_name
-    new_cols <- c(cols[seq_len(pos)], gap_list)
-    if (pos < n_cols) {
-      new_cols <- c(new_cols, cols[(pos + 1L):n_cols])
-    }
-    spec$columns <- new_cols
-
-    spec$data <- insert_gap_column(spec$data, pos, gap_name)
-  }
-
-  spec
-}
 
 
 #' Insert an empty character column into a data frame at a given position

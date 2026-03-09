@@ -171,7 +171,6 @@ test_that("new_fr_page creates fr_page with defaults", {
   expect_equal(page$paper, "letter")
   expect_equal(page$font_size, 9)
   expect_null(page$continuation)
-  expect_false(page$col_split)
   expect_equal(page$orphan_min, 3L)
   expect_equal(page$widow_min, 3L)
 })
@@ -228,12 +227,6 @@ test_that("new_fr_page errors on overriding readonly tokens", {
 test_that("new_fr_page accepts custom tokens", {
   page <- new_fr_page(tokens = list(study = "ABC-001"))
   expect_equal(page$tokens$study, "ABC-001")
-})
-
-test_that("new_fr_page col_split and stub_cols work", {
-  page <- new_fr_page(col_split = TRUE, stub_cols = c("subjid", "param"))
-  expect_true(page$col_split)
-  expect_equal(page$stub_cols, c("subjid", "param"))
 })
 
 
@@ -1057,9 +1050,6 @@ test_that("new_fr_page stores empty tokens by default", {
   expect_equal(page$tokens, list())
 })
 
-test_that("new_fr_page errors on non-logical col_split", {
-  expect_error(new_fr_page(col_split = "yes"), class = "rlang_error")
-})
 
 test_that("new_fr_page errors on non-character continuation", {
   expect_error(new_fr_page(continuation = 123), class = "rlang_error")
@@ -1073,11 +1063,6 @@ test_that("new_fr_page casts orphan_min and widow_min to integer", {
   expect_equal(page$widow_min, 4L)
 })
 
-test_that("new_fr_page casts stub_cols to character", {
-  page <- new_fr_page(stub_cols = "col1")
-  expect_type(page$stub_cols, "character")
-  expect_equal(page$stub_cols, "col1")
-})
 
 test_that("new_fr_page accepts named list margins", {
   page <- new_fr_page(margins = list(top = 0.5, bottom = 0.5,
@@ -1231,8 +1216,7 @@ test_that("new_fr_header stores all optional parameters", {
     bg = "#EEEEEE",
     fg = "#333333",
     font_size = 10,
-    span_gap = FALSE,
-    align_gap = FALSE
+    span_gap = FALSE
   )
   expect_false(h$repeat_on_page)
   expect_equal(h$valign, "top")
@@ -1242,7 +1226,6 @@ test_that("new_fr_header stores all optional parameters", {
   expect_equal(h$fg, "#333333")
   expect_equal(h$font_size, 10)
   expect_false(h$span_gap)
-  expect_false(h$align_gap)
 })
 
 test_that("new_fr_header stores N-count parameters", {

@@ -32,7 +32,8 @@ check_scalar_chr <- function(x,
                               allow_null = FALSE) {
   if (allow_null && is.null(x)) return(invisible(NULL))
   if (!is_string(x)) {
-    cli_abort("{.arg {arg}} must be a single character string.",
+    cli_abort(c("{.arg {arg}} must be a single character string.",
+                "x" = "You supplied {.obj_type_friendly {x}}."),
               arg = arg, call = call)
   }
   invisible(x)
@@ -47,7 +48,8 @@ check_positive_num <- function(x,
                                 allow_null = FALSE) {
   if (allow_null && is.null(x)) return(invisible(NULL))
   if (!(is.numeric(x) && length(x) == 1L && !is.na(x)) || x <= 0) {
-    cli_abort("{.arg {arg}} must be a single positive number.",
+    cli_abort(c("{.arg {arg}} must be a single positive number.",
+                "x" = "You supplied {.obj_type_friendly {x}}."),
               arg = arg, call = call)
   }
   invisible(x)
@@ -62,7 +64,8 @@ check_scalar_lgl <- function(x,
                               allow_null = FALSE) {
   if (allow_null && is.null(x)) return(invisible(NULL))
   if (!is_scalar_logical(x) || is.na(x)) {
-    cli_abort("{.arg {arg}} must be {.val TRUE} or {.val FALSE}.",
+    cli_abort(c("{.arg {arg}} must be {.val TRUE} or {.val FALSE}.",
+                "x" = "You supplied {.obj_type_friendly {x}}."),
               arg = arg, call = call)
   }
   invisible(x)
@@ -77,7 +80,9 @@ check_color <- function(x,
                          allow_null = TRUE) {
   if (allow_null && is.null(x)) return(invisible(NULL))
   if (!is.character(x) || length(x) != 1L) {
-    cli_abort("{.arg {arg}} must be a color string (hex or name).",
+    cli_abort(c("{.arg {arg}} must be a color string (hex or name).",
+                "x" = "You supplied {.obj_type_friendly {x}}.",
+                "i" = "Example: {.code {arg} = \"#003366\"} or {.code {arg} = \"navy\"}."),
               arg = arg, call = call)
   }
   resolve_color(x, arg = arg, call = call)
@@ -92,11 +97,14 @@ check_non_negative_int <- function(x,
                                     call = caller_env()) {
   if (!is.numeric(x) || length(x) != 1L || is.na(x) || x < 0L ||
       x != as.integer(x)) {
-    cli_abort("{.arg {arg}} must be a non-negative integer.",
+    cli_abort(c("{.arg {arg}} must be a non-negative integer.",
+                "x" = "You supplied {.val {x}}."),
               arg = arg, call = call)
   }
   as.integer(x)
 }
+
+
 
 
 #' Parse a percentage width string to an fr_pct value
@@ -115,7 +123,8 @@ parse_pct_width <- function(x, arg = caller_arg(x), call = caller_env()) {
   pct_val <- as.numeric(sub("%$", "", x)) / 100
   check_positive_num(pct_val, arg = arg, call = call)
   if (pct_val > 1) {
-    cli_abort("{.arg {arg}} percentage must be between 0% and 100%.",
+    cli_abort(c("{.arg {arg}} percentage must be between 0% and 100%.",
+                "x" = "You supplied {.val {paste0(pct_val * 100, '%')}}."),
               call = call)
   }
   fr_pct(pct_val)
@@ -151,6 +160,7 @@ validate_n_param <- function(n, n_subject = NULL, n_data = NULL,
       if (is.null(names(n))) {
         cli_abort(
           c("{.arg n} must be a named numeric vector, a named list, a function, or {.val \"auto\"}.",
+            "x" = "You supplied an unnamed numeric vector.",
             "i" = "Example: {.code c(placebo = 45, zom_50mg = 45)}."),
           call = call
         )
@@ -158,7 +168,8 @@ validate_n_param <- function(n, n_subject = NULL, n_data = NULL,
     } else if (is.list(n)) {
       if (is.null(names(n))) {
         cli_abort(
-          "{.arg n} as a list must be named by page_by group values.",
+          c("{.arg n} as a list must be named by page_by group values.",
+            "x" = "You supplied an unnamed list."),
           call = call
         )
       }
@@ -175,6 +186,7 @@ validate_n_param <- function(n, n_subject = NULL, n_data = NULL,
     } else {
       cli_abort(
         c("{.arg n} must be a named numeric vector, a named list, a function, or {.val \"auto\"}.",
+          "x" = "You supplied {.obj_type_friendly {n}}.",
           "i" = "See {.fun fr_header} docs for per-group N-count examples."),
         call = call
       )
@@ -182,7 +194,9 @@ validate_n_param <- function(n, n_subject = NULL, n_data = NULL,
   }
 
   if (!is.null(n_data) && !is.data.frame(n_data)) {
-    cli_abort("{.arg n_data} must be a data frame.", call = call)
+    cli_abort(c("{.arg n_data} must be a data frame.",
+                "x" = "You supplied {.obj_type_friendly {n_data}}."),
+              call = call)
   }
 
   if (!is.null(format)) {

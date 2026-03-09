@@ -881,10 +881,8 @@ test_that("fr_env$validation contains aligns, valigns, linestyles", {
 test_that("LaTeX rendering constants exist and have expected types", {
   expect_true(is.numeric(fr_env$latex_leading_factor))
   expect_true(is.character(fr_env$latex_rowsep))
-  expect_true(is.character(fr_env$latex_colsep))
   expect_true(is.numeric(fr_env$latex_space_width_em))
   expect_true(is.numeric(fr_env$latex_fn_sep_width_pt))
-  expect_true(is.numeric(fr_env$latex_align_gap_width))
   expect_true(is.numeric(fr_env$points_per_inch))
   expect_equal(fr_env$points_per_inch, 72)
 })

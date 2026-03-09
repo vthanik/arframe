@@ -181,7 +181,8 @@ fr_rows <- function(spec, page_by = NULL,
   validate_cols <- function(x, arg) {
     if (is.null(x)) return(character(0))
     if (!is.character(x)) {
-      cli_abort("{.arg {arg}} must be a character vector of column names.",
+      cli_abort(c("{.arg {arg}} must be a character vector of column names.",
+                  "x" = "You supplied {.obj_type_friendly {x}}."),
                 call = call)
     }
     bad <- setdiff(x, names(spec$data))

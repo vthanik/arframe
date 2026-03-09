@@ -114,5 +114,6 @@ tbl_demog |>
 }
 \seealso{
 \code{\link[=fr_row_style]{fr_row_style()}} for row-level styling, \code{\link[=fr_style]{fr_style()}} for
-cell-level styling, \code{\link[=fr_styles]{fr_styles()}} to apply to a spec.
+cell-level styling, \code{\link[=fr_styles]{fr_styles()}} to apply to a spec,
+\code{\link[=fr_col]{fr_col()}} for column-level alignment via \code{align}.
 }

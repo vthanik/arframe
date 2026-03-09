@@ -160,7 +160,8 @@ fr_spans <- function(spec, ..., .level = 1L, .hline = TRUE) {
     cols <- dots[[label]]
     if (!is.character(cols) || length(cols) == 0L) {
       cli_abort(
-        "Span {.val {label}}: value must be a non-empty character vector of column names.",
+        c("Span {.val {label}}: value must be a non-empty character vector of column names.",
+          "x" = "You supplied {.obj_type_friendly {cols}}."),
         call = call
       )
     }

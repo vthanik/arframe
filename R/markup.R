@@ -338,7 +338,11 @@ fr_underline <- function(x) new_fr_markup("UNDERLINE", x)
 #' @export
 fr_unicode <- function(codepoint) {
   if (!is.numeric(codepoint) || length(codepoint) != 1L) {
-    cli_abort("{.arg codepoint} must be a single integer (e.g., {.code 0x00B1}).")
+    cli_abort(
+      c("{.arg codepoint} must be a single integer (e.g., {.code 0x00B1}).",
+        "x" = "You supplied {.obj_type_friendly {codepoint}}."),
+      call = caller_env()
+    )
   }
   # Store as the actual UTF-8 character — backends handle conversion
   new_fr_markup("UNICODE", intToUtf8(as.integer(codepoint)))
@@ -417,6 +421,63 @@ fr_dagger <- function() fr_unicode(0x2020L)
 #'
 #' @export
 fr_ddagger <- function() fr_unicode(0x2021L)
+
+
+#' Em Dash
+#'
+#' @description
+#'
+#' Inserts an em dash (U+2014, "—"). Shorthand for `fr_unicode(0x2014)`.
+#'
+#' The em dash is used in regulatory table titles and footnotes to
+#' separate clauses, e.g. "Safety Population — All Randomized Subjects".
+#' Using `fr_emdash()` instead of a literal "—" character guarantees
+#' correct rendering in both RTF and PDF output regardless of file
+#' encoding.
+#'
+#' @return An `fr_markup` object containing the em dash character.
+#'
+#' @examples
+#' # In a title:
+#' spec <- tbl_demog |> fr_table()
+#' spec |> fr_titles("Safety Population {fr_emdash()} FAS")
+#'
+#' # In a footnote:
+#' spec |> fr_footnotes("Source: ADSL {fr_emdash()} Safety Population")
+#'
+#' @seealso [fr_endash()] for the shorter en dash,
+#'   [fr_unicode()] for arbitrary Unicode characters.
+#'
+#' @export
+fr_emdash <- function() fr_unicode(0x2014L)
+
+
+#' En Dash
+#'
+#' @description
+#'
+#' Inserts an en dash (U+2013, "–"). Shorthand for `fr_unicode(0x2013)`.
+#'
+#' The en dash is used in regulatory tables for numeric ranges
+#' (e.g. "18–65 years"), date ranges, and confidence intervals.
+#' Using `fr_endash()` instead of a literal "–" character guarantees
+#' correct rendering in both RTF and PDF output.
+#'
+#' @return An `fr_markup` object containing the en dash character.
+#'
+#' @examples
+#' # Numeric range in a footnote:
+#' spec <- tbl_demog |> fr_table()
+#' spec |> fr_footnotes("[a] Age range: 18{fr_endash()}65 years.")
+#'
+#' # In a column label:
+#' fr_col("95% CI{fr_newline()}(Lower{fr_endash()}Upper)", width = 1.5)
+#'
+#' @seealso [fr_emdash()] for the longer em dash,
+#'   [fr_unicode()] for arbitrary Unicode characters.
+#'
+#' @export
+fr_endash <- function() fr_unicode(0x2013L)
 
 
 #' Line Break Within a Text Element

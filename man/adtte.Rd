@@ -28,7 +28,7 @@ A data frame with 270 rows (135 subjects x 2 parameters) and 16 variables:
 }
 }
 \source{
-Synthetic data generated in \code{data-raw/create_datasets.R}.
+Synthetic data generated in \code{data-raw/create_adam_datasets.R}.
 }
 \usage{
 adtte
@@ -37,7 +37,7 @@ adtte
 Synthetic CDISC ADaM Time-to-Event (ADTTE) dataset from study TFRM-2024-001.
 Contains one row per subject per time-to-event parameter. Used for:
 \itemize{
-\item \strong{Time to event table} (Table 14.2.x): Kaplan-Meier estimates, median
+\item \strong{Time to event table} (Table 14.2.1): Kaplan-Meier estimates, median
 time-to-event, and hazard ratios by treatment arm
 }
 

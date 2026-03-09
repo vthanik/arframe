@@ -5,7 +5,7 @@
 \alias{adae}
 \title{Adverse Events Analysis Dataset (ADAE)}
 \format{
-A data frame with approximately 200 rows and 21 variables:
+A data frame with approximately 750 rows and 27 variables:
 \describe{
 \item{STUDYID}{Study identifier}
 \item{USUBJID}{Unique subject identifier}
@@ -20,9 +20,14 @@ A data frame with approximately 200 rows and 21 variables:
 \code{"Gastrointestinal disorders"}, \code{"Nervous system disorders"}}
 \item{AEDECOD}{MedDRA Preferred Term (PT), e.g. \code{"Nausea"}, \code{"Dizziness"}}
 \item{AESEV}{Severity: \code{"MILD"}, \code{"MODERATE"}, or \code{"SEVERE"}}
+\item{AETOXGR}{CTCAE toxicity grade: \code{"1"}, \code{"2"}, \code{"3"}, or \code{"4"}.
+Derived from AESEV: MILD maps to 1--2, MODERATE to 2--3, SEVERE to 3--4}
 \item{AESER}{Serious adverse event flag: \code{"Y"} or \code{"N"}}
 \item{AEREL}{Relationship to study drug: \code{"PROBABLE"}, \code{"POSSIBLE"},
 \code{"REMOTE"}, or \code{"NONE"}}
+\item{AEACN}{Action taken with study treatment: \code{"DOSE NOT CHANGED"},
+\code{"DRUG INTERRUPTED"}, \code{"DRUG WITHDRAWN"}, \code{"DOSE REDUCED"}, or
+\code{"NOT APPLICABLE"}}
 \item{AEOUT}{Outcome: \code{"RECOVERED/RESOLVED"} or
 \code{"NOT RECOVERED/NOT RESOLVED"}}
 \item{ASTDT}{AE start date}
@@ -38,7 +43,7 @@ A data frame with approximately 200 rows and 21 variables:
 }
 }
 \source{
-Synthetic data generated in \code{data-raw/create_datasets.R}.
+Synthetic data generated in \code{data-raw/create_adam_datasets.R}.
 }
 \usage{
 adae
@@ -47,8 +52,10 @@ adae
 Synthetic CDISC ADaM Adverse Events (ADAE) dataset from study TFRM-2024-001.
 Contains one row per subject per adverse event. Used for:
 \itemize{
-\item \strong{Adverse events table} (Table 14.3.1): incidence by body system and
+\item \strong{AE by SOC/PT table} (Table 14.3.1): incidence by body system and
 preferred term, within treatment arm
+\item \strong{Overall AE summary} (GS_CSR_AE_T_001): subjects with TEAEs by
+seriousness, relatedness, severity, and action taken
 }
 
 All adverse events in this dataset are treatment-emergent (\code{TRTEMFL = "Y"}).
@@ -65,5 +72,8 @@ sort(table(adae$AEBODSYS), decreasing = TRUE)
 
 # Serious AEs only
 subset(adae, AESER == "Y", select = c(USUBJID, ARM, AEDECOD, AESEV))
+
+# Action taken distribution
+table(adae$AEACN)
 }
 \keyword{datasets}

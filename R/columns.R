@@ -16,7 +16,7 @@
 #' @param data Data frame.
 #' @param configured Named list of fr_col objects already set by user.
 #' @param default_width Numeric, "auto", "equal", or NULL. Global width
-#'   default from fr_cols .width. NULL → 1.5 in.
+#'   default from fr_cols .width. NULL → auto.
 #' @param width_mode Character. "fixed", "auto", or "equal".
 #' @param default_align Character. Global alignment default. NULL →
 #'   auto-detect from column type.
@@ -69,6 +69,7 @@ build_default_columns <- function(data,
     if (identical(col_def$width, "auto") ||
         (is.null(col_def$width) && width_mode %in% c("auto", "fit"))) {
       col_def$width <- estimate_col_width(data, nm, col_def$label, page)
+      col_def$width_auto <- TRUE
     }
 
     # Fill NULL width from fallback (fixed or percent mode)
@@ -194,6 +195,53 @@ estimate_col_width <- function(data, col_name, label, page) {
 # 3. Width Distribution
 # ══════════════════════════════════════════════════════════════════════════════
 
+#' Separate fixed-width columns from auto-estimated columns
+#'
+#' Classifies visible columns by `width_auto` flag. Columns with
+#' `width_auto = TRUE` (auto-estimated) are scalable; all others
+#' (explicit `fr_col(width=)`) are fixed.
+#'
+#' @param columns Named list of fr_col objects.
+#' @param visible_names Character vector of visible column names.
+#' @return List with `$fixed_sum` (numeric) and `$auto_names` (character).
+#' @noRd
+separate_fixed_auto_cols <- function(columns, visible_names) {
+  fixed_sum <- 0
+  auto_names <- character(0)
+  for (nm in visible_names) {
+    if (isTRUE(columns[[nm]]$width_auto)) {
+      auto_names <- c(auto_names, nm)
+    } else {
+      fixed_sum <- fixed_sum + columns[[nm]]$width
+    }
+  }
+  list(fixed_sum = fixed_sum, auto_names = auto_names)
+}
+
+
+#' Scale auto-estimated columns to target width
+#'
+#' Common scaling logic for distribute_auto/fit/equal_widths.
+#' Only modifies columns in `auto_names`; fixed columns are untouched.
+#'
+#' @param columns Named list of fr_col objects.
+#' @param auto_names Character vector of auto-estimated column names.
+#' @param remaining Numeric. Target total width for auto columns.
+#' @return Modified columns list with scaled widths.
+#' @noRd
+scale_auto_columns <- function(columns, auto_names, remaining) {
+  if (length(auto_names) == 0L) return(columns)
+  auto_total <- sum(vapply(columns[auto_names], function(c) c$width, numeric(1)))
+  if (auto_total <= 0 || remaining <= 0) return(columns)
+
+  scale_factor <- remaining / auto_total
+  for (nm in auto_names) {
+    columns[[nm]]$width <- columns[[nm]]$width * scale_factor
+  }
+  columns
+}
+
+
 #' Distribute auto-calculated widths to fit the printable page
 #'
 #' After per-column auto-estimation, scale all auto-width columns
@@ -212,14 +260,10 @@ distribute_auto_widths <- function(columns, page) {
   total <- sum(vapply(visible, function(col) col$width, numeric(1)))
   if (total <= 0 || total <= printable) return(columns)
 
-  # Scale down proportionally to fit
-  scale_factor <- printable / total
-  for (nm in names(columns)) {
-    if (!isFALSE(columns[[nm]]$visible)) {
-      columns[[nm]]$width <- columns[[nm]]$width * scale_factor
-    }
-  }
-  columns
+  parts <- separate_fixed_auto_cols(columns, names(visible))
+  if (length(parts$auto_names) == 0L) return(columns)
+
+  scale_auto_columns(columns, parts$auto_names, printable - parts$fixed_sum)
 }
 
 
@@ -238,24 +282,18 @@ distribute_fit_widths <- function(columns, page) {
   visible <- Filter(function(col) !isFALSE(col$visible), columns)
   if (length(visible) == 0L) return(columns)
 
-  total <- sum(vapply(visible, function(col) col$width, numeric(1)))
-  if (total <= 0) return(columns)
+  parts <- separate_fixed_auto_cols(columns, names(visible))
+  if (length(parts$auto_names) == 0L) return(columns)
 
-  scale_factor <- printable / total
-  for (nm in names(columns)) {
-    if (!isFALSE(columns[[nm]]$visible)) {
-      columns[[nm]]$width <- columns[[nm]]$width * scale_factor
-    }
-  }
-  columns
+  scale_auto_columns(columns, parts$auto_names, printable - parts$fixed_sum)
 }
 
 
-#' Distribute equal widths across unfixed columns
+#' Distribute equal widths across unset columns
 #'
 #' Columns with an explicit numeric width in fr_col keep their size.
-#' Remaining printable space is divided equally among columns that
-#' had NULL width (not explicitly set).
+#' Remaining printable space is divided equally among columns whose
+#' width was not explicitly set (NULL width).
 #'
 #' @param columns Named list of fr_col objects.
 #' @param page fr_page object.
@@ -266,7 +304,7 @@ distribute_equal_widths <- function(columns, page) {
   visible <- Filter(function(col) !isFALSE(col$visible), columns)
   if (length(visible) == 0L) return(columns)
 
-  # Separate fixed vs unfixed
+  # Separate explicit-width vs unset columns (NULL width)
   fixed_sum <- 0
   unfixed_names <- character(0)
   for (nm in names(visible)) {

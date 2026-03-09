@@ -54,7 +54,7 @@ test_that("fr_listing sets font_size = 8", {
 
 test_that("fr_listing enables col_split", {
   spec <- fr_listing(df_listing)
-  expect_true(spec$page$col_split)
+  expect_true(isTRUE(spec$columns_meta$split))
 })
 
 test_that("fr_listing enables wrap", {
@@ -102,11 +102,11 @@ test_that("fr_listing font_size overridable via fr_page", {
   expect_equal(spec$page$font_size, 10)
 })
 
-test_that("fr_listing col_split overridable via fr_page", {
+test_that("fr_listing split overridable via columns_meta", {
   spec <- df_listing |>
-    fr_listing() |>
-    fr_page(col_split = FALSE)
-  expect_false(spec$page$col_split)
+    fr_listing()
+  spec$columns_meta$split <- FALSE
+  expect_false(spec$columns_meta$split)
 })
 
 test_that("fr_listing wrap overridable via fr_rows", {
@@ -313,11 +313,11 @@ test_that("fr_listing has smaller default font than fr_table", {
   expect_equal(spec_lst$page$font_size, 8)
 })
 
-test_that("fr_listing enables col_split unlike fr_table", {
+test_that("fr_listing enables split unlike fr_table", {
   spec_tbl <- fr_table(df_listing)
   spec_lst <- fr_listing(df_listing)
-  expect_false(spec_tbl$page$col_split)
-  expect_true(spec_lst$page$col_split)
+  expect_identical(spec_tbl$columns_meta$split, FALSE)
+  expect_true(isTRUE(spec_lst$columns_meta$split))
 })
 
 test_that("fr_listing forces left align on numeric columns", {

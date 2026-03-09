@@ -9,7 +9,8 @@ fr_col(
   width = NULL,
   align = NULL,
   header_align = NULL,
-  visible = NULL
+  visible = NULL,
+  stub = FALSE
 )
 }
 \arguments{
@@ -70,10 +71,18 @@ in the rendered output.
 keys, sort-order columns, row-type flags) that should remain in the
 data for pagination and styling logic but not appear in output.
 }}
+
+\item{stub}{Logical. Whether this column is a \strong{stub column} —
+repeated on every panel when \code{fr_cols(.split = TRUE)} splits the
+table across multiple column pages. Default \code{FALSE}.
+Stub columns are typically row-label or parameter columns that
+provide context for each panel. When \code{.split} is enabled but no
+columns have \code{stub = TRUE}, stubs are auto-inferred from
+\code{group_by}/\code{indent_by} columns or the first column.}
 }
 \value{
 An S3 object of class \code{fr_col} with components \code{id}, \code{label},
-\code{width}, \code{align}, \code{header_align}, and \code{visible}.
+\code{width}, \code{align}, \code{header_align}, \code{visible}, and \code{stub}.
 }
 \description{
 Defines the display properties of a single table column: its label, width,
@@ -150,6 +159,10 @@ fr_col("Mean (SD)", width = 1.5, align = "decimal")
 
 fr_col(visible = FALSE)
 
+## ── Stub column (repeats in every panel during column splitting) ────────
+
+fr_col("Parameter", width = 2.5, stub = TRUE)
+
 ## ── Footnote marker in column header ─────────────────────────────────────
 
 fr_col("Placebo{fr_super('a')}\n(N=45)", width = 1.5, align = "right")
@@ -171,7 +184,8 @@ tbl_demog |>
 
 }
 \seealso{
-\code{\link[=fr_cols]{fr_cols()}} to apply column specs to a table,
+\code{\link[=fr_cols]{fr_cols()}} to apply column specs to a table (including
+\code{.split} for column splitting),
 \code{\link[=fr_header]{fr_header()}} for N-count labels and header styling,
 \code{\link[=fr_super]{fr_super()}}, \code{\link[=fr_bold]{fr_bold()}}, \code{\link[=fr_italic]{fr_italic()}} for inline markup in labels.
 }

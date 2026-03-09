@@ -34,12 +34,6 @@ tlframe_error_render <- function(message, format, ..., call = caller_env()) {
                 class = "tlframe_error_render", call = call)
 }
 
-#' Import error (gt import)
-#' @noRd
-tlframe_error_import <- function(message, ..., call = caller_env()) {
-  tlframe_error(message, ..., class = "tlframe_error_import", call = call)
-}
-
 #' Layout error (pagination, column split)
 #' @noRd
 tlframe_error_layout <- function(message, ..., call = caller_env()) {
@@ -72,7 +66,8 @@ normalise_text <- function(x,
                             call = caller_env()) {
   if (!is.character(x) || length(x) != 1L) {
     cli_abort(
-      "{.arg {arg}} must be a single character string.",
+      c("{.arg {arg}} must be a single character string.",
+        "x" = "You supplied {.obj_type_friendly {x}}."),
       call = call
     )
   }
@@ -88,7 +83,8 @@ normalise_text_vec <- function(texts,
                                 call = caller_env()) {
   if (!is.character(texts)) {
     cli_abort(
-      "{.arg {arg}} must be character strings.",
+      c("{.arg {arg}} must be character strings.",
+        "x" = "You supplied {.obj_type_friendly {texts}}."),
       call = call
     )
   }
@@ -172,7 +168,8 @@ apply_fr_theme <- function(spec) {
 
   # Page defaults
   spec <- apply_settings_section(spec, setup, fr_page,
-    c("orientation", "paper", "font_family", "font_size", "margins", "tokens"))
+    c("orientation", "paper", "font_family", "font_size", "margins", "tokens",
+      "col_gap"))
 
   # Running header
   spec <- apply_settings_section(spec, setup[["pagehead"]], fr_pagehead,
@@ -197,11 +194,20 @@ apply_fr_theme <- function(spec) {
     c("titles_after", "footnotes_before", "pagehead_after",
       "pagefoot_before", "page_by_after"))
 
+  # Column split/stub defaults (from theme)
+  if (!is.null(setup[["split"]])) {
+    spec$columns_meta$split <- setup[["split"]]
+  }
+  if (!is.null(setup[["stub"]])) {
+    # Mark named columns as stubs (columns may not be built yet,
+    # so store for later application in finalize_columns)
+    spec$columns_meta$stub <- setup[["stub"]]
+  }
+
   # Header defaults (from theme)
   if (!is.null(setup[["header"]])) {
     h <- setup[["header"]]
     if (!is.null(h$span_gap))  spec$header$span_gap  <- h$span_gap
-    if (!is.null(h$align_gap)) spec$header$align_gap <- h$align_gap
   }
 
   # Footnote separator default
@@ -230,4 +236,35 @@ apply_settings_section <- function(spec, cfg_section, verb_fn, param_names) {
   args <- args[!vapply(args, is.null, logical(1))]
   if (length(args) == 0L) return(spec)
   inject(verb_fn(spec, !!!args))
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 6. Column / Footnote Filter Helpers
+#
+# Shared predicates to avoid repeating the same Filter(function(c) ...)
+# lambdas across render.R, api-validate.R, classes.R, render-rtf.R, and
+# render-latex.R.
+# ══════════════════════════════════════════════════════════════════════════════
+
+#' Get visible columns from a column list
+#' @noRd
+visible_columns <- function(columns) {
+  Filter(function(c) !isFALSE(c$visible), columns)
+}
+
+#' Get names of stub columns from a column list
+#' @noRd
+stub_column_names <- function(columns) {
+  names(Filter(function(c) isTRUE(c$stub), columns))
+}
+
+#' Split footnotes by placement
+#' @return List with `every` and `last` components.
+#' @noRd
+split_footnotes <- function(footnotes) {
+  list(
+    every = Filter(function(fn) fn$placement == "every", footnotes),
+    last  = Filter(function(fn) fn$placement == "last", footnotes)
+  )
 }

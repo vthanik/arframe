@@ -49,9 +49,9 @@ page-by column value is printed as a bold label above each group's table.
 
 \section{Column splitting}{
 
-When \code{fr_page(col_split = TRUE)} is set and the total column width
+When \code{fr_cols(.split = TRUE)} is set and the total column width
 exceeds the printable page area, columns are automatically split into
-panels. Stub columns (set via \code{fr_page(stub_cols = ...)}) are repeated
+panels. Stub columns (set via \code{fr_col(stub = TRUE)}) are repeated
 in every panel. Each panel is rendered as a separate section.
 }
 

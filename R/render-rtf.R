@@ -11,8 +11,57 @@
 #   - Column headers with \trhdr (repeat on every page)
 #   - Spanning headers with \clmgf / \clmrg
 #   - Body rows with per-cell styling and borders
-#   - Section breaks (\sect) for page_by groups and col_split panels
+#   - Section breaks (\sect) for page_by groups and column split panels
 # ──────────────────────────────────────────────────────────────────────────────
+
+
+#' Zero top/bottom cell padding (eliminates Word's default ~29twips each side)
+#' @noRd
+rtf_zero_cell_padding <- "\\trpaddt0\\trpaddft3\\trpaddb0\\trpaddfb3"
+
+
+#' Row-level padding string: exact height + zero top/bottom cell padding
+#'
+#' Produces RTF control words for deterministic row height:
+#' `\trrh-N` (exact height), `\trpaddt0\trpaddft3` (zero top padding),
+#' `\trpaddb0\trpaddfb3` (zero bottom padding).
+#'
+#' @param font_size_pt Numeric. Font size in points.
+#' @return Character scalar. RTF control word string.
+#' @noRd
+rtf_row_height_str <- function(font_size_pt) {
+  rh <- row_height_twips_exact(font_size_pt)
+  paste0("\\trrh", rh, rtf_zero_cell_padding)
+}
+
+
+#' Paragraph-level spacing string: zero sb/sa + exact line spacing
+#'
+#' Produces `\sb0\sa0\sl-N\slmult0` where N = baseline skip in twips.
+#' Combined with `rtf_row_height_str()`, this eliminates all Word auto-sizing
+#' and produces deterministic row heights matching `row_height_twips()`.
+#'
+#' @param font_size_pt Numeric. Font size in points.
+#' @return Character scalar. RTF paragraph spacing string.
+#' @noRd
+rtf_cell_spacing_str <- function(font_size_pt) {
+  sl <- -baseline_skip_twips(font_size_pt)
+  paste0("\\sb0\\sa0\\sl", sl, "\\slmult0")
+}
+
+
+#' Build RTF cell padding string from col_gap (points)
+#'
+#' Converts `spec$page$col_gap` (total gap in points) to symmetric left/right
+#' cell padding in twips. Returns an empty string when col_gap is 0.
+#' @noRd
+rtf_col_gap_str <- function(spec) {
+  gap_pt <- spec$page$col_gap
+  if (gap_pt <= 0L) return("")
+  # Half on each side, convert pt → twips (1 pt = 20 twips)
+  pad_twips <- as.integer(round(gap_pt / 2 * 20))
+  paste0("\\clpadl", pad_twips, "\\clpadr", pad_twips, "\\clpadfl3\\clpadfr3")
+}
 
 
 #' Render an fr_spec to RTF
@@ -28,8 +77,9 @@ render_rtf <- function(spec, page_groups, col_panels, path) {
 
   # Separate "last" footnotes — they render as body rows, not in {\footer}
   footnotes <- spec$meta$footnotes %||% list()
-  last_footnotes <- Filter(function(fn) fn$placement == "last", footnotes)
-  every_footnotes <- Filter(function(fn) fn$placement != "last", footnotes)
+  fn_split <- split_footnotes(footnotes)
+  last_footnotes <- fn_split$last
+  every_footnotes <- fn_split$every
 
   colors <- collect_colors(spec)
   color_info <- build_rtf_colortbl(colors)
@@ -121,7 +171,8 @@ render_rtf <- function(spec, page_groups, col_panels, path) {
       }
 
       # Title rows as \trhdr (always repeat on every page)
-      rtf_write(con, rtf_title_rows(spec, vis_columns, color_info))
+      rtf_write(con, rtf_title_rows(spec, vis_columns, color_info,
+                                     panel_idx = panel_idx))
 
       # Group label (page_by value) — \trhdr row to stay within the table
       if (!is.null(group$group_label) && nzchar(group$group_label)) {
@@ -311,7 +362,7 @@ rtf_footer_group <- function(spec, token_map, is_last, vis_columns,
   entries <- if (skip_footnotes) {
     list()
   } else {
-    Filter(function(fn) fn$placement == "every", footnotes)
+    split_footnotes(footnotes)$every
   }
 
   has_footnotes <- length(entries) > 0L
@@ -349,14 +400,23 @@ rtf_footer_group <- function(spec, token_map, is_last, vis_columns,
   }
 
   # Footnote paragraphs (width constrained to table content width)
+  # Layout matches PDF: [bottom border] → [spacing] → [separator] → [footnotes]
   if (has_footnotes) {
     # Blank lines before footnotes (spacing$footnotes_before, default 1)
-    # — gap between table bottom border and footnote separator
     n_before <- spec$spacing$footnotes_before %||% 1L
     if (n_before > 0L) {
       parts <- c(parts, strrep(
         paste0("\\pard\\plain\\sb0", fn_indent_str, "\\fs", fn_fs, "\\par\n"),
         n_before
+      ))
+    }
+
+    # Separator as standalone paragraph (after spacing, before footnote text)
+    if (isTRUE(spec$meta$footnote_separator)) {
+      parts <- c(parts, paste0(
+        "\\pard\\plain\\sb0", fn_indent_str,
+        "\\brdrt\\brdrs\\brdrw5",
+        "\\fs2\\par\n"
       ))
     }
 
@@ -366,14 +426,8 @@ rtf_footer_group <- function(spec, token_map, is_last, vis_columns,
       align_rtf <- fr_env$align_to_rtf[[fn$align %||% "left"]]
       content <- rtf_escape_and_resolve(fn$content)
 
-      # Separator as paragraph top border on first footnote
-      sep_str <- ""
-      if (idx == 1L && isTRUE(spec$meta$footnote_separator)) {
-        sep_str <- "\\brdrt\\brdrs\\brdrw5 "
-      }
-
       parts <- c(parts, paste0(
-        "\\pard\\plain\\sb0", fn_indent_str, sep_str, align_rtf,
+        "\\pard\\plain\\sb0", fn_indent_str, align_rtf,
         "\\fs", fs, " ", content, "\\par\n"
       ))
     }
@@ -422,24 +476,28 @@ rtf_chrome_content <- function(chrome, spec, token_map, context,
   # Tab stop definitions
   tab_defs <- paste0("\\tqc\\tx", center_pos, "\\tqr\\tx", right_pos)
 
+  # Helper: resolve tokens, escape for RTF, convert \n to \line breaks
+  chrome_escape <- function(txt) {
+    txt <- resolve_tokens(txt, token_map, context)
+    txt <- rtf_escape_and_resolve(txt)
+    gsub("\n", "\\\\line ", txt)
+  }
+
   # Build content: left text, then \tab + center, then \tab + right
   content_parts <- character(0)
 
   if (!is.null(chrome$left)) {
-    txt <- resolve_tokens(chrome$left, token_map, context)
-    content_parts <- c(content_parts, rtf_escape_and_resolve(txt))
+    content_parts <- c(content_parts, chrome_escape(chrome$left))
   }
 
   if (!is.null(chrome$center)) {
-    txt <- resolve_tokens(chrome$center, token_map, context)
-    content_parts <- c(content_parts, paste0("\\tab ", rtf_escape_and_resolve(txt)))
+    content_parts <- c(content_parts, paste0("\\tab ", chrome_escape(chrome$center)))
   } else if (!is.null(chrome$right)) {
     content_parts <- c(content_parts, "\\tab ")
   }
 
   if (!is.null(chrome$right)) {
-    txt <- resolve_tokens(chrome$right, token_map, context)
-    content_parts <- c(content_parts, paste0("\\tab ", rtf_escape_and_resolve(txt)))
+    content_parts <- c(content_parts, paste0("\\tab ", chrome_escape(chrome$right)))
   }
 
   if (length(content_parts) == 0L) return("")
@@ -477,7 +535,7 @@ rtf_pagechrome_paragraph <- function(chrome, spec, token_map, group, context) {
 #' the continuation text (e.g., "(continued)") on pages 2+.
 #'
 #' @noRd
-rtf_title_rows <- function(spec, columns, color_info) {
+rtf_title_rows <- function(spec, columns, color_info, panel_idx = 1L) {
   titles <- spec$meta$titles
   if (length(titles) == 0L) return("")
 
@@ -498,17 +556,19 @@ rtf_title_rows <- function(spec, columns, color_info) {
     bold_off <- if (isTRUE(entry$bold)) "\\b0" else ""
     content <- rtf_escape_and_resolve(entry$content)
 
-    # Append continuation text to first title (always visible — RTF field
-    # codes don't work in Word table cells, so we show it unconditionally;
-    # the first page naturally starts with a group header without it looking
-    # out of place since titles repeat via \trhdr on every page)
+    # Append continuation text to first title on panel 2+ only.
+    # Panel 1 is the first page of the table — no continuation needed.
+    # RTF field codes don't work in table cells, so we use plain text.
     cont_field <- ""
-    if (idx == 1L && !is.null(continuation)) {
+    if (idx == 1L && !is.null(continuation) && panel_idx > 1L) {
       cont_field <- paste0(" ", rtf_escape(continuation))
     }
 
     # Row: \trhdr with a single merged cell spanning full width
-    row_def <- "\\trowd\\trhdr\\trqc"
+    title_fs_pt <- entry$font_size %||% spec$page$font_size
+    rh_str <- rtf_row_height_str(title_fs_pt)
+    sp_str <- rtf_cell_spacing_str(title_fs_pt)
+    row_def <- paste0("\\trowd\\trhdr\\trqc", rh_str)
 
     # Merge cells: first cell = \clmgf, rest = \clmrg
     cum_widths <- cumsum(vapply(columns, function(c) inches_to_twips(c$width),
@@ -521,7 +581,7 @@ rtf_title_rows <- function(spec, columns, color_info) {
 
     # Cell content (only first cell has content, rest are empty merge targets)
     cell_content <- paste0(
-      "\\pard\\intbl", align_rtf, "\\fs", fs, " ",
+      "\\pard\\intbl", align_rtf, sp_str, "\\fs", fs, " ",
       bold_on, content, cont_field, bold_off, "\\cell"
     )
     if (ncol > 1L) {
@@ -537,13 +597,15 @@ rtf_title_rows <- function(spec, columns, color_info) {
   n_after <- spec$spacing$titles_after %||% 1L
   if (n_after > 0L) {
     blank_fs <- pt_to_half_pt(spec$page$font_size)
-    blank_cell <- paste0("\\pard\\intbl\\fs", blank_fs, " \\cell")
+    blank_rh <- rtf_row_height_str(spec$page$font_size)
+    blank_sp <- rtf_cell_spacing_str(spec$page$font_size)
+    blank_cell <- paste0("\\pard\\intbl", blank_sp, "\\fs", blank_fs, " \\cell")
     blank_empty <- if (ncol > 1L) {
       paste0(rep("\\pard\\intbl\\cell", ncol - 1L), collapse = "")
     } else {
       ""
     }
-    blank_row <- paste0("\\trowd\\trhdr\\trqc", cell_defs, "\n",
+    blank_row <- paste0("\\trowd\\trhdr\\trqc", blank_rh, cell_defs, "\n",
                          blank_cell, blank_empty, "\\row\n")
     lines <- c(lines, rep(blank_row, n_after))
   }
@@ -576,9 +638,12 @@ rtf_page_by_rows <- function(spec, columns, group_label) {
                         paste0("\\clmrg\\cellx", cum_widths[-1L], collapse = ""))
   }
 
-  row_def <- "\\trowd\\trhdr\\trqc"
+  pb_fs_pt <- spec$page$font_size
+  rh_str <- rtf_row_height_str(pb_fs_pt)
+  sp_str <- rtf_cell_spacing_str(pb_fs_pt)
+  row_def <- paste0("\\trowd\\trhdr\\trqc", rh_str)
   cell_content <- paste0(
-    "\\pard\\intbl", pb_align, "\\fs", fs, " ",
+    "\\pard\\intbl", pb_align, sp_str, "\\fs", fs, " ",
     pb_bold_on, content, pb_bold_off, "\\cell"
   )
   if (ncol > 1L) {
@@ -592,7 +657,7 @@ rtf_page_by_rows <- function(spec, columns, group_label) {
   # Blank \trhdr rows for page_by_after spacing
   n_after <- spec$spacing$page_by_after %||% 1L
   if (n_after > 0L) {
-    blank_cell <- paste0("\\pard\\intbl\\fs", fs, " \\cell")
+    blank_cell <- paste0("\\pard\\intbl", sp_str, "\\fs", fs, " \\cell")
     blank_empty <- if (ncol > 1L) {
       paste0(rep("\\pard\\intbl\\cell", ncol - 1L), collapse = "")
     } else ""
@@ -614,6 +679,7 @@ rtf_spanner_rows <- function(spec, columns, borders, color_info) {
   col_names <- names(columns)
   ncol <- length(col_names)
   fs <- pt_to_half_pt(spec$page$font_size)
+  pad_str <- rtf_col_gap_str(spec)
 
   # Build cumulative column positions in twips
   col_widths_twips <- vapply(columns, function(c) inches_to_twips(c$width),
@@ -623,12 +689,15 @@ rtf_spanner_rows <- function(spec, columns, borders, color_info) {
   # Group spans by level
   levels <- sort(unique(vapply(spans, function(s) s$level, integer(1))))
 
+  rh_str <- rtf_row_height_str(spec$page$font_size)
+  sp_str <- rtf_cell_spacing_str(spec$page$font_size)
+
   lines <- character(0)
   for (lvl in rev(levels)) {
     lvl_spans <- Filter(function(s) s$level == lvl, spans)
 
     # Row definition: \trowd\trhdr
-    row_def <- paste0("\\trowd\\trhdr\\trqc")
+    row_def <- paste0("\\trowd\\trhdr\\trqc", rh_str)
 
     # Build cell definitions
     cell_defs <- character(0)
@@ -657,15 +726,15 @@ rtf_spanner_rows <- function(spec, columns, borders, color_info) {
           span_border <- paste0("\\clbrdrb\\brdrs\\brdrw", fr_env$rtf_spanner_brdrw, "\\brdrcf1")
         }
         border_str <- rtf_cell_border_string(borders$header, 1L, j, color_info)
-        cell_defs <- c(cell_defs, paste0(border_str, span_border, "\\clmgf\\cellx", cum_widths[j]))
+        cell_defs <- c(cell_defs, paste0(border_str, span_border, pad_str, "\\clmgf\\cellx", cum_widths[j]))
         for (k in (j + 1L):min(sp_end, ncol)) {
           border_str <- rtf_cell_border_string(borders$header, 1L, k, color_info)
-          cell_defs <- c(cell_defs, paste0(border_str, span_border, "\\clmrg\\cellx", cum_widths[k]))
+          cell_defs <- c(cell_defs, paste0(border_str, span_border, pad_str, "\\clmrg\\cellx", cum_widths[k]))
         }
         content <- rtf_escape_and_resolve(matching_span$label)
         cell_contents <- c(cell_contents,
-                           paste0("\\pard\\intbl\\qc\\fs", fs, "\\b ",
-                                  content, "\\b0\\cell"))
+                           paste0("\\pard\\intbl\\qc", sp_str, "\\fs", fs, " ",
+                                  content, "\\cell"))
         for (k in (j + 1L):min(sp_end, ncol)) {
           cell_contents <- c(cell_contents, "\\pard\\intbl\\cell")
         }
@@ -673,7 +742,7 @@ rtf_spanner_rows <- function(spec, columns, borders, color_info) {
       } else {
         # Empty cell (no span covers this column)
         border_str <- rtf_cell_border_string(borders$header, 1L, j, color_info)
-        cell_defs <- c(cell_defs, paste0(border_str, "\\cellx", cum_widths[j]))
+        cell_defs <- c(cell_defs, paste0(border_str, pad_str, "\\cellx", cum_widths[j]))
         cell_contents <- c(cell_contents, "\\pard\\intbl\\cell")
         j <- j + 1L
       }
@@ -711,8 +780,11 @@ rtf_col_header_row <- function(spec, columns, borders, color_info,
                                    header_cfg = spec$header)
 
   # \trowd\trhdr — marks row as header (repeats on each page)
-  row_def <- "\\trowd\\trhdr\\trqc"
+  rh_str <- rtf_row_height_str(spec$page$font_size)
+  sp_str <- rtf_cell_spacing_str(spec$page$font_size)
+  row_def <- paste0("\\trowd\\trhdr\\trqc", rh_str)
 
+  pad_str <- rtf_col_gap_str(spec)
   cell_defs <- character(ncol)
   cell_contents <- character(ncol)
 
@@ -730,7 +802,7 @@ rtf_col_header_row <- function(spec, columns, borders, color_info,
     va_str <- fr_env$valign_to_rtf[g$valign]
 
     border_str <- rtf_cell_border_string(borders$header, h_row, j, color_info)
-    cell_defs[j] <- paste0(border_str, bg_str, va_str, "\\cellx", cum_widths[j])
+    cell_defs[j] <- paste0(border_str, bg_str, va_str, pad_str, "\\cellx", cum_widths[j])
 
     # Use per-group override if available, else fall back to column label
     label <- label_overrides[col_names[j]]
@@ -762,7 +834,7 @@ rtf_col_header_row <- function(spec, columns, borders, color_info,
       if (!is.null(ci)) fg_str <- paste0("\\cf", ci, " ")
     }
 
-    cell_contents[j] <- paste0("\\pard\\plain\\intbl", align_rtf,
+    cell_contents[j] <- paste0("\\pard\\plain\\intbl", align_rtf, sp_str,
                                 "\\fs", fs, " ",
                                 fg_str, fmt_on, content, fmt_off, "\\cell")
   }
@@ -783,6 +855,7 @@ rtf_body_rows <- function(spec, data, columns, cell_grid, borders, color_info) {
   col_names <- names(columns)
   ncol <- length(col_names)
   nr <- nrow(data)
+  pad_str <- rtf_col_gap_str(spec)
 
   col_widths_twips <- vapply(columns, function(c) inches_to_twips(c$width),
                              integer(1), USE.NAMES = FALSE)
@@ -810,19 +883,30 @@ rtf_body_rows <- function(spec, data, columns, cell_grid, borders, color_info) {
 
   empty_cell <- "\\pard\\intbl\\cell"
 
-  # Precompute keep-together mask from group_by: TRUE if row should stay with next
-  keep_mask <- build_keep_mask(data, spec$body$group_by)
+  # Precompute keep-together mask from group_by with orphan/widow awareness
+  keep_mask <- build_keep_mask(
+    data, spec$body$group_by,
+    orphan_min = spec$page$orphan_min %||% fr_env$default_orphan_min,
+    widow_min  = spec$page$widow_min  %||% fr_env$default_widow_min
+  )
 
   # Precompute row heights from fr_row_style objects
   row_heights <- build_row_heights(nr, spec$cell_styles)
+
+  # Deterministic row height/spacing for body rows
+  rh_str <- rtf_row_height_str(spec$page$font_size)
+  sp_str <- rtf_cell_spacing_str(spec$page$font_size)
 
   lines <- vector("list", nr)
   for (i in seq_len(nr)) {
     # Row properties
     keep_str <- if (isTRUE(keep_mask[i])) "\\trkeep" else ""
-    height_str <- ""
     if (!is.na(row_heights[i])) {
-      height_str <- paste0("\\trrh", inches_to_twips(row_heights[i]))
+      # User-set explicit height via fr_row_style overrides deterministic height
+      height_str <- paste0("\\trrh", inches_to_twips(row_heights[i]),
+                           rtf_zero_cell_padding)
+    } else {
+      height_str <- rh_str
     }
     row_def <- paste0("\\trowd\\trqc", keep_str, height_str)
 
@@ -855,7 +939,7 @@ rtf_body_rows <- function(spec, data, columns, cell_grid, borders, color_info) {
         )
       } else {
         border_str <- rtf_cell_border_string(borders$body, i, j, color_info)
-        cell_defs[[j]] <- paste0(border_str, bg_str, va_str, "\\cellx", cum_widths[j])
+        cell_defs[[j]] <- paste0(border_str, bg_str, va_str, pad_str, "\\cellx", cum_widths[j])
       }
     }
 
@@ -904,10 +988,10 @@ rtf_body_rows <- function(spec, data, columns, cell_grid, borders, color_info) {
           before_esc <- rtf_escape_and_resolve(parts$before)
           after_esc  <- rtf_escape_and_resolve(trimws(parts$after, which = "left"))
           cell_contents[[j]] <- paste0(
-            "\\pard\\plain\\intbl\\qr", indent_str,
+            "\\pard\\plain\\intbl\\qr", sp_str, indent_str,
             "\\fs", fs, " ",
             fg_str, fmt_on, before_esc, fmt_off, "\\cell",
-            "\\pard\\plain\\intbl\\ql",
+            "\\pard\\plain\\intbl\\ql", sp_str,
             "\\fs", fs, " ",
             fg_str, fmt_on, after_esc, fmt_off, "\\cell"
           )
@@ -919,7 +1003,7 @@ rtf_body_rows <- function(spec, data, columns, cell_grid, borders, color_info) {
         align_rtf <- fr_env$align_to_rtf[[g$align]]
         content <- rtf_escape_and_resolve(g$content)
         cell_contents[[j]] <- paste0(
-          "\\pard\\plain\\intbl", align_rtf, indent_str,
+          "\\pard\\plain\\intbl", align_rtf, sp_str, indent_str,
           "\\fs", fs, " ",
           fg_str, fmt_on, content, fmt_off, "\\cell",
           empty_cell
@@ -928,7 +1012,7 @@ rtf_body_rows <- function(spec, data, columns, cell_grid, borders, color_info) {
         align_rtf <- fr_env$align_to_rtf[[g$align]]
         content <- rtf_escape_and_resolve(g$content)
         cell_contents[[j]] <- paste0(
-          "\\pard\\plain\\intbl", align_rtf, indent_str,
+          "\\pard\\plain\\intbl", align_rtf, sp_str, indent_str,
           "\\fs", fs, " ",
           fg_str, fmt_on, content, fmt_off, "\\cell"
         )
@@ -1010,7 +1094,7 @@ rtf_body_footnotes <- function(spec, columns, is_last, borders, color_info) {
   entries <- if (is_last) {
     footnotes
   } else {
-    Filter(function(fn) fn$placement == "every", footnotes)
+    split_footnotes(footnotes)$every
   }
 
   rtf_footnote_rows(spec, columns, entries, color_info)
@@ -1051,6 +1135,8 @@ rtf_footnote_rows <- function(spec, columns, entries, color_info) {
   if (length(entries) == 0L) return("")
 
   ncol <- length(columns)
+  rh_str <- rtf_row_height_str(spec$page$font_size)
+  sp_str <- rtf_cell_spacing_str(spec$page$font_size)
 
   # Cumulative column widths for merged cell defs
   cum_widths <- cumsum(vapply(columns, function(c) inches_to_twips(c$width),
@@ -1061,7 +1147,9 @@ rtf_footnote_rows <- function(spec, columns, entries, color_info) {
                         paste0("\\clmrg\\cellx", cum_widths[-1L], collapse = ""))
   }
 
-  # Bottom rule and footnote separator
+  # Bottom rule and footnote separator — rendered as separate rows to match
+
+  # PDF layout: [bottom border] → [spacing] → [separator] → [footnotes]
   bottom_rule <- find_bottom_rule(spec)
   br_str <- ""
   if (!is.null(bottom_rule)) {
@@ -1069,44 +1157,43 @@ rtf_footnote_rows <- function(spec, columns, entries, color_info) {
     ci <- color_info$index[[bottom_rule$fg]] %||% 1L
     br_str <- paste0("\\clbrdrt\\brdrs\\brdrw", bw, "\\brdrcf", ci)
   }
-  sep_str <- ""
-  if (isTRUE(spec$meta$footnote_separator)) {
-    sep_str <- "\\clbrdrt\\brdrs\\brdrw5\\brdrcf1"
-  }
-  rule_border <- paste0(br_str, sep_str)
+  has_sep <- isTRUE(spec$meta$footnote_separator)
+  sep_str <- if (has_sep) "\\clbrdrt\\brdrs\\brdrw5\\brdrcf1" else ""
 
-  # Pre-allocate lines list: rule row + blank spacing rows + footnote entry rows
+  # Pre-allocate lines list: rule row + blank spacing rows + sep row + fn rows
   n_before <- spec$spacing$footnotes_before %||% 1L
-  has_rule <- nzchar(rule_border)
-  lines <- vector("list", as.integer(has_rule) + n_before + length(entries))
+  has_rule <- nzchar(br_str)
+  lines <- vector("list",
+                  as.integer(has_rule) + n_before +
+                    as.integer(has_sep) + length(entries))
   li <- 0L
 
-  # 1) Bottom rule row — immediately after last body row
+  # 1) Bottom rule row — table bottom border only
   if (has_rule) {
-    rule_cell_defs <- paste0(rule_border, "\\clmgf\\cellx", cum_widths[1L])
+    rule_cell_defs <- paste0(br_str, "\\clmgf\\cellx", cum_widths[1L])
     if (ncol > 1L) {
       rule_cell_defs <- paste0(rule_cell_defs,
-                               paste0(rule_border, "\\clmrg\\cellx",
+                               paste0(br_str, "\\clmrg\\cellx",
                                       cum_widths[-1L], collapse = ""))
     }
     rule_fs <- pt_to_half_pt(2L)
-    rule_cell <- paste0("\\pard\\intbl\\fs", rule_fs, " \\cell")
+    rule_cell <- paste0("\\pard\\intbl", sp_str, "\\fs", rule_fs, " \\cell")
     rule_empty <- if (ncol > 1L) {
       paste0(rep("\\pard\\intbl\\cell", ncol - 1L), collapse = "")
     } else ""
     li <- li + 1L
-    lines[[li]] <- paste0("\\trowd\\trqc", rule_cell_defs, "\n",
+    lines[[li]] <- paste0("\\trowd\\trqc", rh_str, rule_cell_defs, "\n",
                            rule_cell, rule_empty, "\\row\n")
   }
 
   # 2) Spacing blank rows (footnotes_before)
   if (n_before > 0L) {
     blank_fs <- pt_to_half_pt(spec$page$font_size)
-    blank_cell <- paste0("\\pard\\intbl\\fs", blank_fs, " \\cell")
+    blank_cell <- paste0("\\pard\\intbl", sp_str, "\\fs", blank_fs, " \\cell")
     blank_empty <- if (ncol > 1L) {
       paste0(rep("\\pard\\intbl\\cell", ncol - 1L), collapse = "")
     } else ""
-    blank_row <- paste0("\\trowd\\trqc", cell_defs, "\n",
+    blank_row <- paste0("\\trowd\\trqc", rh_str, cell_defs, "\n",
                         blank_cell, blank_empty, "\\row\n")
     for (k in seq_len(n_before)) {
       li <- li + 1L
@@ -1114,15 +1201,36 @@ rtf_footnote_rows <- function(spec, columns, entries, color_info) {
     }
   }
 
-  # 3) Footnote content rows
+  # 3) Separator row — separate from bottom border, after spacing
+  if (has_sep) {
+    sep_cell_defs <- paste0(sep_str, "\\clmgf\\cellx", cum_widths[1L])
+    if (ncol > 1L) {
+      sep_cell_defs <- paste0(sep_cell_defs,
+                              paste0(sep_str, "\\clmrg\\cellx",
+                                     cum_widths[-1L], collapse = ""))
+    }
+    sep_fs <- pt_to_half_pt(2L)
+    sep_cell <- paste0("\\pard\\intbl", sp_str, "\\fs", sep_fs, " \\cell")
+    sep_empty <- if (ncol > 1L) {
+      paste0(rep("\\pard\\intbl\\cell", ncol - 1L), collapse = "")
+    } else ""
+    li <- li + 1L
+    lines[[li]] <- paste0("\\trowd\\trqc", rh_str, sep_cell_defs, "\n",
+                           sep_cell, sep_empty, "\\row\n")
+  }
+
+  # 4) Footnote content rows
   for (idx in seq_along(entries)) {
     fn <- entries[[idx]]
-    fs <- pt_to_half_pt(fn$font_size %||% spec$page$font_size)
+    fn_fs_pt <- fn$font_size %||% spec$page$font_size
+    fs <- pt_to_half_pt(fn_fs_pt)
+    fn_entry_rh <- rtf_row_height_str(fn_fs_pt)
+    fn_entry_sp <- rtf_cell_spacing_str(fn_fs_pt)
     align_rtf <- fr_env$align_to_rtf[[fn$align %||% "left"]]
     content <- rtf_escape_and_resolve(fn$content)
 
     cell_content <- paste0(
-      "\\pard\\intbl", align_rtf, "\\fs", fs, " ", content, "\\cell"
+      "\\pard\\intbl", align_rtf, fn_entry_sp, "\\fs", fs, " ", content, "\\cell"
     )
     if (ncol > 1L) {
       cell_content <- paste0(cell_content,
@@ -1131,7 +1239,7 @@ rtf_footnote_rows <- function(spec, columns, entries, color_info) {
     }
 
     li <- li + 1L
-    lines[[li]] <- paste0("\\trowd\\trqc", cell_defs, "\n",
+    lines[[li]] <- paste0("\\trowd\\trqc", fn_entry_rh, cell_defs, "\n",
                            cell_content, "\\row\n")
   }
 

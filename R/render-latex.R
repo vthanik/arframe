@@ -10,7 +10,7 @@
 #   - Spanning headers via \SetCell[c=N]{c}
 #   - Body rows with per-cell styling and borders
 #   - Footnotes via DeclareTblrTemplate (firstfoot/middlefoot/lastfoot)
-#   - \clearpage for page_by groups and col_split panels
+#   - \clearpage for page_by groups and column split panels
 # ──────────────────────────────────────────────────────────────────────────────
 
 
@@ -44,14 +44,14 @@ render_latex <- function(spec, page_groups, col_panels, path) {
       is_last <- (group_idx == length(page_groups) &&
                     panel_idx == length(col_panels))
 
-      # Redefine head template per group when page_by label is present
-      gl <- group$group_label
-      if (!is.null(gl) && nzchar(gl)) {
-        lines <- c(lines, latex_head_template(spec, group_label = gl))
-      }
+      # Redefine head template per section: handles group labels and
+      # continuation text (panel_idx > 1 gets continuation on all pages)
+      lines <- c(lines, latex_head_template(spec, group_label = group$group_label,
+                                             panel_idx = panel_idx))
 
       # Redefine foot template per section: "last" footnotes only in final section
-      lines <- c(lines, latex_foot_template(spec, is_last = is_last))
+      lines <- c(lines, latex_foot_template(spec, is_last = is_last,
+                                             vis_columns = vis_columns))
 
       # Resolve borders
       nrow_header <- 1L + n_spanner_levels(spec$header$spans)
@@ -278,7 +278,8 @@ latex_fancyhdr_setup <- function(spec) {
         txt <- sub(s, resolved, txt, fixed = TRUE)
       }
     }
-    txt
+    # Convert \n to LaTeX line break for multi-line chrome text
+    gsub("\n", "\\\\\\\\", txt)
   }
 
   # Page header
@@ -341,19 +342,29 @@ latex_fancyhdr_setup <- function(spec) {
 
 
 #' Build title content lines for embedding in tabularray head template
+#'
+#' @param spec Finalized fr_spec.
+#' @param continuation Logical. If TRUE, append continuation text to first title.
 #' @noRd
-latex_title_content <- function(spec) {
+latex_title_content <- function(spec, continuation = FALSE) {
   titles <- spec$meta$titles
   if (length(titles) == 0L) return(character(0))
   lf <- fr_env$latex_leading_factor
+  cont_text <- spec$page$continuation
 
   lines <- character(0)
-  for (entry in titles) {
+  for (idx in seq_along(titles)) {
+    entry <- titles[[idx]]
     fs <- entry$font_size %||% spec$page$font_size
     align <- entry$align %||% "center"
     bold_on  <- if (isTRUE(entry$bold)) "\\textbf{" else ""
     bold_off <- if (isTRUE(entry$bold)) "}" else ""
     content <- latex_escape_and_resolve(entry$content)
+
+    # Append continuation text to first title when requested
+    if (idx == 1L && isTRUE(continuation) && !is.null(cont_text)) {
+      content <- paste0(content, " ", latex_escape(cont_text))
+    }
 
     tex_align <- switch(align,
       center = "\\centering",
@@ -386,12 +397,28 @@ latex_title_content <- function(spec) {
 }
 
 
-#' Build \DeclareTblrTemplate for title heads (firsthead/middlehead/lasthead)
+#' Build \\DeclareTblrTemplate for title heads (firsthead/middlehead/lasthead)
+#'
+#' Supports continuation text across panels and within multi-page panels:
+#' - **Panel 1**: firsthead = no continuation; middlehead/lasthead = with
+#'   continuation (for within-panel page breaks).
+#' - **Panel 2+**: ALL head templates = with continuation.
+#'
+#' @param spec Finalized fr_spec.
+#' @param group_label Page-by group label or NULL.
+#' @param panel_idx Panel index (1-based). Default 1L.
 #' @noRd
-latex_head_template <- function(spec, group_label = NULL) {
-  content <- latex_title_content(spec)
+latex_head_template <- function(spec, group_label = NULL, panel_idx = 1L) {
+  # Build title content without and with continuation
+  base_content <- latex_title_content(spec, continuation = FALSE)
+  cont_content <- if (!is.null(spec$page$continuation)) {
+    latex_title_content(spec, continuation = TRUE)
+  } else {
+    base_content
+  }
 
-  # Append page_by group label after titles (before column header)
+  # Append page_by group label to both variants
+  gl_line <- NULL
   if (!is.null(group_label) && nzchar(group_label)) {
     lf <- fr_env$latex_leading_factor
     fs <- spec$page$font_size
@@ -417,36 +444,37 @@ latex_head_template <- function(spec, group_label = NULL) {
       vsp <- round(n_gl * fs * 0.5, 1)
       gl_line <- paste0(gl_line, "\n\\vspace{", vsp, "pt}")
     }
-    content <- c(content, gl_line)
+    base_content <- c(base_content, gl_line)
+    cont_content <- c(cont_content, gl_line)
   }
 
-  if (length(content) == 0L) {
-    # Suppress default conthead template
+  if (length(base_content) == 0L && length(cont_content) == 0L) {
     return(c(
       "\\DefTblrTemplate{conthead}{default}{}",
       "\\DefTblrTemplate{contfoot}{default}{}"
     ))
   }
-  body_str <- paste0(content, collapse = "\n")
+
+  # Decide which content goes to firsthead vs middlehead/lasthead
+  rest_body  <- paste0(cont_content, collapse = "\n")
+  first_body <- if (panel_idx == 1L) {
+    paste0(base_content, collapse = "\n")
+  } else {
+    rest_body
+  }
+
   c(
-    paste0("\\DeclareTblrTemplate{firsthead, middlehead, lasthead}{default}{"),
-    body_str,
+    "\\DeclareTblrTemplate{firsthead}{default}{",
+    first_body,
+    "}",
+    "\\DeclareTblrTemplate{middlehead, lasthead}{default}{",
+    rest_body,
     "}",
     "\\DefTblrTemplate{conthead}{default}{}",
     "\\DefTblrTemplate{contfoot}{default}{}"
   )
 }
 
-
-#' Calculate total table width in inches from column specs
-#'
-#' Since colsep is subtracted from column wd= in the colspec, the rendered
-#' table width equals the sum of the original column widths (colsep is within
-#' the budget, not on top of it).
-#' @noRd
-latex_table_width <- function(spec) {
-  sum(vapply(spec$columns, function(c) c$width, numeric(1)))
-}
 
 
 #' Build \DeclareTblrTemplate for footnote feet
@@ -459,14 +487,11 @@ latex_table_width <- function(spec) {
 #' @param is_last Logical. If FALSE, "last" footnotes are suppressed so they
 #'   don't appear in non-final sections of multi-section tables.
 #' @noRd
-latex_foot_template <- function(spec, is_last = TRUE) {
+latex_foot_template <- function(spec, is_last = TRUE, vis_columns = NULL) {
   footnotes <- spec$meta$footnotes %||% list()
-  every_fns <- Filter(function(fn) fn$placement == "every", footnotes)
-  last_fns  <- if (is_last) {
-    Filter(function(fn) fn$placement == "last", footnotes)
-  } else {
-    list()
-  }
+  fn_split <- split_footnotes(footnotes)
+  every_fns <- fn_split$every
+  last_fns  <- if (is_last) fn_split$last else list()
 
   has_every <- length(every_fns) > 0L
   has_last  <- length(last_fns)  > 0L
@@ -475,8 +500,9 @@ latex_foot_template <- function(spec, is_last = TRUE) {
 
   if (has_every) {
     # "every" footnotes repeat on all pages (firstfoot, middlefoot, lastfoot)
-    every_content <- paste0(build_fn_latex_content(every_fns, spec),
-                             collapse = "\n")
+    every_content <- paste0(
+      build_fn_latex_content(every_fns, spec, vis_columns = vis_columns),
+      collapse = "\n")
 
     # firstfoot and middlefoot get "every" footnotes only
     lines <- c(lines,
@@ -488,7 +514,8 @@ latex_foot_template <- function(spec, is_last = TRUE) {
     if (has_last) {
       # lastfoot gets "every" + "last" footnotes combined
       last_content <- paste0(
-        build_fn_latex_content(last_fns, spec, skip_spacing = TRUE),
+        build_fn_latex_content(last_fns, spec, skip_spacing = TRUE,
+                               vis_columns = vis_columns),
         collapse = "\n"
       )
       lines <- c(lines,
@@ -511,8 +538,9 @@ latex_foot_template <- function(spec, is_last = TRUE) {
       "\\DefTblrTemplate{firstfoot}{default}{}",
       "\\DefTblrTemplate{middlefoot}{default}{}"
     )
-    last_content <- paste0(build_fn_latex_content(last_fns, spec),
-                            collapse = "\n")
+    last_content <- paste0(
+      build_fn_latex_content(last_fns, spec, vis_columns = vis_columns),
+      collapse = "\n")
     lines <- c(lines,
       paste0("\\DeclareTblrTemplate{lastfoot}{default}{"),
       last_content,
@@ -531,29 +559,46 @@ latex_foot_template <- function(spec, is_last = TRUE) {
 }
 
 #' Build LaTeX footnote content lines for tabularray foot templates
+#'
+#' Wraps all footnote content (separator + text) in a minipage matching the
+#' rendered table width, so the separator line and text align with the table
+#' columns rather than extending to `\\linewidth` (the full page text width).
+#'
 #' @param entries List of footnote entries.
 #' @param spec The fr_spec.
-#' @param skip_spacing If TRUE, skip the \vspace and separator line (used when
+#' @param skip_spacing If TRUE, skip the \\vspace and separator line (used when
 #'   appending "last" footnotes after "every" in the same template).
+#' @param vis_columns Named list of visible panel columns (used to calculate
+#'   the actual rendered table width). Falls back to all `spec$columns` if NULL.
 #' @noRd
-build_fn_latex_content <- function(entries, spec, skip_spacing = FALSE) {
+build_fn_latex_content <- function(entries, spec, skip_spacing = FALSE,
+                                   vis_columns = NULL) {
   if (length(entries) == 0L) return(character(0))
   lf <- fr_env$latex_leading_factor
+
+  # Table width from visible panel columns (matches actual rendered table)
+  cols <- vis_columns %||% spec$columns
+  tbl_w <- round(sum(vapply(cols, function(c) c$width, numeric(1))), 4)
+
   fn_lines <- character(0)
 
   if (!skip_spacing) {
-    # Spacing before footnotes (blank lines)
+    # Spacing before footnotes (blank lines) — outside minipage
     n_before <- spec$spacing$footnotes_before %||% 1L
     if (n_before > 0L) {
       vsp <- round(n_before * spec$page$font_size * 0.5, 1)
       fn_lines <- c(fn_lines, paste0("\\vspace{", vsp, "pt}"))
     }
+  }
 
+  # Open minipage constrained to table width
+  fn_lines <- c(fn_lines, paste0("\\begin{minipage}{", tbl_w, "in}"))
+
+  if (!skip_spacing) {
     # Separator line matching table width
     if (isTRUE(spec$meta$footnote_separator)) {
-      tbl_w <- round(latex_table_width(spec), 2)
       fn_lines <- c(fn_lines, paste0(
-        "\\noindent\\rule{", tbl_w, "in}{", fr_env$latex_fn_sep_width_pt, "pt}"
+        "\\noindent\\rule{\\linewidth}{", fr_env$latex_fn_sep_width_pt, "pt}"
       ))
     }
   }
@@ -582,6 +627,10 @@ build_fn_latex_content <- function(entries, spec, skip_spacing = FALSE) {
       ))
     }
   }
+
+  # Close minipage
+  fn_lines <- c(fn_lines, "\\end{minipage}")
+
   fn_lines
 }
 
@@ -597,7 +646,7 @@ latex_table <- function(spec, data, columns, cell_grid, borders,
   # Build column spec for tabularray
   # Subtract leftsep + rightsep per column so total rendered width matches
   # the intended table width (tabularray adds colsep outside wd=)
-  colsep_pt <- as.numeric(sub("pt$", "", fr_env$latex_colsep))
+  colsep_pt <- spec$page$col_gap / 2
   colsep_in <- 2 * colsep_pt / fr_env$points_per_inch
   gap_col_indices <- integer(0)
   col_spec_parts <- vapply(seq_along(col_names), function(j) {
@@ -606,9 +655,7 @@ latex_table <- function(spec, data, columns, cell_grid, borders,
     if (isTRUE(col$is_gap)) {
       # Gap columns use exact width, no colsep subtraction (sep zeroed below)
       gap_col_indices[length(gap_col_indices) + 1L] <<- j
-      # Align gaps: near-zero width; adjacent colsep provides visual break
-      # Span gaps: keep original width (need visible space between span groups)
-      width_in <- if (isTRUE(col$gap_type == "align")) fr_env$latex_align_gap_width else col$width
+      width_in <- col$width
     } else {
       width_in <- max(0.1, col$width - colsep_in)
     }
@@ -673,7 +720,7 @@ latex_table <- function(spec, data, columns, cell_grid, borders,
     "\\begin{longtblr}[presep=0pt, postsep=0pt]{",
     "\n  colspec={", colspec_str, "},",
     "\n  row{1-Z}={abovesep=", fr_env$latex_rowsep, ",belowsep=", fr_env$latex_rowsep, "},",
-    "\n  column{1-Z}={leftsep=", fr_env$latex_colsep, ",rightsep=", fr_env$latex_colsep, "},",
+    "\n  column{1-Z}={leftsep=", colsep_pt, "pt,rightsep=", colsep_pt, "pt},",
     "\n  ", header_valign_key, ",",
     "\n  ", inner_str,
     "\n}"
@@ -691,8 +738,16 @@ latex_table <- function(spec, data, columns, cell_grid, borders,
     data, columns, cell_grid, spec$page$font_family, spec$page$font_size
   )
 
+  # Keep-together mask for orphan/widow control
+  keep_mask <- build_keep_mask(
+    data, spec$body$group_by,
+    orphan_min = spec$page$orphan_min %||% fr_env$default_orphan_min,
+    widow_min  = spec$page$widow_min  %||% fr_env$default_widow_min
+  )
+
   # Body rows
-  lines <- c(lines, latex_body_rows(data, columns, cell_grid, decimal_widths_pt))
+  lines <- c(lines, latex_body_rows(data, columns, cell_grid, decimal_widths_pt,
+                                     keep_mask = keep_mask))
 
   lines <- c(lines, "\\end{longtblr}")
 
@@ -810,9 +865,8 @@ latex_cell_style_specs <- function(cell_grid, nr, nc, nrow_header) {
     if (!is.na(g$fg) && g$fg != "#000000") {
       parts <- c(parts, paste0("fg=", hex_to_tblr_color(g$fg)))
     }
-    if (g$indent > 0) {
-      parts <- c(parts, paste0("preto={\\hspace{", round(g$indent, 4), "in}}"))
-    }
+    # Note: indent is handled in latex_body_rows() via \hspace in content,
+    # not via tabularray preto= (which is unreliable with Q[l,wd=X] columns)
 
     if (length(parts) > 0L) {
       # tabularray row index: header rows + body row index
@@ -905,7 +959,7 @@ latex_spanner_rows <- function(spec, columns) {
         span_width <- length(sp_cols)
         content <- latex_escape_and_resolve(matching_span$label)
         cells <- c(cells, paste0(
-          "\\SetCell[c=", span_width, "]{c} \\textbf{", content, "}"
+          "\\SetCell[c=", span_width, "]{c} ", content
         ))
         # Empty cells for the rest of the span
         if (span_width > 1L) {
@@ -954,30 +1008,25 @@ latex_col_header_row <- function(spec, columns, label_overrides = NULL) {
     }
     content <- latex_escape_and_resolve(label %||% "")
 
-    # Header alignment override: tabularray's Q[l,wd=X] wraps cell content
-    # in a parbox with \raggedright, so halign= and \centering inside the
-    # cell are ineffective for multiline content (\newline).
-    # Fix: wrap multiline content in a nested \parbox with the desired
-    # alignment, using \\ for line breaks (safe inside \parbox).
+    # Header alignment: tabularray's Q[l,wd=X] wraps cell content in a
+    # parbox with \raggedright, so \newline inside that parbox does not
+    # respect the column's declared alignment for all lines.
+    # Fix: wrap ALL multiline content in a nested \parbox with the
+    # effective alignment, using \\ for line breaks (safe inside \parbox).
     header_align <- columns[[j]]$header_align %||% header_default_align
     body_align <- columns[[j]]$align %||% "left"
+    effective_align <- header_align %||% body_align
     has_newline <- grepl("\n", content, fixed = TRUE)
 
-    if (!is.null(header_align) && header_align != body_align && has_newline) {
-      tex_align <- switch(header_align,
+    if (has_newline) {
+      tex_align <- switch(effective_align,
         center = "\\centering",
         right  = "\\raggedleft",
-        NULL
+        left   = "\\raggedright",
+        "\\raggedright"
       )
-      if (!is.null(tex_align)) {
-        # Use \\ for line breaks inside the nested \parbox
-        inner <- gsub("\n", " \\\\ ", content, fixed = TRUE)
-        content <- paste0("\\parbox[b]{\\hsize}{", tex_align, " ", inner, "}")
-      } else {
-        content <- gsub("\n", " \\newline ", content, fixed = TRUE)
-      }
-    } else {
-      content <- gsub("\n", " \\newline ", content, fixed = TRUE)
+      inner <- gsub("\n", " \\\\ ", content, fixed = TRUE)
+      content <- paste0("\\parbox[b]{\\hsize}{", tex_align, " ", inner, "}")
     }
 
     cells[j] <- if (nzchar(content)) paste0("\\hspace{0pt}", content) else content
@@ -988,9 +1037,13 @@ latex_col_header_row <- function(spec, columns, label_overrides = NULL) {
 
 
 #' LaTeX body rows
+#'
+#' @param keep_mask Logical vector of length nrow(data). TRUE = keep with next
+#'   row (emit `\\\\*` instead of `\\\\`).
 #' @noRd
 latex_body_rows <- function(data, columns, cell_grid,
-                            decimal_widths_pt = NULL) {
+                            decimal_widths_pt = NULL,
+                            keep_mask = NULL) {
   nr <- nrow(data)
   if (nr == 0L) return(character(0))
 
@@ -1015,6 +1068,9 @@ latex_body_rows <- function(data, columns, cell_grid,
       }
       content <- cell_grid$content[grid_row]
 
+      # Apply indent from cell_grid (font-metric-based, set by apply_indent_by)
+      cell_indent <- cell_grid$indent[grid_row]
+
       if (is_decimal[j]) {
         # Decimal alignment via \makebox
         trimmed <- trimws(content)
@@ -1038,13 +1094,32 @@ latex_body_rows <- function(data, columns, cell_grid,
           # ~0.55em per space in monospace font
           content <- paste0("\\hspace{", round(n_lead * fr_env$latex_space_width_em, 2), "em}", content)
         }
+        # Apply cell indent (from fr_rows(indent_by=))
+        if (cell_indent > 0) {
+          content <- paste0("\\hspace{", round(cell_indent, 4), "in}", content)
+        }
+        # Handle multiline content: wrap in \parbox with column alignment
+        if (grepl("\n", content, fixed = TRUE)) {
+          col_align <- columns[[col_names[j]]]$align %||% "left"
+          tex_align <- switch(col_align,
+            center = "\\centering",
+            right  = "\\raggedleft",
+            left   = "\\raggedright",
+            "\\raggedright"
+          )
+          inner <- gsub("\n", " \\\\ ", content, fixed = TRUE)
+          content <- paste0("\\parbox[t]{\\hsize}{", tex_align, " ", inner, "}")
+        }
         cells[j] <- content
       }
     }
     # Prefix non-empty cells with \hspace{0pt} for word-break hint
     mask <- nzchar(cells)
     cells[mask] <- paste0("\\hspace{0pt}", cells[mask])
-    lines[i] <- paste0(paste0(cells, collapse = " & "), " \\\\")
+
+    # Row terminator: \\* = keep with next row (no page break after)
+    row_end <- if (!is.null(keep_mask) && isTRUE(keep_mask[i])) " \\\\*" else " \\\\"
+    lines[i] <- paste0(paste0(cells, collapse = " & "), row_end)
   }
 
   lines

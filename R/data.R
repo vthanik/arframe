@@ -1,11 +1,11 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # data.R — Documentation for built-in CDISC ADaM example datasets
 #
-# All four datasets share the same 135 synthetic subjects from fictional
+# All five ADaM datasets share the same 135 synthetic subjects from fictional
 # study TFRM-2024-001 (Zomerane for mild-to-moderate Alzheimer's Disease).
 # They follow CDISC ADaM naming conventions and controlled terminology.
 #
-# Small, realistic CDISC ADaM datasets ready to use in examples.
+# Seven pre-summarized TFL-ready display tables are derived from them.
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -22,10 +22,10 @@
 #' mild-to-moderate Alzheimer's Disease.
 #'
 #' Contains one row per subject (N = 135). Used for:
-#' - **Demographics table** (Table 14.1.1): age, sex, race, BMI by treatment arm
-#' - **Disposition table** (Table 14.1.4): completion, discontinuation reasons
+#' - **Demographics table** (Table 14.1.5): age, sex, race, BMI by treatment arm
+#' - **Disposition table** (Table 14.1.3): completion, discontinuation reasons
 #'
-#' Variable names follow the CDISC ADaM Implementation Guide.
+#' Variable names follow the CDISC ADaM Implementation Guide v1.3.
 #'
 #' @format A data frame with 135 rows and 31 variables:
 #' \describe{
@@ -69,7 +69,7 @@
 #'     `"Physician Decision"`}
 #' }
 #'
-#' @source Synthetic data generated in `data-raw/create_datasets.R`.
+#' @source Synthetic data generated in `data-raw/create_adam_datasets.R`.
 #'   No real patient data. Follows CDISC ADaM ADSL specifications.
 #'
 #' @examples
@@ -92,14 +92,16 @@
 #' @description
 #' Synthetic CDISC ADaM Adverse Events (ADAE) dataset from study TFRM-2024-001.
 #' Contains one row per subject per adverse event. Used for:
-#' - **Adverse events table** (Table 14.3.1): incidence by body system and
+#' - **AE by SOC/PT table** (Table 14.3.1): incidence by body system and
 #'   preferred term, within treatment arm
+#' - **Overall AE summary** (GS_CSR_AE_T_001): subjects with TEAEs by
+#'   seriousness, relatedness, severity, and action taken
 #'
 #' All adverse events in this dataset are treatment-emergent (`TRTEMFL = "Y"`).
 #' Gastrointestinal and nervous system events are dose-related, reflecting the
 #' cholinergic class effect of Zomerane.
 #'
-#' @format A data frame with approximately 200 rows and 21 variables:
+#' @format A data frame with approximately 750 rows and 27 variables:
 #' \describe{
 #'   \item{STUDYID}{Study identifier}
 #'   \item{USUBJID}{Unique subject identifier}
@@ -114,9 +116,14 @@
 #'     `"Gastrointestinal disorders"`, `"Nervous system disorders"`}
 #'   \item{AEDECOD}{MedDRA Preferred Term (PT), e.g. `"Nausea"`, `"Dizziness"`}
 #'   \item{AESEV}{Severity: `"MILD"`, `"MODERATE"`, or `"SEVERE"`}
+#'   \item{AETOXGR}{CTCAE toxicity grade: `"1"`, `"2"`, `"3"`, or `"4"`.
+#'     Derived from AESEV: MILD maps to 1--2, MODERATE to 2--3, SEVERE to 3--4}
 #'   \item{AESER}{Serious adverse event flag: `"Y"` or `"N"`}
 #'   \item{AEREL}{Relationship to study drug: `"PROBABLE"`, `"POSSIBLE"`,
 #'     `"REMOTE"`, or `"NONE"`}
+#'   \item{AEACN}{Action taken with study treatment: `"DOSE NOT CHANGED"`,
+#'     `"DRUG INTERRUPTED"`, `"DRUG WITHDRAWN"`, `"DOSE REDUCED"`, or
+#'     `"NOT APPLICABLE"`}
 #'   \item{AEOUT}{Outcome: `"RECOVERED/RESOLVED"` or
 #'     `"NOT RECOVERED/NOT RESOLVED"`}
 #'   \item{ASTDT}{AE start date}
@@ -131,7 +138,7 @@
 #'   \item{AOCCPFL}{First PT occurrence flag (per subject per PT): `"Y"` or `NA`}
 #' }
 #'
-#' @source Synthetic data generated in `data-raw/create_datasets.R`.
+#' @source Synthetic data generated in `data-raw/create_adam_datasets.R`.
 #'
 #' @examples
 #' # Subjects with at least one treatment-emergent AE
@@ -143,6 +150,9 @@
 #'
 #' # Serious AEs only
 #' subset(adae, AESER == "Y", select = c(USUBJID, ARM, AEDECOD, AESEV))
+#'
+#' # Action taken distribution
+#' table(adae$AEACN)
 "adae"
 
 
@@ -155,7 +165,7 @@
 #' @description
 #' Synthetic CDISC ADaM Time-to-Event (ADTTE) dataset from study TFRM-2024-001.
 #' Contains one row per subject per time-to-event parameter. Used for:
-#' - **Time to event table** (Table 14.2.x): Kaplan-Meier estimates, median
+#' - **Time to event table** (Table 14.2.1): Kaplan-Meier estimates, median
 #'   time-to-event, and hazard ratios by treatment arm
 #'
 #' Two parameters are included:
@@ -184,7 +194,7 @@
 #'   \item{ADY}{Relative day of event or censoring}
 #' }
 #'
-#' @source Synthetic data generated in `data-raw/create_datasets.R`.
+#' @source Synthetic data generated in `data-raw/create_adam_datasets.R`.
 #'
 #' @examples
 #' # Subset to one parameter
@@ -213,7 +223,7 @@
 #' population: hypertension, diabetes, pain, GI protection, and supplements
 #' are common. Medication use is independent of treatment assignment.
 #'
-#' @format A data frame with approximately 550 rows and 13 variables:
+#' @format A data frame with approximately 600 rows and 13 variables:
 #' \describe{
 #'   \item{STUDYID}{Study identifier}
 #'   \item{USUBJID}{Unique subject identifier}
@@ -232,7 +242,7 @@
 #'   \item{ONGOING}{Logical; `TRUE` if medication was ongoing at data cut}
 #' }
 #'
-#' @source Synthetic data generated in `data-raw/create_datasets.R`.
+#' @source Synthetic data generated in `data-raw/create_adam_datasets.R`.
 #'
 #' @examples
 #' # Unique subjects per medication category (for conmed table)
@@ -248,15 +258,87 @@
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# advs
+# ══════════════════════════════════════════════════════════════════════════════
+
+#' Vital Signs Analysis Dataset (ADVS)
+#'
+#' @description
+#' Synthetic record-level vital signs dataset from study TFRM-2024-001.
+#' Contains one row per subject per parameter per visit. Some subjects have
+#' missing parameters to create **natural N variation** across vital sign
+#' groups --- exactly the scenario that per-group N-count headers address.
+#'
+#' Designed as the `n_data` source for [fr_header()] with `n = "auto"` or
+#' `n = function(...)` when the display table ([tbl_vs]) is pre-summarized.
+#'
+#' @format A data frame with approximately 1900 rows and 12 variables:
+#' \describe{
+#'   \item{STUDYID}{Study identifier (`"TFRM-2024-001"`)}
+#'   \item{USUBJID}{Unique subject identifier}
+#'   \item{TRTA}{Actual treatment arm: `"Placebo"`, `"Zomerane 50mg"`,
+#'     or `"Zomerane 100mg"`}
+#'   \item{TRTAN}{Actual treatment numeric code: `0`, `50`, or `100`}
+#'   \item{SAFFL}{Safety population flag (`"Y"`)}
+#'   \item{PARAM}{Vital sign parameter: `"Systolic BP (mmHg)"`,
+#'     `"Diastolic BP (mmHg)"`, `"Heart Rate (bpm)"`, `"Weight (kg)"`,
+#'     or `"Temperature (C)"`}
+#'   \item{PARAMCD}{Parameter code: `"SYSBP"`, `"DIABP"`, `"HR"`,
+#'     `"WEIGHT"`, or `"TEMP"`}
+#'   \item{AVISIT}{Analysis visit: `"Baseline"`, `"Week 12"`, or `"Week 24"`}
+#'   \item{AVAL}{Analysis value (measured vital sign)}
+#'   \item{BASE}{Baseline value (copy of AVAL at Baseline visit)}
+#'   \item{CHG}{Change from baseline (`NA` at baseline)}
+#'   \item{ABLFL}{Baseline record flag: `"Y"` at Baseline, `NA` otherwise}
+#' }
+#'
+#' @section N variation by design:
+#' Not all subjects have every parameter measured. Availability rates decrease
+#' with dose and parameter complexity --- Temperature has the most missing data,
+#' Blood Pressure the least. This produces realistic per-group N differences:
+#'
+#' | Parameter | Placebo | Zom 50mg | Zom 100mg |
+#' |-----------|---------|----------|-----------|
+#' | Systolic BP | 45 | ~41 | ~43 |
+#' | Heart Rate | ~40 | ~42 | ~38 |
+#' | Temperature | ~38 | ~42 | ~36 |
+#'
+#' @source Synthetic data generated in `data-raw/create_adam_datasets.R`
+#'   using subjects from [adsl].
+#'
+#' @examples
+#' # Subjects per parameter per arm
+#' with(
+#'   advs[advs$AVISIT == "Baseline", ],
+#'   tapply(USUBJID, list(PARAM, TRTA), function(x) length(unique(x)))
+#' )
+#'
+#' # Use as n_data source for per-group N-counts
+#' tbl_vs |>
+#'   fr_table() |>
+#'   fr_rows(page_by = "param") |>
+#'   fr_header(
+#'     n = "auto",
+#'     n_subject = "USUBJID",
+#'     n_data = advs,
+#'     format = "{name}\n(N={n})"
+#'   )
+#'
+#' @seealso [tbl_vs] for the pre-summarized display table, [fr_header()]
+#'   for N-count formatting.
+"advs"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # TFL-Ready Summary Tables
 # ══════════════════════════════════════════════════════════════════════════════
 
 
-#' Demographics and Baseline Characteristics Table (Table 14.1.1)
+#' Demographics and Baseline Characteristics Table (Table 14.1.5)
 #'
 #' @description
 #' Pre-summarized demographics table in wide format, ready for use with
-#' \code{fr_table()}. One row per characteristic line (headers, summary
+#' [fr_table()]. One row per characteristic line (headers, summary
 #' statistics, category counts). Columns are treatment arms.
 #'
 #' @format A data frame with columns:
@@ -266,9 +348,12 @@
 #'   \item{zom_50mg}{Zomerane 50mg arm summary}
 #'   \item{zom_100mg}{Zomerane 100mg arm summary}
 #'   \item{total}{All subjects summary}
-#'   \item{group}{Characteristic group key (e.g. `"age"`, `"sex"`). Use with
-#'     `fr_rows(blank_after = "group")` to insert visual separation between
-#'     blocks. Hide with `fr_cols(group = fr_col(visible = FALSE))`.}
+#'   \item{group}{Characteristic group key. Age uses separate keys for
+#'     continuous (`"age_cont"`) and categorical (`"age_cat"`) summaries;
+#'     other blocks use `"n"`, `"sex"`, `"race"`, `"bmi"`, `"mmse"`,
+#'     `"completion"`. Use with `fr_rows(blank_after = "group")` to insert
+#'     visual separation between blocks. Hide with
+#'     `fr_cols(group = fr_col(visible = FALSE))`.}
 #' }
 #'
 #' @source Synthetic data generated in `data-raw/create_tbl_datasets.R`
@@ -304,13 +389,55 @@
 "tbl_ae_soc"
 
 
-#' Subject Disposition Table (Table 14.1.4)
+#' Overall Adverse Event Summary Table (GS_CSR_AE_T_001)
+#'
+#' @description
+#' Pre-summarized overall AE summary table showing counts and percentages of
+#' subjects with TEAEs by category: any TEAE, related, serious, leading to
+#' discontinuation, leading to death, and by maximum severity grade.
+#'
+#' Matches the pharma standard "Overall Summary of Treatment-Emergent Adverse
+#' Events" shell (GS_CSR_AE_T_001). Column order follows Celgene/BMS
+#' convention: active treatments first, placebo last.
+#'
+#' @format A data frame with 10 rows and 5 columns:
+#' \describe{
+#'   \item{category}{Row label (e.g. `"Subjects with at Least One TEAE"`,
+#'     `"  Related TEAE"`, `"  Mild"`). Indented rows (prefixed with two
+#'     spaces) are sub-categories}
+#'   \item{zom_50mg}{Zomerane 50mg arm: n (%) or plain n}
+#'   \item{zom_100mg}{Zomerane 100mg arm: n (%) or plain n}
+#'   \item{placebo}{Placebo arm: n (%) or plain n}
+#'   \item{total}{All subjects: n (%) or plain n}
+#' }
+#'
+#' @source Synthetic data generated in `data-raw/create_tbl_datasets.R`
+#'   from [adae] and [adsl].
+#'
+#' @examples
+#' tbl_ae_summary
+#'
+#' # Quick table
+#' spec <- tbl_ae_summary |>
+#'   fr_table() |>
+#'   fr_cols(
+#'     category  = fr_col("", width = 3),
+#'     zom_50mg  = fr_col("Zomerane 50mg"),
+#'     zom_100mg = fr_col("Zomerane 100mg"),
+#'     placebo   = fr_col("Placebo"),
+#'     total     = fr_col("Total")
+#'   ) |>
+#'   fr_header(n = c(zom_50mg = 45, zom_100mg = 45, placebo = 45, total = 135))
+"tbl_ae_summary"
+
+
+#' Subject Disposition Table (Table 14.1.3)
 #'
 #' @description
 #' Pre-summarized disposition table showing randomized, completed, and
 #' discontinued counts with discontinuation reasons as indented sub-rows.
 #'
-#' @format A data frame with columns:
+#' @format A data frame with 8 rows and 5 columns:
 #' \describe{
 #'   \item{category}{Row label (e.g. `"Randomized"`, `"  Adverse Event"`)}
 #'   \item{placebo}{Placebo arm n or n (%)}
@@ -327,26 +454,56 @@
 "tbl_disp"
 
 
-#' Time-to-Event Summary Table (Table 14.2.1)
+#' Time-to-Event Summary Table (Table 14.2.1.1)
 #'
 #' @description
-#' Pre-summarized time-to-withdrawal table showing number of subjects,
-#' events, censored counts, and median/min/max time in days.
+#' Pre-summarized time-to-withdrawal table matching the pharma reference shell
+#' for Kaplan-Meier survival analysis output. Includes four sections:
+#' - **Event counts**: events and censored n (%) per arm
+#' - **KM percentile estimates**: 25th percentile, median, 75th percentile
+#'   with 95% confidence intervals
+#' - **Log-rank test**: two-sided p-value
+#' - **Hazard ratios**: active vs placebo with 95% CI
 #'
-#' @format A data frame with columns:
+#' KM estimates and hazard ratios are pre-computed synthetic values (no
+#' `survival` package dependency). Values are realistic for a 24-week trial
+#' with low event rates.
+#'
+#' @format A data frame with 12 rows and 5 columns:
 #' \describe{
-#'   \item{statistic}{Row label (e.g. `"Number of subjects"`, `"Median time (days)"`)}
-#'   \item{placebo}{Placebo arm value}
+#'   \item{section}{Section grouping key: `"Time to Study Withdrawal"`,
+#'     `"KM Estimates"`, `"Log-Rank Test"`, or `"Hazard Ratio"`. Use with
+#'     `fr_rows(group_by = "section")` for visual separation between blocks}
+#'   \item{statistic}{Row label with indentation (e.g.
+#'     `"  Median (95% CI) [a]"`, `"  Zom 50mg vs Placebo"`).
+#'     Section headers have no indent; detail rows are indented with two spaces}
 #'   \item{zom_50mg}{Zomerane 50mg arm value}
 #'   \item{zom_100mg}{Zomerane 100mg arm value}
-#'   \item{total}{All subjects value}
+#'   \item{placebo}{Placebo arm value}
 #' }
 #'
 #' @source Synthetic data generated in `data-raw/create_tbl_datasets.R`
-#'   from [adtte].
+#'   from [adtte] (TTWD parameter).
 #'
 #' @examples
 #' tbl_tte
+#'
+#' # Render with section grouping and footnotes
+#' spec <- tbl_tte |>
+#'   fr_table() |>
+#'   fr_cols(
+#'     section   = fr_col(visible = FALSE),
+#'     statistic = fr_col("", width = 3),
+#'     zom_50mg  = fr_col("Zomerane 50mg"),
+#'     zom_100mg = fr_col("Zomerane 100mg"),
+#'     placebo   = fr_col("Placebo")
+#'   ) |>
+#'   fr_rows(group_by = "section") |>
+#'   fr_footnotes(
+#'     "[a] Kaplan-Meier estimate.",
+#'     "[b] Two-sided log-rank test.",
+#'     "[c] Cox proportional hazards model."
+#'   )
 "tbl_tte"
 
 
@@ -375,117 +532,46 @@
 "tbl_cm"
 
 
-#' Vital Signs Analysis Dataset (ADVS)
+#' Vital Signs Change from Baseline Table (Table 14.3.5.1)
 #'
 #' @description
-#' Synthetic record-level vital signs dataset from study TFRM-2024-001.
-#' Contains one row per subject per parameter per visit. Some subjects have
-#' missing parameters to create **natural N variation** across vital sign
-#' groups — exactly the scenario that per-group N-count headers address.
+#' Pre-summarized vital signs table in wide format with per-arm sub-columns
+#' for Baseline, Value, and Change from Baseline. Multiple timepoints
+#' (Baseline, Week 12, Week 24) per parameter.
 #'
-#' Designed as the `n_data` source for [fr_header()] with `n = "auto"` or
-#' `n = function(...)` when the display table ([tbl_vs]) is pre-summarized.
-#'
-#' @format A data frame with approximately 1900 rows and 9 variables:
-#' \describe{
-#'   \item{STUDYID}{Study identifier (`"TFRM-2024-001"`)}
-#'   \item{USUBJID}{Unique subject identifier}
-#'   \item{TRTA}{Actual treatment arm: `"Placebo"`, `"Zomerane 50mg"`,
-#'     or `"Zomerane 100mg"`}
-#'   \item{TRTAN}{Actual treatment numeric code: `0`, `50`, or `100`}
-#'   \item{SAFFL}{Safety population flag (`"Y"`)}
-#'   \item{PARAM}{Vital sign parameter: `"Systolic BP (mmHg)"`,
-#'     `"Diastolic BP (mmHg)"`, `"Heart Rate (bpm)"`, `"Weight (kg)"`,
-#'     or `"Temperature (C)"`}
-#'   \item{AVISIT}{Analysis visit: `"Baseline"`, `"Week 12"`, or `"Week 24"`}
-#'   \item{AVAL}{Analysis value (measured vital sign)}
-#'   \item{CHG}{Change from baseline (`NA` at baseline)}
-#' }
-#'
-#' @section N variation by design:
-#' Not all subjects have every parameter measured. Availability rates decrease
-#' with dose and parameter complexity — Temperature has the most missing data,
-#' Blood Pressure the least. This produces realistic per-group N differences:
-#'
-#' | Parameter | Placebo | Zom 50mg | Zom 100mg |
-#' |-----------|---------|----------|-----------|
-#' | Systolic BP | 45 | 45 | ~39 |
-#' | Heart Rate | 45 | ~38 | ~40 |
-#' | Temperature | ~42 | ~39 | ~37 |
-#'
-#' @source Synthetic data generated in `data-raw/create_advs_dataset.R`
-#'   using subjects from [adsl].
-#'
-#' @examples
-#' # Subjects per parameter per arm
-#' with(
-#'   advs[advs$AVISIT == "Baseline", ],
-#'   tapply(USUBJID, list(PARAM, TRTA), function(x) length(unique(x)))
-#' )
-#'
-#' # Use as n_data source for per-group N-counts
-#' tbl_vs |>
-#'   fr_table() |>
-#'   fr_rows(page_by = "param") |>
-#'   fr_header(
-#'     n = "auto",
-#'     n_subject = "USUBJID",
-#'     n_data = advs,
-#'     format = "{name}\n(N={n})"
-#'   )
-#'
-#' @seealso [tbl_vs] for the pre-summarized display table, [fr_header()]
-#'   for N-count formatting.
-"advs"
-
-
-#' Vital Signs Summary Table (3-arm, page_by-ready)
-#'
-#' @description
-#' Pre-summarized vital signs table in wide format with a `param` column
-#' for [fr_rows()] `page_by` grouping. Each parameter produces a separate
-#' page with its own summary statistics.
+#' Designed to demonstrate advanced tlframe features: `page_by` for
+#' per-parameter pages, [fr_spans()] for two-level spanning headers,
+#' [fr_header()] with `n = function(...)` for per-group N-counts, and
+#' `fr_cols(.split = TRUE)` for wide layouts.
 #'
 #' Pair with [advs] as `n_data` in [fr_header()] to get per-parameter
 #' N-counts in column headers.
 #'
-#' @format A data frame with 20 rows and 6 variables:
+#' @format A data frame with 60 rows and 12 variables:
 #' \describe{
-#'   \item{param}{Vital sign parameter name (page_by key)}
+#'   \item{param}{Vital sign parameter name (page_by key):
+#'     `"Systolic BP (mmHg)"`, `"Diastolic BP (mmHg)"`,
+#'     `"Heart Rate (bpm)"`, `"Weight (kg)"`, `"Temperature (C)"`}
+#'   \item{timepoint}{Visit timepoint: `"Baseline"`, `"Week 12"`, or `"Week 24"`}
 #'   \item{statistic}{Summary statistic: `"n"`, `"Mean (SD)"`, `"Median"`,
 #'     or `"Min, Max"`}
-#'   \item{placebo}{Placebo arm value}
-#'   \item{zom_50mg}{Zomerane 50mg arm value}
-#'   \item{zom_100mg}{Zomerane 100mg arm value}
-#'   \item{total}{All arms combined}
+#'   \item{placebo_base}{Placebo --- baseline value}
+#'   \item{placebo_value}{Placebo --- value at timepoint}
+#'   \item{placebo_chg}{Placebo --- change from baseline (blank at Baseline)}
+#'   \item{zom_50mg_base}{Zomerane 50mg --- baseline value}
+#'   \item{zom_50mg_value}{Zomerane 50mg --- value at timepoint}
+#'   \item{zom_50mg_chg}{Zomerane 50mg --- change from baseline}
+#'   \item{zom_100mg_base}{Zomerane 100mg --- baseline value}
+#'   \item{zom_100mg_value}{Zomerane 100mg --- value at timepoint}
+#'   \item{zom_100mg_chg}{Zomerane 100mg --- change from baseline}
 #' }
 #'
-#' @source Synthetic data generated in `data-raw/create_advs_dataset.R`
-#'   from [advs] (Week 24 values).
-#'
-#' @examples
-#' tbl_vs
-#'
-#' # Per-parameter pages with per-group N-counts
-#' tbl_vs |>
-#'   fr_table() |>
-#'   fr_rows(page_by = "param") |>
-#'   fr_cols(
-#'     statistic = fr_col("Statistic", width = 2),
-#'     placebo   = fr_col("Placebo"),
-#'     zom_50mg  = fr_col("Zomerane 50mg"),
-#'     zom_100mg = fr_col("Zomerane 100mg"),
-#'     total     = fr_col("Total")
-#'   ) |>
-#'   fr_header(
-#'     n = "auto",
-#'     n_subject = "USUBJID",
-#'     n_data = advs,
-#'     format = "{name}\n(N={n})"
-#'   )
+#' @source Synthetic data generated in `data-raw/create_tbl_datasets.R`
+#'   from [advs].
 #'
 #' @seealso [advs] for the record-level source data, [fr_header()] for
 #'   N-count label formatting.
+#'
+#' @examples
+#' head(tbl_vs, 8)
 "tbl_vs"
-
-

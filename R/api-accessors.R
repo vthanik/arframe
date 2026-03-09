@@ -43,13 +43,13 @@ fr_get_data <- function(spec) {
 #'
 #' Extracts the page layout settings configured via [fr_page()]. Returns
 #' a named list with all page properties: orientation, paper size, margins,
-#' font family, font size, stub columns, and column splitting.
+#' font family, font size, and column gap.
 #'
 #' @param spec An `fr_spec` object from [fr_table()] or [fr_listing()].
 #'
 #' @return A named list with fields: `orientation`, `paper`, `margins` (list
 #'   with `top`, `bottom`, `left`, `right`), `font_family`, `font_size`,
-#'   `col_split`, `stub_cols`.
+#'   `col_gap`.
 #'
 #' @examples
 #' spec <- tbl_demog |> fr_table() |>

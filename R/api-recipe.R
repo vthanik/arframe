@@ -84,7 +84,11 @@
 fr_recipe <- function(...) {
   calls <- enexprs(...)
   if (length(calls) == 0L) {
-    cli_abort("At least one verb call is required.", call = caller_env())
+    cli_abort(
+      c("At least one verb call is required.",
+        "i" = "Example: {.code fr_recipe(fr_page(font_size = 9), fr_hlines(\"header\"))}"),
+      call = caller_env()
+    )
   }
 
   # Validate that each element looks like a function call
@@ -136,7 +140,8 @@ fr_apply <- function(spec, recipe) {
   check_fr_spec(spec, call = call)
   if (!inherits(recipe, "fr_recipe")) {
     cli_abort(
-      "{.arg recipe} must be an {.cls fr_recipe} object (created by {.fn fr_recipe}).",
+      c("{.arg recipe} must be an {.cls fr_recipe} object (created by {.fn fr_recipe}).",
+        "x" = "You supplied {.obj_type_friendly {recipe}}."),
       call = call
     )
   }

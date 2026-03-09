@@ -17,8 +17,7 @@ fr_header(
   fg = NULL,
   font_size = NULL,
   repeat_on_page = NULL,
-  span_gap = NULL,
-  align_gap = NULL
+  span_gap = NULL
 )
 }
 \arguments{
@@ -114,12 +113,6 @@ between adjacent spanning headers at the same level. Gap columns create
 a clean visual break between span groups in both RTF and PDF output,
 without relying on border trimming. Default \code{TRUE}. Set \code{FALSE} to
 disable gap insertion and produce continuous span hlines.}
-
-\item{align_gap}{Logical or \code{NULL}. Whether to insert narrow gap columns
-between adjacent right-aligned and left-aligned columns. When column A
-is right-aligned and column B (immediately to its right) is left-aligned,
-their content can appear visually merged; the gap prevents this. Default
-\code{TRUE}. Also configurable via \verb{header: align_gap:} in \verb{_tlframe.yml}.}
 }
 \value{
 A modified \code{fr_spec}. Header config stored in \code{spec$header}.

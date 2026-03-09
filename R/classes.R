@@ -33,8 +33,7 @@ new_fr_page <- function(orientation = "landscape",
                          orphan_min = 3L,
                          widow_min = 3L,
                          continuation = NULL,
-                         col_split = FALSE,
-                         stub_cols = character(0),
+                         col_gap = 4L,
                          tokens = list(),
                          call = caller_env()) {
 
@@ -51,14 +50,16 @@ new_fr_page <- function(orientation = "landscape",
 
   check_positive_num(font_size, arg = "font_size", call = call)
   if (font_size < 4 || font_size > 72) {
-    cli_abort("{.arg font_size} must be between 4 and 72.", call = call)
+    cli_abort(
+      c("{.arg font_size} must be between 4 and 72.",
+        "x" = "You supplied {.val {font_size}}."),
+      call = call
+    )
   }
 
   if (is.null(font_family)) {
     font_family <- os_default_fonts()$mono
   }
-
-  check_scalar_lgl(col_split, arg = "col_split", call = call)
 
   # Validate continuation: NULL or character scalar
   # Default NULL — no continuation text. LaTeX longtable has no default
@@ -68,6 +69,9 @@ new_fr_page <- function(orientation = "landscape",
   if (!is.null(continuation)) {
     check_scalar_chr(continuation, arg = "continuation", call = call)
   }
+
+  # Validate col_gap (inter-column padding in points)
+  check_non_negative_int(col_gap, arg = "col_gap", call = call)
 
   # Validate tokens (checks for built-in override attempt)
   validate_user_tokens(tokens, call = call)
@@ -82,8 +86,7 @@ new_fr_page <- function(orientation = "landscape",
       orphan_min   = vec_cast(orphan_min, integer()),
       widow_min    = vec_cast(widow_min, integer()),
       continuation = continuation,
-      col_split    = col_split,
-      stub_cols    = vec_cast(stub_cols, character()),
+      col_gap      = vec_cast(col_gap, integer()),
       tokens       = as.list(tokens)
     ),
     class = "fr_page"
@@ -118,14 +121,18 @@ normalise_margins <- function(margins, call = caller_env()) {
     if (!all(req %in% names(margins))) {
       cli_abort(
         c("{.arg margins} as a list must have names: {.val {req}}.",
+          "x" = "You supplied names: {.val {names(margins)}}.",
           "i" = "Or pass a numeric: {.code 1} (all sides), {.code c(1, 0.75)} (vert, horiz), or {.code c(1, 0.75, 1, 0.75)} (t, r, b, l)."),
         call = call
       )
     }
     for (side in req) {
       if (!is.numeric(margins[[side]]) || margins[[side]] < 0) {
-        cli_abort("{.arg margins${side}} must be a non-negative number.",
-                  call = call)
+        cli_abort(
+          c("{.arg margins${side}} must be a non-negative number.",
+            "x" = "You supplied {.obj_type_friendly {margins[[side]]}}."),
+          call = call
+        )
       }
     }
     return(margins)
@@ -135,15 +142,21 @@ normalise_margins <- function(margins, call = caller_env()) {
   if (!is.numeric(margins)) {
     cli_abort(
       c("{.arg margins} must be a numeric vector or a named list.",
+        "x" = "You supplied {.obj_type_friendly {margins}}.",
         "i" = "Examples: {.code 1}, {.code c(1, 0.75)}, {.code c(1, 0.75, 1, 0.75)}, or {.code list(top = 1, bottom = 1, left = 0.75, right = 0.75)}."),
       call = call
     )
   }
 
   if (any(margins < 0)) {
-    cli_abort("{.arg margins} values must be non-negative.", call = call)
+    cli_abort(
+      c("{.arg margins} values must be non-negative.",
+        "x" = "Negative value{?s}: {.val {margins[margins < 0]}}."),
+      call = call
+    )
   }
 
+  margins <- unname(margins)
   n <- length(margins)
   result <- switch(as.character(n),
     "1" = list(top = margins[1], bottom = margins[1],
@@ -154,6 +167,7 @@ normalise_margins <- function(margins, call = caller_env()) {
                bottom = margins[3], left = margins[4]),
     cli_abort(
       c("{.arg margins} must have length 1, 2, or 4.",
+        "x" = "You supplied length {.val {n}}.",
         "i" = "{.code 1} = all sides, {.code c(vert, horiz)}, {.code c(top, right, bottom, left)}."),
       call = call
     )
@@ -172,7 +186,8 @@ validate_user_tokens <- function(tokens, call = caller_env()) {
 
   if (!is.list(tokens) || is.null(names(tokens))) {
     cli_abort(
-      "{.arg tokens} must be a named list (e.g., {.code list(study = \"ABC-001\")}).",
+      c("{.arg tokens} must be a named list (e.g., {.code list(study = \"ABC-001\")}).",
+        "x" = "You supplied {.obj_type_friendly {tokens}}."),
       call = call
     )
   }
@@ -272,9 +287,16 @@ is_fr_pct <- function(x) inherits(x, "fr_pct")
 #'   * `FALSE`: hide the column. Useful for structural columns (grouping
 #'     keys, sort-order columns, row-type flags) that should remain in the
 #'     data for pagination and styling logic but not appear in output.
+#' @param stub Logical. Whether this column is a **stub column** —
+#'   repeated on every panel when `fr_cols(.split = TRUE)` splits the
+#'   table across multiple column pages. Default `FALSE`.
+#'   Stub columns are typically row-label or parameter columns that
+#'   provide context for each panel. When `.split` is enabled but no
+#'   columns have `stub = TRUE`, stubs are auto-inferred from
+#'   `group_by`/`indent_by` columns or the first column.
 #'
 #' @return An S3 object of class `fr_col` with components `id`, `label`,
-#'   `width`, `align`, `header_align`, and `visible`.
+#'   `width`, `align`, `header_align`, `visible`, and `stub`.
 #'
 #' @section Width guidelines:
 #' Landscape Letter paper (11 × 8.5 in) with 1 in margins gives **9 in**
@@ -338,6 +360,10 @@ is_fr_pct <- function(x) inherits(x, "fr_pct")
 #'
 #' fr_col(visible = FALSE)
 #'
+#' ## ── Stub column (repeats in every panel during column splitting) ────────
+#'
+#' fr_col("Parameter", width = 2.5, stub = TRUE)
+#'
 #' ## ── Footnote marker in column header ─────────────────────────────────────
 #'
 #' fr_col("Placebo{fr_super('a')}\n(N=45)", width = 1.5, align = "right")
@@ -357,7 +383,8 @@ is_fr_pct <- function(x) inherits(x, "fr_pct")
 #'     format = "{name}\n(N={n})"
 #'   )
 #'
-#' @seealso [fr_cols()] to apply column specs to a table,
+#' @seealso [fr_cols()] to apply column specs to a table (including
+#'   `.split` for column splitting),
 #'   [fr_header()] for N-count labels and header styling,
 #'   [fr_super()], [fr_bold()], [fr_italic()] for inline markup in labels.
 #'
@@ -366,7 +393,8 @@ fr_col <- function(label = "",
                     width = NULL,
                     align = NULL,
                     header_align = NULL,
-                    visible = NULL) {
+                    visible = NULL,
+                    stub = FALSE) {
   check_scalar_chr(label, arg = "label")
   if (!is.null(width)) {
     if (is.character(width)) {
@@ -383,6 +411,7 @@ fr_col <- function(label = "",
   if (!is.null(align)) align <- match_arg_fr(align, fr_env$valid_aligns)
   if (!is.null(header_align)) header_align <- match_arg_fr(header_align, fr_env$valid_aligns)
   if (!is.null(visible)) check_scalar_lgl(visible, arg = "visible")
+  check_scalar_lgl(stub, arg = "stub")
 
   structure(
     list(
@@ -391,7 +420,8 @@ fr_col <- function(label = "",
       width        = width,
       align        = align,
       header_align = header_align,
-      visible      = visible
+      visible      = visible,
+      stub         = stub
     ),
     class = "fr_col"
   )
@@ -428,8 +458,7 @@ new_fr_header <- function(spans = list(), repeat_on_page = TRUE,
                           bold = NULL, bg = NULL, fg = NULL,
                           font_size = NULL, n = NULL,
                           format = NULL, n_subject = NULL,
-                          n_data = NULL, span_gap = TRUE,
-                          align_gap = TRUE) {
+                          n_data = NULL, span_gap = TRUE) {
   structure(
     list(
       spans          = spans,
@@ -444,8 +473,7 @@ new_fr_header <- function(spans = list(), repeat_on_page = TRUE,
       format         = format,
       n_subject      = n_subject,
       n_data         = n_data,
-      span_gap       = span_gap,
-      align_gap      = align_gap
+      span_gap       = span_gap
     ),
     class = "fr_header"
   )
@@ -547,13 +575,19 @@ new_fr_rule <- function(direction = "horizontal",
       rows <- match_arg_fr(rows, "all", call = call)
     } else if (is.numeric(rows)) {
       if (any(rows < 1L) || any(rows != as.integer(rows))) {
-        cli_abort("{.arg rows} must be positive integers or {.val all}.",
-                  call = call)
+        cli_abort(
+          c("{.arg rows} must be positive integers or {.val all}.",
+            "x" = "You supplied {.val {rows}}."),
+          call = call
+        )
       }
       rows <- as.integer(rows)
     } else {
-      cli_abort("{.arg rows} must be {.val all}, an integer vector, or {.code NULL}.",
-                call = call)
+      cli_abort(
+        c("{.arg rows} must be {.val all}, an integer vector, or {.code NULL}.",
+          "x" = "You supplied {.obj_type_friendly {rows}}."),
+        call = call
+      )
     }
   }
 
@@ -563,13 +597,19 @@ new_fr_rule <- function(direction = "horizontal",
       cols <- match_arg_fr(cols, "all", call = call)
     } else if (is.numeric(cols)) {
       if (any(cols < 1L) || any(cols != as.integer(cols))) {
-        cli_abort("{.arg cols} must be positive integers or {.val all}.",
-                  call = call)
+        cli_abort(
+          c("{.arg cols} must be positive integers or {.val all}.",
+            "x" = "You supplied {.val {cols}}."),
+          call = call
+        )
       }
       cols <- as.integer(cols)
     } else {
-      cli_abort("{.arg cols} must be {.val all}, an integer vector, or {.code NULL}.",
-                call = call)
+      cli_abort(
+        c("{.arg cols} must be {.val all}, an integer vector, or {.code NULL}.",
+          "x" = "You supplied {.obj_type_friendly {cols}}."),
+        call = call
+      )
     }
   }
 
@@ -582,8 +622,11 @@ new_fr_rule <- function(direction = "horizontal",
   validate_fraction <- function(x, arg) {
     if (is.null(x)) return(NULL)
     if (!is.numeric(x) || length(x) != 1L || is.na(x) || x < 0 || x > 1) {
-      cli_abort("{.arg {arg}} must be a number in [0, 1] or {.code NULL}.",
-                call = call)
+      cli_abort(
+        c("{.arg {arg}} must be a number in [0, 1] or {.code NULL}.",
+          "x" = "You supplied {.val {x}}."),
+        call = call
+      )
     }
     x
   }
@@ -854,6 +897,7 @@ new_fr_pagechrome <- function(left = NULL,
 new_fr_spec <- function(data,
                          meta = new_fr_meta(),
                          columns = list(),
+                         columns_meta = list(split = FALSE, width_mode = "auto"),
                          header = new_fr_header(),
                          body = new_fr_body(),
                          rules = list(),
@@ -871,24 +915,30 @@ new_fr_spec <- function(data,
                          call = caller_env()) {
 
   if (!is.data.frame(data)) {
-    cli_abort("{.arg data} must be a data frame.", call = call)
+    cli_abort(
+      c("{.arg data} must be a data frame.",
+        "x" = "You supplied {.obj_type_friendly {data}}.",
+        "i" = "Example: {.code my_df |> fr_table()}"),
+      call = call
+    )
   }
 
   structure(
     list(
-      data        = data,
-      meta        = meta,
-      columns     = columns,
-      header      = header,
-      body        = body,
-      rules       = rules,
-      cell_styles = cell_styles,
-      page        = page,
-      pagehead    = pagehead,
-      pagefoot    = pagefoot,
-      spacing     = spacing,
-      type        = type,
-      plot        = plot
+      data         = data,
+      meta         = meta,
+      columns      = columns,
+      columns_meta = columns_meta,
+      header       = header,
+      body         = body,
+      rules        = rules,
+      cell_styles  = cell_styles,
+      page         = page,
+      pagehead     = pagehead,
+      pagefoot     = pagefoot,
+      spacing      = spacing,
+      type         = type,
+      plot         = plot
     ),
     class = "fr_spec"
   )
@@ -931,7 +981,9 @@ print.fr_spec <- function(x, ..., compact = FALSE) {
   paper  <- x$page$paper %||% "letter"
   fs     <- x$page$font_size %||% 9
   font   <- x$page$font_family %||% "Courier New"
-  cli::cli_text("Page: {orient} {paper}, {fs}pt {font}")
+  cg     <- x$page$col_gap %||% 4L
+  cg_str <- if (cg != 4L) paste0(", col_gap=", cg, "pt") else ""
+  cli::cli_text("Page: {orient} {paper}, {fs}pt {font}{cg_str}")
 
   # Titles
   titles <- x$meta$titles %||% list()
@@ -947,7 +999,7 @@ print.fr_spec <- function(x, ..., compact = FALSE) {
 
   # Columns
   if (nc_spec > 0L) {
-    vis_cols <- Filter(function(c) !isFALSE(c$visible), x$columns)
+    vis_cols <- visible_columns(x$columns)
     cli::cli_text("Columns ({length(vis_cols)} visible of {nc_spec}):")
     show_n <- min(length(vis_cols), 8L)
     nms <- names(vis_cols)
@@ -1050,7 +1102,8 @@ print.fr_col <- function(x, ...) {
            else if (is.numeric(x$width)) sprintf("%.2fin", x$width)
            else "auto"
   align <- x$align %||% "left"
-  cat(sprintf("<fr_col> \"%s\" [%s, %s]\n", label, width, align))
+  stub <- if (isTRUE(x$stub)) " stub" else ""
+  cat(sprintf("<fr_col> \"%s\" [%s, %s%s]\n", label, width, align, stub))
   invisible(x)
 }
 
@@ -1066,7 +1119,8 @@ check_fr_spec <- function(x,
                            call = caller_env()) {
   if (!inherits(x, "fr_spec")) {
     cli_abort(
-      "{.arg {arg}} must be an {.cls fr_spec} object (created by {.fn fr_table}).",
+      c("{.arg {arg}} must be an {.cls fr_spec} object (created by {.fn fr_table}).",
+        "x" = "You supplied {.obj_type_friendly {x}}."),
       arg = arg, call = call
     )
   }
@@ -1080,7 +1134,8 @@ check_fr_col <- function(x,
                           call = caller_env()) {
   if (!inherits(x, "fr_col")) {
     cli_abort(
-      "{.arg {arg}} must be an {.cls fr_col} object (created by {.fn fr_col}).",
+      c("{.arg {arg}} must be an {.cls fr_col} object (created by {.fn fr_col}).",
+        "x" = "You supplied {.obj_type_friendly {x}}."),
       arg = arg, call = call
     )
   }

@@ -3,55 +3,49 @@
 \docType{data}
 \name{tbl_vs}
 \alias{tbl_vs}
-\title{Vital Signs Summary Table (3-arm, page_by-ready)}
+\title{Vital Signs Change from Baseline Table (Table 14.3.5.1)}
 \format{
-A data frame with 20 rows and 6 variables:
+A data frame with 60 rows and 12 variables:
 \describe{
-\item{param}{Vital sign parameter name (page_by key)}
+\item{param}{Vital sign parameter name (page_by key):
+\code{"Systolic BP (mmHg)"}, \code{"Diastolic BP (mmHg)"},
+\code{"Heart Rate (bpm)"}, \code{"Weight (kg)"}, \code{"Temperature (C)"}}
+\item{timepoint}{Visit timepoint: \code{"Baseline"}, \code{"Week 12"}, or \code{"Week 24"}}
 \item{statistic}{Summary statistic: \code{"n"}, \code{"Mean (SD)"}, \code{"Median"},
 or \code{"Min, Max"}}
-\item{placebo}{Placebo arm value}
-\item{zom_50mg}{Zomerane 50mg arm value}
-\item{zom_100mg}{Zomerane 100mg arm value}
-\item{total}{All arms combined}
+\item{placebo_base}{Placebo --- baseline value}
+\item{placebo_value}{Placebo --- value at timepoint}
+\item{placebo_chg}{Placebo --- change from baseline (blank at Baseline)}
+\item{zom_50mg_base}{Zomerane 50mg --- baseline value}
+\item{zom_50mg_value}{Zomerane 50mg --- value at timepoint}
+\item{zom_50mg_chg}{Zomerane 50mg --- change from baseline}
+\item{zom_100mg_base}{Zomerane 100mg --- baseline value}
+\item{zom_100mg_value}{Zomerane 100mg --- value at timepoint}
+\item{zom_100mg_chg}{Zomerane 100mg --- change from baseline}
 }
 }
 \source{
-Synthetic data generated in \code{data-raw/create_advs_dataset.R}
-from \link{advs} (Week 24 values).
+Synthetic data generated in \code{data-raw/create_tbl_datasets.R}
+from \link{advs}.
 }
 \usage{
 tbl_vs
 }
 \description{
-Pre-summarized vital signs table in wide format with a \code{param} column
-for \code{\link[=fr_rows]{fr_rows()}} \code{page_by} grouping. Each parameter produces a separate
-page with its own summary statistics.
+Pre-summarized vital signs table in wide format with per-arm sub-columns
+for Baseline, Value, and Change from Baseline. Multiple timepoints
+(Baseline, Week 12, Week 24) per parameter.
+
+Designed to demonstrate advanced tlframe features: \code{page_by} for
+per-parameter pages, \code{\link[=fr_spans]{fr_spans()}} for two-level spanning headers,
+\code{\link[=fr_header]{fr_header()}} with \verb{n = function(...)} for per-group N-counts, and
+\code{fr_cols(.split = TRUE)} for wide layouts.
 
 Pair with \link{advs} as \code{n_data} in \code{\link[=fr_header]{fr_header()}} to get per-parameter
 N-counts in column headers.
 }
 \examples{
-tbl_vs
-
-# Per-parameter pages with per-group N-counts
-tbl_vs |>
-  fr_table() |>
-  fr_rows(page_by = "param") |>
-  fr_cols(
-    statistic = fr_col("Statistic", width = 2),
-    placebo   = fr_col("Placebo"),
-    zom_50mg  = fr_col("Zomerane 50mg"),
-    zom_100mg = fr_col("Zomerane 100mg"),
-    total     = fr_col("Total")
-  ) |>
-  fr_header(
-    n = "auto",
-    n_subject = "USUBJID",
-    n_data = advs,
-    format = "{name}\n(N={n})"
-  )
-
+head(tbl_vs, 8)
 }
 \seealso{
 \link{advs} for the record-level source data, \code{\link[=fr_header]{fr_header()}} for

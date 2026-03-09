@@ -431,19 +431,22 @@ compute_decimal_before_pt <- function(data, columns, cell_grid, font_family, fon
 #'
 #' @param data Data frame.
 #' @param blank_cols Character vector of column names from spec$body$blank_after.
-#' @return Data frame with blank rows inserted.
+#' @return A list with `data` (data frame with blanks inserted) and
+#'   `insert_positions` (integer vector of original row indices after which
+#'   blanks were inserted — i.e., the boundary rows in the ORIGINAL data).
 #' @noRd
 insert_blank_after <- function(data, blank_cols) {
-  if (nrow(data) <= 1L || length(blank_cols) == 0L) return(data)
+  empty <- list(data = data, insert_positions = integer(0))
+  if (nrow(data) <= 1L || length(blank_cols) == 0L) return(empty)
 
   blank_cols <- intersect(blank_cols, names(data))
-  if (length(blank_cols) == 0L) return(data)
+  if (length(blank_cols) == 0L) return(empty)
 
   keys <- inject(paste(!!!data[blank_cols], sep = "\x1f"))
 
   # Find rows where the next row has a different key (group boundary)
   boundaries <- which(keys[-length(keys)] != keys[-1L])
-  if (length(boundaries) == 0L) return(data)
+  if (length(boundaries) == 0L) return(empty)
 
   # Build a blank row template (all empty strings)
   blank_row <- vctrs::vec_init(data, 1L)
@@ -459,7 +462,30 @@ insert_blank_after <- function(data, blank_cols) {
   }
   result[[2L * length(boundaries) + 1L]] <- vctrs::vec_slice(data, prev:nrow(data))
 
-  vctrs::vec_rbind(!!!result)
+  list(data = vctrs::vec_rbind(!!!result), insert_positions = boundaries)
+}
+
+
+#' Remap style row indices after blank row insertion
+#'
+#' When `insert_blank_after()` inserts blank rows, numeric row indices in
+#' `cell_styles` become stale. This function shifts each style's row indices
+#' to account for the inserted blanks.
+#'
+#' @param cell_styles List of fr_cell_style objects.
+#' @param insert_positions Integer vector — original row indices after which
+#'   blanks were inserted (the boundary rows from `insert_blank_after()`).
+#' @return Modified list of fr_cell_style objects with shifted row indices.
+#' @noRd
+remap_style_indices <- function(cell_styles, insert_positions) {
+  for (i in seq_along(cell_styles)) {
+    rows <- cell_styles[[i]]$rows
+    if (is.null(rows) || identical(rows, "all") || !is.numeric(rows)) next
+    cell_styles[[i]]$rows <- vapply(rows, function(r) {
+      as.integer(r + sum(insert_positions < r))
+    }, integer(1), USE.NAMES = FALSE)
+  }
+  cell_styles
 }
 
 
@@ -475,12 +501,13 @@ insert_blank_after <- function(data, blank_cols) {
 #' When `group_by` is set, only non-group-header rows are indented.
 #' When `indent_by` is used alone, all rows are indented.
 #'
+#' The indent width is exactly 2 character widths in the current page font,
+#' computed via AFM font metrics for consistent rendering across RTF and PDF.
+#'
 #' @param spec An fr_spec object (pre-finalization).
-#' @param indent_inches Numeric scalar. Indentation in inches (default 0.1667,
-#'   equivalent to 2 space characters / 240 twips).
 #' @return Modified fr_spec with additional cell_styles.
 #' @noRd
-apply_indent_by <- function(spec, indent_inches = 0.1667) {
+apply_indent_by <- function(spec) {
   indent_cols <- spec$body$indent_by
   if (length(indent_cols) == 0L) return(spec)
 
@@ -490,6 +517,12 @@ apply_indent_by <- function(spec, indent_inches = 0.1667) {
 
   nr <- nrow(spec$data)
   if (nr == 0L) return(spec)
+
+  # Calculate indent: 2 space-character widths in the current page font
+  indent_twips <- measure_text_width_twips(
+    "  ", spec$page$font_family, spec$page$font_size
+  )
+  indent_inches <- twips_to_inches(indent_twips)
 
   group_cols <- spec$body$group_by
   if (length(group_cols) > 0L) {
@@ -541,11 +574,26 @@ apply_indent_by <- function(spec, indent_inches = 0.1667) {
 
 #' Build keep-together mask for body rows
 #'
-#' @param data Data frame (body data for this section).
+#' Marks rows that should stay with the next row (keep-with-next) to prevent
+#' page breaks within `group_by` groups. Uses orphan/widow minimums for
+#' intelligent splitting of large groups.
+#'
+#' **Behavior**:
+#' - Small groups (`<= orphan_min + widow_min` non-blank rows): all rows glued
+#'   together — no page split within the group.
+#' - Large groups: header + first `orphan_min - 1` rows glued (prevents
+#'   orphaned header at page bottom); last `widow_min` rows glued (prevents
+#'   widowed tail on next page). The middle is free to split.
+#'
+#' @param data Data frame (body data for this section, post-blank-insertion).
 #' @param keep_cols Character vector of column names from spec$body$group_by.
+#' @param orphan_min Integer. Minimum rows to keep at the bottom of a page
+#'   when a group must split. Default 3.
+#' @param widow_min Integer. Minimum rows to carry to the next page when a
+#'   group must split. Default 3.
 #' @return Logical vector of length nrow(data), TRUE = keep with next row.
 #' @noRd
-build_keep_mask <- function(data, keep_cols) {
+build_keep_mask <- function(data, keep_cols, orphan_min = 3L, widow_min = 3L) {
   nr <- nrow(data)
   if (nr <= 1L || length(keep_cols) == 0L) return(rep(FALSE, nr))
 
@@ -559,14 +607,43 @@ build_keep_mask <- function(data, keep_cols) {
   # Build group key per row
   keys <- inject(paste(!!!data[keep_cols], sep = "\x1f"))
 
-  # All non-blank rows in a multi-row group get \trkeep — vectorized comparison
-  same_as_next <- c(keys[-1L] == keys[-nr], FALSE)
-  same_as_prev <- c(FALSE, keys[-1L] == keys[-nr])
-  next_not_blank <- c(!is_blank[-1L], FALSE)
-  prev_not_blank <- c(FALSE, !is_blank[-nr])
-  mask <- !is_blank & (
-    (same_as_next & next_not_blank) | (same_as_prev & prev_not_blank)
-  )
+  mask <- rep(FALSE, nr)
+
+  # Identify group header rows: first non-blank row where key changes
+  is_header <- !is_blank & c(TRUE, keys[-1L] != keys[-length(keys)])
+  header_positions <- which(is_header)
+
+  for (idx in seq_along(header_positions)) {
+    h <- header_positions[idx]
+    # Find group end (last row before next header or end of data)
+    if (idx < length(header_positions)) {
+      group_end <- header_positions[idx + 1L] - 1L
+    } else {
+      group_end <- nr
+    }
+    # Skip trailing blanks
+    while (group_end > h && is_blank[group_end]) group_end <- group_end - 1L
+
+    # Non-blank rows in this group
+    non_blank <- which(!is_blank[h:group_end]) + h - 1L
+    group_size <- length(non_blank)
+
+    if (group_size <= 1L) next
+
+    if (group_size <= orphan_min + widow_min) {
+      # Small group: keep entirely together (mark all but last for keep-with-next)
+      mask[non_blank[-length(non_blank)]] <- TRUE
+    } else {
+      # Large group: enforce orphan_min at top, widow_min at bottom
+      # Top: header + first (orphan_min - 1) children stay together
+      top_keep <- non_blank[seq_len(orphan_min - 1L)]
+      mask[top_keep] <- TRUE
+      # Bottom: last (widow_min) rows stay together
+      bottom_keep <- non_blank[(group_size - widow_min + 1L):(group_size - 1L)]
+      mask[bottom_keep] <- TRUE
+    }
+  }
+
   mask
 }
 
@@ -719,16 +796,20 @@ resolve_borders <- function(rules, nrow_body, ncol, nrow_header = 1L) {
 # 3. Sentinel Resolver Factories
 # ══════════════════════════════════════════════════════════════════════════════
 
-#' Create an RTF sentinel resolver
-#' @return A function(type, content) that returns RTF markup.
+#' Resolve a sentinel token to RTF markup
+#'
+#' Formatting types (BOLD, ITALIC, etc.) recursively escape their content
+#' via `rtf_escape_and_resolve()` so that non-ASCII characters (em dash,
+#' dagger, etc.) and nested sentinels are properly converted to RTF escape
+#' codes. Without this, raw UTF-8 bytes would leak into the ANSI RTF file.
 #' @noRd
 rtf_sentinel_resolver <- function(type, content) {
   switch(toupper(type),
-    "SUPER"     = paste0("{\\super ", content, "}"),
-    "SUB"       = paste0("{\\sub ", content, "}"),
-    "BOLD"      = paste0("{\\b ", content, "}"),
-    "ITALIC"    = paste0("{\\i ", content, "}"),
-    "UNDERLINE" = paste0("{\\ul ", content, "}"),
+    "SUPER"     = paste0("{\\super ", rtf_escape_and_resolve(content), "}"),
+    "SUB"       = paste0("{\\sub ", rtf_escape_and_resolve(content), "}"),
+    "BOLD"      = paste0("{\\b ", rtf_escape_and_resolve(content), "}"),
+    "ITALIC"    = paste0("{\\i ", rtf_escape_and_resolve(content), "}"),
+    "UNDERLINE" = paste0("{\\ul ", rtf_escape_and_resolve(content), "}"),
     "NEWLINE"   = "\\line ",
     "UNICODE"   = rtf_encode_unicode_char(content),
     content
@@ -736,16 +817,19 @@ rtf_sentinel_resolver <- function(type, content) {
 }
 
 
-#' Create a LaTeX sentinel resolver
-#' @return A function(type, content) that returns LaTeX markup.
+#' Resolve a sentinel token to LaTeX markup
+#'
+#' Formatting types recursively escape their content via
+#' `latex_escape_and_resolve()` so that LaTeX specials (`%`, `&`, `#`,
+#' etc.) and nested sentinels are properly handled.
 #' @noRd
 latex_sentinel_resolver <- function(type, content) {
   switch(toupper(type),
-    "SUPER"     = paste0("\\textsuperscript{", content, "}"),
-    "SUB"       = paste0("\\textsubscript{", content, "}"),
-    "BOLD"      = paste0("\\textbf{", content, "}"),
-    "ITALIC"    = paste0("\\textit{", content, "}"),
-    "UNDERLINE" = paste0("\\underline{", content, "}"),
+    "SUPER"     = paste0("\\textsuperscript{", latex_escape_and_resolve(content), "}"),
+    "SUB"       = paste0("\\textsubscript{", latex_escape_and_resolve(content), "}"),
+    "BOLD"      = paste0("\\textbf{", latex_escape_and_resolve(content), "}"),
+    "ITALIC"    = paste0("\\textit{", latex_escape_and_resolve(content), "}"),
+    "UNDERLINE" = paste0("\\underline{", latex_escape_and_resolve(content), "}"),
     "NEWLINE"   = "\\\\",
     "UNICODE"   = latex_encode_unicode_char(content),
     content

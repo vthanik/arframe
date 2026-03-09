@@ -84,6 +84,7 @@ find_config <- function(dir = getwd()) {
 #'   margins: [1.0, 0.75, 1.0, 0.75]   # top, right, bottom, left
 #'   font_family: "Courier New"
 #'   font_size: 9
+#'   col_gap: 4
 #'
 #' header:
 #'   align: ~               # inherit from column (user decides)
@@ -325,7 +326,21 @@ apply_config <- function(spec) {
   # Page defaults
   spec <- apply_settings_section(spec, cfg$page, fr_page,
     c("orientation", "paper", "font_family", "font_size", "margins",
-      "col_split", "continuation"))
+      "continuation", "col_gap"))
+
+  # Column split/stub from config
+  columns_cfg <- cfg$columns
+  if (is.list(columns_cfg)) {
+    if (!is.null(columns_cfg$split)) {
+      split_val <- columns_cfg$split
+      if (isTRUE(split_val) || identical(split_val, FALSE)) {
+        spec$columns_meta$split <- split_val
+      }
+    }
+    if (!is.null(columns_cfg$stub) && is.character(columns_cfg$stub)) {
+      spec$columns_meta$stub <- columns_cfg$stub
+    }
+  }
 
   # Header defaults (stored on spec$header for render-time use)
   header_cfg <- cfg$header
@@ -334,7 +349,6 @@ apply_config <- function(spec) {
     if (!is.null(header_cfg$valign))    spec$header$valign    <- header_cfg$valign
     if (!is.null(header_cfg$bold))      spec$header$bold      <- header_cfg$bold
     if (!is.null(header_cfg$span_gap))  spec$header$span_gap  <- header_cfg$span_gap
-    if (!is.null(header_cfg$align_gap)) spec$header$align_gap <- header_cfg$align_gap
     if (!is.null(header_cfg$n_subject)) spec$header$n_subject <- header_cfg$n_subject
     if (!is.null(header_cfg$n_format))  spec$header$format    <- header_cfg$n_format
     # n: "auto" from YAML is a character string

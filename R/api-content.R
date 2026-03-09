@@ -166,7 +166,8 @@ fr_titles <- function(spec, ..., .align = "center", .bold = FALSE,
         font_size = x[["font_size"]] %||% .font_size
       )
     } else {
-      cli_abort("Each title must be a character scalar or a named list.",
+      cli_abort(c("Each title must be a character scalar or a named list.",
+                  "x" = "You supplied {.obj_type_friendly {x}}."),
                 call = call)
     }
   })
@@ -386,7 +387,8 @@ fr_footnotes <- function(spec, ..., .align = "left", .placement = "every",
         font_size = x[["font_size"]] %||% .font_size
       )
     } else {
-      cli_abort("Each footnote must be a character scalar or a named list.",
+      cli_abort(c("Each footnote must be a character scalar or a named list.",
+                  "x" = "You supplied {.obj_type_friendly {x}}."),
                 call = call)
     }
   })

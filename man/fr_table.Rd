@@ -138,18 +138,18 @@ tbl_demog |>
 
 ae_subset <- adae[1:20, c("USUBJID", "AEDECOD", "AESEV", "ASTDT")]
 
-# Table view: auto-detected alignment, 9pt, no col_split
+# Table view: auto-detected alignment, 9pt, no split
 spec_tbl <- ae_subset |>
   fr_table() |>
   fr_titles("Table View of AE Records")
 spec_tbl$page$font_size    # 9 (default)
 
-# Listing view: left-aligned, 8pt, col_split = TRUE, wrap = TRUE
+# Listing view: left-aligned, 8pt, split = TRUE, wrap = TRUE
 spec_lst <- ae_subset |>
   fr_listing() |>
   fr_titles("Listing View of AE Records")
-spec_lst$page$font_size    # 8 (listing default)
-spec_lst$page$col_split    # TRUE (listing default)
+spec_lst$page$font_size          # 8 (listing default)
+spec_lst$columns_meta$split      # TRUE (listing default)
 
 ## ── Hidden column used for grouping ──────────────────────────────────────
 # The "group" column drives indent_by but is not displayed.

@@ -401,12 +401,11 @@ test_that("fr_config_get auto-loads config when none is loaded", {
 
 # ── apply_config: header section ─────────────────────────────────────────────
 
-test_that("apply_config applies header span_gap and align_gap", {
+test_that("apply_config applies header span_gap", {
   fr_config_reset()
-  fr_env$config <- list(header = list(span_gap = FALSE, align_gap = FALSE))
+  fr_env$config <- list(header = list(span_gap = FALSE))
   spec <- data.frame(a = 1) |> fr_table()
   expect_false(spec$header$span_gap)
-  expect_false(spec$header$align_gap)
   fr_config_reset()
 })
 
@@ -600,19 +599,20 @@ test_that("apply_config tokens are low priority (existing tokens win)", {
 
 # ── apply_config: page section ───────────────────────────────────────────────
 
-test_that("apply_config applies col_split and continuation from page config", {
+test_that("apply_config applies split and continuation from config", {
   fr_config_reset()
   tmp <- tempfile(fileext = ".yml")
   on.exit({ fr_config_reset(); unlink(tmp) }, add = TRUE)
   writeLines(c(
+    "columns:",
+    "  split: true",
     "page:",
-    "  col_split: true",
     "  continuation: '(continued)'"
   ), tmp)
   fr_config(tmp)
 
   spec <- data.frame(a = 1) |> fr_table()
-  expect_true(spec$page$col_split)
+  expect_true(isTRUE(spec$columns_meta$split))
   expect_equal(spec$page$continuation, "(continued)")
 })
 

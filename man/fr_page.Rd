@@ -14,8 +14,7 @@ fr_page(
   orphan_min = NULL,
   widow_min = NULL,
   continuation = NULL,
-  col_split = NULL,
-  stub_cols = NULL,
+  col_gap = NULL,
   tokens = NULL
 )
 }
@@ -52,11 +51,12 @@ Default \code{3L}. Set to \code{1L} to disable.}
 \item{continuation}{Character scalar appended to the column header block on
 continuation pages, e.g. \code{"(continued)"}. \code{NULL} (default) disables.}
 
-\item{col_split}{Logical. Whether to split wide tables across multiple
-column pages. Default \code{FALSE}.}
-
-\item{stub_cols}{Character vector of column names to repeat on each
-column-split page (e.g. the row-label column).}
+\item{col_gap}{Inter-column padding in \strong{points} (total gap between
+adjacent columns). Default \code{4} (2 pt left + 2 pt right per cell).
+Increase to \code{6} or \code{8} if long text in adjacent columns runs together.
+Set to \code{0} for zero padding (cells flush, legacy behaviour).
+Applied symmetrically as half the value on each side of every cell
+in both RTF and PDF output.}
 
 \item{tokens}{Named list of custom \code{{token}} values for use in page
 headers/footers. E.g. \code{list(study = "TFRM-2024-001", pop = "FAS")}.
@@ -152,14 +152,11 @@ tbl_ae_soc |>
   fr_table() |>
   fr_page(orphan_min = 2L, widow_min = 2L)
 
-## ── Column split with stub columns ─────────────────────────────────────
+## ── Wider inter-column padding ─────────────────────────────────────────
 
-tbl_vs |>
+tbl_demog |>
   fr_table() |>
-  fr_page(
-    col_split  = TRUE,
-    stub_cols  = c("param", "statistic")
-  )
+  fr_page(col_gap = 8)   # 4 pt each side (generous spacing)
 
 ## ── Legal paper size (8.5 x 14 in) ─────────────────────────────────────
 
@@ -170,5 +167,6 @@ tbl_ae_soc |>
 }
 \seealso{
 \code{\link[=fr_pagehead]{fr_pagehead()}}, \code{\link[=fr_pagefoot]{fr_pagefoot()}} for running headers/footers,
-\code{\link[=fr_rows]{fr_rows()}} for \code{page_by} / \code{group_by} row pagination.
+\code{\link[=fr_rows]{fr_rows()}} for \code{page_by} / \code{group_by} row pagination,
+\code{\link[=fr_cols]{fr_cols()}} with \code{.split} for column splitting.
 }

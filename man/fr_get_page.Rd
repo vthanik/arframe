@@ -12,12 +12,12 @@ fr_get_page(spec)
 \value{
 A named list with fields: \code{orientation}, \code{paper}, \code{margins} (list
 with \code{top}, \code{bottom}, \code{left}, \code{right}), \code{font_family}, \code{font_size},
-\code{col_split}, \code{stub_cols}.
+\code{col_gap}.
 }
 \description{
 Extracts the page layout settings configured via \code{\link[=fr_page]{fr_page()}}. Returns
 a named list with all page properties: orientation, paper size, margins,
-font family, font size, stub columns, and column splitting.
+font family, font size, and column gap.
 }
 \examples{
 spec <- tbl_demog |> fr_table() |>

@@ -3,9 +3,9 @@
 \docType{data}
 \name{tbl_disp}
 \alias{tbl_disp}
-\title{Subject Disposition Table (Table 14.1.4)}
+\title{Subject Disposition Table (Table 14.1.3)}
 \format{
-A data frame with columns:
+A data frame with 8 rows and 5 columns:
 \describe{
 \item{category}{Row label (e.g. \code{"Randomized"}, \code{"  Adverse Event"})}
 \item{placebo}{Placebo arm n or n (\%)}

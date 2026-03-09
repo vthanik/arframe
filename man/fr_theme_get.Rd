@@ -23,6 +23,9 @@ theme has been set. Possible keys (all optional):
 \item \code{spacing} — list with \code{titles_after}, \code{footnotes_before},
 \code{pagehead_after}, \code{pagefoot_before}, \code{page_by_after} (integer
 blank lines)
+\item \code{col_gap} — integer (points)
+\item \code{split} — logical (\code{TRUE}/\code{FALSE}) column splitting
+\item \code{stub} — character vector (stub column names)
 \item \code{footnote_separator} — logical
 }
 }

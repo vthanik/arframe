@@ -29,7 +29,7 @@ header-only rules, and column splitting enabled.
    Font size \tab 9pt \tab 8pt \cr
    Default align \tab auto-detect \tab left \cr
    hlines \tab none \tab header \cr
-   col_split \tab FALSE \tab TRUE \cr
+   split \tab NULL \tab TRUE \cr
    wrap \tab FALSE \tab TRUE \cr
 }
 }

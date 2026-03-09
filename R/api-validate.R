@@ -130,14 +130,16 @@ fr_validate <- function(spec, strict = FALSE) {
     }
   }
 
-  # 3. stub_cols exist
-  stub_cols <- spec$page$stub_cols %||% character(0)
-  if (length(stub_cols) > 0L) {
-    bad <- setdiff(stub_cols, data_names)
-    if (length(bad) > 0L) {
-      issues <- c(issues, cli::format_inline(
-        "{.arg stub_cols} not found in data: {.val {bad}}."
-      ))
+  # 3. stub columns exist
+  if (length(spec$columns) > 0L) {
+    stub_cols <- stub_column_names(spec$columns)
+    if (length(stub_cols) > 0L) {
+      bad <- setdiff(stub_cols, data_names)
+      if (length(bad) > 0L) {
+        issues <- c(issues, cli::format_inline(
+          "Stub column{?s} not found in data: {.val {bad}}."
+        ))
+      }
     }
   }
 
@@ -157,7 +159,7 @@ fr_validate <- function(spec, strict = FALSE) {
   spans <- spec$header$spans %||% list()
   if (length(spans) > 0L) {
     vis_names <- if (length(spec$columns) > 0L) {
-      names(Filter(function(c) !isFALSE(c$visible), spec$columns))
+      names(visible_columns(spec$columns))
     } else {
       data_names
     }
@@ -173,8 +175,10 @@ fr_validate <- function(spec, strict = FALSE) {
   }
 
   # 6. Column widths vs printable area
-  if (length(spec$columns) > 0L && !isTRUE(spec$page$col_split)) {
-    vis_cols <- Filter(function(c) !isFALSE(c$visible), spec$columns)
+  split_mode <- spec$columns_meta$split
+  if (length(spec$columns) > 0L &&
+      (identical(split_mode, FALSE) || is.null(split_mode))) {
+    vis_cols <- visible_columns(spec$columns)
     widths <- vapply(vis_cols, function(c) {
       w <- c$width
       if (is.numeric(w) && !is_fr_pct(w)) w else NA_real_
@@ -184,7 +188,7 @@ fr_validate <- function(spec, strict = FALSE) {
       printable <- printable_area_inches(spec$page)[["width"]]
       if (total > printable * 1.1) {
         issues <- c(issues, cli::format_inline(
-          "Column widths ({round(total, 2)}in) exceed 110% of printable area ({round(printable, 2)}in). Consider {.code col_split = TRUE} or narrower widths."
+          "Column widths ({round(total, 2)}in) exceed 110% of printable area ({round(printable, 2)}in). Consider {.code fr_cols(.split = TRUE)} or narrower widths."
         ))
       }
     }

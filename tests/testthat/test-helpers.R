@@ -22,14 +22,6 @@ test_that("tlframe_error_render carries format metadata", {
   expect_true(inherits(err, "tlframe_error"))
 })
 
-test_that("tlframe_error_import has correct class hierarchy", {
-  err <- tryCatch(
-    tlframe_error_import("import failed"),
-    tlframe_error_import = function(e) e
-  )
-  expect_true(inherits(err, "tlframe_error_import"))
-  expect_true(inherits(err, "tlframe_error"))
-})
 
 test_that("tlframe_error_layout has correct class hierarchy", {
   err <- tryCatch(

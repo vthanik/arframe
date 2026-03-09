@@ -59,7 +59,8 @@
 #'     width as a fraction of the printable page width. Must be between
 #'     `"0%"` (exclusive) and `"100%"` (inclusive). Columns with an explicit
 #'     `width` in [fr_col()] are not affected.
-#'   * **`NULL`** — uses the package default of 1.5 in.
+#'   * **`NULL`** (default) — same as `"auto"`. Columns auto-size from
+#'     content and header text.
 #' @param .align Default alignment applied to all columns that do not have an
 #'   explicit alignment set. One of `"left"`, `"center"`, `"right"`,
 #'   `"decimal"`. `NULL` auto-detects: `"right"` for numeric columns,
@@ -74,7 +75,23 @@
 #'   * `~ tools::toTitleCase(gsub("_", " ", .x))` — title case.
 #'   * `toupper` — all caps.
 #'
-#' @return A modified `fr_spec`. Column specs stored in `spec$columns`.
+#' @param .split Logical or `NULL`. Column splitting for wide tables that
+#'   exceed the printable page width:
+#'   * `NULL` (default) — no splitting. All columns on one page.
+#'   * `TRUE` — split across multiple panels, with stub columns repeated
+#'     in each panel. Panel width behaviour follows `.width`:
+#'     - `.width = "auto"` → panels keep natural column widths.
+#'     - `.width = "fit"` → panels scale to fill the page width.
+#'     - `.width = "equal"` → unfixed columns share remaining space equally.
+#'   * `FALSE` — explicitly no splitting.
+#'
+#'   Stub columns (repeated in every panel) are designated via
+#'   `fr_col(stub = TRUE)`. When `.split` is enabled but no columns have
+#'   `stub = TRUE`, stubs are auto-inferred from `group_by`/`indent_by`
+#'   columns or the first column.
+#'
+#' @return A modified `fr_spec`. Column specs stored in `spec$columns`,
+#'   split settings in `spec$columns_meta`.
 #'
 #' @section Regulatory conventions — column ordering:
 #' Standard pharma house styles and FDA/EMA submissions require:
@@ -223,31 +240,56 @@
 #'     format = "{name}\n(N={n})"
 #'   )
 #'
+#' ## ── Column splitting: split + fit to fill page ─────────────────────────
+#'
+#' tbl_vs |>
+#'   fr_table() |>
+#'   fr_cols(
+#'     param     = fr_col("Parameter", stub = TRUE),
+#'     statistic = fr_col("Statistic", stub = TRUE),
+#'     .split = TRUE,
+#'     .width = "fit"
+#'   )
+#'
+#' ## ── Column splitting with natural widths (no stretching) ────────────────
+#'
+#' tbl_vs |>
+#'   fr_table() |>
+#'   fr_cols(.split = TRUE)
+#'
 #' @seealso [fr_col()] for the column spec constructor, [fr_header()] for
 #'   N-count labels and header styling, [fr_spans()] for spanning group
 #'   headers, [fr_rows()] for pagination.
 #'
 #' @export
 fr_cols <- function(spec, ..., .list = NULL, .width = NULL, .align = NULL,
-                       .label_fn = NULL) {
+                       .label_fn = NULL, .split = NULL) {
   call <- caller_env()
   check_fr_spec(spec, call = call)
 
+  # Validate .split: NULL, TRUE, or FALSE
+  if (!is.null(.split)) {
+    check_scalar_lgl(.split, arg = ".split", call = call)
+    spec$columns_meta$split <- .split
+  }
+
   # Validate .width: NULL, numeric, "auto", "equal", "fit", or "N%"
-  width_mode <- "fixed"
-  if (!is.null(.width)) {
-    if (is.character(.width)) {
-      pct <- parse_pct_width(.width, arg = ".width", call = call)
-      if (!is.null(pct)) {
-        .width <- pct
-        width_mode <- "percent"
-      } else {
-        .width <- match_arg_fr(.width, c("auto", "equal", "fit"), call = call)
-        width_mode <- .width
-      }
+  # NULL defaults to "auto" (auto-size from content)
+  if (is.null(.width)) {
+    width_mode <- "auto"
+    .width <- "auto"
+  } else if (is.character(.width)) {
+    pct <- parse_pct_width(.width, arg = ".width", call = call)
+    if (!is.null(pct)) {
+      .width <- pct
+      width_mode <- "percent"
     } else {
-      check_positive_num(.width, arg = ".width", call = call)
+      .width <- match_arg_fr(.width, c("auto", "equal", "fit"), call = call)
+      width_mode <- .width
     }
+  } else {
+    check_positive_num(.width, arg = ".width", call = call)
+    width_mode <- "fixed"
   }
   if (!is.null(.align)) .align <- match_arg_fr(.align, fr_env$valid_aligns, call = call)
 
@@ -346,6 +388,7 @@ fr_cols <- function(spec, ..., .list = NULL, .width = NULL, .align = NULL,
                                          labels         = labels_vec,
                                          page           = spec$page)
 
+  spec$columns_meta$width_mode <- width_mode
   spec
 }
 
@@ -437,13 +480,17 @@ fr_select <- function(spec, pattern = NULL, cols = NULL, exclude = NULL) {
   } else {
     if (!is.null(pattern)) {
       if (!is.character(pattern) || length(pattern) != 1L) {
-        cli_abort("{.arg pattern} must be a single character regex string.", call = call)
+        cli_abort(c("{.arg pattern} must be a single character regex string.",
+                    "x" = "You supplied {.obj_type_friendly {pattern}}."),
+                  call = call)
       }
       selected <- c(selected, grep(pattern, all_cols, value = TRUE))
     }
     if (!is.null(cols)) {
       if (!is.character(cols)) {
-        cli_abort("{.arg cols} must be a character vector of column names.", call = call)
+        cli_abort(c("{.arg cols} must be a character vector of column names.",
+                    "x" = "You supplied {.obj_type_friendly {cols}}."),
+                  call = call)
       }
       bad <- setdiff(cols, all_cols)
       if (length(bad) > 0L) {
@@ -463,7 +510,9 @@ fr_select <- function(spec, pattern = NULL, cols = NULL, exclude = NULL) {
   # Apply exclusions
   if (!is.null(exclude)) {
     if (!is.character(exclude)) {
-      cli_abort("{.arg exclude} must be a character vector of column names.", call = call)
+      cli_abort(c("{.arg exclude} must be a character vector of column names.",
+                  "x" = "You supplied {.obj_type_friendly {exclude}}."),
+                call = call)
     }
     selected <- setdiff(selected, exclude)
   }

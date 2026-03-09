@@ -8,12 +8,15 @@
 fr_theme(
   orientation = NULL,
   paper = NULL,
+  margins = NULL,
+  col_gap = NULL,
   font_family = NULL,
   font_size = NULL,
-  margins = NULL,
-  tokens = NULL,
+  split = NULL,
+  stub = NULL,
   pagehead = NULL,
   pagefoot = NULL,
+  tokens = NULL,
   hlines = NULL,
   vlines = NULL,
   spacing = NULL,
@@ -26,14 +29,23 @@ fr_theme(
 
 \item{paper}{\code{"letter"}, \code{"a4"}, or \code{"legal"}. \code{NULL} leaves unchanged.}
 
+\item{margins}{Margin(s) in inches (same formats as \code{\link[=fr_page]{fr_page()}}). \code{NULL}
+leaves unchanged.}
+
+\item{col_gap}{Inter-column padding in \strong{points} (integer). \code{NULL} leaves
+unchanged. See \code{\link[=fr_page]{fr_page()}} for details.}
+
 \item{font_family}{Font family name. \code{NULL} leaves unchanged.}
 
 \item{font_size}{Font size in points. \code{NULL} leaves unchanged.}
 
-\item{margins}{Margin(s) in inches (same formats as \code{\link[=fr_page]{fr_page()}}). \code{NULL}
-leaves unchanged.}
+\item{split}{Logical. \code{TRUE} to enable column splitting for wide tables,
+\code{FALSE} to disable. \code{NULL} leaves unchanged. See \code{\link[=fr_cols]{fr_cols()}} \code{.split}
+parameter for details.}
 
-\item{tokens}{Named list of \code{{token}} values. \code{NULL} leaves unchanged.}
+\item{stub}{Character vector of column names to mark as stub columns
+(repeated in every panel during column splitting). \code{NULL} leaves
+unchanged. See \code{\link[=fr_col]{fr_col()}} \code{stub} parameter for details.}
 
 \item{pagehead}{Named list with \code{left}, \code{center}, \code{right}, \code{font_size},
 \code{bold} elements — same as \code{\link[=fr_pagehead]{fr_pagehead()}} arguments. \code{NULL} leaves
@@ -42,6 +54,8 @@ unchanged.}
 \item{pagefoot}{Named list with \code{left}, \code{center}, \code{right}, \code{font_size},
 \code{bold} elements — same as \code{\link[=fr_pagefoot]{fr_pagefoot()}} arguments. \code{NULL} leaves
 unchanged.}
+
+\item{tokens}{Named list of \code{{token}} values. \code{NULL} leaves unchanged.}
 
 \item{hlines}{Horizontal rule preset string (e.g. \code{"header"}). \code{NULL}
 leaves unchanged.}

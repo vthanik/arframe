@@ -185,11 +185,11 @@ test_that("finalize_spec resolves all column widths to numeric values", {
   }
 })
 
-test_that("finalize_spec skips width distribution when col_split = TRUE", {
+test_that("finalize_spec skips width distribution when col_split is enabled", {
   # With col_split, columns keep natural widths (not squeezed to fit page)
   spec <- data.frame(a = 1, b = 2, c = 3, d = 4, e = 5) |>
     fr_table() |>
-    fr_page(col_split = TRUE, stub_cols = "a")
+    fr_cols(a = fr_col(stub = TRUE), .split = TRUE)
 
   result <- tlframe:::finalize_spec(spec)
   # Widths should be individual estimates, not distributed
@@ -372,8 +372,8 @@ test_that("finalize_spec resolves percentage widths to inches", {
   spec <- data.frame(a = 1, b = 2) |>
     fr_table() |>
     fr_cols(
-      a = fr_col("A", width = fr_pct(50)),
-      b = fr_col("B", width = fr_pct(50))
+      a = fr_col("A", width = fr_pct(0.50)),
+      b = fr_col("B", width = fr_pct(0.50))
     )
 
   result <- tlframe:::finalize_spec(spec)
@@ -466,7 +466,11 @@ test_that("calculate_col_panels returns single panel when cols fit", {
       a = fr_col("A", width = 1),
       b = fr_col("B", width = 1)
     ) |>
-    fr_page(col_split = TRUE, stub_cols = "a")
+    fr_cols(
+      a = fr_col("A", width = 1, stub = TRUE),
+      b = fr_col("B", width = 1),
+      .split = TRUE
+    )
 
   spec <- tlframe:::finalize_spec(spec)
   panels <- tlframe:::calculate_col_panels(spec)
@@ -483,9 +487,10 @@ test_that("calculate_col_panels splits into multiple panels for wide tables", {
   spec <- d |>
     fr_table() |>
     fr_cols(
-      c1 = fr_col("Stub", width = 1.5)
+      c1 = fr_col("Stub", width = 1.5, stub = TRUE),
+      .split = TRUE
     ) |>
-    fr_page(col_split = TRUE, stub_cols = "c1", orientation = "portrait")
+    fr_page(orientation = "portrait")
 
   # Set explicit widths on all data columns to force splitting
   for (i in 2:12) {
@@ -512,9 +517,9 @@ test_that("calculate_col_panels errors when stub columns exceed page width", {
   spec <- d |>
     fr_table() |>
     fr_cols(
-      a = fr_col("A", width = 20)
-    ) |>
-    fr_page(col_split = TRUE, stub_cols = "a")
+      a = fr_col("A", width = 20, stub = TRUE),
+      .split = TRUE
+    )
 
   spec <- tlframe:::finalize_spec(spec)
   expect_error(
@@ -533,13 +538,13 @@ test_that("fit_panel_widths scales data columns to fill printable area", {
   spec <- d |>
     fr_table() |>
     fr_cols(
-      stub = fr_col("Stub", width = 1.5),
+      stub = fr_col("Stub", width = 1.5, stub = TRUE),
       d1 = fr_col("D1", width = 1.0),
       d2 = fr_col("D2", width = 1.0),
       d3 = fr_col("D3", width = 1.0),
-      d4 = fr_col("D4", width = 1.0)
-    ) |>
-    fr_page(col_split = TRUE, stub_cols = "stub")
+      d4 = fr_col("D4", width = 1.0),
+      .split = TRUE
+    )
 
   spec <- tlframe:::finalize_spec(spec)
 
@@ -571,11 +576,11 @@ test_that("fit_panel_widths preserves proportional ratios", {
   spec <- d |>
     fr_table() |>
     fr_cols(
-      stub = fr_col("Stub", width = 1.0),
+      stub = fr_col("Stub", width = 1.0, stub = TRUE),
       d1 = fr_col("D1", width = 1.0),
-      d2 = fr_col("D2", width = 2.0)
-    ) |>
-    fr_page(col_split = TRUE, stub_cols = "stub")
+      d2 = fr_col("D2", width = 2.0),
+      .split = TRUE
+    )
 
   spec <- tlframe:::finalize_spec(spec)
   col_panels <- list(c("stub", "d1", "d2"))
@@ -743,24 +748,27 @@ test_that("insert_blank_after inserts blank rows at group boundaries", {
   result <- tlframe:::insert_blank_after(data, "grp")
 
   # 2 boundaries (A->B, B->C) -> 2 blank rows -> 7 total
-  expect_equal(nrow(result), 7L)
+  expect_equal(nrow(result$data), 7L)
+  expect_equal(result$insert_positions, c(2L, 4L))
 })
 
 test_that("insert_blank_after returns data unchanged with no blank_cols", {
   data <- data.frame(x = 1:3)
   result <- tlframe:::insert_blank_after(data, character(0))
-  expect_equal(nrow(result), 3L)
+  expect_equal(nrow(result$data), 3L)
+  expect_equal(result$insert_positions, integer(0))
 })
 
 test_that("insert_blank_after handles single-row data", {
   data <- data.frame(x = 1)
   result <- tlframe:::insert_blank_after(data, "x")
-  expect_equal(nrow(result), 1L)
+  expect_equal(nrow(result$data), 1L)
+  expect_equal(result$insert_positions, integer(0))
 })
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# inject_span_gaps() / inject_align_gaps()
+# inject_span_gaps()
 # ══════════════════════════════════════════════════════════════════════════════
 
 test_that("inject_span_gaps adds gap columns between adjacent spans", {
@@ -797,20 +805,6 @@ test_that("inject_span_gaps does nothing when span_gap = FALSE", {
   spec <- tlframe:::finalize_spec(spec)
   gap_cols <- grep("__span_gap_", names(spec$columns), value = TRUE)
   expect_length(gap_cols, 0L)
-})
-
-test_that("inject_align_gaps adds gap between right-left column pairs", {
-  spec <- data.frame(a = 1, b = "x") |>
-    fr_table() |>
-    fr_cols(
-      a = fr_col("A", width = 1, align = "right"),
-      b = fr_col("B", width = 1, align = "left")
-    ) |>
-    fr_header(span_gap = FALSE)  # disable span gaps
-
-  spec <- tlframe:::finalize_spec(spec)
-  gap_cols <- grep("__align_gap_", names(spec$columns), value = TRUE)
-  expect_true(length(gap_cols) >= 1L)
 })
 
 

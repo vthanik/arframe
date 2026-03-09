@@ -28,7 +28,8 @@ render_figure_pdf <- function(spec, path) {
 
   if (inherits(spec$plot, "ggplot")) {
     if (!requireNamespace("ggplot2", quietly = TRUE)) {
-      cli_abort("Package {.pkg ggplot2} is required to render ggplot figures.")
+      cli_abort(c("Package {.pkg ggplot2} is required to render ggplot figures.",
+                  "i" = "Install via {.code install.packages(\"ggplot2\")}."))
     }
     ggplot2::ggsave(tmp_plot, spec$plot, width = plot_w, height = plot_h,
                     device = "pdf")
@@ -191,7 +192,8 @@ render_figure_rtf <- function(spec, path) {
 
   if (inherits(spec$plot, "ggplot")) {
     if (!requireNamespace("ggplot2", quietly = TRUE)) {
-      cli_abort("Package {.pkg ggplot2} is required to render ggplot figures.")
+      cli_abort(c("Package {.pkg ggplot2} is required to render ggplot figures.",
+                  "i" = "Install via {.code install.packages(\"ggplot2\")}."))
     }
     ggplot2::ggsave(tmp_plot, spec$plot, width = plot_w, height = plot_h,
                     dpi = dpi, device = "png")

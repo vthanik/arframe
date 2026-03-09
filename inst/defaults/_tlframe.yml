@@ -16,15 +16,17 @@ page:
   margins: [1.0, 0.75, 1.0, 0.75]
   font_family: "Courier New"
   font_size: 9
-  col_split: false
   continuation: ~
+  col_gap: 4
+
+columns:
+  split: false
 
 header:
   align: ~
   valign: bottom
   bold: false
   span_gap: true
-  align_gap: true
   n_format: "{name}\n(N={n})"
 
 pagehead:

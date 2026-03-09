@@ -124,23 +124,22 @@ test_that("fr_validate passes with valid row config columns", {
 
 # ── Check 3: stub_cols exist ───────────────────────────────────────────────
 
-test_that("fr_validate warns on bad stub_cols", {
+test_that("fr_validate warns on bad stub column", {
   spec <- tbl_demog |> fr_table()
-  spec$page$stub_cols <- "nonexistent"
-  expect_warning(fr_validate(spec), "stub_cols")
+  spec$columns[["nonexistent"]] <- fr_col("Bad", stub = TRUE)
+  expect_warning(fr_validate(spec), "not found")
 })
 
-test_that("fr_validate strict errors on bad stub_cols", {
+test_that("fr_validate strict errors on bad stub column", {
   spec <- tbl_demog |> fr_table()
-  spec$page$stub_cols <- "nonexistent"
+  spec$columns[["nonexistent"]] <- fr_col("Bad", stub = TRUE)
   expect_error(fr_validate(spec, strict = TRUE), "validation issue")
 })
 
-test_that("fr_validate passes with valid stub_cols", {
-  cols <- names(tbl_demog)
+test_that("fr_validate passes with valid stub column", {
   spec <- tbl_demog |> fr_table()
-  spec$page$stub_cols <- cols[1]
-  expect_invisible(fr_validate(spec))
+  spec <- fr_cols(spec, characteristic = fr_col("Char", stub = TRUE))
+  expect_silent(suppressWarnings(fr_validate(spec)))
 })
 
 
@@ -251,14 +250,14 @@ test_that("fr_validate strict errors when widths exceed printable area", {
   expect_error(fr_validate(spec, strict = TRUE), "validation issue")
 })
 
-test_that("fr_validate skips width check when col_split is TRUE", {
+test_that("fr_validate skips width check when split is enabled", {
   spec <- tbl_demog |> fr_table() |> fr_cols()
   col_names <- names(spec$columns)
   for (nm in col_names) {
     spec$columns[[nm]]$width <- 5.0
   }
-  spec$page$col_split <- TRUE
-  # Should NOT warn because col_split bypasses this check
+  spec$columns_meta$split <- TRUE
+  # Should NOT warn because split bypasses this check
   expect_invisible(fr_validate(spec))
 })
 

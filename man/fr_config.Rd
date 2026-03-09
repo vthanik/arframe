@@ -52,6 +52,7 @@ page:
   margins: [1.0, 0.75, 1.0, 0.75]   # top, right, bottom, left
   font_family: "Courier New"
   font_size: 9
+  col_gap: 4
 
 header:
   align: ~               # inherit from column (user decides)

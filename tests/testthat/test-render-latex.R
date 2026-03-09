@@ -386,7 +386,8 @@ test_that("titles are inside DeclareTblrTemplate head definitions", {
     fr_render(tmp)
 
   txt <- paste(readLines(tmp, warn = FALSE), collapse = "\n")
-  expect_true(grepl("DeclareTblrTemplate\\{firsthead, middlehead, lasthead\\}", txt))
+  expect_true(grepl("DeclareTblrTemplate\\{firsthead\\}", txt))
+  expect_true(grepl("DeclareTblrTemplate\\{middlehead, lasthead\\}", txt))
   expect_true(grepl("Table 14.1.1 Demographics", txt, fixed = TRUE))
 })
 
@@ -531,7 +532,7 @@ test_that("'last' footnotes appear in lastfoot of final section only", {
   expect_true(grepl("Every page note", last_body, fixed = TRUE))
 })
 
-test_that("LaTeX leading factor uses 1.15 not 1.2", {
+test_that("LaTeX leading factor uses 1.2 (matches RTF row_height_twips)", {
   tmp <- tempfile(fileext = ".tex")
   on.exit(unlink(tmp), add = TRUE)
 
@@ -542,9 +543,8 @@ test_that("LaTeX leading factor uses 1.15 not 1.2", {
     fr_render(tmp)
 
   txt <- paste(readLines(tmp, warn = FALSE), collapse = "\n")
-  # 9 * 1.08 = 9.72, rounded to 9.7 (not 9 * 1.2 = 10.8)
-  expect_true(grepl("9.7", txt, fixed = TRUE))
-  expect_false(grepl("10.8", txt, fixed = TRUE))
+  # 9 * 1.2 = 10.8 — matches baseline_ratio used by row_height_twips()
+  expect_true(grepl("10.8", txt, fixed = TRUE))
 })
 
 
@@ -559,32 +559,6 @@ test_that("latex_preamble includes tolerance and emergencystretch", {
 })
 
 
-# ── Align gap near-zero width in LaTeX ─────────────────────────────────────
-
-test_that("align gap columns use near-zero width in LaTeX output", {
-  tmp <- tempfile(fileext = ".tex")
-  on.exit(unlink(tmp), add = TRUE)
-
-  data <- data.frame(
-    param = c("Age", "Sex"),
-    value = c("65.2", "50"),
-    stringsAsFactors = FALSE
-  )
-
-  data |>
-    fr_table() |>
-    fr_cols(
-      param = fr_col("Parameter", width = 2.5, align = "right"),
-      value = fr_col("Value",     width = 2.0, align = "left")
-    ) |>
-    fr_render(tmp)
-
-  txt <- paste(readLines(tmp, warn = FALSE), collapse = "\n")
-
-  # Align gap column should have near-zero width
-  gap_wd <- fr_env$latex_align_gap_width
-  expect_true(grepl(paste0(gap_wd, "in"), txt, fixed = TRUE))
-})
 
 test_that("span gap columns keep original width in LaTeX output", {
   tmp <- tempfile(fileext = ".tex")
@@ -870,8 +844,11 @@ test_that("latex_col_header_row handles multiline header labels", {
     )
   fspec <- finalize_spec(spec)
   row <- latex_col_header_row(fspec, fspec$columns)
-  # Multiline content should use \newline
-  expect_match(row, "\\\\newline", fixed = FALSE)
+
+  # Multiline content should use \parbox with \\ line breaks
+  # Column 'a' is numeric → default align "right" → \raggedleft
+  expect_match(row, "\\\\parbox", fixed = FALSE)
+  expect_match(row, "\\\\raggedleft", fixed = FALSE)
   expect_match(row, "Line1", fixed = TRUE)
   expect_match(row, "Line2", fixed = TRUE)
 })
@@ -1269,7 +1246,8 @@ test_that("latex_head_template includes group label when provided", {
   lines <- latex_head_template(fspec, group_label = "Parameter: Height")
   lines_str <- paste(lines, collapse = "\n")
   expect_match(lines_str, "Parameter: Height", fixed = TRUE)
-  expect_match(lines_str, "DeclareTblrTemplate\\{firsthead, middlehead, lasthead\\}", perl = TRUE)
+  expect_match(lines_str, "DeclareTblrTemplate\\{firsthead\\}", perl = TRUE)
+  expect_match(lines_str, "DeclareTblrTemplate\\{middlehead, lasthead\\}", perl = TRUE)
 })
 
 test_that("latex_head_template without titles or group_label suppresses templates", {
@@ -1444,16 +1422,20 @@ test_that("latex_border_specs generates hlines from fr_hlines", {
 })
 
 
-# ── latex_table_width ─────────────────────────────────────────────────────
+# ── footnote minipage width matches visible columns ──────────────────────
 
-test_that("latex_table_width sums column widths", {
+test_that("footnote minipage width matches visible column sum", {
   df <- data.frame(a = 1, b = 2)
   spec <- df |>
     fr_table() |>
-    fr_cols(a = fr_col("A", width = 3.0), b = fr_col("B", width = 2.5))
+    fr_cols(a = fr_col("A", width = 3.0), b = fr_col("B", width = 2.5)) |>
+    fr_footnotes("Note", .separator = TRUE)
   fspec <- finalize_spec(spec)
-  w <- latex_table_width(fspec)
-  expect_equal(w, 5.5)
+  fn_entries <- fspec$meta$footnotes
+  vis <- Filter(function(c) !isFALSE(c$visible), fspec$columns)
+  lines <- build_fn_latex_content(fn_entries, fspec, vis_columns = vis)
+  lines_str <- paste(lines, collapse = "\n")
+  expect_match(lines_str, "minipage\\}\\{5\\.5in\\}", perl = TRUE)
 })
 
 
@@ -1486,7 +1468,7 @@ test_that("build_fn_latex_content handles right-aligned footnotes", {
   expect_match(lines_str, "\\\\raggedleft", fixed = FALSE)
 })
 
-test_that("build_fn_latex_content includes separator line", {
+test_that("build_fn_latex_content includes separator line with linewidth", {
   df <- data.frame(x = 1)
   spec <- df |>
     fr_table() |>
@@ -1496,7 +1478,11 @@ test_that("build_fn_latex_content includes separator line", {
   fn_entries <- fspec$meta$footnotes
   lines <- build_fn_latex_content(fn_entries, fspec)
   lines_str <- paste(lines, collapse = "\n")
-  expect_match(lines_str, "\\\\rule\\{", perl = TRUE)
+  # Separator uses \linewidth (constrained by minipage to table width)
+  expect_match(lines_str, "\\\\rule\\{\\\\linewidth\\}", perl = TRUE)
+  # Minipage wraps the content
+  expect_match(lines_str, "\\\\begin\\{minipage\\}", perl = TRUE)
+  expect_match(lines_str, "\\\\end\\{minipage\\}", perl = TRUE)
 })
 
 test_that("build_fn_latex_content skips spacing when skip_spacing = TRUE", {
@@ -1512,6 +1498,25 @@ test_that("build_fn_latex_content skips spacing when skip_spacing = TRUE", {
   # Skipped version should be shorter (no vspace, no separator)
   expect_true(length(lines_skip) < length(lines_full))
   expect_false(any(grepl("\\\\rule\\{", lines_skip)))
+  # Both should have minipage wrapping
+  expect_true(any(grepl("minipage", lines_skip)))
+})
+
+test_that("footnote minipage excludes hidden page_by columns", {
+  df <- data.frame(grp = c("A", "B"), x = 1:2)
+  spec <- df |>
+    fr_table() |>
+    fr_cols(grp = fr_col("Group", width = 2), x = fr_col("X", width = 3)) |>
+    fr_rows(page_by = "grp") |>
+    fr_footnotes("Note")
+  fspec <- finalize_spec(spec)
+  fn_entries <- fspec$meta$footnotes
+  # Only visible column (x = 3in) should be in minipage, not hidden grp (2in)
+
+  vis <- Filter(function(c) !isFALSE(c$visible), fspec$columns)
+  lines <- build_fn_latex_content(fn_entries, fspec, vis_columns = vis)
+  lines_str <- paste(lines, collapse = "\n")
+  expect_match(lines_str, "minipage\\}\\{3in\\}", perl = TRUE)
 })
 
 

@@ -722,7 +722,10 @@ hex_to_rgb <- function(hex) {
                   substr(hex, 3, 3), substr(hex, 3, 3))
   }
   if (nchar(hex) != 6L) {
-    cli_abort("Invalid hex color {.val {paste0('#', hex)}}. Expected 3 or 6 hex digits.")
+    cli_abort(c(
+      "Invalid hex color {.val {paste0('#', hex)}}. Expected 3 or 6 hex digits.",
+      "i" = "Example: {.code \"#003366\"} or {.code \"#036\"}."
+    ))
   }
   c(
     r = strtoi(substr(hex, 1, 2), 16L),
@@ -837,7 +840,8 @@ resolve_tokens_single <- function(text, token_map, context) {
       if (is.null(val)) {
         cli_abort(c(
           "Unknown token {.val {{{nm}}}} in {context}.",
-          "i" = "Available tokens: {.val {names(token_map)}}."
+          "i" = "Available tokens: {.val {names(token_map)}}.",
+          "i" = "Example: {.code fr_pagehead(left = \"{{program}}\")}"
         ))
       }
       text <- sub(paste0("{", nm, "}"), as.character(val), text, fixed = TRUE)
@@ -896,9 +900,8 @@ fr_env$valign_to_latex <- c(
 #' tabularray border linestyle names
 #' @noRd
 # ── LaTeX spacing constants ──────────────────────────────────────────────
-fr_env$latex_leading_factor <- 1.08
+fr_env$latex_leading_factor <- 1.2
 fr_env$latex_rowsep <- "0.5pt"
-fr_env$latex_colsep <- "2pt"
 
 # ── RTF rendering constants ────────────────────────────────────────────────
 fr_env$rtf_leading_factor    <- 1.4
@@ -907,10 +910,13 @@ fr_env$rtf_decimal_pad       <- 36L
 fr_env$rtf_box_border_wd     <- 0.5
 fr_env$rtf_spanner_brdrw     <- 10L
 
+# ── Page break / keep-together defaults ───────────────────────────────────
+fr_env$default_orphan_min      <- 3L
+fr_env$default_widow_min       <- 3L
+
 # ── LaTeX rendering constants (additional) ────────────────────────────────
 fr_env$latex_space_width_em    <- 0.55
 fr_env$latex_fn_sep_width_pt   <- 0.4
-fr_env$latex_align_gap_width   <- 0.001  # near-zero inches; adjacent colsep provides visual break
 fr_env$points_per_inch         <- 72
 
 fr_env$linestyle_latex <- c(

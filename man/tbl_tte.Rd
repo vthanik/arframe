@@ -3,29 +3,61 @@
 \docType{data}
 \name{tbl_tte}
 \alias{tbl_tte}
-\title{Time-to-Event Summary Table (Table 14.2.1)}
+\title{Time-to-Event Summary Table (Table 14.2.1.1)}
 \format{
-A data frame with columns:
+A data frame with 12 rows and 5 columns:
 \describe{
-\item{statistic}{Row label (e.g. \code{"Number of subjects"}, \code{"Median time (days)"})}
-\item{placebo}{Placebo arm value}
+\item{section}{Section grouping key: \code{"Time to Study Withdrawal"},
+\code{"KM Estimates"}, \code{"Log-Rank Test"}, or \code{"Hazard Ratio"}. Use with
+\code{fr_rows(group_by = "section")} for visual separation between blocks}
+\item{statistic}{Row label with indentation (e.g.
+\code{"  Median (95\% CI) [a]"}, \code{"  Zom 50mg vs Placebo"}).
+Section headers have no indent; detail rows are indented with two spaces}
 \item{zom_50mg}{Zomerane 50mg arm value}
 \item{zom_100mg}{Zomerane 100mg arm value}
-\item{total}{All subjects value}
+\item{placebo}{Placebo arm value}
 }
 }
 \source{
 Synthetic data generated in \code{data-raw/create_tbl_datasets.R}
-from \link{adtte}.
+from \link{adtte} (TTWD parameter).
 }
 \usage{
 tbl_tte
 }
 \description{
-Pre-summarized time-to-withdrawal table showing number of subjects,
-events, censored counts, and median/min/max time in days.
+Pre-summarized time-to-withdrawal table matching the pharma reference shell
+for Kaplan-Meier survival analysis output. Includes four sections:
+\itemize{
+\item \strong{Event counts}: events and censored n (\%) per arm
+\item \strong{KM percentile estimates}: 25th percentile, median, 75th percentile
+with 95\% confidence intervals
+\item \strong{Log-rank test}: two-sided p-value
+\item \strong{Hazard ratios}: active vs placebo with 95\% CI
+}
+
+KM estimates and hazard ratios are pre-computed synthetic values (no
+\code{survival} package dependency). Values are realistic for a 24-week trial
+with low event rates.
 }
 \examples{
 tbl_tte
+
+# Render with section grouping and footnotes
+spec <- tbl_tte |>
+  fr_table() |>
+  fr_cols(
+    section   = fr_col(visible = FALSE),
+    statistic = fr_col("", width = 3),
+    zom_50mg  = fr_col("Zomerane 50mg"),
+    zom_100mg = fr_col("Zomerane 100mg"),
+    placebo   = fr_col("Placebo")
+  ) |>
+  fr_rows(group_by = "section") |>
+  fr_footnotes(
+    "[a] Kaplan-Meier estimate.",
+    "[b] Two-sided log-rank test.",
+    "[c] Cox proportional hazards model."
+  )
 }
 \keyword{datasets}

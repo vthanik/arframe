@@ -295,45 +295,6 @@ test_that("build_cell_grid evaluates inline markup in cell content", {
 })
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# inject_align_gaps
-# ══════════════════════════════════════════════════════════════════════════════
-
-test_that("inject_align_gaps inserts gap between right→left adjacent columns", {
-  df <- data.frame(a = "x", b = "y", stringsAsFactors = FALSE)
-  spec <- df |> fr_table() |>
-    fr_cols(a = fr_col("A", align = "right"),
-            b = fr_col("B", align = "left"))
-  spec <- finalize_spec(spec)
-  col_names <- names(spec$columns)
-  gap_cols <- col_names[grepl("__align_gap_", col_names)]
-  expect_length(gap_cols, 1L)
-  expect_true(spec$columns[[gap_cols]]$is_gap)
-})
-
-test_that("inject_align_gaps does NOT insert gap for left→left columns", {
-  df <- data.frame(a = "x", b = "y", stringsAsFactors = FALSE)
-  spec <- df |> fr_table() |>
-    fr_cols(a = fr_col("A", align = "left"),
-            b = fr_col("B", align = "left"))
-  spec <- finalize_spec(spec)
-  col_names <- names(spec$columns)
-  gap_cols <- col_names[grepl("__align_gap_", col_names)]
-  expect_length(gap_cols, 0L)
-})
-
-test_that("inject_align_gaps respects align_gap = FALSE", {
-  df <- data.frame(a = "x", b = "y", stringsAsFactors = FALSE)
-  spec <- df |> fr_table() |>
-    fr_cols(a = fr_col("A", align = "right"),
-            b = fr_col("B", align = "left")) |>
-    fr_header(align_gap = FALSE)
-  spec <- finalize_spec(spec)
-  col_names <- names(spec$columns)
-  gap_cols <- col_names[grepl("__align_gap_", col_names)]
-  expect_length(gap_cols, 0L)
-})
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Additional coverage tests
@@ -788,15 +749,18 @@ test_that("build_keep_mask returns FALSE for empty keep_cols", {
   expect_equal(build_keep_mask(data, character(0)), c(FALSE, FALSE))
 })
 
-test_that("build_keep_mask marks multi-row groups for keep-together", {
+test_that("build_keep_mask small groups kept entirely together", {
+  # 2-row groups (< default orphan_min + widow_min = 6): keep all together
   data <- data.frame(
     grp = c("A", "A", "B", "B"),
     val = c("1", "2", "3", "4"),
     stringsAsFactors = FALSE
   )
   mask <- build_keep_mask(data, "grp")
-  # All rows should be marked TRUE (each group has 2 rows)
-  expect_equal(mask, c(TRUE, TRUE, TRUE, TRUE))
+  # Row 1 keeps with row 2 (TRUE), row 2 last in group (FALSE)
+
+  # Row 3 keeps with row 4 (TRUE), row 4 last in group (FALSE)
+  expect_equal(mask, c(TRUE, FALSE, TRUE, FALSE))
 })
 
 test_that("build_keep_mask ignores blank rows", {
@@ -808,16 +772,51 @@ test_that("build_keep_mask ignores blank rows", {
   mask <- build_keep_mask(data, "grp")
   # Blank row (row 3) should be FALSE
   expect_false(mask[3])
-  # Group rows should be TRUE
+  # Group A: row 1 keeps with row 2, row 2 last (FALSE)
   expect_true(mask[1])
-  expect_true(mask[2])
+  expect_false(mask[2])
+  # Group B: row 4 keeps with row 5, row 5 last (FALSE)
   expect_true(mask[4])
-  expect_true(mask[5])
+  expect_false(mask[5])
 })
 
 test_that("build_keep_mask returns FALSE for non-existent columns", {
   data <- data.frame(a = c("A", "A"), stringsAsFactors = FALSE)
   expect_equal(build_keep_mask(data, "nonexistent"), c(FALSE, FALSE))
+})
+
+test_that("build_keep_mask large group uses orphan/widow minimums", {
+  # Group with 10 rows, orphan_min = 3, widow_min = 3
+  data <- data.frame(
+    grp = rep("A", 10L),
+    val = as.character(seq_len(10L)),
+    stringsAsFactors = FALSE
+  )
+  mask <- build_keep_mask(data, "grp", orphan_min = 3L, widow_min = 3L)
+  # Top: rows 1-2 keep-with-next (orphan_min - 1 = 2 rows)
+  expect_true(mask[1])
+  expect_true(mask[2])
+  expect_false(mask[3])  # Middle: free to split
+  expect_false(mask[4])
+  # Bottom: rows 8-9 keep-with-next (widow_min = 3 → last 3 glued)
+  expect_true(mask[8])
+  expect_true(mask[9])
+  expect_false(mask[10])  # Last row: no next row to keep with
+})
+
+test_that("build_keep_mask respects custom orphan_min/widow_min", {
+  data <- data.frame(
+    grp = rep("A", 12L),
+    val = as.character(seq_len(12L)),
+    stringsAsFactors = FALSE
+  )
+  mask <- build_keep_mask(data, "grp", orphan_min = 4L, widow_min = 2L)
+  # Top: rows 1-3 keep-with-next (orphan_min - 1 = 3)
+  expect_true(all(mask[1:3]))
+  expect_false(mask[4])
+  # Bottom: rows 11 keep-with-next (widow_min = 2 → last 2 glued)
+  expect_true(mask[11])
+  expect_false(mask[12])
 })
 
 
@@ -831,35 +830,81 @@ test_that("insert_blank_after inserts blanks at group boundaries", {
   )
   result <- insert_blank_after(data, "grp")
   # 5 data rows + 2 blank rows (A->B, B->C) = 7
-
-  expect_equal(nrow(result), 7L)
-  expect_true(all(result[3L, ] == ""))
-  expect_true(all(result[6L, ] == ""))
+  expect_equal(nrow(result$data), 7L)
+  expect_true(all(result$data[3L, ] == ""))
+  expect_true(all(result$data[6L, ] == ""))
+  # insert_positions are original row indices of boundary rows
+  expect_equal(result$insert_positions, c(2L, 4L))
 })
 
 test_that("insert_blank_after returns data unchanged for single row", {
   data <- data.frame(grp = "A", val = "1", stringsAsFactors = FALSE)
   result <- insert_blank_after(data, "grp")
-  expect_equal(nrow(result), 1L)
+  expect_equal(nrow(result$data), 1L)
+  expect_equal(result$insert_positions, integer(0))
 })
 
 test_that("insert_blank_after returns data unchanged when no blank_cols", {
   data <- data.frame(grp = c("A", "B"), val = c("1", "2"),
                      stringsAsFactors = FALSE)
   result <- insert_blank_after(data, character(0))
-  expect_equal(nrow(result), 2L)
+  expect_equal(nrow(result$data), 2L)
+  expect_equal(result$insert_positions, integer(0))
 })
 
 test_that("insert_blank_after returns data unchanged for non-existent cols", {
   data <- data.frame(a = c("A", "B"), stringsAsFactors = FALSE)
   result <- insert_blank_after(data, "nonexistent")
-  expect_equal(nrow(result), 2L)
+  expect_equal(nrow(result$data), 2L)
+  expect_equal(result$insert_positions, integer(0))
 })
 
 test_that("insert_blank_after returns data unchanged when all keys are same", {
   data <- data.frame(grp = c("A", "A", "A"), stringsAsFactors = FALSE)
   result <- insert_blank_after(data, "grp")
-  expect_equal(nrow(result), 3L)
+  expect_equal(nrow(result$data), 3L)
+  expect_equal(result$insert_positions, integer(0))
+})
+
+
+# ── remap_style_indices ──────────────────────────────────────────────────────
+
+test_that("remap_style_indices shifts numeric row indices", {
+  styles <- list(
+    new_fr_cell_style(region = "body", type = "row", rows = c(1L, 3L),
+                      bold = TRUE),
+    new_fr_cell_style(region = "body", type = "col", rows = c(2L, 4L),
+                      cols = "a", italic = TRUE)
+  )
+  # Blank inserted after row 2 in original data
+  result <- remap_style_indices(styles, c(2L))
+  # Row 1 stays 1, row 3 → 4 (shifted +1)
+  expect_equal(result[[1]]$rows, c(1L, 4L))
+  # Row 2 stays 2, row 4 → 5
+  expect_equal(result[[2]]$rows, c(2L, 5L))
+})
+
+test_that("remap_style_indices handles multiple insert positions", {
+  styles <- list(
+    new_fr_cell_style(region = "body", type = "row", rows = c(1L, 2L, 3L, 4L, 5L),
+                      bold = TRUE)
+  )
+  # Blanks after rows 2 and 4 in original data
+  result <- remap_style_indices(styles, c(2L, 4L))
+  # Row 1 → 1, 2 → 2, 3 → 4, 4 → 5, 5 → 7
+  expect_equal(result[[1]]$rows, c(1L, 2L, 4L, 5L, 7L))
+})
+
+test_that("remap_style_indices skips 'all' and NULL rows", {
+  styles <- list(
+    new_fr_cell_style(region = "body", type = "col", rows = "all",
+                      cols = "a", bold = TRUE),
+    new_fr_cell_style(region = "body", type = "col", rows = NULL,
+                      cols = "b", italic = TRUE)
+  )
+  result <- remap_style_indices(styles, c(2L))
+  expect_equal(result[[1]]$rows, "all")
+  expect_null(result[[2]]$rows)
 })
 
 

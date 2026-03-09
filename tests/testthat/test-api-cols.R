@@ -81,12 +81,15 @@ test_that("fr_cols with numeric .width sets fixed width", {
   }
 })
 
-test_that("fr_cols with NULL .width uses 1.5 default", {
+test_that("fr_cols with NULL .width uses auto mode", {
   spec <- fr_table(df_simple) |>
     fr_cols()
 
+  # Default is "auto" — columns get content-based widths, not fixed 1.5
+  expect_identical(spec$columns_meta$width_mode, "auto")
   for (col in spec$columns) {
-    expect_equal(col$width, 1.5, info = paste("Column:", col$id))
+    expect_true(is.numeric(col$width) && col$width > 0, info = paste("Column:", col$id))
+    expect_true(isTRUE(col$width_auto), info = paste("Column:", col$id))
   }
 })
 
@@ -365,8 +368,9 @@ test_that("fr_cols tidyselect with starts_with helper", {
   expect_equal(spec$columns[["trt_a"]]$width, 2.0)
   expect_equal(spec$columns[["trt_b"]]$width, 2.0)
   expect_equal(spec$columns[["trt_a"]]$align, "right")
-  # 'other' not matched
-  expect_equal(spec$columns[["other"]]$width, 1.5)  # default
+  # 'other' not matched — auto-estimated width
+  expect_true(is.numeric(spec$columns[["other"]]$width))
+  expect_true(isTRUE(spec$columns[["other"]]$width_auto))
 })
 
 

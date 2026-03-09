@@ -37,10 +37,12 @@
 #'   Default `3L`. Set to `1L` to disable.
 #' @param continuation Character scalar appended to the column header block on
 #'   continuation pages, e.g. `"(continued)"`. `NULL` (default) disables.
-#' @param col_split Logical. Whether to split wide tables across multiple
-#'   column pages. Default `FALSE`.
-#' @param stub_cols Character vector of column names to repeat on each
-#'   column-split page (e.g. the row-label column).
+#' @param col_gap Inter-column padding in **points** (total gap between
+#'   adjacent columns). Default `4` (2 pt left + 2 pt right per cell).
+#'   Increase to `6` or `8` if long text in adjacent columns runs together.
+#'   Set to `0` for zero padding (cells flush, legacy behaviour).
+#'   Applied symmetrically as half the value on each side of every cell
+#'   in both RTF and PDF output.
 #' @param tokens Named list of custom `{token}` values for use in page
 #'   headers/footers. E.g. `list(study = "TFRM-2024-001", pop = "FAS")`.
 #'   Use these tokens in [fr_pagehead()] and [fr_pagefoot()] strings.
@@ -122,14 +124,11 @@
 #'   fr_table() |>
 #'   fr_page(orphan_min = 2L, widow_min = 2L)
 #'
-#' ## ── Column split with stub columns ─────────────────────────────────────
+#' ## ── Wider inter-column padding ─────────────────────────────────────────
 #'
-#' tbl_vs |>
+#' tbl_demog |>
 #'   fr_table() |>
-#'   fr_page(
-#'     col_split  = TRUE,
-#'     stub_cols  = c("param", "statistic")
-#'   )
+#'   fr_page(col_gap = 8)   # 4 pt each side (generous spacing)
 #'
 #' ## ── Legal paper size (8.5 x 14 in) ─────────────────────────────────────
 #'
@@ -138,13 +137,14 @@
 #'   fr_page(paper = "legal", orientation = "landscape", margins = 1)
 #'
 #' @seealso [fr_pagehead()], [fr_pagefoot()] for running headers/footers,
-#'   [fr_rows()] for `page_by` / `group_by` row pagination.
+#'   [fr_rows()] for `page_by` / `group_by` row pagination,
+#'   [fr_cols()] with `.split` for column splitting.
 #'
 #' @export
 fr_page <- function(spec, orientation = NULL, paper = NULL, margins = NULL,
                     font_family = NULL, font_size = NULL, orphan_min = NULL,
-                    widow_min = NULL, continuation = NULL, col_split = NULL,
-                    stub_cols = NULL, tokens = NULL) {
+                    widow_min = NULL, continuation = NULL, col_gap = NULL,
+                    tokens = NULL) {
   call <- caller_env()
   check_fr_spec(spec, call = call)
 
@@ -159,8 +159,7 @@ fr_page <- function(spec, orientation = NULL, paper = NULL, margins = NULL,
     orphan_min   = orphan_min   %||% old$orphan_min,
     widow_min    = widow_min    %||% old$widow_min,
     continuation = if (!is.null(continuation)) continuation else old$continuation,
-    col_split    = col_split    %||% old$col_split,
-    stub_cols    = stub_cols    %||% old$stub_cols,
+    col_gap      = col_gap      %||% old$col_gap,
     tokens       = if (!is.null(tokens)) tokens else old$tokens,
     call         = call
   )
@@ -188,9 +187,10 @@ fr_page <- function(spec, orientation = NULL, paper = NULL, margins = NULL,
 #' Calling `fr_pagehead()` again **replaces** the previous header.
 #'
 #' @param spec An `fr_spec` object from [fr_table()].
-#' @param left Character scalar or `NULL`. Left zone text.
-#' @param center Character scalar or `NULL`. Center zone text.
-#' @param right Character scalar or `NULL`. Right zone text.
+#' @param left Character scalar, character vector, or `NULL`. Left zone text.
+#'   Vectors are collapsed with newlines to produce multi-line output.
+#' @param center Character scalar, character vector, or `NULL`. Center zone text.
+#' @param right Character scalar, character vector, or `NULL`. Right zone text.
 #'   All three zones support token placeholders (e.g. \code{thepage})
 #'   evaluated at render time.
 #' @param font_size Font size for the header text in points. `NULL` inherits
@@ -309,6 +309,11 @@ fr_pagehead <- function(spec, left = NULL, center = NULL, right = NULL,
   check_scalar_lgl(bold, arg = "bold", call = call)
   if (!is.null(font_size)) check_positive_num(font_size, arg = "font_size",
                                                call = call)
+  # Collapse character vectors into newline-separated scalars
+  left   <- collapse_chrome_text(left)
+  center <- collapse_chrome_text(center)
+  right  <- collapse_chrome_text(right)
+
   spec$pagehead <- new_fr_pagechrome(left      = left,
                                       center    = center,
                                       right     = right,
@@ -425,6 +430,11 @@ fr_pagefoot <- function(spec, left = NULL, center = NULL, right = NULL,
   check_scalar_lgl(bold, arg = "bold", call = call)
   if (!is.null(font_size)) check_positive_num(font_size, arg = "font_size",
                                                call = call)
+  # Collapse character vectors into newline-separated scalars
+  left   <- collapse_chrome_text(left)
+  center <- collapse_chrome_text(center)
+  right  <- collapse_chrome_text(right)
+
   spec$pagefoot <- new_fr_pagechrome(left      = left,
                                       center    = center,
                                       right     = right,
@@ -435,6 +445,28 @@ fr_pagefoot <- function(spec, left = NULL, center = NULL, right = NULL,
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# ── Helper: collapse character vectors for pagehead/pagefoot zones ───────────
+
+#' Collapse multi-element character vectors to newline-separated scalar
+#'
+#' Allows `fr_pagehead(left = c("Line 1", "Line 2"))` by joining with `"\n"`.
+#' Validates type and provides clear dplyr-style error on misuse.
+#' @noRd
+collapse_chrome_text <- function(x, arg = caller_arg(x), call = caller_env()) {
+  if (is.null(x)) return(NULL)
+  if (!is.character(x)) {
+    cli_abort(
+      c("{.arg {arg}} must be a character string or character vector.",
+        "x" = "You supplied a {.cls {class(x)}} value.",
+        "i" = "Example: {.code fr_pagehead({arg} = \"Study: TFRM-2024-001\")}"),
+      call = call
+    )
+  }
+  if (length(x) <= 1L) return(x)
+  paste0(x, collapse = "\n")
+}
+
+
 # fr_spacing — Section spacing control
 # ══════════════════════════════════════════════════════════════════════════════
 

@@ -109,12 +109,6 @@
 #'   a clean visual break between span groups in both RTF and PDF output,
 #'   without relying on border trimming. Default `TRUE`. Set `FALSE` to
 #'   disable gap insertion and produce continuous span hlines.
-#' @param align_gap Logical or `NULL`. Whether to insert narrow gap columns
-#'   between adjacent right-aligned and left-aligned columns. When column A
-#'   is right-aligned and column B (immediately to its right) is left-aligned,
-#'   their content can appear visually merged; the gap prevents this. Default
-#'   `TRUE`. Also configurable via `header: align_gap:` in `_tlframe.yml`.
-#'
 #' @return A modified `fr_spec`. Header config stored in `spec$header`.
 #'
 #' @section Priority chain for header alignment:
@@ -258,7 +252,7 @@ fr_header <- function(spec, align = NULL, valign = NULL,
                       n_subject = NULL, n_data = NULL,
                       bold = NULL, bg = NULL, fg = NULL,
                       font_size = NULL, repeat_on_page = NULL,
-                      span_gap = NULL, align_gap = NULL) {
+                      span_gap = NULL) {
   call <- caller_env()
   check_fr_spec(spec, call = call)
 
@@ -270,7 +264,6 @@ fr_header <- function(spec, align = NULL, valign = NULL,
   if (!is.null(fg)) fg <- resolve_color(fg, call = call)
   if (!is.null(repeat_on_page)) check_scalar_lgl(repeat_on_page, arg = "repeat_on_page", call = call)
   if (!is.null(span_gap)) check_scalar_lgl(span_gap, arg = "span_gap", call = call)
-  if (!is.null(align_gap)) check_scalar_lgl(align_gap, arg = "align_gap", call = call)
 
   # Validate N-count parameters
   validate_n_param(n = n, n_subject = n_subject, n_data = n_data,
@@ -292,8 +285,7 @@ fr_header <- function(spec, align = NULL, valign = NULL,
     format         = format    %||% spec$header$format,
     n_subject      = n_subject %||% spec$header$n_subject,
     n_data         = n_data    %||% spec$header$n_data,
-    span_gap       = span_gap  %||% spec$header$span_gap,
-    align_gap      = align_gap %||% spec$header$align_gap
+    span_gap       = span_gap  %||% spec$header$span_gap
   )
 
   spec

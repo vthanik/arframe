@@ -5,7 +5,7 @@
 \alias{advs}
 \title{Vital Signs Analysis Dataset (ADVS)}
 \format{
-A data frame with approximately 1900 rows and 9 variables:
+A data frame with approximately 1900 rows and 12 variables:
 \describe{
 \item{STUDYID}{Study identifier (\code{"TFRM-2024-001"})}
 \item{USUBJID}{Unique subject identifier}
@@ -16,13 +16,17 @@ or \code{"Zomerane 100mg"}}
 \item{PARAM}{Vital sign parameter: \code{"Systolic BP (mmHg)"},
 \code{"Diastolic BP (mmHg)"}, \code{"Heart Rate (bpm)"}, \code{"Weight (kg)"},
 or \code{"Temperature (C)"}}
+\item{PARAMCD}{Parameter code: \code{"SYSBP"}, \code{"DIABP"}, \code{"HR"},
+\code{"WEIGHT"}, or \code{"TEMP"}}
 \item{AVISIT}{Analysis visit: \code{"Baseline"}, \code{"Week 12"}, or \code{"Week 24"}}
 \item{AVAL}{Analysis value (measured vital sign)}
+\item{BASE}{Baseline value (copy of AVAL at Baseline visit)}
 \item{CHG}{Change from baseline (\code{NA} at baseline)}
+\item{ABLFL}{Baseline record flag: \code{"Y"} at Baseline, \code{NA} otherwise}
 }
 }
 \source{
-Synthetic data generated in \code{data-raw/create_advs_dataset.R}
+Synthetic data generated in \code{data-raw/create_adam_datasets.R}
 using subjects from \link{adsl}.
 }
 \usage{
@@ -32,7 +36,7 @@ advs
 Synthetic record-level vital signs dataset from study TFRM-2024-001.
 Contains one row per subject per parameter per visit. Some subjects have
 missing parameters to create \strong{natural N variation} across vital sign
-groups — exactly the scenario that per-group N-count headers address.
+groups --- exactly the scenario that per-group N-count headers address.
 
 Designed as the \code{n_data} source for \code{\link[=fr_header]{fr_header()}} with \code{n = "auto"} or
 \verb{n = function(...)} when the display table (\link{tbl_vs}) is pre-summarized.
@@ -40,12 +44,12 @@ Designed as the \code{n_data} source for \code{\link[=fr_header]{fr_header()}} w
 \section{N variation by design}{
 
 Not all subjects have every parameter measured. Availability rates decrease
-with dose and parameter complexity — Temperature has the most missing data,
+with dose and parameter complexity --- Temperature has the most missing data,
 Blood Pressure the least. This produces realistic per-group N differences:\tabular{llll}{
    Parameter \tab Placebo \tab Zom 50mg \tab Zom 100mg \cr
-   Systolic BP \tab 45 \tab 45 \tab ~39 \cr
-   Heart Rate \tab 45 \tab ~38 \tab ~40 \cr
-   Temperature \tab ~42 \tab ~39 \tab ~37 \cr
+   Systolic BP \tab 45 \tab ~41 \tab ~43 \cr
+   Heart Rate \tab ~40 \tab ~42 \tab ~38 \cr
+   Temperature \tab ~38 \tab ~42 \tab ~36 \cr
 }
 }
 

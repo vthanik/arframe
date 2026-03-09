@@ -3,7 +3,7 @@
 \docType{data}
 \name{tbl_demog}
 \alias{tbl_demog}
-\title{Demographics and Baseline Characteristics Table (Table 14.1.1)}
+\title{Demographics and Baseline Characteristics Table (Table 14.1.5)}
 \format{
 A data frame with columns:
 \describe{
@@ -12,9 +12,12 @@ A data frame with columns:
 \item{zom_50mg}{Zomerane 50mg arm summary}
 \item{zom_100mg}{Zomerane 100mg arm summary}
 \item{total}{All subjects summary}
-\item{group}{Characteristic group key (e.g. \code{"age"}, \code{"sex"}). Use with
-\code{fr_rows(blank_after = "group")} to insert visual separation between
-blocks. Hide with \code{fr_cols(group = fr_col(visible = FALSE))}.}
+\item{group}{Characteristic group key. Age uses separate keys for
+continuous (\code{"age_cont"}) and categorical (\code{"age_cat"}) summaries;
+other blocks use \code{"n"}, \code{"sex"}, \code{"race"}, \code{"bmi"}, \code{"mmse"},
+\code{"completion"}. Use with \code{fr_rows(blank_after = "group")} to insert
+visual separation between blocks. Hide with
+\code{fr_cols(group = fr_col(visible = FALSE))}.}
 }
 }
 \source{
@@ -26,7 +29,7 @@ tbl_demog
 }
 \description{
 Pre-summarized demographics table in wide format, ready for use with
-\code{fr_table()}. One row per characteristic line (headers, summary
+\code{\link[=fr_table]{fr_table()}}. One row per characteristic line (headers, summary
 statistics, category counts). Columns are treatment arms.
 }
 \examples{

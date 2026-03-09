@@ -16,11 +16,12 @@ fr_pagehead(
 \arguments{
 \item{spec}{An \code{fr_spec} object from \code{\link[=fr_table]{fr_table()}}.}
 
-\item{left}{Character scalar or \code{NULL}. Left zone text.}
+\item{left}{Character scalar, character vector, or \code{NULL}. Left zone text.
+Vectors are collapsed with newlines to produce multi-line output.}
 
-\item{center}{Character scalar or \code{NULL}. Center zone text.}
+\item{center}{Character scalar, character vector, or \code{NULL}. Center zone text.}
 
-\item{right}{Character scalar or \code{NULL}. Right zone text.
+\item{right}{Character scalar, character vector, or \code{NULL}. Right zone text.
 All three zones support token placeholders (e.g. \code{thepage})
 evaluated at render time.}
 

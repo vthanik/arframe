@@ -104,7 +104,9 @@ fr_rows_matches <- function(col, value = NULL, pattern = NULL,
   call <- caller_env()
 
   if (!is.character(col) || length(col) != 1L) {
-    cli_abort("{.arg col} must be a single character string (column name).", call = call)
+    cli_abort(c("{.arg col} must be a single character string (column name).",
+                "x" = "You supplied {.obj_type_friendly {col}}."),
+              call = call)
   }
   if (is.null(value) && is.null(pattern)) {
     cli_abort("Provide either {.arg value} (exact match) or {.arg pattern} (regex).",
@@ -482,7 +484,8 @@ fr_row_style <- function(rows = NULL, bold = NULL, italic = NULL,
 #'   )
 #'
 #' @seealso [fr_row_style()] for row-level styling, [fr_style()] for
-#'   cell-level styling, [fr_styles()] to apply to a spec.
+#'   cell-level styling, [fr_styles()] to apply to a spec,
+#'   [fr_col()] for column-level alignment via `align`.
 #'
 #' @export
 fr_col_style <- function(cols = NULL, bold = NULL, italic = NULL,
@@ -809,7 +812,8 @@ fr_style_if <- function(condition,
 
   if (!is.function(condition) && !inherits(condition, "formula")) {
     cli_abort(
-      "{.arg condition} must be a formula (e.g., {.code ~ .x == \"Total\"}) or function.",
+      c("{.arg condition} must be a formula (e.g., {.code ~ .x == \"Total\"}) or function.",
+        "x" = "You supplied {.obj_type_friendly {condition}}."),
       call = call
     )
   }

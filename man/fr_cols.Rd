@@ -10,7 +10,8 @@ fr_cols(
   .list = NULL,
   .width = NULL,
   .align = NULL,
-  .label_fn = NULL
+  .label_fn = NULL,
+  .split = NULL
 )
 }
 \arguments{
@@ -53,7 +54,8 @@ remaining space is divided equally.
 width as a fraction of the printable page width. Must be between
 \code{"0\%"} (exclusive) and \code{"100\%"} (inclusive). Columns with an explicit
 \code{width} in \code{\link[=fr_col]{fr_col()}} are not affected.
-\item \strong{\code{NULL}} — uses the package default of 1.5 in.
+\item \strong{\code{NULL}} (default) — same as \code{"auto"}. Columns auto-size from
+content and header text.
 }}
 
 \item{.align}{Default alignment applied to all columns that do not have an
@@ -72,9 +74,29 @@ Common transforms:
 \item \code{~ tools::toTitleCase(gsub("_", " ", .x))} — title case.
 \item \code{toupper} — all caps.
 }}
+
+\item{.split}{Logical or \code{NULL}. Column splitting for wide tables that
+exceed the printable page width:
+\itemize{
+\item \code{NULL} (default) — no splitting. All columns on one page.
+\item \code{TRUE} — split across multiple panels, with stub columns repeated
+in each panel. Panel width behaviour follows \code{.width}:
+\itemize{
+\item \code{.width = "auto"} → panels keep natural column widths.
+\item \code{.width = "fit"} → panels scale to fill the page width.
+\item \code{.width = "equal"} → unfixed columns share remaining space equally.
+}
+\item \code{FALSE} — explicitly no splitting.
+}
+
+Stub columns (repeated in every panel) are designated via
+\code{fr_col(stub = TRUE)}. When \code{.split} is enabled but no columns have
+\code{stub = TRUE}, stubs are auto-inferred from \code{group_by}/\code{indent_by}
+columns or the first column.}
 }
 \value{
-A modified \code{fr_spec}. Column specs stored in \code{spec$columns}.
+A modified \code{fr_spec}. Column specs stored in \code{spec$columns},
+split settings in \code{spec$columns_meta}.
 }
 \description{
 Configures the display label, width, alignment, and visibility of one or
@@ -250,6 +272,23 @@ tbl_demog |>
     n = c(zom_50mg = 45, zom_100mg = 45, placebo = 45, total = 135),
     format = "{name}\n(N={n})"
   )
+
+## ── Column splitting: split + fit to fill page ─────────────────────────
+
+tbl_vs |>
+  fr_table() |>
+  fr_cols(
+    param     = fr_col("Parameter", stub = TRUE),
+    statistic = fr_col("Statistic", stub = TRUE),
+    .split = TRUE,
+    .width = "fit"
+  )
+
+## ── Column splitting with natural widths (no stretching) ────────────────
+
+tbl_vs |>
+  fr_table() |>
+  fr_cols(.split = TRUE)
 
 }
 \seealso{

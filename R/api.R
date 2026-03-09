@@ -147,18 +147,18 @@
 #'
 #' ae_subset <- adae[1:20, c("USUBJID", "AEDECOD", "AESEV", "ASTDT")]
 #'
-#' # Table view: auto-detected alignment, 9pt, no col_split
+#' # Table view: auto-detected alignment, 9pt, no split
 #' spec_tbl <- ae_subset |>
 #'   fr_table() |>
 #'   fr_titles("Table View of AE Records")
 #' spec_tbl$page$font_size    # 9 (default)
 #'
-#' # Listing view: left-aligned, 8pt, col_split = TRUE, wrap = TRUE
+#' # Listing view: left-aligned, 8pt, split = TRUE, wrap = TRUE
 #' spec_lst <- ae_subset |>
 #'   fr_listing() |>
 #'   fr_titles("Listing View of AE Records")
-#' spec_lst$page$font_size    # 8 (listing default)
-#' spec_lst$page$col_split    # TRUE (listing default)
+#' spec_lst$page$font_size          # 8 (listing default)
+#' spec_lst$columns_meta$split      # TRUE (listing default)
 #'
 #' ## ── Hidden column used for grouping ──────────────────────────────────────
 #' # The "group" column drives indent_by but is not displayed.
@@ -178,7 +178,10 @@
 #' @export
 fr_table <- function(data) {
   if (!is.data.frame(data)) {
-    cli_abort("{.arg data} must be a data frame.", call = caller_env())
+    cli_abort(c("{.arg data} must be a data frame.",
+                "x" = "You supplied {.obj_type_friendly {data}}.",
+                "i" = "Example: {.code my_df |> fr_table()}"),
+              call = caller_env())
   }
   spec <- new_fr_spec(data)
   spec <- apply_config(spec)
@@ -211,7 +214,7 @@ fr_table <- function(data) {
 #' | Font size | 9pt | 8pt |
 #' | Default align | auto-detect | left |
 #' | hlines | none | header |
-#' | col_split | FALSE | TRUE |
+#' | split | NULL | TRUE |
 #' | wrap | FALSE | TRUE |
 #'
 #' @section Listing-specific features:
@@ -294,7 +297,10 @@ fr_table <- function(data) {
 #' @export
 fr_listing <- function(data) {
   if (!is.data.frame(data)) {
-    cli_abort("{.arg data} must be a data frame.", call = caller_env())
+    cli_abort(c("{.arg data} must be a data frame.",
+                "x" = "You supplied {.obj_type_friendly {data}}.",
+                "i" = "Example: {.code my_df |> fr_listing()}"),
+              call = caller_env())
   }
 
   spec <- new_fr_spec(data, type = "listing")
@@ -303,7 +309,7 @@ fr_listing <- function(data) {
 
   # Listing defaults (overridable by subsequent verb calls)
   spec$page$font_size <- 8
-  spec$page$col_split <- TRUE
+  spec$columns_meta$split <- TRUE
   spec$body$wrap <- TRUE
 
   # Default to left alignment for all columns
@@ -417,6 +423,7 @@ fr_figure <- function(plot, width = NULL, height = NULL) {
   if (!is_ggplot && !is_recorded) {
     cli_abort(
       c("{.arg plot} must be a {.cls ggplot} or {.cls recordedplot} object.",
+        "x" = "You supplied {.obj_type_friendly {plot}}.",
         "i" = "Use {.fn ggplot2::ggplot} or {.fn recordPlot} to create plots."),
       call = call
     )
