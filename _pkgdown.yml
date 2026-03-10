@@ -1,0 +1,159 @@
+url: https://vthanik.github.io/tlframe/
+
+template:
+  bootstrap: 5
+  bootswatch: cosmo
+  bslib:
+    primary: "#003366"
+    navbar-bg: "#003366"
+
+navbar:
+  structure:
+    left: [intro, articles, reference, news]
+    right: [search, github]
+  components:
+    intro:
+      text: Get Started
+      href: articles/tlframe.html
+    articles:
+      text: Articles
+      menu:
+        - text: "The Pharma Programmer's Handbook"
+          href: articles/tlframe.html
+        - text: "Study-Level Automation & Deep Features"
+          href: articles/advanced-features.html
+        - text: "Architecture & Custom Backends"
+          href: articles/extending-tlframe.html
+    reference:
+      text: Reference
+      href: reference/index.html
+    news:
+      text: News
+      href: news/index.html
+
+reference:
+  - title: "Pipeline Entry Points"
+    desc: "Create a spec from data — the starting point for every table, listing, or figure."
+    contents:
+      - fr_table
+      - fr_listing
+      - fr_figure
+
+  - title: "Column Configuration"
+    desc: "Control column labels, widths, alignment, and selection."
+    contents:
+      - fr_cols
+      - fr_col
+      - fr_select
+
+  - title: "Header Presentation"
+    desc: "Style column headers — bold, color, alignment, and automatic N-counts."
+    contents:
+      - fr_header
+      - fr_spans
+
+  - title: "Titles and Footnotes"
+    desc: "Add regulatory-standard titles and footnotes with inline markup."
+    contents:
+      - fr_titles
+      - fr_footnotes
+
+  - title: "Page Layout"
+    desc: "Paper size, orientation, margins, fonts, and running headers/footers."
+    contents:
+      - fr_page
+      - fr_pagehead
+      - fr_pagefoot
+      - fr_spacing
+
+  - title: "Row Organization"
+    desc: "Group rows, add blank separators, indent categories, and control pagination."
+    contents:
+      - fr_rows
+      - fr_rows_matches
+
+  - title: "Rules and Borders"
+    desc: "Horizontal and vertical lines — presets and custom placement."
+    contents:
+      - fr_hlines
+      - fr_vlines
+      - fr_grid
+
+  - title: "Cell Styling"
+    desc: "Conditional formatting for individual cells, rows, or columns."
+    contents:
+      - fr_style
+      - fr_row_style
+      - fr_col_style
+      - fr_styles
+      - fr_style_if
+      - fr_style_explain
+
+  - title: "Inline Markup"
+    desc: "Rich text in any cell, title, or footnote — superscripts, bold, symbols."
+    contents:
+      - fr_super
+      - fr_sub
+      - fr_bold
+      - fr_italic
+      - fr_underline
+      - fr_newline
+      - fr_dagger
+      - fr_ddagger
+      - fr_emdash
+      - fr_endash
+      - fr_unicode
+
+  - title: "Theme and Configuration"
+    desc: "Company-wide defaults via YAML and session-level themes."
+    contents:
+      - fr_theme
+      - fr_theme_set
+      - fr_theme_get
+      - fr_theme_reset
+      - fr_config
+      - fr_config_get
+      - fr_config_reset
+
+  - title: "Recipes"
+    desc: "Reusable pipeline fragments for standardized table types."
+    contents:
+      - fr_recipe
+      - fr_apply
+      - starts_with("c.fr_recipe")
+
+  - title: "Rendering"
+    desc: "Produce RTF, PDF, or LaTeX output from a spec."
+    contents:
+      - fr_render
+      - fr_backends
+      - fr_register_backend
+
+  - title: "Validation and Inspection"
+    desc: "Pre-render checks and programmatic access to spec components."
+    contents:
+      - fr_validate
+      - fr_get_data
+      - fr_get_columns
+      - fr_get_col
+      - fr_get_titles
+      - fr_get_footnotes
+      - fr_get_page
+      - fr_get_rules
+      - fr_get_styles
+
+  - title: "Built-in Datasets"
+    desc: "Synthetic CDISC ADaM datasets and pre-summarized TFL-ready tables."
+    contents:
+      - adsl
+      - adae
+      - adtte
+      - adcm
+      - advs
+      - tbl_demog
+      - tbl_ae_soc
+      - tbl_ae_summary
+      - tbl_disp
+      - tbl_tte
+      - tbl_cm
+      - tbl_vs

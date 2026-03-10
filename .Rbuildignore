@@ -10,3 +10,7 @@
 ^verify_compare\.R$
 ^doc$
 ^Meta$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^presentations$
