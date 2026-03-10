@@ -19,3 +19,5 @@ screenshots/
 # Build artifacts
 *.tar.gz
 *.Rcheck/
+/doc/
+/Meta/

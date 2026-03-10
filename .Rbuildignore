@@ -8,3 +8,5 @@
 ^screenshots$
 ^verify_compare$
 ^verify_compare\.R$
+^doc$
+^Meta$

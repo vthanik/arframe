@@ -32,9 +32,11 @@ Suggests:
     ggplot2 (>= 3.4.0),
     gt (>= 0.10.0),
     knitr,
+    rmarkdown,
     rstudioapi,
     testthat (>= 3.0.0),
     tinytex,
     withr
+VignetteBuilder: knitr
 Config/testthat/edition: 3
 LazyData: true
