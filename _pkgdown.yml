@@ -2,26 +2,49 @@ url: https://vthanik.github.io/tlframe/
 
 template:
   bootstrap: 5
-  bootswatch: cosmo
+  light-switch: true
   bslib:
     primary: "#003366"
     navbar-bg: "#003366"
+    font_scale: 1.0
+    base_font:
+      google: "Inter"
+    heading_font:
+      google: "Inter"
+    code_font:
+      google: "JetBrains Mono"
+
+home:
+  title: "tlframe — Regulatory-Grade Clinical Tables in R"
+  description: >
+    An R package for pharmaceutical submissions. Describe a table once
+    with an immutable pipeline — tlframe renders both RTF and PDF natively.
+    No intermediate HTML, no gt dependency, no RMarkdown pipeline.
+
+  links:
+    - text: "Report a bug"
+      href: https://github.com/vthanik/tlframe/issues
+    - text: "Browse source code"
+      href: https://github.com/vthanik/tlframe
 
 navbar:
   structure:
-    left: [intro, articles, reference, news]
-    right: [search, github]
+    left: [intro, learn, reference, news]
+    right: [search, lightswitch, github]
   components:
     intro:
       text: Get Started
       href: articles/tlframe.html
-    articles:
-      text: Articles
+    learn:
+      text: Learn
       menu:
+        - text: "─── Foundations"
         - text: "The Pharma Programmer's Handbook"
           href: articles/tlframe.html
+        - text: "─── Advanced"
         - text: "Study-Level Automation & Deep Features"
           href: articles/advanced-features.html
+        - text: "─── Internals"
         - text: "Architecture & Custom Backends"
           href: articles/extending-tlframe.html
     reference:
@@ -31,66 +54,158 @@ navbar:
       text: News
       href: news/index.html
 
+footer:
+  structure:
+    left: developed_by
+    right: built_with
+
 reference:
+  # ── Pipeline Entry Points ──────────────────────────────────────────────────
+
   - title: "Pipeline Entry Points"
-    desc: "Create a spec from data — the starting point for every table, listing, or figure."
+    desc: >
+      Every tlframe pipeline starts here. `fr_table()` creates a spec object
+      from a data frame — the immutable canvas that every subsequent verb
+      decorates. `fr_listing()` and `fr_figure()` create specs for patient
+      listings and embedded figures respectively. All three return an
+      `fr_spec` that flows through the same pipeline verbs.
     contents:
       - fr_table
       - fr_listing
       - fr_figure
 
+  # ── Column Configuration ──────────────────────────────────────────────────
+
   - title: "Column Configuration"
-    desc: "Control column labels, widths, alignment, and selection."
+    desc: >
+      Columns are the structural backbone of every table. `fr_cols()` controls
+      labels, widths, alignment, visibility, and stub designation for all
+      columns at once. `fr_col()` is the constructor for individual column
+      specs — pass it as a named argument to `fr_cols()`. Width modes include
+      fixed inches, percentages, `"auto"` (AFM font metrics), `"fit"`
+      (content-based), and `"equal"` (uniform distribution).
     contents:
       - fr_cols
       - fr_col
-      - fr_select
 
-  - title: "Header Presentation"
-    desc: "Style column headers — bold, color, alignment, and automatic N-counts."
-    contents:
-      - fr_header
-      - fr_spans
+  # ── Titles and Footnotes ──────────────────────────────────────────────────
 
   - title: "Titles and Footnotes"
-    desc: "Add regulatory-standard titles and footnotes with inline markup."
+    desc: >
+      Regulatory tables require precise title and footnote formatting.
+      `fr_titles()` accepts 1–4 title lines (center-aligned by default,
+      configurable per line). `fr_footnotes()` adds footnotes with placement
+      control — repeat on every page or appear only on the last page (PDF).
+      Both support `{fr_super()}` and other inline markup for superscript
+      reference marks.
     contents:
       - fr_titles
       - fr_footnotes
 
+  # ── Header Presentation ───────────────────────────────────────────────────
+
+  - title: "Header Presentation"
+    desc: >
+      The column header row sits between titles and data. `fr_header()`
+      controls bold, alignment, background/foreground colors, and automatic
+      N-count labels via a `format` template (e.g., `"{name}\n(N={n})"`).
+      N-counts support four forms — scalar, named vector, per-group list,
+      and `"auto"`. `fr_spans()` adds spanning headers that group columns
+      under a shared label, with tidyselect support for column selection.
+    contents:
+      - fr_header
+      - fr_spans
+
+  # ── Page Layout ───────────────────────────────────────────────────────────
+
   - title: "Page Layout"
-    desc: "Paper size, orientation, margins, fonts, and running headers/footers."
+    desc: >
+      Page-level settings that control the physical output. `fr_page()` sets
+      paper size (letter/A4/legal), orientation (landscape/portrait), margins,
+      font family (Courier New/Arial/Times New Roman), and base font size.
+      `fr_pagehead()` and `fr_pagefoot()` define 3-slot running headers and
+      footers with token substitution — `{thepage}`, `{total_pages}`,
+      `{program}`, and `{datetime}` resolve automatically at render time.
+      `fr_spacing()` controls the gaps between titles, headers, and footnotes.
     contents:
       - fr_page
       - fr_pagehead
       - fr_pagefoot
       - fr_spacing
 
+  # ── Row Organization ──────────────────────────────────────────────────────
+
   - title: "Row Organization"
-    desc: "Group rows, add blank separators, indent categories, and control pagination."
+    desc: >
+      Row-level behavior that controls how data flows across pages.
+      `fr_rows()` handles five concerns — `group_by` (keeps related rows
+      together for pagination), `page_by` (splits data into separate page
+      sections), `indent_by` (nested row labels), `blank_after` (visual
+      separators between groups), and `sort_by` (row ordering).
+      `fr_rows_matches()` creates data-driven row selectors for use in
+      `fr_row_style()` — match rows by exact value or regex pattern instead
+      of hard-coding row numbers.
     contents:
       - fr_rows
       - fr_rows_matches
 
+  # ── Rules and Borders ─────────────────────────────────────────────────────
+
   - title: "Rules and Borders"
-    desc: "Horizontal and vertical lines — presets and custom placement."
+    desc: >
+      Horizontal and vertical lines define the visual structure of regulatory
+      tables. `fr_hlines()` accepts preset names (`"header"`, `"box"`,
+      `"all"`, `"section"`) or custom rule objects for precise placement.
+      `fr_vlines()` works identically for vertical borders. `fr_grid()`
+      is a convenience shortcut that sets both horizontal and vertical
+      rules in one call. Line weight, color, and position are all
+      configurable per rule.
     contents:
       - fr_hlines
       - fr_vlines
       - fr_grid
 
+  # ── Cell Styling ──────────────────────────────────────────────────────────
+
   - title: "Cell Styling"
-    desc: "Conditional formatting for individual cells, rows, or columns."
+    desc: >
+      Conditional formatting for individual cells, rows, or columns.
+      Three constructors target different scopes — `fr_style()` (cell-level),
+      `fr_row_style()` (row-level), `fr_col_style()` (column-level) — and
+      `fr_styles()` applies them to a spec. Later styles override earlier ones;
+      narrower scopes win (cell > row > column). All `cols` parameters accept
+      tidyselect expressions (`starts_with()`, `contains()`, `matches()`, etc.)
+      for pattern-based column targeting. `fr_style_if()` adds data-driven
+      conditional formatting (e.g., bold every "Total" row, red text for
+      p < 0.05). `fr_style_explain()` is a diagnostic tool that shows
+      exactly which style layers affect a specific cell.
+
+  - subtitle: "Style Constructors"
+    desc: "Create style objects — standalone, reusable, composable."
     contents:
       - fr_style
       - fr_row_style
       - fr_col_style
-      - fr_styles
       - fr_style_if
+
+  - subtitle: "Application and Diagnostics"
+    desc: "Apply style objects to a spec and inspect resolution."
+    contents:
+      - fr_styles
       - fr_style_explain
 
+  # ── Inline Markup ─────────────────────────────────────────────────────────
+
   - title: "Inline Markup"
-    desc: "Rich text in any cell, title, or footnote — superscripts, bold, symbols."
+    desc: >
+      Rich text formatting that works in any string — titles, footnotes,
+      column labels, and data cells. Markup functions produce invisible
+      sentinel tokens that survive `paste()`, `sprintf()`, and `glue()`
+      operations, then resolve to the correct backend syntax at render
+      time (RTF control words or LaTeX commands). Use inside `glue`-style
+      curly braces: `"P{fr_super('a')}-value"`.
+
+  - subtitle: "Text Formatting"
     contents:
       - fr_super
       - fr_sub
@@ -98,39 +213,84 @@ reference:
       - fr_italic
       - fr_underline
       - fr_newline
+
+  - subtitle: "Symbols"
+    contents:
       - fr_dagger
       - fr_ddagger
       - fr_emdash
       - fr_endash
       - fr_unicode
 
+  # ── Theme and Configuration ───────────────────────────────────────────────
+
   - title: "Theme and Configuration"
-    desc: "Company-wide defaults via YAML and session-level themes."
+    desc: >
+      Three-tier defaults system for standardizing output across a study
+      or company. **Tier 1 — YAML config**: `fr_config("_tlframe.yml")`
+      loads company-wide defaults from a file (page layout, rules, spacing).
+      **Tier 2 — Session theme**: `fr_theme_set()` applies study-level
+      defaults that persist for the R session. **Tier 3 — Per-table verbs**:
+      individual pipeline calls override everything. Each tier is optional;
+      later tiers always win.
+
+  - subtitle: "Session Theme"
+    desc: "Study-level defaults that apply to every table in the session."
     contents:
       - fr_theme
       - fr_theme_set
       - fr_theme_get
       - fr_theme_reset
+
+  - subtitle: "YAML Configuration"
+    desc: "File-based defaults for company-wide standardization."
+    contents:
       - fr_config
       - fr_config_get
       - fr_config_reset
 
+  # ── Recipes ───────────────────────────────────────────────────────────────
+
   - title: "Recipes"
-    desc: "Reusable pipeline fragments for standardized table types."
+    desc: >
+      Reusable pipeline fragments that capture a sequence of verb calls.
+      A recipe is a list of deferred function calls — create it once,
+      apply it to any spec with `fr_apply()`. Recipes compose: layer a
+      company recipe, a study recipe, and a table-type recipe to build
+      standardized output with minimal per-table code. Recipes can be
+      saved to `.rds` files and shared across programs.
     contents:
       - fr_recipe
       - fr_apply
       - starts_with("c.fr_recipe")
 
+  # ── Rendering ─────────────────────────────────────────────────────────────
+
   - title: "Rendering"
-    desc: "Produce RTF, PDF, or LaTeX output from a spec."
+    desc: >
+      The final step — produce output files from a finalized spec.
+      `fr_render()` dispatches to the appropriate backend based on the
+      file extension (`.rtf`, `.pdf`, `.tex`). The RTF backend writes
+      RTF 1.9.1 control words directly. The PDF backend generates
+      tabularray LaTeX and compiles with XeLaTeX (two passes for correct
+      page numbers). Custom backends can be registered with
+      `fr_register_backend()` for additional output formats.
     contents:
       - fr_render
       - fr_backends
       - fr_register_backend
 
+  # ── Validation and Inspection ─────────────────────────────────────────────
+
   - title: "Validation and Inspection"
-    desc: "Pre-render checks and programmatic access to spec components."
+    desc: >
+      Pre-render checks and programmatic access to spec internals.
+      `fr_validate()` runs a comprehensive check suite (column references,
+      width feasibility, rule targets, style consistency) and reports
+      issues before you spend time rendering. The `fr_get_*()` family
+      extracts specific components from a spec for programmatic QC —
+      compare column widths, verify title text, or assert footnote
+      counts in automated test scripts.
     contents:
       - fr_validate
       - fr_get_data
@@ -142,14 +302,28 @@ reference:
       - fr_get_rules
       - fr_get_styles
 
+  # ── Built-in Datasets ────────────────────────────────────────────────────
+
   - title: "Built-in Datasets"
-    desc: "Synthetic CDISC ADaM datasets and pre-summarized TFL-ready tables."
+    desc: >
+      Synthetic CDISC ADaM datasets from study TFRM-2024-001 (135 subjects,
+      3 treatment arms). Every example in the documentation runs against
+      these datasets — no external data required. The `adsl`/`adae`/`adtte`/
+      `adcm`/`advs` datasets follow ADaM structure conventions. The
+      `tbl_*` datasets are pre-summarized analysis results ready for
+      direct rendering — demographics, AE tables, disposition, time-to-event,
+      concomitant medications, and vital signs.
+
+  - subtitle: "ADaM Source Datasets"
     contents:
       - adsl
       - adae
       - adtte
       - adcm
       - advs
+
+  - subtitle: "Pre-Summarized TFL-Ready Tables"
+    contents:
       - tbl_demog
       - tbl_ae_soc
       - tbl_ae_summary
@@ -157,3 +331,15 @@ reference:
       - tbl_tte
       - tbl_cm
       - tbl_vs
+
+articles:
+  - title: "Foundations"
+    navbar: ~
+    contents:
+      - tlframe
+  - title: "Advanced"
+    contents:
+      - advanced-features
+  - title: "Internals"
+    contents:
+      - extending-tlframe

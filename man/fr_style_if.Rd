@@ -30,10 +30,16 @@ vector. The formula uses \code{.x} as the pronoun for the column values
 When \code{cols = NULL}, \code{.x} receives \code{seq_len(nrow(data))} (row indices),
 useful for zebra striping: \code{~ (.x \%\% 2) == 0}.}
 
-\item{cols}{Character vector of column name(s) to evaluate the condition
-against. The condition is applied to the values of each column
-independently. \code{NULL} for row-index-based conditions (e.g., zebra
-striping).}
+\item{cols}{Column selection for the condition. Accepts any of:
+\itemize{
+\item A character vector of column names: \code{cols = c("zom_50mg", "placebo")}
+\item A tidyselect expression: \code{cols = starts_with("zom_")}
+\item \code{NULL} (default) — row-index-based conditions (e.g., zebra striping).
+}
+
+The condition is applied to the values of each selected column
+independently. Tidyselect expressions are resolved when the style
+is applied via \code{\link[=fr_styles]{fr_styles()}}.}
 
 \item{apply_to}{Character scalar. Controls scope of matched rows:
 \itemize{

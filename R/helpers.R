@@ -147,7 +147,65 @@ resolve_rows_selector <- function(selector, data, call = caller_env()) {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 4. Plain Text Extraction
+# 4. Tidyselect Column Resolution
+#
+# Supports deferred resolution of tidyselect expressions in cols parameters.
+# Style constructors (fr_style, fr_col_style, fr_style_if) capture cols
+# via enquo() — character vectors evaluate immediately, tidyselect
+# expressions are stored as quosures and resolved in fr_styles() where
+# spec$data is available.
+# ══════════════════════════════════════════════════════════════════════════════
+
+#' Resolve a cols quosure to a value or store for deferred evaluation
+#'
+#' If the quosure evaluates to NULL or a character vector, returns as-is.
+#' If it errors (typically a tidyselect expression needing data context),
+#' returns the quosure for deferred resolution in fr_styles().
+#'
+#' @param quo A quosure from enquo(cols).
+#' @param call Caller environment for error messages.
+#' @return NULL, character vector, or quosure (for deferred resolution).
+#' @noRd
+resolve_cols_expr <- function(quo, call = caller_env()) {
+  if (quo_is_null(quo)) return(NULL)
+
+  tryCatch({
+    val <- eval_tidy(quo)
+    if (is.null(val)) return(NULL)
+    if (is.character(val) || is.numeric(val)) return(val)
+    cli_abort(
+      c("{.arg cols} must be a character vector or tidyselect expression.",
+        "x" = "You supplied {.obj_type_friendly {val}}."),
+      call = call
+    )
+  }, error = function(e) {
+    # Likely a tidyselect expression — store quosure for deferred resolution
+    quo
+  })
+}
+
+
+#' Resolve deferred tidyselect cols in a style object
+#'
+#' Checks if style$cols is a quosure. If so, resolves it via
+#' tidyselect::eval_select() against the data frame.
+#'
+#' @param style An fr_cell_style object.
+#' @param data Data frame (spec$data).
+#' @param call Caller environment for error messages.
+#' @return The style with cols resolved to a character vector.
+#' @noRd
+resolve_style_cols <- function(style, data, call = caller_env()) {
+  if (is_quosure(style$cols)) {
+    pos <- tidyselect::eval_select(style$cols, data = data, error_call = call)
+    style$cols <- names(pos)
+  }
+  style
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 5. Plain Text Extraction
 # ══════════════════════════════════════════════════════════════════════════════
 
 #' Extract plain text from a label (character with possible sentinels)
@@ -162,7 +220,7 @@ label_to_plain <- function(label) {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 5. Apply fr_theme() study defaults to a fresh fr_spec
+# 6. Apply fr_theme() study defaults to a fresh fr_spec
 # ══════════════════════════════════════════════════════════════════════════════
 
 #' Apply fr_theme() study-level defaults to a new fr_spec
@@ -252,7 +310,7 @@ apply_settings_section <- function(spec, cfg_section, verb_fn, param_names) {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 6. Column / Footnote Filter Helpers
+# 7. Column / Footnote Filter Helpers
 #
 # Shared predicates to avoid repeating the same Filter(function(c) ...)
 # lambdas across render.R, api-validate.R, classes.R, render-rtf.R, and

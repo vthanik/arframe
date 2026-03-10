@@ -21,8 +21,13 @@
 #' headers.
 #'
 #' @param spec An `fr_spec` object from [fr_table()].
-#' @param ... Named character vectors. The name is the span label; the value
-#'   is a character vector of data column names to span.
+#' @param ... Named column selections. The name is the span label; the value
+#'   is either a character vector of column names or a tidyselect expression:
+#'   * Character vector: `"Treatment" = c("col1", "col2")`
+#'   * Tidyselect: `"Treatment" = starts_with("zom_")`
+#'
+#'   Supported helpers: [tidyselect::starts_with()], [tidyselect::ends_with()],
+#'   [tidyselect::contains()], [tidyselect::matches()], and more.
 #' @param .level Integer. Vertical level of the span row (`1L` = immediately
 #'   above the column header row; higher numbers are further above). Default
 #'   `1L`.
@@ -127,6 +132,14 @@
 #'     "Reference" = "placebo"
 #'   )
 #'
+#' ## ── Tidyselect: span columns by pattern ────────────────────────────────
+#'
+#' tbl_demog |>
+#'   fr_table() |>
+#'   fr_spans(
+#'     "Zomerane" = starts_with("zom_")
+#'   )
+#'
 #' ## ── Span + fr_header bold interaction ──────────────────────────────────
 #'
 #' tbl_demog |>
@@ -145,10 +158,10 @@ fr_spans <- function(spec, ..., .level = 1L, .hline = TRUE) {
   call <- caller_env()
   check_fr_spec(spec, call = call)
 
-  dots <- list(...)
-  if (length(dots) == 0L) return(spec)
+  quos <- enquos(...)
+  if (length(quos) == 0L) return(spec)
 
-  if (is.null(names(dots)) || any(names(dots) == "")) {
+  if (is.null(names(quos)) || any(names(quos) == "")) {
     cli_abort(
       c("All arguments to {.fn fr_spans} must be named.",
         "i" = 'The name is the span label: {.code fr_spans(spec, "Treatment" = c("col1", "col2"))}.'),
@@ -156,15 +169,32 @@ fr_spans <- function(spec, ..., .level = 1L, .hline = TRUE) {
     )
   }
 
-  new_spans <- lapply(names(dots), function(label) {
-    cols <- dots[[label]]
-    if (!is.character(cols) || length(cols) == 0L) {
-      cli_abort(
-        c("Span {.val {label}}: value must be a non-empty character vector of column names.",
-          "x" = "You supplied {.obj_type_friendly {cols}}."),
-        call = call
-      )
-    }
+  new_spans <- lapply(names(quos), function(label) {
+    cols_quo <- quos[[label]]
+
+    # Try direct evaluation first (character vectors), fall back to tidyselect
+    cols <- tryCatch({
+      val <- eval_tidy(cols_quo)
+      if (!is.character(val) || length(val) == 0L) {
+        cli_abort(
+          c("Span {.val {label}}: value must be a non-empty character vector or tidyselect expression.",
+            "x" = "You supplied {.obj_type_friendly {val}}."),
+          call = call
+        )
+      }
+      val
+    }, error = function(e) {
+      # Try as tidyselect expression
+      pos <- tidyselect::eval_select(cols_quo, data = spec$data, error_call = call)
+      if (length(pos) == 0L) {
+        cli_abort(
+          c("Span {.val {label}}: tidyselect expression matched no columns."),
+          call = call
+        )
+      }
+      names(pos)
+    })
+
     validate_cols_exist(cols, names(spec$data),
                         arg = paste0("span '", label, "'"), call = call)
     new_fr_span(label, cols, level = .level, hline = .hline)

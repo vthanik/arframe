@@ -869,3 +869,101 @@ test_that("fr_style_if with numeric column condition", {
   expect_equal(sort(style$rows), c(2L, 3L))
   expect_equal(style$cols, "value")
 })
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Tidyselect integration — cols parameter
+# ══════════════════════════════════════════════════════════════════════════════
+
+test_that("fr_col_style with starts_with() resolves in fr_styles", {
+  spec <- df_style |>
+    fr_table() |>
+    fr_styles(
+      fr_col_style(cols = starts_with("zom_"), bg = "#EBF5FB")
+    )
+  expect_length(spec$cell_styles, 1L)
+  expect_equal(spec$cell_styles[[1]]$cols, "zom_50mg")
+})
+
+test_that("fr_col_style with contains() resolves in fr_styles", {
+  spec <- df_style |>
+    fr_table() |>
+    fr_styles(
+      fr_col_style(cols = contains("50"), italic = TRUE)
+    )
+  expect_length(spec$cell_styles, 1L)
+  expect_equal(spec$cell_styles[[1]]$cols, "zom_50mg")
+})
+
+test_that("fr_style with starts_with() resolves in fr_styles", {
+  spec <- df_style |>
+    fr_table() |>
+    fr_styles(
+      fr_style(cols = starts_with("zom_"), bold = TRUE)
+    )
+  expect_length(spec$cell_styles, 1L)
+  expect_equal(spec$cell_styles[[1]]$cols, "zom_50mg")
+})
+
+test_that("fr_style_if with starts_with() resolves in fr_styles", {
+  spec <- df_style |>
+    fr_table() |>
+    fr_styles(
+      fr_style_if(
+        cols = starts_with("zom_"),
+        condition = ~ grepl("36", .x),
+        apply_to = "cell",
+        fg = "#CC0000"
+      )
+    )
+  expect_length(spec$cell_styles, 1L)
+  expect_equal(spec$cell_styles[[1]]$cols, "zom_50mg")
+})
+
+test_that("fr_col_style with everything() resolves to all columns", {
+  spec <- df_style |>
+    fr_table() |>
+    fr_styles(
+      fr_col_style(cols = everything(), bg = "#F5F5F5")
+    )
+  expect_length(spec$cell_styles, 1L)
+  expect_equal(spec$cell_styles[[1]]$cols, names(df_style))
+})
+
+test_that("fr_col_style with matches() regex resolves in fr_styles", {
+  spec <- df_style |>
+    fr_table() |>
+    fr_styles(
+      fr_col_style(cols = matches("^(placebo|total)$"), align = "right")
+    )
+  expect_length(spec$cell_styles, 1L)
+  expect_equal(spec$cell_styles[[1]]$cols, c("placebo", "total"))
+})
+
+test_that("tidyselect deferred: standalone style object resolves later", {
+  # Create style outside pipeline (no data context)
+  my_style <- fr_col_style(cols = starts_with("zom_"), bg = "#EBF5FB")
+  # cols should be stored as a quosure
+  expect_true(rlang::is_quosure(my_style$cols))
+
+  # Resolve when applied via fr_styles
+  spec <- df_style |>
+    fr_table() |>
+    fr_styles(my_style)
+  expect_equal(spec$cell_styles[[1]]$cols, "zom_50mg")
+})
+
+test_that("character cols still work as before (no regression)", {
+  spec <- df_style |>
+    fr_table() |>
+    fr_styles(
+      fr_col_style(cols = c("placebo", "total"), bg = "#F0F0F0")
+    )
+  expect_length(spec$cell_styles, 1L)
+  expect_equal(spec$cell_styles[[1]]$cols, c("placebo", "total"))
+})
+
+test_that("NULL cols still targets all columns (no regression)", {
+  style <- fr_col_style(bg = "#F0F0F0")
+  expect_null(style$cols)
+})

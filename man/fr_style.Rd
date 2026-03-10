@@ -35,7 +35,19 @@ For \strong{multiple stub columns}, use \code{region = "body"} with
 region), or \code{NULL} (all rows). Row indices are 1-based relative to the
 region. Multiple indices are supported: \code{rows = c(1L, 3L, 5L)}.}
 
-\item{cols}{Character vector of column names, or \code{NULL} (all columns).}
+\item{cols}{Column selection. Accepts any of:
+\itemize{
+\item A character vector of column names: \code{cols = c("zom_50mg", "placebo")}
+\item A tidyselect expression: \code{cols = starts_with("zom_")}
+\item \code{NULL} (default) — targets all columns.
+}
+
+Tidyselect expressions are captured unevaluated and resolved when the
+style is applied via \code{\link[=fr_styles]{fr_styles()}}. This means you can create style
+objects with tidyselect expressions before the data is available.
+Supported helpers: \code{\link[tidyselect:starts_with]{tidyselect::starts_with()}}, \code{\link[tidyselect:starts_with]{tidyselect::ends_with()}},
+\code{\link[tidyselect:starts_with]{tidyselect::contains()}}, \code{\link[tidyselect:starts_with]{tidyselect::matches()}},
+\code{\link[tidyselect:everything]{tidyselect::everything()}}, \code{\link[tidyselect:where]{tidyselect::where()}}, and more.}
 
 \item{bold, italic, underline}{Logical or \code{NULL} to inherit.}
 
@@ -143,6 +155,12 @@ fr_style(region = "header", cols = "total", bg = "#D0E4FF", bold = TRUE)
 ## ── Stub column: bold row labels ─────────────────────────────────────────
 
 fr_style(region = "stub", bold = TRUE)
+
+## ── Tidyselect: style columns by pattern ───────────────────────────────────
+
+# Use tidyselect helpers instead of hard-coding column names:
+fr_style(cols = starts_with("zom_"), bg = "#F5F5F5")
+fr_style(cols = contains("mg"), italic = TRUE)
 
 ## ── Multi-stub layout (e.g. multiple row-label columns) ──────────────────
 

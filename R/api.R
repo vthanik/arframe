@@ -8,7 +8,7 @@
 #
 # See also: api-content.R (fr_titles, fr_footnotes),
 #           api-theme.R (fr_theme, fr_theme_get, fr_theme_reset),
-#           api-cols.R (fr_cols, fr_select), api-header.R (fr_header),
+#           api-cols.R (fr_cols), api-header.R (fr_header),
 #           api-spans.R (fr_spans), api-rows.R (fr_rows),
 #           api-page.R (fr_page, fr_pagehead, fr_pagefoot),
 #           api-rules.R (fr_hlines, fr_vlines, fr_grid),

@@ -17,7 +17,18 @@ fr_col_style(
 )
 }
 \arguments{
-\item{cols}{Character vector of column names, or \code{NULL} (all columns).}
+\item{cols}{Column selection. Accepts any of:
+\itemize{
+\item A character vector of column names: \code{cols = c("zom_50mg", "placebo")}
+\item A tidyselect expression: \code{cols = starts_with("zom_")}
+\item \code{NULL} (default) — targets all columns.
+}
+
+Tidyselect expressions are captured unevaluated and resolved when the
+style is applied via \code{\link[=fr_styles]{fr_styles()}}. Supported helpers:
+\code{\link[tidyselect:starts_with]{tidyselect::starts_with()}}, \code{\link[tidyselect:starts_with]{tidyselect::ends_with()}},
+\code{\link[tidyselect:starts_with]{tidyselect::contains()}}, \code{\link[tidyselect:starts_with]{tidyselect::matches()}},
+\code{\link[tidyselect:everything]{tidyselect::everything()}}, \code{\link[tidyselect:where]{tidyselect::where()}}, and more.}
 
 \item{bold, italic, underline}{Logical or \code{NULL} to inherit.}
 
@@ -90,11 +101,13 @@ fr_col_style(cols = c("zom_50mg", "zom_100mg", "placebo", "total"),
 
 fr_col_style(cols = c("placebo", "zom_50mg", "zom_100mg"), italic = TRUE)
 
-## ── Pattern-based column selection using fr_select() ─────────────────────
+## ── Tidyselect: columns starting with "zom_" ──────────────────────────────
 
-spec <- tbl_demog |> fr_table()
-numeric_cols <- fr_select(spec, pattern = "^zom_|^placebo$|^total$")
-fr_col_style(cols = numeric_cols, align = "center")
+fr_col_style(cols = starts_with("zom_"), align = "center")
+
+## ── Tidyselect: all columns containing "mg" ──────────────────────────────
+
+fr_col_style(cols = contains("mg"), bg = "#F5F5F5")
 
 ## ── Foreground + background combined ─────────────────────────────────────
 

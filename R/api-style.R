@@ -157,7 +157,17 @@ fr_rows_matches <- function(col, value = NULL, pattern = NULL,
 #' @param rows Integer vector of row positions, `"all"` (all rows in the
 #'   region), or `NULL` (all rows). Row indices are 1-based relative to the
 #'   region. Multiple indices are supported: `rows = c(1L, 3L, 5L)`.
-#' @param cols Character vector of column names, or `NULL` (all columns).
+#' @param cols Column selection. Accepts any of:
+#'   * A character vector of column names: `cols = c("zom_50mg", "placebo")`
+#'   * A tidyselect expression: `cols = starts_with("zom_")`
+#'   * `NULL` (default) — targets all columns.
+#'
+#'   Tidyselect expressions are captured unevaluated and resolved when the
+#'   style is applied via [fr_styles()]. This means you can create style
+#'   objects with tidyselect expressions before the data is available.
+#'   Supported helpers: [tidyselect::starts_with()], [tidyselect::ends_with()],
+#'   [tidyselect::contains()], [tidyselect::matches()],
+#'   [tidyselect::everything()], [tidyselect::where()], and more.
 #' @param bold,italic,underline Logical or `NULL` to inherit.
 #' @param fg Foreground (text) colour: hex string (`"#003366"`) or any of the
 #'   148 CSS named colours (`"navy"`, `"steelblue"`, `"tomato"`, etc.).
@@ -244,6 +254,12 @@ fr_rows_matches <- function(col, value = NULL, pattern = NULL,
 #'
 #' fr_style(region = "stub", bold = TRUE)
 #'
+#' ## ── Tidyselect: style columns by pattern ───────────────────────────────────
+#'
+#' # Use tidyselect helpers instead of hard-coding column names:
+#' fr_style(cols = starts_with("zom_"), bg = "#F5F5F5")
+#' fr_style(cols = contains("mg"), italic = TRUE)
+#'
 #' ## ── Multi-stub layout (e.g. multiple row-label columns) ──────────────────
 #'
 #' # The "stub" region targets exactly one column (the first dataset column).
@@ -267,6 +283,8 @@ fr_style <- function(region = "body", rows = NULL, cols = NULL,
                      colspan = NULL, rowspan = NULL) {
   call <- caller_env()
   region <- match_arg_fr(region, c("body", "header", "stub"), call = call)
+
+  cols <- resolve_cols_expr(enquo(cols), call = call)
 
   if (!is.null(align))  align  <- match_arg_fr(align,  fr_env$valid_aligns,  call = call)
   if (!is.null(valign)) valign <- match_arg_fr(valign, fr_env$valid_valigns, call = call)
@@ -407,7 +425,16 @@ fr_row_style <- function(rows = NULL, bold = NULL, italic = NULL,
 #' Creates a column-level style object for use in [fr_styles()]. Column styles
 #' apply uniformly to all body cells in the targeted columns.
 #'
-#' @param cols Character vector of column names, or `NULL` (all columns).
+#' @param cols Column selection. Accepts any of:
+#'   * A character vector of column names: `cols = c("zom_50mg", "placebo")`
+#'   * A tidyselect expression: `cols = starts_with("zom_")`
+#'   * `NULL` (default) — targets all columns.
+#'
+#'   Tidyselect expressions are captured unevaluated and resolved when the
+#'   style is applied via [fr_styles()]. Supported helpers:
+#'   [tidyselect::starts_with()], [tidyselect::ends_with()],
+#'   [tidyselect::contains()], [tidyselect::matches()],
+#'   [tidyselect::everything()], [tidyselect::where()], and more.
 #' @param bold,italic,underline Logical or `NULL` to inherit.
 #' @param fg Foreground (text) colour, or `NULL`.
 #' @param bg Background (fill) colour, or `NULL`.
@@ -462,11 +489,13 @@ fr_row_style <- function(rows = NULL, bold = NULL, italic = NULL,
 #'
 #' fr_col_style(cols = c("placebo", "zom_50mg", "zom_100mg"), italic = TRUE)
 #'
-#' ## ── Pattern-based column selection using fr_select() ─────────────────────
+#' ## ── Tidyselect: columns starting with "zom_" ──────────────────────────────
 #'
-#' spec <- tbl_demog |> fr_table()
-#' numeric_cols <- fr_select(spec, pattern = "^zom_|^placebo$|^total$")
-#' fr_col_style(cols = numeric_cols, align = "center")
+#' fr_col_style(cols = starts_with("zom_"), align = "center")
+#'
+#' ## ── Tidyselect: all columns containing "mg" ──────────────────────────────
+#'
+#' fr_col_style(cols = contains("mg"), bg = "#F5F5F5")
 #'
 #' ## ── Foreground + background combined ─────────────────────────────────────
 #'
@@ -492,6 +521,8 @@ fr_col_style <- function(cols = NULL, bold = NULL, italic = NULL,
                           underline = NULL, fg = NULL, bg = NULL,
                           font_size = NULL, align = NULL, valign = NULL) {
   call <- caller_env()
+  cols <- resolve_cols_expr(enquo(cols), call = call)
+
   if (!is.null(align))  align  <- match_arg_fr(align,  fr_env$valid_aligns,  call = call)
   if (!is.null(valign)) valign <- match_arg_fr(valign, fr_env$valid_valigns, call = call)
   if (!is.null(font_size)) check_positive_num(font_size, arg = "font_size", call = call)
@@ -640,9 +671,10 @@ fr_styles <- function(spec, ...) {
     }
   }
 
-  # Eagerly resolve conditional styles and row selectors
+  # Eagerly resolve tidyselect cols, conditional styles, and row selectors
   resolved <- list()
   for (style in dots) {
+    style <- resolve_style_cols(style, spec$data, call = call)
     if (inherits(style, "fr_conditional_style")) {
       resolved <- c(resolved, resolve_conditional_style(style, spec$data, call))
     } else {
@@ -680,10 +712,14 @@ fr_styles <- function(spec, ...) {
 #'
 #'   When `cols = NULL`, `.x` receives `seq_len(nrow(data))` (row indices),
 #'   useful for zebra striping: `~ (.x %% 2) == 0`.
-#' @param cols Character vector of column name(s) to evaluate the condition
-#'   against. The condition is applied to the values of each column
-#'   independently. `NULL` for row-index-based conditions (e.g., zebra
-#'   striping).
+#' @param cols Column selection for the condition. Accepts any of:
+#'   * A character vector of column names: `cols = c("zom_50mg", "placebo")`
+#'   * A tidyselect expression: `cols = starts_with("zom_")`
+#'   * `NULL` (default) — row-index-based conditions (e.g., zebra striping).
+#'
+#'   The condition is applied to the values of each selected column
+#'   independently. Tidyselect expressions are resolved when the style
+#'   is applied via [fr_styles()].
 #' @param apply_to Character scalar. Controls scope of matched rows:
 #'   * `"cell"` (default): style only the cells where the condition is TRUE.
 #'   * `"row"`: style **all** columns in rows where the condition is TRUE.
@@ -817,6 +853,7 @@ fr_style_if <- function(condition,
       call = call
     )
   }
+  cols <- resolve_cols_expr(enquo(cols), call = call)
   apply_to <- match_arg_fr(apply_to, c("cell", "row"), call = call)
 
   if (!is.null(align)) align <- match_arg_fr(align, fr_env$valid_aligns, call = call)

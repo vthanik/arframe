@@ -384,3 +384,32 @@ test_that("per-group list n without page_by emits warning", {
 
   expect_warning(tlframe:::finalize_spec(spec), "page_by")
 })
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# fr_spans — tidyselect integration
+# ══════════════════════════════════════════════════════════════════════════════
+
+test_that("fr_spans with starts_with() resolves columns", {
+  spec <- tbl_demog |>
+    fr_table() |>
+    fr_spans("Zomerane" = starts_with("zom_"))
+  expect_length(spec$header$spans, 1L)
+  expect_equal(spec$header$spans[[1]]$columns, c("zom_50mg", "zom_100mg"))
+})
+
+test_that("fr_spans with contains() resolves columns", {
+  spec <- tbl_demog |>
+    fr_table() |>
+    fr_spans("50 mg Group" = contains("50"))
+  expect_length(spec$header$spans, 1L)
+  expect_equal(spec$header$spans[[1]]$columns, "zom_50mg")
+})
+
+test_that("fr_spans with character vector still works (no regression)", {
+  spec <- tbl_demog |>
+    fr_table() |>
+    fr_spans("Zomerane" = c("zom_50mg", "zom_100mg"))
+  expect_length(spec$header$spans, 1L)
+  expect_equal(spec$header$spans[[1]]$columns, c("zom_50mg", "zom_100mg"))
+})

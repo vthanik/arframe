@@ -9,8 +9,15 @@ fr_spans(spec, ..., .level = 1L, .hline = TRUE)
 \arguments{
 \item{spec}{An \code{fr_spec} object from \code{\link[=fr_table]{fr_table()}}.}
 
-\item{...}{Named character vectors. The name is the span label; the value
-is a character vector of data column names to span.}
+\item{...}{Named column selections. The name is the span label; the value
+is either a character vector of column names or a tidyselect expression:
+\itemize{
+\item Character vector: \code{"Treatment" = c("col1", "col2")}
+\item Tidyselect: \code{"Treatment" = starts_with("zom_")}
+}
+
+Supported helpers: \code{\link[tidyselect:starts_with]{tidyselect::starts_with()}}, \code{\link[tidyselect:starts_with]{tidyselect::ends_with()}},
+\code{\link[tidyselect:starts_with]{tidyselect::contains()}}, \code{\link[tidyselect:starts_with]{tidyselect::matches()}}, and more.}
 
 \item{.level}{Integer. Vertical level of the span row (\code{1L} = immediately
 above the column header row; higher numbers are further above). Default
@@ -139,6 +146,14 @@ tbl_demog |>
   fr_spans(
     "Zomerane" = c("zom_50mg", "zom_100mg"),
     "Reference" = "placebo"
+  )
+
+## ── Tidyselect: span columns by pattern ────────────────────────────────
+
+tbl_demog |>
+  fr_table() |>
+  fr_spans(
+    "Zomerane" = starts_with("zom_")
   )
 
 ## ── Span + fr_header bold interaction ──────────────────────────────────
