@@ -814,11 +814,14 @@ match_trt_to_columns <- function(trt_counts, columns) {
     if (is.null(lbl) || !nzchar(lbl)) nm else lbl
   }, character(1))
   labels_lower <- tolower(col_labels)
+  names_lower <- tolower(col_names)
 
   result <- integer(0)
   for (trt in names(trt_counts)) {
     trt_lower <- tolower(trt)
+    # Try label match first, then column name match
     idx <- match(trt_lower, labels_lower)
+    if (is.na(idx)) idx <- match(trt_lower, names_lower)
     if (!is.na(idx)) {
       result[col_names[idx]] <- as.integer(trt_counts[trt])
     }
