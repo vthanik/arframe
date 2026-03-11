@@ -549,74 +549,47 @@ test_that("markup_sentinel roundtrips via sentinel_pattern", {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Liberation font fallback
+# Latin Modern font fallback
 # ══════════════════════════════════════════════════════════════════════════════
 
-test_that("liberation_fallback maps all font family types", {
-  expect_equal(fr_env$liberation_fallback[["modern"]], "Liberation Mono")
-  expect_equal(fr_env$liberation_fallback[["swiss"]],  "Liberation Sans")
-  expect_equal(fr_env$liberation_fallback[["roman"]],  "Liberation Serif")
+test_that("lm_fallback maps all font family types", {
+  expect_equal(fr_env$lm_fallback[["modern"]], "Latin Modern Mono")
+  expect_equal(fr_env$lm_fallback[["swiss"]],  "Latin Modern Sans")
+  expect_equal(fr_env$lm_fallback[["roman"]],  "Latin Modern Roman")
 })
 
-test_that("liberation_file_prefix maps all Liberation fonts", {
-  expect_equal(fr_env$liberation_file_prefix[["Liberation Mono"]],  "LiberationMono")
-  expect_equal(fr_env$liberation_file_prefix[["Liberation Sans"]],  "LiberationSans")
-  expect_equal(fr_env$liberation_file_prefix[["Liberation Serif"]], "LiberationSerif")
+test_that("is_system_font_available returns TRUE for Latin Modern fonts", {
+  expect_true(is_system_font_available("Latin Modern Mono"))
+  expect_true(is_system_font_available("Latin Modern Sans"))
+  expect_true(is_system_font_available("Latin Modern Roman"))
 })
 
-test_that("bundled Liberation font files exist", {
-  font_dir <- system.file("fonts", "liberation", package = "tlframe")
-  expect_true(nzchar(font_dir))
-
-  expected_files <- c(
-    "LiberationMono-Regular.ttf", "LiberationMono-Bold.ttf",
-    "LiberationMono-Italic.ttf", "LiberationMono-BoldItalic.ttf",
-    "LiberationSans-Regular.ttf", "LiberationSans-Bold.ttf",
-    "LiberationSans-Italic.ttf", "LiberationSans-BoldItalic.ttf",
-    "LiberationSerif-Regular.ttf", "LiberationSerif-Bold.ttf",
-    "LiberationSerif-Italic.ttf", "LiberationSerif-BoldItalic.ttf",
-    "SIL-OFL-1.1.txt"
-  )
-  for (f in expected_files) {
-    expect_true(file.exists(file.path(font_dir, f)),
-                info = paste0("Missing: ", f))
-  }
+test_that("resolve_latex_font returns Latin Modern name directly", {
+  result <- resolve_latex_font("Latin Modern Mono")
+  expect_equal(result, "Latin Modern Mono")
 })
 
-test_that("is_system_font_available returns TRUE for Liberation fonts", {
-  expect_true(is_system_font_available("Liberation Mono"))
-  expect_true(is_system_font_available("Liberation Sans"))
-  expect_true(is_system_font_available("Liberation Serif"))
-})
-
-test_that("resolve_latex_font returns bundled path for Liberation fonts", {
-  # Liberation fonts always use the bundled path for fontspec Path= option
-  result <- resolve_latex_font("Liberation Mono")
-  expect_equal(result$name, "Liberation Mono")
-  expect_true(nzchar(result$path))
-  expect_true(dir.exists(result$path))
-})
-
-test_that("resolve_latex_font falls back for unavailable fonts", {
-  # Mock is_system_font_available to return FALSE
-  local_mocked_bindings(is_system_font_available = function(font_name) FALSE)
+test_that("resolve_latex_font falls back to Latin Modern for unavailable fonts", {
+  local_mocked_bindings(is_system_font_available = function(font_name) {
+    font_name %in% fr_env$lm_fallback
+  })
 
   result <- resolve_latex_font("Courier New")
-  expect_equal(result$name, "Liberation Mono")
-  expect_true(nzchar(result$path))
-  expect_true(dir.exists(result$path))
+  expect_equal(result, "Latin Modern Mono")
 })
 
 test_that("resolve_latex_font maps families correctly in fallback", {
-  local_mocked_bindings(is_system_font_available = function(font_name) FALSE)
+  local_mocked_bindings(is_system_font_available = function(font_name) {
+    font_name %in% fr_env$lm_fallback
+  })
 
   mono  <- resolve_latex_font("Courier New")
   sans  <- resolve_latex_font("Arial")
   serif <- resolve_latex_font("Times New Roman")
 
-  expect_equal(mono$name,  "Liberation Mono")
-  expect_equal(sans$name,  "Liberation Sans")
-  expect_equal(serif$name, "Liberation Serif")
+  expect_equal(mono,  "Latin Modern Mono")
+  expect_equal(sans,  "Latin Modern Sans")
+  expect_equal(serif, "Latin Modern Roman")
 })
 
 

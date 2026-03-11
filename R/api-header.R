@@ -70,7 +70,7 @@
 #' Many pharma TFL outputs use **bold, centered** column headers with
 #' `valign = "bottom"` so that short labels (e.g. "Characteristic") align
 #' at the bottom when adjacent columns have multi-line labels (e.g.
-#' "Placebo\n(N=45)"). By default, headers are **not bold** and inherit
+#' `"Placebo\\n(N=45)"`). By default, headers are **not bold** and inherit
 #' alignment from the column's `align` setting — use
 #' `fr_header(bold = TRUE, align = "center")` to opt in.
 #'
@@ -153,7 +153,8 @@ fr_header <- function(spec, align = NULL, valign = NULL,
 
       # Resolve each group via tidyselect
       align_map <- list()
-      col_proxy <- stats::setNames(seq_along(spec$columns), names(spec$columns))
+      col_names <- names(spec$columns) %||% names(spec$data)
+      col_proxy <- set_names(seq_along(col_names), col_names)
       for (i in seq_along(align_args)) {
         a <- align_names[[i]]
         sel_expr <- align_args[[i]]

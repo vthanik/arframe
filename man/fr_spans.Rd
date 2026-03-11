@@ -105,11 +105,9 @@ tbl_demog |>
     zom_50mg       = fr_col("50 mg",             width = 1.5, align = "right"),
     zom_100mg      = fr_col("100 mg",            width = 1.5, align = "right"),
     placebo        = fr_col("Placebo",            width = 1.5, align = "right"),
-    total          = fr_col("Total",              width = 1.5, align = "right")
-  ) |>
-  fr_header(
-    n = c(zom_50mg = 45, zom_100mg = 45, placebo = 45, total = 135),
-    format = "{label}\n(N={n})"
+    total          = fr_col("Total",              width = 1.5, align = "right"),
+    .n = c(zom_50mg = 45, zom_100mg = 45, placebo = 45, total = 135),
+    .n_format = "{label}\n(N={n})"
   ) |>
   fr_spans(
     "Zomerane" = c("zom_50mg", "zom_100mg")

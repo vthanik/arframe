@@ -96,32 +96,11 @@ render_latex <- function(spec, page_groups, col_panels, path) {
 # LaTeX Document Components
 # ══════════════════════════════════════════════════════════════════════════════
 
-#' Build \\setmainfont command, with Liberation fallback for missing fonts
+#' Build \\setmainfont command, with Latin Modern fallback for missing fonts
 #' @noRd
 latex_setmainfont <- function(font_name) {
   resolved <- resolve_latex_font(font_name)
-
-  if (is.null(resolved$path)) {
-    # System font available — simple reference
-    return(paste0("\\setmainfont{", resolved$name, "}"))
-  }
-
-  # Bundled Liberation font — specify file paths for fontspec
-
-  prefix <- fr_env$liberation_file_prefix[[resolved$name]]
-  font_path <- gsub("\\\\", "/", resolved$path)
-  if (!endsWith(font_path, "/")) font_path <- paste0(font_path, "/")
-
-  paste0(
-    "\\setmainfont{", resolved$name, "}[",
-    "Path=", font_path, ",",
-    "Extension=.ttf,",
-    "UprightFont=", prefix, "-Regular,",
-    "BoldFont=", prefix, "-Bold,",
-    "ItalicFont=", prefix, "-Italic,",
-    "BoldItalicFont=", prefix, "-BoldItalic",
-    "]"
-  )
+  paste0("\\setmainfont{", resolved, "}")
 }
 
 

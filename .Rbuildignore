@@ -14,3 +14,5 @@
 ^docs$
 ^pkgdown$
 ^presentations$
+^\.github$
+^deploy-site\.sh$

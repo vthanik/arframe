@@ -27,7 +27,7 @@
 #'   * Length 4: `c(top, right, bottom, left)` — CSS order.
 #'   * Named list: `list(top=1, bottom=1, left=0.75, right=0.75)`.
 #' @param font_family Font family name. Defaults to the OS monospace font
-#'   (`"Courier New"` on Windows/macOS, `"Liberation Mono"` on Linux).
+#'   (`"Courier New"` on Windows/macOS, `"Latin Modern Mono"` on Linux).
 #'   Regulatory submissions typically use Courier New 9pt.
 #' @param font_size Font size in points. Default `9`. Typical pharma range:
 #'   7–10 pt.

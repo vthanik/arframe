@@ -39,7 +39,8 @@ fr_env$fonts <- list(
 
   modern = list(
     names          = c("Courier New", "Courier", "Consolas", "Lucida Console",
-                        "DejaVu Sans Mono", "Liberation Mono"),
+                        "DejaVu Sans Mono", "Liberation Mono",
+                        "Latin Modern Mono"),
     rtf_family     = "fmodern",
     rtf_prq        = 1L,
     tex_cmd        = "\\ttfamily",
@@ -51,7 +52,8 @@ fr_env$fonts <- list(
 
   swiss = list(
     names          = c("Arial", "Helvetica", "Calibri", "Verdana", "Tahoma",
-                        "Segoe UI", "DejaVu Sans", "Liberation Sans"),
+                        "Segoe UI", "DejaVu Sans", "Liberation Sans",
+                        "Latin Modern Sans"),
     rtf_family     = "fswiss",
     rtf_prq        = 2L,
     tex_cmd        = "\\sffamily",
@@ -64,7 +66,7 @@ fr_env$fonts <- list(
   roman = list(
     names          = c("Times New Roman", "Times", "Georgia", "Palatino",
                         "Book Antiqua", "Cambria", "DejaVu Serif",
-                        "Liberation Serif"),
+                        "Liberation Serif", "Latin Modern Roman"),
     rtf_family     = "froman",
     rtf_prq        = 2L,
     tex_cmd        = "\\rmfamily",
@@ -76,33 +78,28 @@ fr_env$fonts <- list(
 )
 
 
-# Liberation font fallback map: family type → Liberation font name
-fr_env$liberation_fallback <- c(
-  modern = "Liberation Mono",
-  swiss  = "Liberation Sans",
-  roman  = "Liberation Serif"
-)
-
-# Liberation font file prefix map: font name → file prefix
-fr_env$liberation_file_prefix <- c(
-  "Liberation Mono"  = "LiberationMono",
-  "Liberation Sans"  = "LiberationSans",
-  "Liberation Serif" = "LiberationSerif"
+# Latin Modern fallback map: family type -> Latin Modern font name
+# Latin Modern is always available in any tinytex/texlive installation
+fr_env$lm_fallback <- c(
+  modern = "Latin Modern Mono",
+  swiss  = "Latin Modern Sans",
+  roman  = "Latin Modern Roman"
 )
 
 
 #' Check if a system font is available for XeLaTeX
 #'
-#' Liberation fonts always return `TRUE` (bundled). On Windows, standard fonts
-#' are always present. On Linux/macOS, checks via `fc-list`.
+#' Latin Modern fonts always return `TRUE` (built into tinytex/texlive).
+#' On Windows, standard fonts are always present. On Linux/macOS, checks
+#' via `fc-list`.
 #'
 #' @param font_name Character scalar. Font name to check.
 #' @return Logical scalar.
 #' @noRd
 is_system_font_available <- function(font_name) {
 
-  # Bundled Liberation fonts are always available
-  if (font_name %in% fr_env$liberation_fallback) return(TRUE)
+  # Latin Modern fonts are always available in tinytex/texlive
+  if (font_name %in% fr_env$lm_fallback) return(TRUE)
 
   os <- tolower(Sys.info()[["sysname"]])
 
@@ -128,41 +125,31 @@ is_system_font_available <- function(font_name) {
 }
 
 
-#' Resolve a font for LaTeX rendering, with Liberation fallback
+#' Resolve a font for LaTeX rendering, with Latin Modern fallback
 #'
 #' If the requested font is available on the system, returns it as-is.
-#' Otherwise, falls back to the metrically equivalent Liberation font
-#' and returns the path to the bundled font files.
+#' Otherwise, falls back to the equivalent Latin Modern font (always
+#' available in tinytex/texlive).
 #'
 #' @param font_name Character scalar. Requested font name.
-#' @return Named list with `name` (font name) and `path` (NULL or directory path).
+#' @return Character scalar. The resolved font name for fontspec.
 #' @noRd
 resolve_latex_font <- function(font_name) {
 
-  # If font is a bundled Liberation font, always use the bundled path
-
-  # so fontspec can find it even without system-wide installation
-  if (font_name %in% fr_env$liberation_fallback) {
-    lib_path <- system.file("fonts", "liberation", package = "tlframe")
-    return(list(name = font_name, path = lib_path))
-  }
-
   if (is_system_font_available(font_name)) {
-    return(list(name = font_name, path = NULL))
+    return(font_name)
   }
 
-  # Determine family type and map to Liberation equivalent
-
+  # Determine family type and map to Latin Modern equivalent
   fam <- lookup_font_family(font_name)
-  lib_name <- fr_env$liberation_fallback[[fam]]
-  lib_path <- system.file("fonts", "liberation", package = "tlframe")
+  lm_name <- fr_env$lm_fallback[[fam]]
 
   cli::cli_inform(c(
     "i" = "Font {.val {font_name}} not found on system.",
-    "*" = "Falling back to bundled {.val {lib_name}}."
+    "*" = "Falling back to {.val {lm_name}} (tinytex built-in)."
   ))
 
-  list(name = lib_name, path = lib_path)
+  lm_name
 }
 
 
@@ -176,12 +163,12 @@ os_default_fonts <- function() {
   } else if (os == "darwin") {
     list(mono = "Courier New", sans = "Helvetica",  serif = "Times New Roman")
   } else {
-    # Prefer Microsoft fonts if installed; fall back to Liberation
+    # Prefer Microsoft fonts if installed; fall back to Latin Modern
     if (is_system_font_available("Courier New")) {
       list(mono = "Courier New", sans = "Arial", serif = "Times New Roman")
     } else {
-      list(mono = "Liberation Mono", sans = "Liberation Sans",
-           serif = "Liberation Serif")
+      list(mono = "Latin Modern Mono", sans = "Latin Modern Sans",
+           serif = "Latin Modern Roman")
     }
   }
 }

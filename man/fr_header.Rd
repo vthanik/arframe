@@ -94,7 +94,7 @@ Calling \code{fr_header()} again \strong{replaces} the previous header config
 Many pharma TFL outputs use \strong{bold, centered} column headers with
 \code{valign = "bottom"} so that short labels (e.g. "Characteristic") align
 at the bottom when adjacent columns have multi-line labels (e.g.
-"Placebo\n(N=45)"). By default, headers are \strong{not bold} and inherit
+\code{"Placebo\\\\n(N=45)"}). By default, headers are \strong{not bold} and inherit
 alignment from the column's \code{align} setting — use
 \code{fr_header(bold = TRUE, align = "center")} to opt in.
 }

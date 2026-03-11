@@ -194,7 +194,7 @@ fr_spec ──► finalize_spec() ──► RTF backend ──► .rtf file
 ```
 
 - **RTF**: Writes RTF 1.9.1 control words directly. Cell-level formatting, decimal alignment tabs, `\trkeep` group protection.
-- **PDF**: Generates tabularray LaTeX, compiles with XeLaTeX. Bundled Liberation fonts for Linux/Docker environments without Microsoft fonts.
+- **PDF**: Generates tabularray LaTeX, compiles with XeLaTeX. Falls back to Latin Modern fonts (built into tinytex) on Linux/Docker without Microsoft fonts.
 - **Font metrics**: Real Adobe Font Metrics (AFM) for 12 font variants — accurate column width estimation without rendering.
 
 ## Related packages

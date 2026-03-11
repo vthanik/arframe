@@ -252,9 +252,9 @@ for (i in seq_len(nrow(metadata))) {
 | Fonts | Referenced by name | Embedded via fontspec |
 | Group pagination | R-side pagination | `longtblr` |
 
-**Linux font fallback:** tlframe bundles Liberation fonts. On systems
-without Microsoft fonts, PDF rendering automatically uses Liberation
-Mono/Sans/Serif as fallback.
+**Linux font fallback:** On systems without Microsoft fonts, PDF
+rendering automatically falls back to Latin Modern fonts (built into
+tinytex/texlive). No extra font installation needed.
 
 ```{r pdf-setup, eval = FALSE}
 install.packages("tinytex")
@@ -330,5 +330,5 @@ FROM rocker/r-ver:4.3.3
 RUN apt-get update && apt-get install -y libxml2-dev libcurl4-openssl-dev
 RUN R -e "install.packages(c('cli','glue','rlang','tidyselect','vctrs','yaml','stringi'))"
 RUN R -e "install.packages('tinytex'); tinytex::install_tinytex()"
-# Liberation fonts are bundled --- no Microsoft fonts needed
+# Latin Modern fonts are built into tinytex --- no Microsoft fonts needed
 ```

@@ -36,7 +36,7 @@ or \code{"legal"} (8.5 × 14 in).}
 }}
 
 \item{font_family}{Font family name. Defaults to the OS monospace font
-(\code{"Courier New"} on Windows/macOS, \code{"Liberation Mono"} on Linux).
+(\code{"Courier New"} on Windows/macOS, \code{"Latin Modern Mono"} on Linux).
 Regulatory submissions typically use Courier New 9pt.}
 
 \item{font_size}{Font size in points. Default \code{9}. Typical pharma range:

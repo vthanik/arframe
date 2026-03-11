@@ -1,28 +1,28 @@
-# ──────────────────────────────────────────────────────────────────────────────
-# columns.R — Column width estimation and distribution
-# ──────────────────────────────────────────────────────────────────────────────
+# ------------------------------------------------------------------------------
+# columns.R -- Column width estimation and distribution
+# ------------------------------------------------------------------------------
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 1. Column Initialisation
 #
 # Auto-generates fr_col objects for data frame columns that haven't been
-# explicitly configured via fr_cols(). Uses fr_col() from classes.R —
+# explicitly configured via fr_cols(). Uses fr_col() from classes.R --
 # NEVER duplicates the class construction.
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 #' Build default columns for unconfigured data frame columns
 #'
 #' @param data Data frame.
 #' @param configured Named list of fr_col objects already set by user.
 #' @param default_width Numeric, "auto", "equal", or NULL. Global width
-#'   default from fr_cols .width. NULL → auto.
+#'   default from fr_cols .width. NULL means auto.
 #' @param width_mode Character. "fixed", "auto", or "equal".
-#' @param default_align Character. Global alignment default. NULL →
+#' @param default_align Character. Global alignment default. NULL means
 #'   auto-detect from column type.
 #' @param label_fn Function or NULL. Applied to auto-generated labels
 #'   (column names not explicitly labelled).
-#' @param labels Named list of column name → fully formatted label string.
+#' @param labels Named list of column name to fully formatted label string.
 #'   Overrides all other label sources for matching columns.
 #' @param page fr_page object (for font metrics and printable area).
 #' @return Named list of fr_col objects for all columns.
@@ -40,7 +40,7 @@ build_default_columns <- function(data,
   names(result) <- col_names
 
   # For fixed mode, resolve the fallback width
-  # For percent mode, default_width is an fr_pct — assign directly
+  # For percent mode, default_width is an fr_pct -- assign directly
   fallback_width <- if (width_mode == "fixed") (default_width %||% 1.5)
                     else if (width_mode == "percent") default_width
                     else NULL
@@ -80,7 +80,7 @@ build_default_columns <- function(data,
     result[[nm]] <- col_def
   }
 
-  # ── Post-pass: width distribution ──────────────────────────────────────
+  # -- Post-pass: width distribution --------------------------------------
 
   if (width_mode == "auto") {
     # Distribution deferred to finalize_spec() which has the final page context
@@ -95,9 +95,9 @@ build_default_columns <- function(data,
 }
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 2. Text Width Measurement (AFM-based)
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 #' Measure text width in twips using AFM font metrics
 #'
@@ -124,7 +124,7 @@ measure_text_width_twips <- function(text,
   default_w <- unname(char_widths[" "])
   if (is.na(default_w)) default_w <- 500L  # safe fallback
 
-  # Conversion factor: AFM units (1/1000 em) → twips
+  # Conversion factor: AFM units (1/1000 em) -> twips
   # 1 pt = 20 twips; AFM width at font_size_pt = width/1000 * font_size_pt pt
   scale <- font_size_pt / 1000 * 20
 
@@ -138,9 +138,9 @@ measure_text_width_twips <- function(text,
 }
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 3. Width Estimation
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 #' Estimate column width from content and header text
 #'
@@ -162,7 +162,7 @@ estimate_col_width <- function(data, col_name, label, page) {
   if (length(col_values) == 0L || all(is.na(col_values))) {
     max_content_twips <- 0
     cli::cli_inform(c(
-      "i" = "Column {.val {col_name}} is all NA — width estimated from label only (min 0.5in)."
+      "i" = "Column {.val {col_name}} is all NA -- width estimated from label only (min 0.5in)."
     ))
   } else {
     col_values[is.na(col_values)] <- ""
@@ -194,9 +194,9 @@ estimate_col_width <- function(data, col_name, label, page) {
 }
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 3. Width Distribution
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 #' Separate fixed-width columns from auto-estimated columns
 #'
@@ -330,9 +330,9 @@ distribute_equal_widths <- function(columns, page) {
 }
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 4. Printable Area Calculation
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 #' Calculate printable area in inches
 #'

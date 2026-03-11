@@ -10,15 +10,13 @@ test_that("latex_setmainfont produces valid \\setmainfont command", {
   expect_false(grepl("Path=", cmd, fixed = TRUE))
 })
 
-test_that("latex_setmainfont uses Liberation fallback for missing fonts", {
-  local_mocked_bindings(is_system_font_available = function(font_name) FALSE)
+test_that("latex_setmainfont uses Latin Modern fallback for missing fonts", {
+  local_mocked_bindings(is_system_font_available = function(font_name) {
+    font_name %in% fr_env$lm_fallback
+  })
   cmd <- latex_setmainfont("Courier New")
-  expect_match(cmd, "Liberation Mono")
-  expect_match(cmd, "Path=")
-  expect_match(cmd, "UprightFont=LiberationMono-Regular")
-  expect_match(cmd, "BoldFont=LiberationMono-Bold")
-  expect_match(cmd, "ItalicFont=LiberationMono-Italic")
-  expect_match(cmd, "BoldItalicFont=LiberationMono-BoldItalic")
+  expect_match(cmd, "Latin Modern Mono")
+  expect_false(grepl("Path=", cmd, fixed = TRUE))
 })
 
 test_that("fr_render creates a valid .tex file from minimal pipeline", {
@@ -735,71 +733,61 @@ test_that("latex_body_rows handles n_pct with decimal percentage", {
 # ══════════════════════════════════════════════════════════════════════════════
 
 
-# ── latex_setmainfont — Liberation fallback for different font families ────
+# -- latex_setmainfont -- Latin Modern fallback for different font families --
 
-test_that("latex_setmainfont uses Liberation Sans for Arial fallback", {
-  local_mocked_bindings(is_system_font_available = function(font_name) FALSE)
+test_that("latex_setmainfont uses Latin Modern Sans for Arial fallback", {
+  local_mocked_bindings(is_system_font_available = function(font_name) {
+    font_name %in% fr_env$lm_fallback
+  })
   cmd <- latex_setmainfont("Arial")
-  expect_match(cmd, "Liberation Sans", fixed = TRUE)
-  expect_match(cmd, "Path=", fixed = TRUE)
-  expect_match(cmd, "UprightFont=LiberationSans-Regular", fixed = TRUE)
-  expect_match(cmd, "BoldFont=LiberationSans-Bold", fixed = TRUE)
-  expect_match(cmd, "ItalicFont=LiberationSans-Italic", fixed = TRUE)
-  expect_match(cmd, "BoldItalicFont=LiberationSans-BoldItalic", fixed = TRUE)
+  expect_equal(cmd, "\\setmainfont{Latin Modern Sans}")
 })
 
-test_that("latex_setmainfont uses Liberation Serif for Times New Roman fallback", {
-  local_mocked_bindings(is_system_font_available = function(font_name) FALSE)
+test_that("latex_setmainfont uses Latin Modern Roman for Times New Roman fallback", {
+  local_mocked_bindings(is_system_font_available = function(font_name) {
+    font_name %in% fr_env$lm_fallback
+  })
   cmd <- latex_setmainfont("Times New Roman")
-  expect_match(cmd, "Liberation Serif", fixed = TRUE)
-  expect_match(cmd, "UprightFont=LiberationSerif-Regular", fixed = TRUE)
-  expect_match(cmd, "BoldFont=LiberationSerif-Bold", fixed = TRUE)
-})
-
-test_that("latex_setmainfont adds trailing slash to path if missing", {
-  local_mocked_bindings(is_system_font_available = function(font_name) FALSE)
-  cmd <- latex_setmainfont("Courier New")
-  # Path should end with / before the comma
-  expect_match(cmd, "Path=.+/,", perl = TRUE)
+  expect_equal(cmd, "\\setmainfont{Latin Modern Roman}")
 })
 
 test_that("latex_setmainfont system font produces simple command", {
   local_mocked_bindings(is_system_font_available = function(font_name) TRUE)
   cmd <- latex_setmainfont("Arial")
   expect_equal(cmd, "\\setmainfont{Arial}")
-  expect_false(grepl("Path=", cmd, fixed = TRUE))
-  expect_false(grepl("Extension=", cmd, fixed = TRUE))
 })
 
 
-# ── resolve_latex_font — different fonts and Liberation fallback ───────────
+# -- resolve_latex_font -- Latin Modern fallback ----------------------------
 
 test_that("resolve_latex_font returns system font when available", {
   local_mocked_bindings(is_system_font_available = function(font_name) TRUE)
   result <- resolve_latex_font("Arial")
-  expect_equal(result$name, "Arial")
-  expect_null(result$path)
+  expect_equal(result, "Arial")
 })
 
-test_that("resolve_latex_font falls back to Liberation Mono for Courier New", {
-  local_mocked_bindings(is_system_font_available = function(font_name) FALSE)
+test_that("resolve_latex_font falls back to Latin Modern Mono for Courier New", {
+  local_mocked_bindings(is_system_font_available = function(font_name) {
+    font_name %in% fr_env$lm_fallback
+  })
   result <- resolve_latex_font("Courier New")
-  expect_equal(result$name, "Liberation Mono")
-  expect_true(nzchar(result$path))
+  expect_equal(result, "Latin Modern Mono")
 })
 
-test_that("resolve_latex_font falls back to Liberation Sans for Arial", {
-  local_mocked_bindings(is_system_font_available = function(font_name) FALSE)
+test_that("resolve_latex_font falls back to Latin Modern Sans for Arial", {
+  local_mocked_bindings(is_system_font_available = function(font_name) {
+    font_name %in% fr_env$lm_fallback
+  })
   result <- resolve_latex_font("Arial")
-  expect_equal(result$name, "Liberation Sans")
-  expect_true(nzchar(result$path))
+  expect_equal(result, "Latin Modern Sans")
 })
 
-test_that("resolve_latex_font falls back to Liberation Serif for Times New Roman", {
-  local_mocked_bindings(is_system_font_available = function(font_name) FALSE)
+test_that("resolve_latex_font falls back to Latin Modern Roman for Times New Roman", {
+  local_mocked_bindings(is_system_font_available = function(font_name) {
+    font_name %in% fr_env$lm_fallback
+  })
   result <- resolve_latex_font("Times New Roman")
-  expect_equal(result$name, "Liberation Serif")
-  expect_true(nzchar(result$path))
+  expect_equal(result, "Latin Modern Roman")
 })
 
 

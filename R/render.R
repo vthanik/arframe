@@ -736,7 +736,7 @@ resolve_group_labels <- function(spec, group_data, group_label) {
       return(NULL)
     }
 
-    n_counts <- setNames(
+    n_counts <- set_names(
       as.integer(group_df[[df_res$count_col]]),
       as.character(group_df[[df_res$trt_col]])
     )
@@ -781,7 +781,7 @@ resolve_group_labels <- function(spec, group_data, group_label) {
 #' @noRd
 parse_df_n_counts <- function(df, spec) {
   if (ncol(df) == 2L) {
-    counts <- setNames(as.integer(df[[2L]]), as.character(df[[1L]]))
+    counts <- set_names(as.integer(df[[2L]]), as.character(df[[1L]]))
     return(list(type = "global", counts = counts))
   }
 
