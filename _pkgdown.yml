@@ -4,18 +4,30 @@ template:
   bootstrap: 5
   light-switch: true
   bslib:
-    primary: "#1e40af"
-    navbar-bg: "#1e40af"
+    primary: "#4184f3"
+    navbar-bg: "#ffffff"
+    navbar-light-color: "#374151"
+    navbar-light-hover-color: "#3b82f6"
+    navbar-light-active-color: "#3b82f6"
+    navbar-light-brand-color: "#1f2937"
+    nav-link-font-size: "0.9125rem"
+    link-color: "#3b82f6"
+    link-hover-color: "#2563eb"
+    body-color: "#374151"
+    headings-color: "#111827"
+    border-color: "#e5e7eb"
     base_font:
       google:
-        family: "Plus Jakarta Sans"
+        family: "Open Sans"
         wght: [400, 500, 600, 700]
     heading_font:
       google:
-        family: "Plus Jakarta Sans"
+        family: "Open Sans"
         wght: [600, 700]
     code_font:
-      google: "JetBrains Mono"
+      google:
+        family: "Source Code Pro"
+        wght: [400, 500, 600]
 
 home:
   title: "tlframe — Regulatory-Grade Clinical Tables in R"
@@ -31,6 +43,7 @@ home:
       href: https://github.com/vthanik/tlframe
 
 navbar:
+  type: light
   structure:
     left: [intro, learn, reference, news]
     right: [search, lightswitch, github]

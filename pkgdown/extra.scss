@@ -1,9 +1,186 @@
-// tlframe — pkgdown overrides (minimal)
+// tlframe — pkgdown overrides
+// Modeled after posit-open-source.netlify.app
+// Open Sans, light navbar, clean minimal design
 
-// Fix version number visibility on dark navbar
+// ── Navbar ──────────────────────────────────────────────────────────────────
+
+.navbar {
+  border-bottom: 1px solid #e5e7eb;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  box-shadow: none !important;
+}
+
+.navbar-light .navbar-brand,
+.navbar-light .navbar-brand:hover {
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.navbar-light .navbar-nav .nav-link {
+  color: #374151;
+  font-weight: 500;
+  font-size: 0.9125rem;
+  letter-spacing: 0.01em;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  transition: color 0.15s ease;
+}
+
+.navbar-light .navbar-nav .nav-link:hover,
+.navbar-light .navbar-nav .nav-link:focus {
+  color: #3b82f6;
+}
+
+.navbar-light .navbar-nav .nav-link.active,
+.navbar-light .navbar-nav .show > .nav-link {
+  color: #3b82f6;
+}
+
+// Version badge in navbar
 .navbar .text-muted,
 .navbar-brand + small,
 .navbar-brand + .text-muted {
-  color: rgba(255, 255, 255, 0.75) !important;
+  color: #6b7280 !important;
   opacity: 1 !important;
+}
+
+// ── Headings ────────────────────────────────────────────────────────────────
+
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+  color: #111827;
+  font-weight: 600;
+}
+
+h1, .h1 {
+  font-weight: 700;
+}
+
+// ── Links ───────────────────────────────────────────────────────────────────
+
+a {
+  transition: color 0.15s ease;
+}
+
+// ── Code blocks ─────────────────────────────────────────────────────────────
+
+pre {
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+}
+
+code {
+  color: #1f2937;
+  font-size: 0.875em;
+}
+
+// ── Reference page ──────────────────────────────────────────────────────────
+
+.section h2 {
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.5rem;
+}
+
+// ── Footer ──────────────────────────────────────────────────────────────────
+
+.footer {
+  border-top: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+// ── Sidebar (articles/reference) ────────────────────────────────────────────
+
+.sidebar .nav-link {
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.sidebar .nav-link:hover {
+  color: #3b82f6;
+}
+
+.sidebar .nav-link.active {
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+// ── Dropdown menus ──────────────────────────────────────────────────────────
+
+.dropdown-menu {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+              0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+.dropdown-item {
+  font-size: 0.9125rem;
+  color: #374151;
+  padding: 0.5rem 1rem;
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  color: #3b82f6;
+  background-color: #f3f4f6;
+}
+
+// ── Cards (home page) ───────────────────────────────────────────────────────
+
+.card {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  box-shadow: none;
+}
+
+// ── Tables (reference index) ────────────────────────────────────────────────
+
+.table {
+  --bs-table-striped-bg: #f9fafb;
+}
+
+// ── Dark mode adjustments ───────────────────────────────────────────────────
+
+[data-bs-theme="dark"] {
+  .navbar {
+    border-bottom-color: #374151;
+  }
+
+  pre {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  code {
+    color: #e5e7eb;
+  }
+
+  .footer {
+    border-top-color: #374151;
+    background-color: #111827;
+    color: #9ca3af;
+  }
+
+  .dropdown-menu {
+    border-color: #374151;
+    background-color: #1f2937;
+  }
+
+  .dropdown-item {
+    color: #d1d5db;
+  }
+
+  .dropdown-item:hover {
+    color: #60a5fa;
+    background-color: #374151;
+  }
+
+  h1, h2, h3, h4, h5, h6,
+  .h1, .h2, .h3, .h4, .h5, .h6 {
+    color: #f3f4f6;
+  }
 }
