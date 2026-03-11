@@ -134,8 +134,8 @@ validate_cols_exist <- function(cols, data_names,
 #' Parse a percentage width string to an fr_pct value
 #'
 #' Parses strings like `"20%"` or `"50.5%"` into `fr_pct(0.20)`. Returns
-#' `NULL` if the string is not a percentage. Errors on invalid values (0%,
-#' >100%). Used by `fr_col()` and `fr_cols()`.
+#' `NULL` if the string is not a percentage. Errors on invalid values
+#' (0% or above 100%). Used by `fr_col()` and `fr_cols()`.
 #'
 #' @param x Character scalar to test.
 #' @param arg Argument name for error messages.

@@ -364,7 +364,7 @@
 "tbl_demog"
 
 
-#' Adverse Events by System Organ Class Table (Table 14.3.1)
+#' Adverse Events by System Organ Class Table (Table 14.3.1.2)
 #'
 #' @description
 #' Pre-summarized adverse event table with SOC header rows and indented PT
@@ -389,7 +389,7 @@
 "tbl_ae_soc"
 
 
-#' Overall Adverse Event Summary Table
+#' Overall Adverse Event Summary Table (Table 14.3.1.1)
 #'
 #' @description
 #' Pre-summarized overall AE summary table showing counts and percentages of
@@ -426,8 +426,7 @@
 #'     zom_100mg = fr_col("Zomerane 100mg"),
 #'     placebo   = fr_col("Placebo"),
 #'     total     = fr_col("Total")
-#'   ) |>
-#'   fr_header(bold = TRUE, align = "center")
+#'   )
 "tbl_ae_summary"
 
 

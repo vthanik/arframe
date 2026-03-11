@@ -35,3 +35,4 @@ docs/
 # Vignette artifacts
 vignettes/*.html
 vignettes/*.R
+deploy-site.sh

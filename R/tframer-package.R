@@ -12,6 +12,17 @@
 #' ## Core Pipeline
 #'
 #' ```r
+#' # Study setup (once per program, or use _tlframe.yml)
+#' fr_theme(
+#'   font_size = 9, orientation = "landscape",
+#'   hlines = "header", header = list(bold = TRUE),
+#'   n_format = "{label}\n(N={n})",
+#'   pagehead = list(left = "TFRM-2024-001",
+#'                   right = "Page {thepage} of {total_pages}")
+#' )
+#' n_itt <- c(placebo = 45, zom_50mg = 45, zom_100mg = 45, total = 135)
+#'
+#' # Per-table: only what's unique
 #' tbl_demog |>
 #'   fr_table() |>
 #'   fr_titles("Table 14.1.1", "Demographics and Baseline Characteristics") |>
@@ -21,14 +32,9 @@
 #'     zom_50mg       = fr_col("Zomerane 50mg", width = 1.5, align = "right"),
 #'     zom_100mg      = fr_col("Zomerane 100mg", width = 1.5, align = "right"),
 #'     total          = fr_col("Total", width = 1.5, align = "right"),
-#'     .n = c("Placebo" = 45, "Zomerane 50mg" = 45, "Zomerane 100mg" = 45, "Total" = 135),
-#'     .n_format = "{label}\n(N={n})"
+#'     .n = n_itt
 #'   ) |>
-#'   fr_header(bold = TRUE) |>
-#'   fr_hlines("header") |>
 #'   fr_footnotes("Source: ADSL") |>
-#'   fr_page(font_size = 9, orientation = "landscape") |>
-#'   fr_pagehead(left = "TFRM-2024-001", right = "Page {thepage} of {total_pages}") |>
 #'   fr_render("output/t_14_1_1.rtf")
 #' ```
 #'

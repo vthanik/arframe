@@ -58,7 +58,7 @@
 #'   fr_render(out)
 #' unlink(out)
 #'
-#' # Full pipeline with titles, footnotes, and page chrome
+#' # Full pipeline (in study programs, hlines/pagehead/pagefoot go in fr_theme())
 #' out <- file.path(tempdir(), "demog_full.rtf")
 #' tbl_demog |>
 #'   fr_table() |>

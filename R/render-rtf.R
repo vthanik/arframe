@@ -464,7 +464,7 @@ find_bottom_rule <- function(spec) {
 #'
 #' Only `placement = "every"` footnotes are included (they repeat on every
 #' page). `placement = "last"` footnotes are rendered as body rows via
-#' [rtf_body_footnotes_last()] so they appear only once at the end.
+#' `rtf_body_footnotes_last()` so they appear only once at the end.
 #'
 #' @param spec Finalized fr_spec object.
 #' @param token_map Token map for page chrome resolution.
@@ -1164,7 +1164,7 @@ estimate_single_page <- function(spec, group_data) {
 #' For single-page output, footnotes are rendered as merged table rows in the
 #' body (without `\trhdr`) so they appear at the bottom of the table content
 #' rather than in the page footer margin. Follows the same merged-cell pattern
-#' as [rtf_title_rows()].
+#' as `rtf_title_rows()`.
 #'
 #' @param spec Finalized fr_spec object.
 #' @param columns Named list of fr_col objects (visible columns).

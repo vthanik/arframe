@@ -24,11 +24,14 @@ spec <- tbl_demog |>
 
 | Preset | Description |
 |--------|-------------|
-| `"header"` | Lines above and below column headers (pharma standard) |
-| `"open"` | Top + bottom border only |
-| `"booktabs"` | Top thick + header-bottom thin + bottom thick |
-| `"box"` | Full border around the table |
-| `"void"` | No horizontal rules |
+| `"header"` | Single rule below the column header only (pharma standard, ICH E3) |
+| `"open"` | Rule above header + rule below header; no bottom border |
+| `"hsides"` | Rule at the top (above header) and bottom (below body) only |
+| `"above"` | Single rule above the column header only |
+| `"below"` | Single rule below the last body row only |
+| `"booktabs"` | Thick top (1pt) + thin mid (0.5pt) + thick bottom (1pt) (publication style) |
+| `"box"` | Full outer border on all four sides |
+| `"void"` | No horizontal rules; clears all previously set rules |
 
 ### Custom styling
 
@@ -52,7 +55,7 @@ spec <- tbl_demog |>
   fr_vlines("inner")
 ```
 
-Vertical presets: `"box"`, `"inner"`, `"outer"`, `"all"`, `"void"`.
+Vertical presets: `"box"` (outer edges only), `"all"` (every column + outer), `"inner"` (between columns only), `"void"` (none).
 
 `fr_grid()` is shorthand for combined horizontal + vertical rules:
 
@@ -75,13 +78,13 @@ spec <- tbl_demog |>
     zom_50mg  = fr_col("Zomerane 50mg"),
     zom_100mg = fr_col("Zomerane 100mg"),
     total     = fr_col("Total"),
-    group     = fr_col(visible = FALSE),
-    .n = c(placebo = 45, zom_50mg = 45, zom_100mg = 45, total = 135),
-    .n_format = "{label}\n(N={n})"
+    group     = fr_col(visible = FALSE)
   ) |>
-  fr_spans("Active Treatment" = c("zom_50mg", "zom_100mg")) |>
-  fr_header(bold = TRUE, align = "center") |>
-  fr_hlines("header")
+  fr_spans("Active Treatment" = c("zom_50mg", "zom_100mg"))
+```
+
+```{r spans-preview, echo = FALSE, out.width = "100%", fig.cap = "Spanning header grouping treatment columns"}
+knitr::include_graphics("figures/preview_spans.png")
 ```
 
 Unlike most verbs, `fr_spans()` **appends** on repeated calls.
@@ -146,6 +149,10 @@ spec <- tbl_demog |>
   )
 ```
 
+```{r styles-preview, echo = FALSE, out.width = "100%", fig.cap = "Row bold + column background + cell foreground color"}
+knitr::include_graphics("figures/preview_styles_basic.png")
+```
+
 ### Style constructors
 
 | Constructor | Scope | Key args |
@@ -183,6 +190,10 @@ spec <- tbl_ae_soc |>
   )
 ```
 
+```{r rows-matches-preview, echo = FALSE, out.width = "100%", fig.cap = "Content-based styling: SOC rows bold, total row highlighted"}
+knitr::include_graphics("figures/preview_rows_matches.png")
+```
+
 Regex patterns work too:
 
 ```{r rows-regex}
@@ -207,6 +218,10 @@ spec <- tbl_demog |>
   )
 ```
 
+```{r header-region-preview, echo = FALSE, out.width = "100%", fig.cap = "Dark navy header with white text"}
+knitr::include_graphics("figures/preview_header_region.png")
+```
+
 ### Zebra striping
 
 ```{r zebra}
@@ -215,6 +230,10 @@ spec <- tbl_disp |>
   fr_styles(
     fr_row_style(rows = seq(1, nrow(tbl_disp), 2), bg = "#F5F5F5")
   )
+```
+
+```{r zebra-preview, echo = FALSE, out.width = "100%", fig.cap = "Alternating row backgrounds (zebra striping)"}
+knitr::include_graphics("figures/preview_zebra.png")
 ```
 
 ### Style precedence

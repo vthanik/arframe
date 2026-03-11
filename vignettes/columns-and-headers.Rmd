@@ -37,18 +37,19 @@ names(fr_get_columns(spec))
 Columns you don't mention get auto-generated defaults. Set `visible = FALSE`
 to keep a column for logic (grouping, indentation) without rendering it.
 
-### fr_col() parameters
+### `fr_col()` parameters
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `label` | Column name | Display header text |
-| `width` | `1.5` | Inches, `"auto"`, or `"35%"` |
-| `align` | Auto-detect | `"left"`, `"right"`, `"center"`, `"decimal"` |
-| `header_align` | Inherits `align` | Header cell alignment override |
-| `visible` | `TRUE` | `FALSE` hides from output |
+| `width` | `NULL` | Inches, `"auto"`, `"25%"`, or `NULL` (inherits `.width`) |
+| `align` | `NULL` | `"left"`, `"right"`, `"center"`, `"decimal"`, or `NULL` (auto-detect) |
+| `header_align` | `NULL` | Header cell alignment override (inherits `align`) |
+| `visible` | `NULL` | `FALSE` hides from output; `NULL` = system decides |
 | `stub` | `FALSE` | Repeats in every col_split panel |
 | `n` | `NULL` | Per-column N-count (overrides `.n`) |
 | `spaces` | `NULL` | `"indent"` or `"preserve"` for leading spaces |
+| `group` | `NULL` | Spanning header group name |
 
 > **SAS:** `DEFINE col / DISPLAY "Label" STYLE(column)=[width=2.5in just=right];`
 
@@ -57,7 +58,7 @@ to keep a column for logic (grouping, indentation) without rendering it.
 The `.width` argument to `fr_cols()` controls the global width strategy:
 
 ```{r width-modes, eval = FALSE}
-fr_cols(.width = NULL, ...)     # Fixed: each column uses fr_col(width=) or 1.5in
+fr_cols(.width = NULL, ...)     # Same as "auto": estimate from content using font metrics
 fr_cols(.width = "auto", ...)   # Estimate from content using font metrics
 fr_cols(.width = "fit", ...)    # Auto + scale to fill the page
 fr_cols(.width = "equal", ...)  # Divide page equally among unfixed columns
@@ -91,6 +92,10 @@ spec <- decimal_data |>
     stat  = fr_col("Statistic", width = 1.5),
     value = fr_col("Value", width = 2.0, align = "decimal")
   )
+```
+
+```{r decimal-preview, echo = FALSE, out.width = "100%", fig.cap = "Decimal-aligned mixed statistics (counts, means, ranges, p-values)"}
+knitr::include_graphics("figures/preview_decimal.png")
 ```
 
 The engine recognises counts, floats, n (%), n/N (%), estimates with spreads,
@@ -180,6 +185,10 @@ spec <- tbl_demog |>
 The `.n_format` template has two tokens: `{label}` (display label) and
 `{n}` (count). Column header becomes `"Placebo\n(N=45)"`.
 
+> **Tip:** In study programs, set `.n_format` and `fr_header()` once via
+> `fr_theme(n_format = ..., header = list(bold = TRUE, align = "center"))`
+> so you never repeat them per-table. See [Automation & Batch](automation.html).
+
 ### Named list (per-page N-counts)
 
 When `page_by` splits the table, N-counts may differ per page:
@@ -260,7 +269,6 @@ spec <- tbl_vs[tbl_vs$timepoint == "Week 24" &
     param     = fr_col(visible = FALSE),
     timepoint = fr_col(visible = FALSE),
     statistic = fr_col("Statistic", width = 1.2, stub = TRUE),
-    .split = TRUE, .width = "fit",
     placebo_base  = fr_col("Placebo\nBaseline", width = 1.0),
     placebo_value = fr_col("Placebo\nValue", width = 1.0),
     placebo_chg   = fr_col("Placebo\nCFB", width = 1.0),
@@ -269,9 +277,13 @@ spec <- tbl_vs[tbl_vs$timepoint == "Week 24" &
     zom_50mg_chg   = fr_col("Zom 50mg\nCFB", width = 1.0),
     zom_100mg_base  = fr_col("Zom 100mg\nBaseline", width = 1.0),
     zom_100mg_value = fr_col("Zom 100mg\nValue", width = 1.0),
-    zom_100mg_chg   = fr_col("Zom 100mg\nCFB", width = 1.0)
-  ) |>
-  fr_hlines("header")
+    zom_100mg_chg   = fr_col("Zom 100mg\nCFB", width = 1.0),
+    .split = TRUE, .width = "fit"
+  )
+```
+
+```{r col-split-preview, echo = FALSE, out.width = "100%", fig.cap = "Column split panels with stub column repeating"}
+knitr::include_graphics("figures/preview_col_split.png")
 ```
 
 `stub = TRUE` columns repeat in every panel. `.width = "fit"` scales

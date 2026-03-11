@@ -97,11 +97,11 @@
 #'     column 2 = counts. Same N on every page.
 #'     Example: `data.frame(trt = c("Placebo", "Zom 50mg"), n = c(45, 44))`.
 #'
-#'   * **Data frame (3-column)** — column 1 = page\_by group values,
+#'   * **Data frame (3-column)** — column 1 = `page_by` group values,
 #'     column 2 = display labels, column 3 = counts. Different N per
-#'     page\_by group.
+#'     `page_by` group.
 #'
-#'   * **Named list** — keys = page\_by group values, values = named
+#'   * **Named list** — keys = `page_by` group values, values = named
 #'     numeric vectors (names = display labels).
 #'     Example: `list("Systolic BP" = c("Placebo" = 42, "Zom" = 40))`.
 #'

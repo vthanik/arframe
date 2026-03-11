@@ -378,7 +378,7 @@ pad_float_part <- function(sign, int, dec, w_si, w_dec, has_dec) {
   }
 }
 
-#' Build a percentage part: prefix + int [.dec] + sign
+#' Build a percentage part: prefix + int \[.dec\] + sign
 #' @noRd
 pad_pct_part <- function(pct_prefix, pct_int, pct_dec, pct_sign, widths) {
   padded_pfx <- stringi::stri_pad_left(pct_prefix, widths$w_pct_prefix)

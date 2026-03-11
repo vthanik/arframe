@@ -15,7 +15,7 @@ library(tlframe)
 `fr_rows()` controls how data flows across pages. `fr_page()`,
 `fr_pagehead()`, and `fr_pagefoot()` control the physical page.
 
-## page_by: separate pages per parameter
+## `page_by`: separate pages per parameter
 
 ```{r pageby}
 vs_wk24 <- tbl_vs[tbl_vs$timepoint == "Week 24",
@@ -32,7 +32,7 @@ as a bold header above each section.
 
 > **SAS:** `BY param;` in PROC REPORT with `#BYVAL` in titles.
 
-## group_by and blank_after
+## `group_by` and `blank_after`
 
 ```{r groupby}
 spec <- tbl_demog |>
@@ -54,7 +54,7 @@ spec <- tbl_demog |>
   fr_rows(group_by = "group")
 ```
 
-## indent_by: SOC/PT hierarchies
+## `indent_by`: SOC/PT hierarchies
 
 ```{r indent}
 spec <- tbl_ae_soc |>
@@ -65,6 +65,10 @@ spec <- tbl_ae_soc |>
     row_type = fr_col(visible = FALSE)
   ) |>
   fr_rows(group_by = "soc", indent_by = "pt")
+```
+
+```{r indent-preview, echo = FALSE, out.width = "100%", fig.cap = "SOC/PT hierarchy with indentation"}
+knitr::include_graphics("figures/preview_indent.png")
 ```
 
 `indent_by` indents the named column's values by 2 characters beneath the
@@ -84,16 +88,12 @@ spec <- tbl_ae_soc |>
     placebo  = fr_col("Placebo"),
     zom_50mg = fr_col("Zomerane 50mg"),
     zom_100mg = fr_col("Zomerane 100mg"),
-    total    = fr_col("Total"),
-    .n = c(placebo = 45, zom_50mg = 45, zom_100mg = 45, total = 135),
-    .n_format = "{label}\n(N={n})"
+    total    = fr_col("Total")
   ) |>
-  fr_header(bold = TRUE, align = "center") |>
-  fr_rows(group_by = "soc", indent_by = "pt") |>
-  fr_hlines("header")
+  fr_rows(group_by = "soc", indent_by = "pt")
 ```
 
-## sort_by and repeat_cols
+## `sort_by` and `repeat_cols`
 
 For listings, `sort_by` controls row order and `repeat_cols` suppresses
 repeated values:
@@ -103,8 +103,7 @@ ae_list <- adae[1:20, c("USUBJID", "ARM", "AEDECOD", "AESEV")]
 spec <- ae_list |>
   fr_listing() |>
   fr_rows(sort_by = c("ARM", "USUBJID"),
-          repeat_cols = "ARM") |>
-  fr_hlines("header")
+          repeat_cols = "ARM")
 ```
 
 `repeat_cols` only prints the value when it changes (like `NOREPEAT` in SAS).
@@ -150,6 +149,10 @@ spec <- tbl_demog |>
     center = "{datetime}",
     right  = "Page {thepage} of {total_pages}"
   )
+```
+
+```{r pagehead-preview, echo = FALSE, out.width = "100%", fig.cap = "Running headers and footers with protocol ID and page numbers"}
+knitr::include_graphics("figures/preview_pagehead.png")
 ```
 
 ### Built-in tokens

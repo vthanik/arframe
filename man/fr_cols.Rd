@@ -125,10 +125,10 @@ Example: \code{c(placebo = 45, zom_50mg = 44)}.
 \item \strong{Data frame (2-column)} — column 1 = display labels,
 column 2 = counts. Same N on every page.
 Example: \code{data.frame(trt = c("Placebo", "Zom 50mg"), n = c(45, 44))}.
-\item \strong{Data frame (3-column)} — column 1 = page\_by group values,
+\item \strong{Data frame (3-column)} — column 1 = \code{page_by} group values,
 column 2 = display labels, column 3 = counts. Different N per
-page\_by group.
-\item \strong{Named list} — keys = page\_by group values, values = named
+\code{page_by} group.
+\item \strong{Named list} — keys = \code{page_by} group values, values = named
 numeric vectors (names = display labels).
 Example: \code{list("Systolic BP" = c("Placebo" = 42, "Zom" = 40))}.
 }

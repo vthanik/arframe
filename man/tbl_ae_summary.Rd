@@ -3,7 +3,7 @@
 \docType{data}
 \name{tbl_ae_summary}
 \alias{tbl_ae_summary}
-\title{Overall Adverse Event Summary Table}
+\title{Overall Adverse Event Summary Table (Table 14.3.1.1)}
 \format{
 A data frame with 10 rows and 5 columns:
 \describe{
@@ -44,7 +44,6 @@ spec <- tbl_ae_summary |>
     zom_100mg = fr_col("Zomerane 100mg"),
     placebo   = fr_col("Placebo"),
     total     = fr_col("Total")
-  ) |>
-  fr_header(bold = TRUE, align = "center")
+  )
 }
 \keyword{datasets}

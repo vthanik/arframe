@@ -77,39 +77,41 @@ render_figure_pdf <- function(spec, path) {
   if (!is.null(spec$pagehead)) {
     ph <- spec$pagehead
     fs <- ph$font_size %||% (page$font_size - 1)
+    leading <- round(fs * fr_env$latex_leading_factor, 1)
     if (!is.null(ph$left)) {
-      txt <- resolve_tokens(ph$left, token_map, "page header")
+      txt <- resolve_tokens(latex_escape_chrome(ph$left), token_map, "page header")
       lines <- c(lines, sprintf("\\lhead{\\fontsize{%s}{%s}\\selectfont %s}",
-                                fs, round(fs * fr_env$latex_leading_factor, 1), latex_escape(txt)))
+                                fs, leading, txt))
     }
     if (!is.null(ph$center)) {
-      txt <- resolve_tokens(ph$center, token_map, "page header")
+      txt <- resolve_tokens(latex_escape_chrome(ph$center), token_map, "page header")
       lines <- c(lines, sprintf("\\chead{\\fontsize{%s}{%s}\\selectfont %s}",
-                                fs, round(fs * fr_env$latex_leading_factor, 1), latex_escape(txt)))
+                                fs, leading, txt))
     }
     if (!is.null(ph$right)) {
-      txt <- resolve_tokens(ph$right, token_map, "page header")
+      txt <- resolve_tokens(latex_escape_chrome(ph$right), token_map, "page header")
       lines <- c(lines, sprintf("\\rhead{\\fontsize{%s}{%s}\\selectfont %s}",
-                                fs, round(fs * fr_env$latex_leading_factor, 1), latex_escape(txt)))
+                                fs, leading, txt))
     }
   }
   if (!is.null(spec$pagefoot)) {
     pf <- spec$pagefoot
     fs <- pf$font_size %||% (page$font_size - 1)
+    leading <- round(fs * fr_env$latex_leading_factor, 1)
     if (!is.null(pf$left)) {
-      txt <- resolve_tokens(pf$left, token_map, "page footer")
+      txt <- resolve_tokens(latex_escape_chrome(pf$left), token_map, "page footer")
       lines <- c(lines, sprintf("\\lfoot{\\fontsize{%s}{%s}\\selectfont %s}",
-                                fs, round(fs * fr_env$latex_leading_factor, 1), latex_escape(txt)))
+                                fs, leading, txt))
     }
     if (!is.null(pf$center)) {
-      txt <- resolve_tokens(pf$center, token_map, "page footer")
+      txt <- resolve_tokens(latex_escape_chrome(pf$center), token_map, "page footer")
       lines <- c(lines, sprintf("\\cfoot{\\fontsize{%s}{%s}\\selectfont %s}",
-                                fs, round(fs * fr_env$latex_leading_factor, 1), latex_escape(txt)))
+                                fs, leading, txt))
     }
     if (!is.null(pf$right)) {
-      txt <- resolve_tokens(pf$right, token_map, "page footer")
+      txt <- resolve_tokens(latex_escape_chrome(pf$right), token_map, "page footer")
       lines <- c(lines, sprintf("\\rfoot{\\fontsize{%s}{%s}\\selectfont %s}",
-                                fs, round(fs * fr_env$latex_leading_factor, 1), latex_escape(txt)))
+                                fs, leading, txt))
     }
   }
 

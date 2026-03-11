@@ -35,10 +35,31 @@ spec |> fr_render("Table_14_1_1.pdf")
 
 Same spec, both formats. The file extension controls the output.
 
-## Add structure
+## Production-ready table
 
 Real pharma tables need column labels, N-counts, footnotes, and page chrome.
-Here's the same table, production-ready:
+Start by setting shared formatting **once** with `fr_theme()` --- every table
+in the session inherits it:
+
+```{r theme-setup}
+# ── Set once per study program (or use _tlframe.yml) ──
+fr_theme(
+  font_size   = 9,
+  font_family = "Courier New",
+  orientation = "landscape",
+  hlines      = "header",
+  header      = list(bold = TRUE, align = "center"),
+  n_format    = "{label}\n(N={n})",
+  footnote_separator = FALSE,
+  pagehead    = list(left = "TFRM-2024-001", right = "CONFIDENTIAL"),
+  pagefoot    = list(left = "{program}",
+                     right = "Page {thepage} of {total_pages}")
+)
+
+n_itt <- c(placebo = 45, zom_50mg = 45, zom_100mg = 45, total = 135)
+```
+
+Now each table only specifies what is **unique** to it:
 
 ```{r production}
 spec <- tbl_demog |>
@@ -56,24 +77,25 @@ spec <- tbl_demog |>
     zom_100mg      = fr_col("Zomerane 100mg", align = "decimal"),
     total          = fr_col("Total", align = "decimal"),
     group          = fr_col(visible = FALSE),
-    .n = c(placebo = 45, zom_50mg = 45, zom_100mg = 45, total = 135),
-    .n_format = "{label}\n(N={n})"
+    .n = n_itt
   ) |>
-  fr_header(bold = TRUE, align = "center") |>
   fr_rows(group_by = "group", blank_after = "group") |>
-  fr_hlines("header") |>
-  fr_pagehead(left = "Protocol TFRM-2024-001", right = "CONFIDENTIAL") |>
-  fr_pagefoot(left = "{program}", right = "Page {thepage} of {total_pages}") |>
-  fr_footnotes(
-    "Percentages based on number of subjects per treatment group.",
-    .separator = FALSE
-  )
-fr_validate(spec)$valid
+  fr_footnotes("Percentages based on number of subjects per treatment group.")
+fr_validate(spec)
 ```
 
-**12 lines of verbs** --- that's a submission-ready demographics table with
-N-counts, decimal alignment, grouped rows, page headers/footers, and
-footnotes. Every verb is optional; add only what you need.
+```{r theme-cleanup, include = FALSE}
+fr_theme_reset()
+```
+
+```{r demog-preview, echo = FALSE, out.width = "100%", fig.cap = "Demographics table rendered to PDF"}
+knitr::include_graphics("figures/preview_demog.png")
+```
+
+Notice what is **not** in the table program: header styling, hlines,
+page headers/footers, N-format, footnote separator --- the theme handles
+all of it. This is how production study programs work. See
+[Automation & Batch](automation.html) for the full pattern.
 
 ## Table anatomy
 
@@ -89,14 +111,14 @@ tlframe verbs:
 |               Demographics and Baseline Characteristics                |
 |                                                                        |
 | ---------------------------------------------------------------------- |
-|                  Placebo    Zomerane 50mg   Zomerane 100mg    Total     |<- fr_cols() +
+|                  Placebo    Zomerane 50mg   Zomerane 100mg    Total    |<- fr_cols() +
 |                   (N=45)      (N=45)          (N=45)        (N=135)    |   fr_cols(.n=)
 | ====================================================================== |<- fr_hlines()
 | Age (years)                                                            |
-|   Mean (SD)    68.2 (7.1)   67.8 (6.9)     68.0 (7.3)    68.0 (7.1)  |<- data rows
+|   Mean (SD)    68.2 (7.1)   67.8 (6.9)     68.0 (7.3)    68.0 (7.1)    |<- data rows
 |                                                                        |
 | Sex, n (%)                                                             |<- fr_rows(blank_after=)
-|   Male         26 (57.8)    24 (53.3)      25 (55.6)     75 (55.6)   |
+|   Male         26 (57.8)    24 (53.3)      25 (55.6)     75 (55.6)     |
 | ---------------------------------------------------------------------- |
 | Percentages based on number of subjects per treatment group.           |<- fr_footnotes()
 +------------------------------------------------------------------------+

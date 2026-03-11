@@ -50,14 +50,17 @@ ae_listing_spec <- ae_list |>
           repeat_cols = "USUBJID") |>
   fr_footnotes(
     "Related = Probable or Possible.",
-    "Action = Action taken with study drug.",
-    .separator = FALSE
+    "Action = Action taken with study drug."
   )
-fr_validate(ae_listing_spec)$valid
+fr_validate(ae_listing_spec)
 ```
 
 ```{r ae-listing-render, eval = FALSE}
 ae_listing_spec |> fr_render("output/Listing_16_2_7_1.rtf")
+```
+
+```{r ae-listing-preview, echo = FALSE, out.width = "100%", fig.cap = "AE listing (PDF output, page 1)"}
+knitr::include_graphics("figures/preview_ae_listing.png")
 ```
 
 ### Key listing features
@@ -95,15 +98,13 @@ giving it titles, footnotes, page headers, and footers:
 
 ```{r figure-basic, eval = FALSE}
 # fr_figure() wraps a ggplot2 or base R plot
-spec <- data.frame(x = 1) |>
-  fr_figure(plot = my_plot, width = 8, height = 5) |>
+# pagehead/pagefoot are inherited from fr_theme() --- no need to repeat
+my_plot |>
+  fr_figure(width = 8, height = 5) |>
   fr_titles(
     "Figure 14.2.1",
     "Kaplan-Meier Plot of Time to Study Withdrawal"
-  ) |>
-  fr_pagehead(left = "TFRM-2024-001", right = "CONFIDENTIAL") |>
-  fr_pagefoot(left = "{program}",
-              right = "Page {thepage} of {total_pages}")
+  )
 ```
 
 ### With ggplot2
@@ -131,10 +132,14 @@ if (requireNamespace("ggplot2", quietly = TRUE)) {
 fig_spec |> fr_render("output/Figure_14_2_1.pdf")
 ```
 
+```{r figure-preview, echo = FALSE, out.width = "100%", fig.cap = "KM figure with titles and footnotes (PDF output)"}
+knitr::include_graphics("figures/preview_figure.png")
+```
+
 ### Figure parameters
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `plot` | `NULL` | ggplot2 object or recorded plot |
-| `width` | `NULL` | Plot width in inches |
-| `height` | `NULL` | Plot height in inches |
+| `plot` | (required) | ggplot2 object or recorded base R plot |
+| `width` | `NULL` | Plot width in inches (auto-sized from page if `NULL`) |
+| `height` | `NULL` | Plot height in inches (70% of printable height if `NULL`) |

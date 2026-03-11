@@ -101,6 +101,7 @@ spec_b <- base_spec |>
 
 ## ── Complete 10-verb pipeline ─────────────────────────────────────────────
 # Demonstrates every major pipeline verb in a single specification.
+# In study programs, hlines/header/pagehead/pagefoot go in fr_theme().
 
 tbl_demog |>
   fr_table() |>

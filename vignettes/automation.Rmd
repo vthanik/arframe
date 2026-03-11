@@ -14,7 +14,7 @@ library(tlframe)
 
 *"I can make one table. How do I make 50?"*
 
-## Three-tier defaults
+## Four-tier defaults
 
 tlframe resolves settings from four tiers, lowest to highest priority:
 
@@ -172,12 +172,16 @@ fr_get_page(spec)$continuation
 ### Three-layer recipe pattern
 
 ```{r three-layer, eval = FALSE}
+# ── Population N-counts (define once) ──
+n_itt <- c(placebo = 45, zom_50mg = 45, zom_100mg = 45, total = 135)
+
 # Layer 1: Company standard
 company <- fr_recipe(
   fr_page(orientation = "landscape", font_family = "Courier New", font_size = 9),
   fr_pagehead(right = "CONFIDENTIAL"),
   fr_pagefoot(left = "{program}", right = "Page {thepage} of {total_pages}"),
-  fr_hlines("header")
+  fr_hlines("header"),
+  fr_header(bold = TRUE, align = "center")
 )
 
 # Layer 2: Study-specific
@@ -186,15 +190,13 @@ study <- fr_recipe(
   fr_page(tokens = list(study = "TFRM-2024-001", cutoff = "15MAR2025"))
 )
 
-# Layer 3: Table-type
+# Layer 3: Table-type (only what varies by table type)
 demog_recipe <- fr_recipe(
-  fr_cols(.n = c(placebo = 45, zom_50mg = 45, zom_100mg = 45, total = 135),
-          .n_format = "{label}\n(N={n})"),
-  fr_header(bold = TRUE, align = "center"),
-  fr_footnotes("Percentages based on N per treatment arm.", .separator = FALSE)
+  fr_cols(.n = n_itt, .n_format = "{label}\n(N={n})"),
+  fr_footnotes("Percentages based on N per treatment arm.")
 )
 
-# Usage
+# Usage: only titles and columns are unique per table
 tbl_demog |>
   fr_table() |>
   fr_apply(c(company, study, demog_recipe)) |>
@@ -268,8 +270,7 @@ spec <- tbl_demog |>
   fr_table() |>
   fr_titles("Table 14.1.1", "Demographics") |>
   fr_cols(group = fr_col(visible = FALSE))
-result <- fr_validate(spec)
-result$valid
+fr_validate(spec)
 ```
 
 `fr_validate()` checks columns, widths, styles, spans, fonts, and row
@@ -281,7 +282,7 @@ references. Use `strict = TRUE` in CI pipelines.
 spec <- tbl_demog |>
   fr_table() |>
   fr_titles("Table 14.1.1", "Demographics") |>
-  fr_footnotes("Source: ADSL.", .separator = FALSE) |>
+  fr_footnotes("Source: ADSL.") |>
   fr_cols(group = fr_col(visible = FALSE))
 
 stopifnot(length(fr_get_titles(spec)) == 2)

@@ -48,6 +48,10 @@ spec <- tbl_demog |>
 length(fr_get_titles(spec))
 ```
 
+```{r titles-styled-preview, echo = FALSE, out.width = "100%", fig.cap = "Mixed alignment with selective bold titles"}
+knitr::include_graphics("figures/preview_titles_styled.png")
+```
+
 List fields: `align` (`"left"`, `"center"`, `"right"`), `bold` (logical),
 `font_size` (numeric).
 
@@ -81,8 +85,8 @@ length(fr_get_footnotes(spec))
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `.separator` | `TRUE` | Draw a thin rule above footnotes |
-| `.placement` | `"bottom"` | `"last"` = last page only (PDF only; RTF repeats all) |
+| `.separator` | `FALSE` | Draw a horizontal separator rule above footnotes |
+| `.placement` | `"every"` | `"last"` = last page only (PDF only; RTF repeats all) |
 | `.align` | `"left"` | Footnote text alignment |
 
 > **SAS:** `FOOTNOTE1 "Percentages...";`
@@ -107,17 +111,17 @@ fr_get_footnotes(spec)[[3]]$content
 
 | Function | Output | Use case |
 |----------|--------|----------|
-| `fr_super(x)` | Superscript | Footnote markers, units (m{fr_super(2)}) |
-| `fr_sub(x)` | Subscript | Chemical formulas (H{fr_sub(2)}O) |
-| `fr_bold(x)` | **Bold** | Emphasis in cells |
-| `fr_italic(x)` | *Italic* | Population labels |
-| `fr_underline(x)` | Underline | Highlighting |
-| `fr_newline()` | Line break | Multi-line cells |
-| `fr_dagger()` | Dagger | Footnote markers |
-| `fr_ddagger()` | Double dagger | Footnote markers |
-| `fr_emdash()` | Em dash | Ranges |
-| `fr_endash()` | En dash | Ranges |
-| `fr_unicode(code)` | Unicode char | Plus-minus (177), etc. |
+| `fr_super(x)` | Superscript | Footnote markers, units (`"m{fr_super(2)}"`) |
+| `fr_sub(x)` | Subscript | Chemical formulas (`"H{fr_sub(2)}O"`) |
+| `fr_bold(x)` | **Bold** | Inline emphasis (`"{fr_bold('Total')} Subjects"`) |
+| `fr_italic(x)` | *Italic* | P-value annotations (`"{fr_italic('P')}-value"`) |
+| `fr_underline(x)` | Underline | Highlighting (`"{fr_underline('CONFIDENTIAL')}"`) |
+| `fr_newline()` | Line break | Multi-line cells (`"Treatment{fr_newline()}Arm"`) |
+| `fr_dagger()` | Dagger (U+2020) | Treatment-related AE markers |
+| `fr_ddagger()` | Double dagger (U+2021) | Serious AE markers |
+| `fr_emdash()` | Em dash (U+2014) | Title clauses (`"Safety {fr_emdash()} FAS"`) |
+| `fr_endash()` | En dash (U+2013) | Numeric ranges (`"18{fr_endash()}65 years"`) |
+| `fr_unicode(code)` | Unicode char | Plus-minus (`fr_unicode(0x00B1)`), degree, etc. |
 
 ### Markup in column labels
 

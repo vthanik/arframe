@@ -44,7 +44,7 @@ contribute.
 +----------------------------------------------------------------------+
 ```
 
-## The fr_spec object
+## The `fr_spec` object
 
 Every verb reads and writes a single S3 object:
 
@@ -92,7 +92,7 @@ render_<format>()          <- Backend-specific rendering
      PDF:   render_pdf() -> render_latex() + xelatex x2
 ```
 
-### finalize_spec
+### `finalize_spec()`
 
 Key operations:
 

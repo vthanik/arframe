@@ -12,8 +12,48 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 library(tlframe)
 ```
 
-Complete, copy-paste-ready table programs using built-in datasets. Each
-recipe follows ICH E3 table numbering.
+Production table programs for study TFRM-2024-001 using built-in datasets.
+Every table follows ICH E3 numbering.
+
+## Study setup
+
+Real programs don't repeat settings in every table. Define shared
+formatting **once** at the top of your study program (or in
+`_tlframe.yml`):
+
+```{r study-setup}
+# ── Study-wide theme (set once, inherited by all tables) ──
+fr_theme(
+  font_size   = 9,
+  font_family = "Courier New",
+  orientation = "landscape",
+  hlines      = "header",
+  header      = list(bold = TRUE, align = "center"),
+  n_format    = "{label}\n(N={n})",
+  footnote_separator = FALSE,
+  pagehead    = list(left = "TFRM-2024-001", right = "CONFIDENTIAL"),
+  pagefoot    = list(left = "{program}",
+                     right = "Page {thepage} of {total_pages}")
+)
+```
+
+Every table below inherits these settings automatically. Individual
+tables only specify what is **unique** to them: data, titles, columns,
+footnotes, and table-specific row logic.
+
+> **Principle:** If you're writing the same verb in two tables, it
+> belongs in the theme or a recipe --- not in the table program.
+
+## N-counts
+
+Define N-counts once per population. Reuse the same vector in every
+table that shares that population:
+
+```{r n-counts}
+# ── Population N-counts (reusable across tables) ──
+n_itt    <- c(placebo = 45, zom_50mg = 45, zom_100mg = 45, total = 135)
+n_safety <- c(placebo = 45, zom_50mg = 45, zom_100mg = 45, total = 135)
+```
 
 ## 14.1.1 Demographics
 
@@ -33,23 +73,25 @@ demog_spec <- tbl_demog |>
     zom_100mg      = fr_col("Zomerane 100mg", align = "decimal"),
     total          = fr_col("Total", align = "decimal"),
     group          = fr_col(visible = FALSE),
-    .n = c(placebo = 45, zom_50mg = 45, zom_100mg = 45, total = 135),
-    .n_format = "{label}\n(N={n})"
+    .n = n_itt
   ) |>
-  fr_header(bold = TRUE, align = "center") |>
   fr_rows(group_by = "group", blank_after = "group") |>
-  fr_hlines("header") |>
   fr_footnotes(
     "Percentages based on number of subjects per treatment group.",
-    "MMSE = Mini-Mental State Examination.",
-    .separator = FALSE
+    "MMSE = Mini-Mental State Examination."
   )
-fr_validate(demog_spec)$valid
+fr_validate(demog_spec)
 ```
+
+Note what is **not** here: `fr_header()`, `fr_hlines()`, `fr_pagehead()`,
+`fr_pagefoot()`, `.n_format`, `.separator` --- all inherited from the theme.
 
 ```{r demog-render, eval = FALSE}
 demog_spec |> fr_render("output/Table_14_1_1.rtf")
-demog_spec |> fr_render("output/Table_14_1_1.pdf")
+```
+
+```{r demog-preview, echo = FALSE, out.width = "100%", fig.cap = "Demographics table (PDF output)"}
+knitr::include_graphics("figures/preview_demog.png")
 ```
 
 ## 14.1.4 Subject Disposition
@@ -68,16 +110,10 @@ disp_spec <- tbl_disp |>
     zom_50mg  = fr_col("Zomerane 50mg", align = "decimal"),
     zom_100mg = fr_col("Zomerane 100mg", align = "decimal"),
     total     = fr_col("Total", align = "decimal"),
-    .n = c(placebo = 45, zom_50mg = 45, zom_100mg = 45, total = 135),
-    .n_format = "{label}\n(N={n})"
+    .n = n_itt
   ) |>
-  fr_header(bold = TRUE, align = "center") |>
-  fr_hlines("header") |>
-  fr_footnotes(
-    "Percentages based on number of subjects randomized per arm.",
-    .separator = FALSE
-  )
-fr_validate(disp_spec)$valid
+  fr_footnotes("Percentages based on number of subjects randomized per arm.")
+fr_validate(disp_spec)
 ```
 
 ## 14.3.1 AE by SOC/PT
@@ -94,9 +130,6 @@ ae_soc_spec <- tbl_ae_soc |>
          bold = TRUE),
     "Safety Population"
   ) |>
-  fr_pagehead(left = "TFRM-2024-001", right = "CONFIDENTIAL") |>
-  fr_pagefoot(left = "{program}",
-              right = "Page {thepage} of {total_pages}") |>
   fr_page(continuation = "(continued)") |>
   fr_cols(
     soc       = fr_col(visible = FALSE),
@@ -106,12 +139,9 @@ ae_soc_spec <- tbl_ae_soc |>
     zom_50mg  = fr_col("Zomerane\n50mg", align = "decimal"),
     zom_100mg = fr_col("Zomerane\n100mg", align = "decimal"),
     total     = fr_col("Total", align = "decimal"),
-    .n = c(placebo = 45, zom_50mg = 45, zom_100mg = 45, total = 135),
-    .n_format = "{label}\n(N={n})"
+    .n = n_safety
   ) |>
-  fr_header(bold = TRUE, align = "center") |>
   fr_rows(group_by = "soc", indent_by = "pt") |>
-  fr_hlines("header") |>
   fr_styles(
     fr_row_style(
       rows = fr_rows_matches("row_type", value = "total"), bold = TRUE),
@@ -121,10 +151,16 @@ ae_soc_spec <- tbl_ae_soc |>
   fr_footnotes(
     "MedDRA version 26.0.",
     "Subjects counted once per SOC and Preferred Term.",
-    "Sorted by descending total incidence.",
-    .separator = FALSE
+    "Sorted by descending total incidence."
   )
-fr_validate(ae_soc_spec)$valid
+fr_validate(ae_soc_spec)
+```
+
+Only `fr_page(continuation = "(continued)")` is added here because
+continuation text is specific to this multi-page table.
+
+```{r ae-soc-preview, echo = FALSE, out.width = "100%", fig.cap = "AE by SOC/PT table (PDF output, page 1)"}
+knitr::include_graphics("figures/preview_ae_soc.png")
 ```
 
 ## 14.2.1 Time-to-Event
@@ -143,12 +179,9 @@ tte_spec <- tbl_tte |>
     zom_50mg  = fr_col("Zomerane\n50mg", align = "decimal"),
     zom_100mg = fr_col("Zomerane\n100mg", align = "decimal"),
     placebo   = fr_col("Placebo", align = "decimal"),
-    .n = c(zom_50mg = 45, zom_100mg = 45, placebo = 45),
-    .n_format = "{label}\n(N={n})"
+    .n = c(zom_50mg = 45, zom_100mg = 45, placebo = 45)
   ) |>
-  fr_header(bold = TRUE, align = "center") |>
   fr_rows(group_by = "section", blank_after = "section") |>
-  fr_hlines("header") |>
   fr_styles(
     fr_row_style(
       rows = fr_rows_matches("statistic", pattern = "^[A-Z]"),
@@ -159,11 +192,13 @@ tte_spec <- tbl_tte |>
     "[a] Kaplan-Meier estimate with Greenwood 95% CI.",
     "[b] Two-sided log-rank test stratified by age group.",
     "[c] Cox proportional hazards model.",
-    "NE = Not Estimable.",
-    .separator = FALSE
+    "NE = Not Estimable."
   )
-fr_validate(tte_spec)$valid
+fr_validate(tte_spec)
 ```
+
+`.n` uses a local vector here because the column order differs from
+other tables (treatment arms exclude `total`).
 
 ## 14.4.1 Concomitant Medications
 
@@ -183,29 +218,22 @@ cm_spec <- tbl_cm |>
     zom_50mg   = fr_col("Zomerane\n50mg", align = "decimal"),
     zom_100mg  = fr_col("Zomerane\n100mg", align = "decimal"),
     total      = fr_col("Total", align = "decimal"),
-    .n = c(placebo = 45, zom_50mg = 45, zom_100mg = 45, total = 135),
-    .n_format = "{label}\n(N={n})"
+    .n = n_safety
   ) |>
-  fr_header(bold = TRUE, align = "center") |>
   fr_rows(group_by = "category", indent_by = "medication") |>
-  fr_hlines("header") |>
   fr_styles(
     fr_row_style(
       rows = fr_rows_matches("row_type", value = "total"), bold = TRUE),
     fr_row_style(
       rows = fr_rows_matches("row_type", value = "category"), bold = TRUE)
   ) |>
-  fr_footnotes(
-    "Subjects counted once per category and medication.",
-    .separator = FALSE
-  )
-fr_validate(cm_spec)$valid
+  fr_footnotes("Subjects counted once per category and medication.")
+fr_validate(cm_spec)
 ```
 
-## 14.3.6 Vital Signs with page_by
+## 14.3.6 Vital Signs with `page_by`
 
-Multi-parameter table with spanning headers and per-page N-counts via
-a function:
+Multi-parameter table with spanning headers and per-page N-counts:
 
 ```{r vs}
 # Pre-compute per-parameter N-counts from ADVS
@@ -234,20 +262,20 @@ vs_spec <- tbl_vs[tbl_vs$timepoint == "Week 24", ] |>
     zom_100mg_base    = fr_col("Baseline"),
     zom_100mg_value   = fr_col("Value"),
     zom_100mg_chg     = fr_col("CFB"),
-    .n = vs_n,
-    .n_format = "{label}\n(N={n})"
+    .n = vs_n
   ) |>
   fr_rows(page_by = "param") |>
-  fr_header(bold = TRUE, align = "center") |>
   fr_spans(
     "Placebo"        = c("placebo_base", "placebo_value", "placebo_chg"),
     "Zomerane 50mg"  = c("zom_50mg_base", "zom_50mg_value", "zom_50mg_chg"),
     "Zomerane 100mg" = c("zom_100mg_base", "zom_100mg_value", "zom_100mg_chg")
   ) |>
-  fr_hlines("header") |>
-  fr_footnotes("CFB = Change from Baseline.", .separator = FALSE)
-fr_validate(vs_spec)$valid
+  fr_footnotes("CFB = Change from Baseline.")
+fr_validate(vs_spec)
 ```
+
+`.n` takes a 3-column data frame (parameter + treatment + count) for
+automatic per-page N-counts when combined with `page_by`.
 
 ## Wide table with column split
 
@@ -262,7 +290,6 @@ wide_spec <- tbl_vs[tbl_vs$timepoint == "Week 24" &
     param     = fr_col(visible = FALSE),
     timepoint = fr_col(visible = FALSE),
     statistic = fr_col("Statistic", width = 1.2, stub = TRUE),
-    .split = TRUE, .width = "fit",
     placebo_base      = fr_col("Placebo\nBaseline", width = 1.0),
     placebo_value     = fr_col("Placebo\nValue", width = 1.0),
     placebo_chg       = fr_col("Placebo\nCFB", width = 1.0),
@@ -271,8 +298,28 @@ wide_spec <- tbl_vs[tbl_vs$timepoint == "Week 24" &
     zom_50mg_chg      = fr_col("Zom 50mg\nCFB", width = 1.0),
     zom_100mg_base    = fr_col("Zom 100mg\nBaseline", width = 1.0),
     zom_100mg_value   = fr_col("Zom 100mg\nValue", width = 1.0),
-    zom_100mg_chg     = fr_col("Zom 100mg\nCFB", width = 1.0)
-  ) |>
-  fr_hlines("header")
-fr_validate(wide_spec)$valid
+    zom_100mg_chg     = fr_col("Zom 100mg\nCFB", width = 1.0),
+    .split = TRUE, .width = "fit"
+  )
+fr_validate(wide_spec)
 ```
+
+```{r cleanup, include = FALSE}
+fr_theme_reset()
+```
+
+## What each layer owns
+
+| Setting | Where it belongs | Why |
+|---------|-----------------|-----|
+| Font, orientation, margins | `fr_theme()` or `_tlframe.yml` | Same for every table |
+| Header bold/center, `.n_format` | `fr_theme()` or `_tlframe.yml` | Same for every table |
+| `fr_hlines("header")` | `fr_theme()` or `_tlframe.yml` | Same for every table |
+| Page headers/footers | `fr_theme()` or `_tlframe.yml` | Same for every table |
+| `footnote_separator = FALSE` | `fr_theme()` or `_tlframe.yml` | Same for every table |
+| N-count vectors | Named variables (`n_itt`, `n_safety`) | Reused across tables |
+| Titles, footnotes | Per-table | Unique to each table |
+| Column definitions | Per-table | Unique to each table |
+| Row logic (`group_by`, `indent_by`) | Per-table | Unique to each table |
+| Row styles | Per-table | Unique to each table |
+| `continuation`, `page_by` | Per-table | Only some tables need them |

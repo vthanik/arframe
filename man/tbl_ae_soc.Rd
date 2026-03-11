@@ -3,7 +3,7 @@
 \docType{data}
 \name{tbl_ae_soc}
 \alias{tbl_ae_soc}
-\title{Adverse Events by System Organ Class Table (Table 14.3.1)}
+\title{Adverse Events by System Organ Class Table (Table 14.3.1.2)}
 \format{
 A data frame with columns:
 \describe{
