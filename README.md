@@ -14,12 +14,15 @@
 tbl_demog |>
   fr_table() |>
   fr_titles("Table 14.1.1", "Demographics and Baseline Characteristics") |>
-  fr_cols(label = c(stat = "Statistic", placebo = "Placebo", low = "Low Dose",
-                    high = "High Dose", total = "Total")) |>
-  fr_header(bold = TRUE, bg = "#003366", fg = "white") |>
-  fr_pagehead(left = "Protocol TFRM-2024-001", right = "CONFIDENTIAL") |>
-  fr_pagefoot(left = "{program}", right = "Page {thepage} of {total_pages}") |>
-  fr_footnotes("Percentages based on N per treatment arm.") |>
+  fr_cols(
+    characteristic = fr_col("", width = 2.5),
+    placebo        = fr_col("Placebo", align = "decimal"),
+    zom_50mg       = fr_col("Zomerane 50mg", align = "decimal"),
+    zom_100mg      = fr_col("Zomerane 100mg", align = "decimal"),
+    total          = fr_col("Total", align = "decimal"),
+    group          = fr_col(visible = FALSE),
+    .n = c(placebo = 45, zom_50mg = 45, zom_100mg = 45, total = 135)
+  ) |>
   fr_hlines("header") |>
   fr_render("Table_14_1_1.rtf")  # Change to .pdf — same output, different format
 ```
@@ -34,7 +37,7 @@ The pharmaverse has excellent tools for data derivation (admiral), analysis (Tpl
 | Native PDF rendering | Direct tabularray/XeLaTeX — no RMarkdown/Quarto pipeline |
 | Single spec, both formats | Same `fr_spec` object renders to `.rtf` or `.pdf` |
 | Group-aware pagination | Keeps groups together, repeats headers, adds continuation text |
-| Decimal alignment | 10-type stat display engine (n/%, mean (SD), CI, p-values, ranges) |
+| Decimal alignment | 15-type stat display engine (n/%, mean (SD), CI, p-values, ranges) |
 | Page headers/footers | 3-slot layout with tokens: `{thepage}`, `{total_pages}`, `{program}` |
 | Inline markup | `fr_super()`, `fr_bold()`, `fr_italic()`, `fr_dagger()` in any cell |
 | Dependencies | 7 imports — no dplyr, tidyr, purrr, or gt |
@@ -59,68 +62,95 @@ library(tlframe)
 tbl_demog |> fr_table() |> fr_render(tempfile(fileext = ".rtf"))
 ```
 
-### A submission-ready demographics table
+### A production demographics table
 
 ```r
+# Set shared formatting once — inherited by all tables
+fr_theme(
+  font_size   = 9,
+  font_family = "Courier New",
+  orientation = "landscape",
+  hlines      = "header",
+  header      = list(bold = TRUE, align = "center"),
+  n_format    = "{label}\n(N={n})",
+  pagehead    = list(left = "TFRM-2024-001", right = "CONFIDENTIAL"),
+  pagefoot    = list(left = "{program}",
+                     right = "Page {thepage} of {total_pages}")
+)
+
+n_itt <- c(placebo = 45, zom_50mg = 45, zom_100mg = 45, total = 135)
+
 spec <- tbl_demog |>
-  fr_table(group_by = "group") |>
-  fr_titles("Table 14.1.1", "Demographics and Baseline Characteristics",
-            "All Randomized Subjects") |>
-  fr_cols(label = c(stat = "Statistic", placebo = "Placebo (N=45)",
-                    low = "Low Dose (N=45)", high = "High Dose (N=45)",
-                    total = "Total (N=135)"),
-          align = c(stat = "left"),
-          width = c(stat = 2.0)) |>
-  fr_header(bold = TRUE) |>
-  fr_hlines("header") |>
-  fr_rows(indent_by = c("stat" = 0.25)) |>
-  fr_pagehead(left = "Protocol TFRM-2024-001",
-              center = "CONFIDENTIAL",
-              right = "Study TFRM-2024-001") |>
-  fr_pagefoot(left = "{program}",
-              right = "Page {thepage} of {total_pages}") |>
-  fr_footnotes("Percentages based on N per treatment arm.",
-               "Continuous variables summarized as Mean (SD).")
+  fr_table() |>
+  fr_titles(
+    "Table 14.1.1",
+    "Demographics and Baseline Characteristics",
+    "Intent-to-Treat Population"
+  ) |>
+  fr_cols(
+    .width = "fit",
+    characteristic = fr_col("", width = 2.5),
+    placebo        = fr_col("Placebo", align = "decimal"),
+    zom_50mg       = fr_col("Zomerane 50mg", align = "decimal"),
+    zom_100mg      = fr_col("Zomerane 100mg", align = "decimal"),
+    total          = fr_col("Total", align = "decimal"),
+    group          = fr_col(visible = FALSE),
+    .n = n_itt
+  ) |>
+  fr_rows(group_by = "group", blank_after = "group") |>
+  fr_footnotes("Percentages based on number of subjects per treatment group.")
 
 # Render both formats from the same spec
 fr_render(spec, tempfile(fileext = ".rtf"))
 fr_render(spec, tempfile(fileext = ".pdf"))
 ```
 
-### An AE table with SOC/PT grouping
+### An AE table with SOC/PT hierarchy
 
 ```r
 tbl_ae_soc |>
-  fr_table(group_by = "soc", page_by = "soc") |>
-  fr_titles("Table 14.3.1",
-            "Adverse Events by System Organ Class and Preferred Term") |>
-  fr_rows(indent_by = c("pt" = 0.25), blank_after = "soc") |>
-  fr_cols(.n = c("Placebo" = 45, "Low Dose" = 45, "High Dose" = 45),
-          .n_format = "{label}\n(N={n})") |>
-  fr_header(bold = TRUE) |>
-  fr_hlines("header") |>
+  fr_table() |>
+  fr_titles(
+    "Table 14.3.1",
+    "Treatment-Emergent Adverse Events by SOC and Preferred Term",
+    "Safety Population"
+  ) |>
+  fr_page(continuation = "(continued)") |>
+  fr_cols(
+    soc       = fr_col(visible = FALSE),
+    pt        = fr_col("System Organ Class\n  Preferred Term", width = 3.5),
+    row_type  = fr_col(visible = FALSE),
+    placebo   = fr_col("Placebo", align = "decimal"),
+    zom_50mg  = fr_col("Zomerane\n50mg", align = "decimal"),
+    zom_100mg = fr_col("Zomerane\n100mg", align = "decimal"),
+    total     = fr_col("Total", align = "decimal"),
+    .n = c(placebo = 45, zom_50mg = 45, zom_100mg = 45, total = 135)
+  ) |>
+  fr_rows(group_by = "soc", indent_by = "pt") |>
+  fr_styles(
+    fr_row_style(rows = fr_rows_matches("row_type", value = "soc"), bold = TRUE)
+  ) |>
   fr_render(tempfile(fileext = ".rtf"))
 ```
 
 ## Pipeline verbs
 
-Every verb takes an `fr_spec`, returns a modified `fr_spec`. Side effects only at `fr_render()`.
+Every verb takes an `fr_spec`, returns a modified `fr_spec`. Verb order doesn't matter — tlframe resolves everything at render time.
 
 | Verb | Purpose |
 |---|---|
-| `fr_table()` | Entry point — creates spec from data |
-| `fr_cols()` | Column labels, widths, alignment, selection |
-| `fr_header()` | Header styling, alignment |
-| `fr_titles()` | Table titles (1-4 lines) |
-| `fr_footnotes()` | Footnotes with optional separator |
-| `fr_rows()` | Row grouping, indentation, blank rows |
-| `fr_page()` | Paper size, orientation, margins, font |
-| `fr_pagehead()` | 3-slot page header with tokens |
-| `fr_pagefoot()` | 3-slot page footer with tokens |
-| `fr_hlines()` / `fr_vlines()` | Horizontal/vertical rules |
+| `fr_table()` / `fr_listing()` / `fr_figure()` | Entry points — create spec from data or plot |
+| `fr_cols()` + `fr_col()` | Column labels, widths, alignment, visibility, N-counts |
+| `fr_header()` | Header styling (bold, align, valign, colors) |
+| `fr_titles()` | Table titles (1-4 lines, with inline markup) |
+| `fr_footnotes()` | Footnotes with placement control (`"every"` or `"last"`) |
+| `fr_rows()` | `group_by`, `page_by`, `indent_by`, `blank_after`, `sort_by`, `repeat_cols` |
+| `fr_page()` | Paper size, orientation, margins, font, continuation text |
+| `fr_pagehead()` / `fr_pagefoot()` | Running headers/footers with token substitution |
+| `fr_hlines()` / `fr_vlines()` / `fr_grid()` | Horizontal/vertical rules (8 presets) |
 | `fr_spans()` | Spanning column headers |
-| `fr_style()` | Cell-level conditional formatting |
-| `fr_spacing()` | Gaps between titles, headers, footnotes |
+| `fr_styles()` | Cell/row/column conditional formatting |
+| `fr_spacing()` | Gaps between structural sections |
 | `fr_render()` | Render to RTF, PDF, or LaTeX |
 
 ## Key features
@@ -136,15 +166,18 @@ fr_render(spec, "output.tex")  # LaTeX source
 ### Automatic N-counts in headers
 
 ```r
-spec |> fr_cols(.n = c("Placebo" = 45, "Low Dose" = 45, "High Dose" = 45),
-               .n_format = "{label}\n(N={n})")
+spec |> fr_cols(
+  .n = c(placebo = 45, zom_50mg = 45, zom_100mg = 45, total = 135),
+  .n_format = "{label}\n(N={n})"
+)
 ```
 
 ### Page tokens
 
 ```r
-spec |> fr_pagehead(left = "Protocol XYZ", right = "CONFIDENTIAL") |>
-        fr_pagefoot(left = "{program}", right = "Page {thepage} of {total_pages}")
+spec |>
+  fr_pagehead(left = "Protocol TFRM-2024-001", right = "CONFIDENTIAL") |>
+  fr_pagefoot(left = "{program}", right = "Page {thepage} of {total_pages}")
 ```
 
 ### Inline markup
@@ -155,21 +188,36 @@ spec |> fr_titles("Table 14.1.1{fr_super('a')}", "Demographics")
 spec |> fr_footnotes("{fr_super('a')} Post-hoc analysis")
 ```
 
-### YAML configuration
+### Four-tier defaults
 
-```yaml
-# _tlframe.yml — company-wide defaults
-page:
-  orientation: landscape
-  font_family: Courier
-  font_size: 9
-header:
-  bold: true
-hlines: header
+```
++----------------------------------------------------------------------+
+| 4. Per-table verbs         fr_page(font_size = 10)          <- wins  |
+| 3. Session theme           fr_theme(font_size = 9)                   |
+| 2. Project config          _tlframe.yml                              |
+| 1. Package defaults        inst/defaults/_tlframe.yml       <- lowest|
++----------------------------------------------------------------------+
 ```
 
+### Recipes: reusable pipeline fragments
+
 ```r
-fr_config("_tlframe.yml")  # Apply to all tables in session
+company_layout <- fr_recipe(
+  fr_page(orientation = "landscape", font_size = 9),
+  fr_pagehead(left = "TFRM-2024-001", right = "CONFIDENTIAL"),
+  fr_pagefoot(left = "{program}", right = "Page {thepage} of {total_pages}"),
+  fr_hlines("header")
+)
+
+tbl_demog |> fr_table() |> fr_apply(company_layout) |> fr_titles("Table 14.1.1", "Demographics")
+```
+
+### Validation and QC
+
+```r
+fr_validate(spec)                        # Pre-render checks
+fr_get_titles(spec)                      # Programmatic inspection
+fr_style_explain(spec, row = 1, col = "total")  # Debug style cascade
 ```
 
 ## Built-in datasets
@@ -177,25 +225,38 @@ fr_config("_tlframe.yml")  # Apply to all tables in session
 | Dataset | Description |
 |---|---|
 | `adsl`, `adae`, `adtte`, `adcm`, `advs` | Synthetic CDISC ADaM datasets (135 subjects) |
-| `tbl_demog` | Demographics summary (ICH E3 Table 14.1.1) |
-| `tbl_ae_soc` | AE by SOC/PT (ICH E3 Table 14.3.1) |
-| `tbl_disp` | Subject disposition (ICH E3 Table 14.1.4) |
-| `tbl_tte` | Time-to-event summary (ICH E3 Table 14.2.1) |
-| `tbl_cm` | Concomitant medications (ICH E3 Table 14.4.1) |
-| `tbl_vs` | Vital signs (ICH E3 Table 14.3.6) |
+| `tbl_demog` | Demographics summary (Table 14.1.1) |
+| `tbl_ae_soc` | AE by SOC/PT (Table 14.3.1.2) |
+| `tbl_ae_summary` | Overall AE summary (Table 14.3.1.1) |
+| `tbl_disp` | Subject disposition (Table 14.1.3) |
+| `tbl_tte` | Time-to-event summary (Table 14.2.1) |
+| `tbl_cm` | Concomitant medications (Table 14.4.1) |
+| `tbl_vs` | Vital signs (Table 14.3.6) |
 
 ## Architecture
 
 tlframe writes output directly — no intermediate HTML, gt, or huxtable layer:
 
 ```
-fr_spec ──► finalize_spec() ──► RTF backend ──► .rtf file
-                               └► LaTeX backend ──► .tex ──► XeLaTeX ──► .pdf
+fr_spec → finalize_spec() → RTF backend → .rtf file
+                            └→ LaTeX backend → .tex → XeLaTeX → .pdf
 ```
 
-- **RTF**: Writes RTF 1.9.1 control words directly. Cell-level formatting, decimal alignment tabs, `\trkeep` group protection.
+- **RTF**: Writes RTF 1.9.1 control words directly. Cell-level formatting, decimal alignment, `\trkeep` group protection, R-side pagination.
 - **PDF**: Generates tabularray LaTeX, compiles with XeLaTeX. Falls back to Latin Modern fonts (built into tinytex) on Linux/Docker without Microsoft fonts.
 - **Font metrics**: Real Adobe Font Metrics (AFM) for 12 font variants — accurate column width estimation without rendering.
+
+## Documentation
+
+- **[Get Started](https://vthanik.github.io/tlframe/articles/tlframe.html)** — Your first table to production-ready output
+- **[Columns & Headers](https://vthanik.github.io/tlframe/articles/columns-and-headers.html)** — Widths, alignment, N-counts, decimal alignment
+- **[Titles & Footnotes](https://vthanik.github.io/tlframe/articles/titles-and-footnotes.html)** — Titles, footnotes, inline markup
+- **[Rows & Page Layout](https://vthanik.github.io/tlframe/articles/rows-and-pages.html)** — Grouping, pagination, page chrome
+- **[Rules, Spans & Styles](https://vthanik.github.io/tlframe/articles/styling.html)** — Borders, spanning headers, conditional formatting
+- **[Table Cookbook](https://vthanik.github.io/tlframe/articles/table-cookbook.html)** — 8 complete ICH E3 table programs
+- **[Listings & Figures](https://vthanik.github.io/tlframe/articles/listings-and-figures.html)** — Patient listings and embedded figures
+- **[Automation & Batch](https://vthanik.github.io/tlframe/articles/automation.html)** — Themes, recipes, YAML config, batch rendering
+- **[Architecture](https://vthanik.github.io/tlframe/articles/architecture.html)** — Internal design and backend interface
 
 ## Related packages
 
