@@ -20,9 +20,7 @@ test_that("render_pdf runs without error", {
   spec <- tbl_demog |> fr_table() |> fr_titles("Test Table")
   tmp <- tempfile(fileext = ".pdf")
   on.exit(unlink(tmp), add = TRUE)
-  # Compilation may produce empty PDF depending on system LaTeX config;
 
-  # we just test the pipeline doesn't error
   expect_no_error(fr_render(spec, tmp))
 })
 
@@ -53,16 +51,87 @@ test_that("render_pdf cleans up temp files", {
   expect_false(file.exists(aux))
 })
 
-test_that("render_pdf errors when XeLaTeX not found (mocked)", {
+test_that("compile_xelatex_doc errors when XeLaTeX not found (mocked)", {
   local_mocked_bindings(find_xelatex = function() NULL, .package = "tlframe")
-  spec <- data.frame(a = 1:3) |> fr_table()
-  finalized <- tlframe:::finalize_spec(spec)
-  page_groups <- tlframe:::prepare_pages(finalized)
-  col_panels <- tlframe:::calculate_col_panels(finalized)
-  tmp <- tempfile(fileext = ".pdf")
-  on.exit(unlink(tmp), add = TRUE)
+  # Also mock tinytex as unavailable
+  local_mocked_bindings(
+    requireNamespace = function(pkg, ...) {
+      if (pkg == "tinytex") return(FALSE)
+      base::requireNamespace(pkg, ...)
+    },
+    .package = "base"
+  )
+  tmp_tex <- tempfile(fileext = ".tex")
+  on.exit(unlink(tmp_tex), add = TRUE)
+  writeLines("\\documentclass{article}\\begin{document}hi\\end{document}", tmp_tex)
   expect_error(
-    tlframe:::render_pdf(finalized, page_groups, col_panels, tmp),
+    tlframe:::compile_xelatex_doc(tmp_tex),
     "XeLaTeX not found"
+  )
+})
+
+
+# ── fr_latex_deps() ─────────────────────────────────────────────────────────
+
+test_that("fr_latex_deps returns character vector containing tabularray", {
+  deps <- fr_latex_deps()
+  expect_type(deps, "character")
+  expect_true(length(deps) > 0L)
+  expect_true("tabularray" %in% deps)
+  expect_true("fontspec" %in% deps)
+  expect_true("booktabs" %in% deps)
+})
+
+
+# ── fr_install_latex_deps() ─────────────────────────────────────────────────
+
+test_that("fr_install_latex_deps errors without tinytex", {
+  local_mocked_bindings(
+    requireNamespace = function(pkg, ...) {
+      if (pkg == "tinytex") return(FALSE)
+      base::requireNamespace(pkg, ...)
+    },
+    .package = "base"
+  )
+  expect_error(fr_install_latex_deps(), "tinytex")
+})
+
+
+# ── report_latex_failure() ──────────────────────────────────────────────────
+
+test_that("report_latex_failure detects missing packages from log", {
+  log_file <- tempfile(fileext = ".log")
+  on.exit(unlink(log_file), add = TRUE)
+  writeLines(c(
+    "This is XeTeX, Version 3.14",
+    "! LaTeX Error: File `tabularray.sty' not found.",
+    "Type X to quit or <RETURN> to proceed."
+  ), log_file)
+
+  expect_error(
+    tlframe:::report_latex_failure(log_file, "test.tex"),
+    "tabularray"
+  )
+})
+
+test_that("report_latex_failure shows log tail for non-package errors", {
+  log_file <- tempfile(fileext = ".log")
+  on.exit(unlink(log_file), add = TRUE)
+  writeLines(c(
+    "This is XeTeX, Version 3.14",
+    "! Undefined control sequence.",
+    "l.42 \\badcommand"
+  ), log_file)
+
+  expect_error(
+    tlframe:::report_latex_failure(log_file, "test.tex"),
+    "compilation failed"
+  )
+})
+
+test_that("report_latex_failure handles missing log file", {
+  expect_error(
+    tlframe:::report_latex_failure("/nonexistent/file.log", "test.tex"),
+    "No log file found"
   )
 })

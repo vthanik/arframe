@@ -358,7 +358,7 @@ rtf_resolve_page_fields <- function(text) {
 #' RTF preamble: header, font table, color table
 #' @noRd
 rtf_preamble <- function(spec, color_info) {
-  font_name <- spec$page$font_family
+  font_name <- resolve_rtf_font(spec$page$font_family)
   rtf_fam <- get_rtf_font_family(font_name)
   prq <- get_rtf_font_prq(font_name)
 

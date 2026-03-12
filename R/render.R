@@ -31,7 +31,8 @@
 #'   * `.rtf` — Rich Text Format.
 #'   * `.tex` — LaTeX source (tabularray/XeLaTeX).
 #'   * `.pdf` — PDF via XeLaTeX compilation (requires XeLaTeX on PATH or
-#'     **tinytex**).
+#'     **tinytex**). First-time setup: call [fr_install_latex_deps()] to
+#'     install required LaTeX packages (notably **tabularray**).
 #' @param format Character scalar or `NULL`. Output format: `"rtf"`, `"latex"`,
 #'   or `"pdf"`. If `NULL` (default), detected from the file extension of `path`.
 #' @param ... Reserved for future backend-specific options.

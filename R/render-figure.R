@@ -164,7 +164,16 @@ render_figure_pdf <- function(spec, path) {
   tex_path <- sub("\\.pdf$", ".tex", path)
   writeLines(lines, tex_path)
 
-  compile_xelatex(tex_path, path)
+  compile_xelatex_doc(tex_path)
+
+  # Move compiled PDF if needed
+  compiled <- sub("\\.tex$", ".pdf", tex_path)
+  if (compiled != path && file.exists(compiled)) {
+    file.copy(compiled, path, overwrite = TRUE)
+    unlink(compiled)
+  }
+
+  invisible(path)
 }
 
 
@@ -216,7 +225,7 @@ render_figure_rtf <- function(spec, path) {
   con <- file(path, open = "wb")
   on.exit(close(con), add = TRUE)
 
-  font_name <- page$font_family
+  font_name <- resolve_rtf_font(page$font_family)
   rtf_fam <- get_rtf_font_family(font_name)
   prq <- get_rtf_font_prq(font_name)
   fonttbl <- paste0("{\\fonttbl{\\f0\\", rtf_fam, "\\fprq", prq,
@@ -281,33 +290,3 @@ render_figure_rtf <- function(spec, path) {
 }
 
 
-#' Compile a .tex file to PDF using XeLaTeX
-#'
-#' @param tex_path Path to .tex file.
-#' @param pdf_path Expected output .pdf path.
-#' @noRd
-compile_xelatex <- function(tex_path, pdf_path) {
-  # Try tinytex first, then system xelatex
-  if (requireNamespace("tinytex", quietly = TRUE)) {
-    tinytex::xelatex(tex_path)
-  } else {
-    xelatex <- Sys.which("xelatex")
-    if (!nzchar(xelatex)) {
-      cli_abort(c(
-        "XeLaTeX not found on PATH.",
-        "i" = "Install {.pkg tinytex} or add XeLaTeX to your system PATH."
-      ))
-    }
-    system2(xelatex, args = c("-interaction=nonstopmode", tex_path),
-            stdout = FALSE, stderr = FALSE)
-  }
-
-  # Move compiled PDF if needed
-  compiled <- sub("\\.tex$", ".pdf", tex_path)
-  if (compiled != pdf_path && file.exists(compiled)) {
-    file.copy(compiled, pdf_path, overwrite = TRUE)
-    unlink(compiled)
-  }
-
-  invisible(pdf_path)
-}

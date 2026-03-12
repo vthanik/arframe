@@ -2,13 +2,12 @@
 # test-render-figure.R — Tests for render-figure.R
 # ──────────────────────────────────────────────────────────────────────────────
 
-test_that("compile_xelatex runs without error when xelatex available", {
+test_that("compile_xelatex_doc runs without error when xelatex available", {
   skip_if(!nzchar(Sys.which("xelatex")), "XeLaTeX not available")
   tmp_tex <- tempfile(fileext = ".tex")
   writeLines("\\documentclass{article}\\begin{document}test\\end{document}", tmp_tex)
   on.exit(unlink(c(tmp_tex, sub("\\.tex$", ".pdf", tmp_tex))), add = TRUE)
-  tmp_pdf <- sub("\\.tex$", ".pdf", tmp_tex)
-  expect_no_error(tlframe:::compile_xelatex(tmp_tex, tmp_pdf))
+  expect_no_error(tlframe:::compile_xelatex_doc(tmp_tex))
 })
 
 test_that("render_figure_rtf creates RTF file with ggplot", {

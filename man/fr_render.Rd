@@ -16,7 +16,8 @@ determines the format unless \code{format} is specified:
 \item \code{.rtf} — Rich Text Format.
 \item \code{.tex} — LaTeX source (tabularray/XeLaTeX).
 \item \code{.pdf} — PDF via XeLaTeX compilation (requires XeLaTeX on PATH or
-\strong{tinytex}).
+\strong{tinytex}). First-time setup: call \code{\link[=fr_install_latex_deps]{fr_install_latex_deps()}} to
+install required LaTeX packages (notably \strong{tabularray}).
 }}
 
 \item{format}{Character scalar or \code{NULL}. Output format: \code{"rtf"}, \code{"latex"},

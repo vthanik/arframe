@@ -86,6 +86,12 @@ fr_env$lm_fallback <- c(
   roman  = "Latin Modern Roman"
 )
 
+# CTAN packages required by the LaTeX/PDF backend (preamble + tabularray)
+fr_env$required_latex_pkgs <- c(
+  "tabularray", "fontspec", "geometry", "xcolor",
+  "fancyhdr", "lastpage", "booktabs"
+)
+
 
 #' Check if a system font is available for XeLaTeX
 #'
@@ -106,22 +112,48 @@ is_system_font_available <- function(font_name) {
   # Windows always has standard fonts (Courier New, Arial, Times New Roman)
   if (os == "windows") return(TRUE)
 
-  # Linux/macOS: use fc-list to check
+  # Linux/macOS: use fc-list to check (cached per session)
+  fonts <- get_system_font_list()
+  # TRUE sentinel means "can't determine, assume available"
+  if (isTRUE(fonts)) return(TRUE)
+  font_name %in% fonts
+}
+
+
+#' Get cached list of system font family names (Linux/macOS only)
+#'
+#' Calls `fc-list` once per session and caches the result in `fr_env`.
+#' Returns a character vector of available font family names.
+#'
+#' @return Character vector of font family names, or `NULL` if fc-list
+#'   is unavailable (callers treat NULL as "assume all fonts available").
+#' @noRd
+get_system_font_list <- function() {
+  if (!is.null(fr_env$system_fonts)) return(fr_env$system_fonts)
+
   fc_list <- Sys.which("fc-list")
-  if (!nzchar(fc_list)) return(TRUE)  # can't check, assume available
+  if (!nzchar(fc_list)) {
+    # Can't check — return sentinel that matches everything
+    fr_env$system_fonts <- TRUE
+    return(TRUE)
+  }
 
   result <- tryCatch(
     system2("fc-list", args = c(":", "family"), stdout = TRUE, stderr = FALSE),
     error = function(e) character(0)
   )
 
-  if (length(result) == 0L) return(TRUE)  # can't determine, assume available
+  if (length(result) == 0L) {
+    fr_env$system_fonts <- TRUE
+    return(TRUE)
+  }
 
-  # fc-list returns "family1,family2" per line; check if font_name appears
-  any(vapply(result, function(line) {
-    families <- trimws(strsplit(line, ",", fixed = TRUE)[[1L]])
-    font_name %in% families
-  }, logical(1L)))
+  # fc-list returns "family1,family2" per line; extract all family names
+  all_families <- unique(trimws(unlist(
+    strsplit(result, ",", fixed = TRUE)
+  )))
+  fr_env$system_fonts <- all_families
+  all_families
 }
 
 
@@ -150,6 +182,39 @@ resolve_latex_font <- function(font_name) {
   ))
 
   lm_name
+}
+
+
+#' Resolve a font for RTF rendering, with OS-appropriate fallback
+#'
+#' If the requested font is available on the system, returns it as-is.
+#' Otherwise, falls back to the OS default font for the same family type
+#' (e.g., Courier New, Arial, or Times New Roman on Windows).
+#'
+#' @param font_name Character scalar. Requested font name.
+#' @return Character scalar. The resolved font name for RTF.
+#' @noRd
+resolve_rtf_font <- function(font_name) {
+
+  if (is_system_font_available(font_name)) {
+    return(font_name)
+  }
+
+  # Map to OS default of same family type
+  fam <- lookup_font_family(font_name)
+  defaults <- os_default_fonts()
+  fallback <- switch(fam,
+    modern = defaults$mono,
+    swiss  = defaults$sans,
+    roman  = defaults$serif
+  )
+
+  cli::cli_inform(c(
+    "i" = "Font {.val {font_name}} not found on system.",
+    "*" = "Falling back to {.val {fallback}} for RTF output."
+  ))
+
+  fallback
 }
 
 

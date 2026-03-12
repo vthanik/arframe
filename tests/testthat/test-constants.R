@@ -593,6 +593,38 @@ test_that("resolve_latex_font maps families correctly in fallback", {
 })
 
 
+# ── resolve_rtf_font ──────────────────────────────────────────────────────────
+
+test_that("resolve_rtf_font returns available font as-is", {
+  local_mocked_bindings(is_system_font_available = function(font_name) TRUE)
+  expect_equal(resolve_rtf_font("Courier New"), "Courier New")
+  expect_equal(resolve_rtf_font("Arial"), "Arial")
+})
+
+test_that("resolve_rtf_font falls back to OS default for unavailable fonts", {
+  local_mocked_bindings(is_system_font_available = function(font_name) FALSE)
+  defaults <- os_default_fonts()
+
+  expect_message(
+    result <- resolve_rtf_font("Courier New"),
+    "not found"
+  )
+  expect_equal(result, defaults$mono)
+
+  expect_message(
+    result <- resolve_rtf_font("Arial"),
+    "not found"
+  )
+  expect_equal(result, defaults$sans)
+
+  expect_message(
+    result <- resolve_rtf_font("Times New Roman"),
+    "not found"
+  )
+  expect_equal(result, defaults$serif)
+})
+
+
 test_that("resolve_color normalizes hex to uppercase", {
   expect_equal(resolve_color("#aabbcc"), "#AABBCC")
   expect_equal(resolve_color("#FF0000"), "#FF0000")
