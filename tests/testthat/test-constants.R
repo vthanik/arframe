@@ -564,6 +564,58 @@ test_that("is_system_font_available returns TRUE for Latin Modern fonts", {
   expect_true(is_system_font_available("Latin Modern Roman"))
 })
 
+
+# ── get_font_dir ──────────────────────────────────────────────────────────
+
+test_that("get_font_dir returns NULL when TLFRAME_FONT_DIR is unset", {
+  withr::local_envvar(TLFRAME_FONT_DIR = NA)
+  expect_null(get_font_dir())
+})
+
+test_that("get_font_dir returns NULL for nonexistent directory", {
+  withr::local_envvar(TLFRAME_FONT_DIR = "/nonexistent/path/to/fonts")
+  expect_null(get_font_dir())
+})
+
+test_that("get_font_dir returns NULL for empty directory (no font files)", {
+  tmp <- tempfile("fontdir")
+  dir.create(tmp)
+  on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
+  withr::local_envvar(TLFRAME_FONT_DIR = tmp)
+  expect_null(get_font_dir())
+})
+
+test_that("get_font_dir returns path when directory contains .ttf files", {
+  tmp <- tempfile("fontdir")
+  dir.create(tmp)
+  file.create(file.path(tmp, "test.ttf"))
+  on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
+  withr::local_envvar(TLFRAME_FONT_DIR = tmp)
+  result <- get_font_dir()
+  expect_type(result, "character")
+  expect_equal(result, normalizePath(tmp))
+})
+
+test_that("get_font_dir returns path when directory contains .otf files", {
+  tmp <- tempfile("fontdir")
+  dir.create(tmp)
+  file.create(file.path(tmp, "test.otf"))
+  on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
+  withr::local_envvar(TLFRAME_FONT_DIR = tmp)
+  result <- get_font_dir()
+  expect_type(result, "character")
+  expect_equal(result, normalizePath(tmp))
+})
+
+test_that("is_system_font_available returns TRUE when TLFRAME_FONT_DIR is set", {
+  tmp <- tempfile("fontdir")
+  dir.create(tmp)
+  file.create(file.path(tmp, "test.ttf"))
+  on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
+  withr::local_envvar(TLFRAME_FONT_DIR = tmp)
+  expect_true(is_system_font_available("AnyFontName"))
+})
+
 test_that("resolve_latex_font returns Latin Modern name directly", {
   result <- resolve_latex_font("Latin Modern Mono")
   expect_equal(result, "Latin Modern Mono")

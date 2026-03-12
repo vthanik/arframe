@@ -29,6 +29,10 @@
 #' @param font_family Font family name. Defaults to the OS monospace font
 #'   (`"Courier New"` on Windows/macOS, `"Latin Modern Mono"` on Linux).
 #'   Regulatory submissions typically use Courier New 9pt.
+#'   Set the `TLFRAME_FONT_DIR` environment variable to a directory
+#'   containing `.ttf`/`.otf` files to make custom fonts available for
+#'   PDF rendering without system-wide installation. Ideal for Docker,
+#'   CI, or project-local fonts. See `vignette("automation")` for examples.
 #' @param font_size Font size in points. Default `9`. Typical pharma range:
 #'   7–10 pt.
 #' @param orphan_min Minimum body rows to keep at the **bottom** of a page
@@ -135,6 +139,12 @@
 #' tbl_ae_soc |>
 #'   fr_table() |>
 #'   fr_page(paper = "legal", orientation = "landscape", margins = 1)
+#'
+#' ## ── Custom fonts via TLFRAME_FONT_DIR (Docker/CI) ────────────────────
+#'
+#' # Set TLFRAME_FONT_DIR to a directory of .ttf/.otf files;
+#' # XeLaTeX discovers them by name --- no system install needed.
+#' # Sys.setenv(TLFRAME_FONT_DIR = "/path/to/fonts")
 #'
 #' @seealso [fr_pagehead()], [fr_pagefoot()] for running headers/footers,
 #'   [fr_rows()] for `page_by` / `group_by` row pagination,

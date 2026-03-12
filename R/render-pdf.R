@@ -120,6 +120,21 @@ compile_xelatex_doc <- function(tex_path) {
   tex_dir <- dirname(tex_path)
   base_name <- tools::file_path_sans_ext(basename(tex_path))
 
+  # Set OSFONTDIR so XeLaTeX discovers fonts in TLFRAME_FONT_DIR
+
+  font_dir <- get_font_dir()
+  if (!is.null(font_dir)) {
+    old_osfontdir <- Sys.getenv("OSFONTDIR", unset = NA)
+    existing <- if (!is.na(old_osfontdir)) old_osfontdir else ""
+    sep <- if (.Platform$OS.type == "windows") ";" else ":"
+    new_val <- if (nzchar(existing)) paste0(font_dir, sep, existing) else font_dir
+    Sys.setenv(OSFONTDIR = new_val)
+    on.exit({
+      if (is.na(old_osfontdir)) Sys.unsetenv("OSFONTDIR")
+      else Sys.setenv(OSFONTDIR = old_osfontdir)
+    }, add = TRUE)
+  }
+
   if (requireNamespace("tinytex", quietly = TRUE)) {
     # tinytex::xelatex() handles two-pass compilation and auto-installs
     # missing packages via parse_install()

@@ -243,7 +243,7 @@ fr_spec → finalize_spec() → RTF backend → .rtf file
 ```
 
 - **RTF**: Writes RTF 1.9.1 control words directly. Cell-level formatting, decimal alignment, `\trkeep` group protection, R-side pagination.
-- **PDF**: Generates tabularray LaTeX, compiles with XeLaTeX. Falls back to Latin Modern fonts (built into tinytex) on Linux/Docker without Microsoft fonts.
+- **PDF**: Generates tabularray LaTeX, compiles with XeLaTeX. Falls back to Latin Modern fonts (built into tinytex) on Linux/Docker without Microsoft fonts. Set `TLFRAME_FONT_DIR` to a directory of `.ttf`/`.otf` files for project-local fonts without system-wide installation.
 - **Font metrics**: Real Adobe Font Metrics (AFM) for 12 font variants — accurate column width estimation without rendering.
 
 ## Documentation

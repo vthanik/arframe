@@ -135,3 +135,75 @@ test_that("report_latex_failure handles missing log file", {
     "No log file found"
   )
 })
+
+
+# ── OSFONTDIR management in compile_xelatex_doc ──────────────────────────
+
+test_that("compile_xelatex_doc sets OSFONTDIR when TLFRAME_FONT_DIR is set", {
+  tmp <- tempfile("fontdir")
+  dir.create(tmp)
+  file.create(file.path(tmp, "test.ttf"))
+  on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
+
+  withr::local_envvar(TLFRAME_FONT_DIR = tmp, OSFONTDIR = NA)
+
+  # Mock compilation to capture OSFONTDIR during execution
+  captured_osfontdir <- NULL
+  local_mocked_bindings(
+    requireNamespace = function(pkg, ...) {
+      if (pkg == "tinytex") {
+        captured_osfontdir <<- Sys.getenv("OSFONTDIR", unset = NA)
+        return(FALSE)
+      }
+      base::requireNamespace(pkg, ...)
+    },
+    .package = "base"
+  )
+  local_mocked_bindings(find_xelatex = function() NULL, .package = "tlframe")
+
+  tmp_tex <- tempfile(fileext = ".tex")
+  on.exit(unlink(tmp_tex), add = TRUE)
+  writeLines("\\documentclass{article}\\begin{document}hi\\end{document}", tmp_tex)
+  try(tlframe:::compile_xelatex_doc(tmp_tex), silent = TRUE)
+
+  # OSFONTDIR should have been set during execution
+  expect_true(!is.na(captured_osfontdir))
+  expect_true(grepl(normalizePath(tmp), captured_osfontdir, fixed = TRUE))
+
+  # OSFONTDIR should be restored (unset) after execution
+  expect_true(is.na(Sys.getenv("OSFONTDIR", unset = NA)))
+})
+
+test_that("compile_xelatex_doc appends to existing OSFONTDIR", {
+  tmp <- tempfile("fontdir")
+  dir.create(tmp)
+  file.create(file.path(tmp, "test.ttf"))
+  on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
+
+  withr::local_envvar(TLFRAME_FONT_DIR = tmp, OSFONTDIR = "/existing/path")
+
+  captured_osfontdir <- NULL
+  local_mocked_bindings(
+    requireNamespace = function(pkg, ...) {
+      if (pkg == "tinytex") {
+        captured_osfontdir <<- Sys.getenv("OSFONTDIR", unset = NA)
+        return(FALSE)
+      }
+      base::requireNamespace(pkg, ...)
+    },
+    .package = "base"
+  )
+  local_mocked_bindings(find_xelatex = function() NULL, .package = "tlframe")
+
+  tmp_tex <- tempfile(fileext = ".tex")
+  on.exit(unlink(tmp_tex), add = TRUE)
+  writeLines("\\documentclass{article}\\begin{document}hi\\end{document}", tmp_tex)
+  try(tlframe:::compile_xelatex_doc(tmp_tex), silent = TRUE)
+
+  # Should contain both the font dir and existing path
+  expect_true(grepl(normalizePath(tmp), captured_osfontdir, fixed = TRUE))
+  expect_true(grepl("/existing/path", captured_osfontdir, fixed = TRUE))
+
+  # OSFONTDIR should be restored to original value
+  expect_equal(Sys.getenv("OSFONTDIR"), "/existing/path")
+})

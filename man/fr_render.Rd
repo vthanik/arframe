@@ -17,7 +17,9 @@ determines the format unless \code{format} is specified:
 \item \code{.tex} — LaTeX source (tabularray/XeLaTeX).
 \item \code{.pdf} — PDF via XeLaTeX compilation (requires XeLaTeX on PATH or
 \strong{tinytex}). First-time setup: call \code{\link[=fr_install_latex_deps]{fr_install_latex_deps()}} to
-install required LaTeX packages (notably \strong{tabularray}).
+install required LaTeX packages (notably \strong{tabularray}). For
+custom fonts without system-wide installation, set the
+\code{TLFRAME_FONT_DIR} environment variable (see \code{\link[=fr_page]{fr_page()}}).
 }}
 
 \item{format}{Character scalar or \code{NULL}. Output format: \code{"rtf"}, \code{"latex"},

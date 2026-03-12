@@ -7,10 +7,12 @@ Description: Produces regulatory-grade clinical trial tables, listings, and
     figures (TLFs) in RTF and PDF from a single specification. Designed for
     pharmaceutical industry workflows with support for paginated output,
     spanning headers, decimal alignment, programmatic page headers/footers,
-    and company-specific rule presets. Built on disciplined S3 classes with
-    a clean, composable pipeline API. No 'dplyr', 'tidyr', or 'purrr'
-    dependency — only lightweight infrastructure packages ('rlang', 'cli',
-    'vctrs').
+    and company-specific rule presets. PDF rendering uses XeLaTeX with
+    automatic Latin Modern font fallback; set the 'TLFRAME_FONT_DIR'
+    environment variable to use project-local fonts without system-wide
+    installation. Built on disciplined S3 classes with a clean, composable
+    pipeline API. No 'dplyr', 'tidyr', or 'purrr' dependency — only
+    lightweight infrastructure packages ('rlang', 'cli', 'vctrs').
 License: MIT + file LICENSE
 URL: https://vthanik.github.io/tlframe/, https://github.com/vthanik/tlframe
 BugReports: https://github.com/vthanik/tlframe/issues
@@ -30,7 +32,6 @@ Imports:
     yaml
 Suggests:
     ggplot2 (>= 3.4.0),
-    gt (>= 0.10.0),
     knitr,
     rmarkdown,
     rstudioapi,

@@ -28,6 +28,9 @@
   for running headers and footers.
 * Latin Modern font fallback for PDF on Linux/Docker without Microsoft fonts
   (built into tinytex/texlive, no bundled fonts needed).
+* `TLFRAME_FONT_DIR` environment variable: point to a directory of
+  `.ttf`/`.otf` files for project-local fonts without system-wide
+  installation. Ideal for Docker/CI pipelines.
 
 ## Styling
 

@@ -126,6 +126,10 @@ pg$orientation
 
 These are the package defaults --- you only need `fr_page()` when overriding.
 
+> **Custom fonts for PDF:** Set `TLFRAME_FONT_DIR` to a directory of `.ttf`/`.otf`
+> files and XeLaTeX discovers them by name --- no system-wide installation needed.
+> See `vignette("automation")` for Docker/CI examples.
+
 ### Margin formats
 
 | Format | Meaning |

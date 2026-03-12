@@ -93,9 +93,29 @@ fr_env$required_latex_pkgs <- c(
 )
 
 
+#' Get custom font directory from environment variable
+#'
+#' Reads `TLFRAME_FONT_DIR` and returns the normalized path if the directory
+#' exists and contains `.ttf` or `.otf` files. Returns `NULL` otherwise.
+#' No caching — `Sys.getenv()` + `dir.exists()` are trivially fast, and
+#' avoids stale cache if the user changes the env var mid-session.
+#'
+#' @return Character scalar (normalized path) or `NULL`.
+#' @noRd
+get_font_dir <- function() {
+  dir <- Sys.getenv("TLFRAME_FONT_DIR", unset = "")
+  if (!nzchar(dir) || !dir.exists(dir)) return(NULL)
+  files <- list.files(dir, pattern = "\\.(ttf|otf)$", ignore.case = TRUE)
+  if (length(files) == 0L) return(NULL)
+  normalizePath(dir, mustWork = TRUE)
+}
+
+
 #' Check if a system font is available for XeLaTeX
 #'
 #' Latin Modern fonts always return `TRUE` (built into tinytex/texlive).
+#' If `TLFRAME_FONT_DIR` is set and contains font files, returns `TRUE`
+#' (trust the user — XeLaTeX resolves names via `OSFONTDIR`).
 #' On Windows, standard fonts are always present. On Linux/macOS, checks
 #' via `fc-list`.
 #'
@@ -106,6 +126,9 @@ is_system_font_available <- function(font_name) {
 
   # Latin Modern fonts are always available in tinytex/texlive
   if (font_name %in% fr_env$lm_fallback) return(TRUE)
+
+  # Custom font directory set — trust the user
+  if (!is.null(get_font_dir())) return(TRUE)
 
   os <- tolower(Sys.info()[["sysname"]])
 
