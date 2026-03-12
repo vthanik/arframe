@@ -60,7 +60,7 @@
 #' @import cli
 #' @importFrom glue glue
 #' @importFrom stringi stri_replace_all_fixed stri_detect_regex stri_count_fixed stri_detect_fixed stri_locate_first_fixed stri_sub stri_wrap
-#' @importFrom tools file_ext
+#' @importFrom tools file_ext file_path_sans_ext
 #' @importFrom vctrs vec_cast
 #' @importFrom yaml read_yaml
 ## usethis namespace: end
@@ -71,18 +71,18 @@ NULL
 .onLoad <- function(libname, pkgname) {
   fr_env$backends <- list(
     rtf = list(
-      render      = render_rtf,
-      extensions  = c("rtf", "doc"),
+      render = render_rtf,
+      extensions = c("rtf", "doc"),
       description = "Rich Text Format"
     ),
     latex = list(
-      render      = render_latex,
-      extensions  = c("tex"),
+      render = render_latex,
+      extensions = c("tex"),
       description = "LaTeX source (tabularray)"
     ),
     pdf = list(
-      render      = render_pdf,
-      extensions  = c("pdf"),
+      render = render_pdf,
+      extensions = c("pdf"),
       description = "PDF via XeLaTeX"
     )
   )

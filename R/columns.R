@@ -2,7 +2,6 @@
 # columns.R -- Column width estimation and distribution
 # ------------------------------------------------------------------------------
 
-
 # ==============================================================================
 # 1. Column Initialisation
 #
@@ -27,36 +26,42 @@
 #' @param page fr_page object (for font metrics and printable area).
 #' @return Named list of fr_col objects for all columns.
 #' @noRd
-build_default_columns <- function(data,
-                                   configured    = list(),
-                                   default_width = NULL,
-                                   width_mode    = "fixed",
-                                   default_align = NULL,
-                                   label_fn      = NULL,
-                                   labels        = NULL,
-                                   page          = new_fr_page()) {
+build_default_columns <- function(
+  data,
+  configured = list(),
+  default_width = NULL,
+  width_mode = "fixed",
+  default_align = NULL,
+  label_fn = NULL,
+  labels = NULL,
+  page = new_fr_page()
+) {
   col_names <- names(data)
   result <- vector("list", length(col_names))
   names(result) <- col_names
 
   # For fixed mode, resolve the fallback width
   # For percent mode, default_width is an fr_pct -- assign directly
-  fallback_width <- if (width_mode == "fixed") (default_width %||% 1.5)
-                    else if (width_mode == "percent") default_width
-                    else NULL
+  fallback_width <- if (width_mode == "fixed") {
+    (default_width %||% 1.5)
+  } else if (width_mode == "percent") {
+    default_width
+  } else {
+    NULL
+  }
 
   for (nm in col_names) {
     auto_align <- default_align %||%
-                  (if (is.numeric(data[[nm]])) "right" else "left")
+      (if (is.numeric(data[[nm]])) "right" else "left")
 
     if (nm %in% names(configured)) {
-      col_def       <- configured[[nm]]
-      col_def$id    <- nm
+      col_def <- configured[[nm]]
+      col_def$id <- nm
       if (is.null(col_def$align)) col_def$align <- auto_align
     } else {
       # Auto-generate label: use label_fn if provided, else column name
       auto_label <- if (!is.null(label_fn)) label_fn(nm) else nm
-      col_def    <- fr_col(label = auto_label, align = auto_align)
+      col_def <- fr_col(label = auto_label, align = auto_align)
       col_def$id <- nm
     }
 
@@ -66,8 +71,10 @@ build_default_columns <- function(data,
     }
 
     # Resolve width = "auto" at the per-column level
-    if (identical(col_def$width, "auto") ||
-        (is.null(col_def$width) && width_mode %in% c("auto", "fit"))) {
+    if (
+      identical(col_def$width, "auto") ||
+        (is.null(col_def$width) && width_mode %in% c("auto", "fit"))
+    ) {
       col_def$width <- estimate_col_width(data, nm, col_def$label, page)
       col_def$width_auto <- TRUE
     }
@@ -112,29 +119,42 @@ build_default_columns <- function(data,
 #' @param italic Logical. Use italic variant metrics.
 #' @return Numeric vector. Width in twips for each element of `text`.
 #' @noRd
-measure_text_width_twips <- function(text,
-                                      font_family = "Helvetica",
-                                      font_size_pt = 10,
-                                      bold = FALSE,
-                                      italic = FALSE) {
+measure_text_width_twips <- function(
+  text,
+  font_family = "Helvetica",
+  font_size_pt = 10,
+  bold = FALSE,
+  italic = FALSE
+) {
   afm_name <- resolve_afm_name(font_family, bold = bold, italic = italic)
   char_widths <- afm_metrics[[afm_name]]
 
-  # Default width for unknown characters (use space width as fallback)
+  # Build byte-indexed lookup vector (256 entries, one per possible byte value).
+  # AFM names are single-byte characters (0x20-0xFB). This replaces named-vector
+  # lookup with direct integer indexing via charToRaw() — much faster.
   default_w <- unname(char_widths[" "])
-  if (is.na(default_w)) default_w <- 500L  # safe fallback
+  if (is.na(default_w)) {
+    default_w <- 500L
+  }
+  lut <- rep(default_w, 256L)
+  byte_idx <- as.integer(charToRaw(paste0(names(char_widths), collapse = "")))
+  lut[byte_idx] <- unname(char_widths)
 
   # Conversion factor: AFM units (1/1000 em) -> twips
   # 1 pt = 20 twips; AFM width at font_size_pt = width/1000 * font_size_pt pt
   scale <- font_size_pt / 1000 * 20
 
-  vapply(text, function(t) {
-    if (is.na(t) || !nzchar(t)) return(0)
-    chars <- strsplit(t, "", fixed = TRUE)[[1L]]
-    widths <- char_widths[chars]
-    widths[is.na(widths)] <- default_w
-    sum(widths) * scale
-  }, numeric(1), USE.NAMES = FALSE)
+  vapply(
+    text,
+    function(t) {
+      if (is.na(t) || !nzchar(t)) {
+        return(0)
+      }
+      sum(lut[as.integer(charToRaw(t))]) * scale
+    },
+    numeric(1),
+    USE.NAMES = FALSE
+  )
 }
 
 
@@ -155,7 +175,7 @@ measure_text_width_twips <- function(text,
 #' @noRd
 estimate_col_width <- function(data, col_name, label, page) {
   font_family <- page$font_family
-  font_size   <- page$font_size
+  font_size <- page$font_size
 
   # Content width: measure widest cell value using AFM metrics
   col_values <- as.character(data[[col_name]])
@@ -168,7 +188,9 @@ estimate_col_width <- function(data, col_name, label, page) {
     col_values[is.na(col_values)] <- ""
     col_values <- unique(col_values)
     max_content_twips <- max(measure_text_width_twips(
-      col_values, font_family, font_size
+      col_values,
+      font_family,
+      font_size
     ))
   }
 
@@ -179,7 +201,10 @@ estimate_col_width <- function(data, col_name, label, page) {
     label_lines <- col_name
   }
   max_label_twips <- max(measure_text_width_twips(
-    label_lines, font_family, font_size, bold = TRUE
+    label_lines,
+    font_family,
+    font_size,
+    bold = TRUE
   ))
 
   # Use the wider of content or label + 2 chars padding
@@ -209,15 +234,19 @@ estimate_col_width <- function(data, col_name, label, page) {
 #' @return List with `$fixed_sum` (numeric) and `$auto_names` (character).
 #' @noRd
 separate_fixed_auto_cols <- function(columns, visible_names) {
-  fixed_sum <- 0
-  auto_names <- character(0)
-  for (nm in visible_names) {
-    if (isTRUE(columns[[nm]]$width_auto)) {
-      auto_names <- c(auto_names, nm)
-    } else {
-      fixed_sum <- fixed_sum + columns[[nm]]$width
-    }
-  }
+  is_auto <- vapply(
+    visible_names,
+    function(nm) isTRUE(columns[[nm]]$width_auto),
+    logical(1),
+    USE.NAMES = FALSE
+  )
+  auto_names <- visible_names[is_auto]
+  fixed_sum <- sum(vapply(
+    visible_names[!is_auto],
+    function(nm) columns[[nm]]$width,
+    numeric(1),
+    USE.NAMES = FALSE
+  ))
   list(fixed_sum = fixed_sum, auto_names = auto_names)
 }
 
@@ -233,9 +262,17 @@ separate_fixed_auto_cols <- function(columns, visible_names) {
 #' @return Modified columns list with scaled widths.
 #' @noRd
 scale_auto_columns <- function(columns, auto_names, remaining) {
-  if (length(auto_names) == 0L) return(columns)
-  auto_total <- sum(vapply(columns[auto_names], function(c) c$width, numeric(1)))
-  if (auto_total <= 0 || remaining <= 0) return(columns)
+  if (length(auto_names) == 0L) {
+    return(columns)
+  }
+  auto_total <- sum(vapply(
+    columns[auto_names],
+    function(c) c$width,
+    numeric(1)
+  ))
+  if (auto_total <= 0 || remaining <= 0) {
+    return(columns)
+  }
 
   scale_factor <- remaining / auto_total
   for (nm in auto_names) {
@@ -258,13 +295,19 @@ scale_auto_columns <- function(columns, auto_names, remaining) {
 distribute_auto_widths <- function(columns, page) {
   printable <- printable_area_inches(page)[["width"]]
   visible <- Filter(function(col) !isFALSE(col$visible), columns)
-  if (length(visible) == 0L) return(columns)
+  if (length(visible) == 0L) {
+    return(columns)
+  }
 
   total <- sum(vapply(visible, function(col) col$width, numeric(1)))
-  if (total <= 0 || total <= printable) return(columns)
+  if (total <= 0 || total <= printable) {
+    return(columns)
+  }
 
   parts <- separate_fixed_auto_cols(columns, names(visible))
-  if (length(parts$auto_names) == 0L) return(columns)
+  if (length(parts$auto_names) == 0L) {
+    return(columns)
+  }
 
   scale_auto_columns(columns, parts$auto_names, printable - parts$fixed_sum)
 }
@@ -283,10 +326,14 @@ distribute_auto_widths <- function(columns, page) {
 distribute_fit_widths <- function(columns, page) {
   printable <- printable_area_inches(page)[["width"]]
   visible <- Filter(function(col) !isFALSE(col$visible), columns)
-  if (length(visible) == 0L) return(columns)
+  if (length(visible) == 0L) {
+    return(columns)
+  }
 
   parts <- separate_fixed_auto_cols(columns, names(visible))
-  if (length(parts$auto_names) == 0L) return(columns)
+  if (length(parts$auto_names) == 0L) {
+    return(columns)
+  }
 
   scale_auto_columns(columns, parts$auto_names, printable - parts$fixed_sum)
 }
@@ -305,20 +352,29 @@ distribute_fit_widths <- function(columns, page) {
 distribute_equal_widths <- function(columns, page) {
   printable <- printable_area_inches(page)[["width"]]
   visible <- Filter(function(col) !isFALSE(col$visible), columns)
-  if (length(visible) == 0L) return(columns)
-
-  # Separate explicit-width vs unset columns (NULL width)
-  fixed_sum <- 0
-  unfixed_names <- character(0)
-  for (nm in names(visible)) {
-    if (is.null(columns[[nm]]$width)) {
-      unfixed_names <- c(unfixed_names, nm)
-    } else {
-      fixed_sum <- fixed_sum + columns[[nm]]$width
-    }
+  if (length(visible) == 0L) {
+    return(columns)
   }
 
-  if (length(unfixed_names) == 0L) return(columns)
+  # Separate explicit-width vs unset columns (NULL width)
+  vis_names <- names(visible)
+  has_width <- vapply(
+    vis_names,
+    function(nm) !is.null(columns[[nm]]$width),
+    logical(1),
+    USE.NAMES = FALSE
+  )
+  unfixed_names <- vis_names[!has_width]
+  fixed_sum <- sum(vapply(
+    vis_names[has_width],
+    function(nm) columns[[nm]]$width,
+    numeric(1),
+    USE.NAMES = FALSE
+  ))
+
+  if (length(unfixed_names) == 0L) {
+    return(columns)
+  }
 
   remaining <- max(0.5 * length(unfixed_names), printable - fixed_sum)
   equal_width <- remaining / length(unfixed_names)
@@ -342,10 +398,12 @@ distribute_equal_widths <- function(columns, page) {
 printable_area_inches <- function(page) {
   dims <- paper_dims_twips(page$paper, page$orientation)
   c(
-    width  = twips_to_inches(dims[["width"]]) -
-              page$margins$left - page$margins$right,
+    width = twips_to_inches(dims[["width"]]) -
+      page$margins$left -
+      page$margins$right,
     height = twips_to_inches(dims[["height"]]) -
-              page$margins$top - page$margins$bottom
+      page$margins$top -
+      page$margins$bottom
   )
 }
 
@@ -355,7 +413,7 @@ printable_area_inches <- function(page) {
 printable_area_twips <- function(page) {
   area <- printable_area_inches(page)
   c(
-    width  = inches_to_twips(area[["width"]]),
+    width = inches_to_twips(area[["width"]]),
     height = inches_to_twips(area[["height"]])
   )
 }

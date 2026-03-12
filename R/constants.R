@@ -20,7 +20,6 @@
 #
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # Private environment — like ggplot2's ggplot_global
 # ══════════════════════════════════════════════════════════════════════════════
@@ -36,43 +35,64 @@ fr_env <- new.env(parent = emptyenv())
 # ══════════════════════════════════════════════════════════════════════════════
 
 fr_env$fonts <- list(
-
   modern = list(
-    names          = c("Courier New", "Courier", "Consolas", "Lucida Console",
-                        "DejaVu Sans Mono", "Liberation Mono",
-                        "Latin Modern Mono"),
-    rtf_family     = "fmodern",
-    rtf_prq        = 1L,
-    tex_cmd        = "\\ttfamily",
-    afm_name       = "Courier",
-    afm_bold       = "Courier-Bold",
-    afm_italic     = "Courier-Oblique",
+    names = c(
+      "Courier New",
+      "Courier",
+      "Consolas",
+      "Lucida Console",
+      "DejaVu Sans Mono",
+      "Liberation Mono",
+      "Latin Modern Mono"
+    ),
+    rtf_family = "fmodern",
+    rtf_prq = 1L,
+    tex_cmd = "\\ttfamily",
+    afm_name = "Courier",
+    afm_bold = "Courier-Bold",
+    afm_italic = "Courier-Oblique",
     afm_bolditalic = "Courier-BoldOblique"
   ),
 
   swiss = list(
-    names          = c("Arial", "Helvetica", "Calibri", "Verdana", "Tahoma",
-                        "Segoe UI", "DejaVu Sans", "Liberation Sans",
-                        "Latin Modern Sans"),
-    rtf_family     = "fswiss",
-    rtf_prq        = 2L,
-    tex_cmd        = "\\sffamily",
-    afm_name       = "Helvetica",
-    afm_bold       = "Helvetica-Bold",
-    afm_italic     = "Helvetica-Oblique",
+    names = c(
+      "Arial",
+      "Helvetica",
+      "Calibri",
+      "Verdana",
+      "Tahoma",
+      "Segoe UI",
+      "DejaVu Sans",
+      "Liberation Sans",
+      "Latin Modern Sans"
+    ),
+    rtf_family = "fswiss",
+    rtf_prq = 2L,
+    tex_cmd = "\\sffamily",
+    afm_name = "Helvetica",
+    afm_bold = "Helvetica-Bold",
+    afm_italic = "Helvetica-Oblique",
     afm_bolditalic = "Helvetica-BoldOblique"
   ),
 
   roman = list(
-    names          = c("Times New Roman", "Times", "Georgia", "Palatino",
-                        "Book Antiqua", "Cambria", "DejaVu Serif",
-                        "Liberation Serif", "Latin Modern Roman"),
-    rtf_family     = "froman",
-    rtf_prq        = 2L,
-    tex_cmd        = "\\rmfamily",
-    afm_name       = "Times-Roman",
-    afm_bold       = "Times-Bold",
-    afm_italic     = "Times-Italic",
+    names = c(
+      "Times New Roman",
+      "Times",
+      "Georgia",
+      "Palatino",
+      "Book Antiqua",
+      "Cambria",
+      "DejaVu Serif",
+      "Liberation Serif",
+      "Latin Modern Roman"
+    ),
+    rtf_family = "froman",
+    rtf_prq = 2L,
+    tex_cmd = "\\rmfamily",
+    afm_name = "Times-Roman",
+    afm_bold = "Times-Bold",
+    afm_italic = "Times-Italic",
     afm_bolditalic = "Times-BoldItalic"
   )
 )
@@ -82,14 +102,19 @@ fr_env$fonts <- list(
 # Latin Modern is always available in any tinytex/texlive installation
 fr_env$lm_fallback <- c(
   modern = "Latin Modern Mono",
-  swiss  = "Latin Modern Sans",
-  roman  = "Latin Modern Roman"
+  swiss = "Latin Modern Sans",
+  roman = "Latin Modern Roman"
 )
 
 # CTAN packages required by the LaTeX/PDF backend (preamble + tabularray)
 fr_env$required_latex_pkgs <- c(
-  "tabularray", "fontspec", "geometry", "xcolor",
-  "fancyhdr", "lastpage", "booktabs"
+  "tabularray",
+  "fontspec",
+  "geometry",
+  "xcolor",
+  "fancyhdr",
+  "lastpage",
+  "booktabs"
 )
 
 
@@ -104,9 +129,13 @@ fr_env$required_latex_pkgs <- c(
 #' @noRd
 get_font_dir <- function() {
   dir <- Sys.getenv("TLFRAME_FONT_DIR", unset = "")
-  if (!nzchar(dir) || !dir.exists(dir)) return(NULL)
+  if (!nzchar(dir) || !dir.exists(dir)) {
+    return(NULL)
+  }
   files <- list.files(dir, pattern = "\\.(ttf|otf)$", ignore.case = TRUE)
-  if (length(files) == 0L) return(NULL)
+  if (length(files) == 0L) {
+    return(NULL)
+  }
   normalizePath(dir, mustWork = TRUE)
 }
 
@@ -123,22 +152,29 @@ get_font_dir <- function() {
 #' @return Logical scalar.
 #' @noRd
 is_system_font_available <- function(font_name) {
-
   # Latin Modern fonts are always available in tinytex/texlive
-  if (font_name %in% fr_env$lm_fallback) return(TRUE)
+  if (font_name %in% fr_env$lm_fallback) {
+    return(TRUE)
+  }
 
   # Custom font directory set — trust the user
-  if (!is.null(get_font_dir())) return(TRUE)
+  if (!is.null(get_font_dir())) {
+    return(TRUE)
+  }
 
   os <- tolower(Sys.info()[["sysname"]])
 
   # Windows always has standard fonts (Courier New, Arial, Times New Roman)
-  if (os == "windows") return(TRUE)
+  if (os == "windows") {
+    return(TRUE)
+  }
 
   # Linux/macOS: use fc-list to check (cached per session)
   fonts <- get_system_font_list()
   # TRUE sentinel means "can't determine, assume available"
-  if (isTRUE(fonts)) return(TRUE)
+  if (isTRUE(fonts)) {
+    return(TRUE)
+  }
   font_name %in% fonts
 }
 
@@ -152,7 +188,9 @@ is_system_font_available <- function(font_name) {
 #'   is unavailable (callers treat NULL as "assume all fonts available").
 #' @noRd
 get_system_font_list <- function() {
-  if (!is.null(fr_env$system_fonts)) return(fr_env$system_fonts)
+  if (!is.null(fr_env$system_fonts)) {
+    return(fr_env$system_fonts)
+  }
 
   fc_list <- Sys.which("fc-list")
   if (!nzchar(fc_list)) {
@@ -190,7 +228,6 @@ get_system_font_list <- function() {
 #' @return Character scalar. The resolved font name for fontspec.
 #' @noRd
 resolve_latex_font <- function(font_name) {
-
   if (is_system_font_available(font_name)) {
     return(font_name)
   }
@@ -218,7 +255,6 @@ resolve_latex_font <- function(font_name) {
 #' @return Character scalar. The resolved font name for RTF.
 #' @noRd
 resolve_rtf_font <- function(font_name) {
-
   if (is_system_font_available(font_name)) {
     return(font_name)
   }
@@ -226,10 +262,11 @@ resolve_rtf_font <- function(font_name) {
   # Map to OS default of same family type
   fam <- lookup_font_family(font_name)
   defaults <- os_default_fonts()
-  fallback <- switch(fam,
+  fallback <- switch(
+    fam,
     modern = defaults$mono,
-    swiss  = defaults$sans,
-    roman  = defaults$serif
+    swiss = defaults$sans,
+    roman = defaults$serif
   )
 
   cli::cli_inform(c(
@@ -247,16 +284,19 @@ resolve_rtf_font <- function(font_name) {
 os_default_fonts <- function() {
   os <- tolower(Sys.info()[["sysname"]])
   if (os == "windows") {
-    list(mono = "Courier New", sans = "Arial",     serif = "Times New Roman")
+    list(mono = "Courier New", sans = "Arial", serif = "Times New Roman")
   } else if (os == "darwin") {
-    list(mono = "Courier New", sans = "Helvetica",  serif = "Times New Roman")
+    list(mono = "Courier New", sans = "Helvetica", serif = "Times New Roman")
   } else {
     # Prefer Microsoft fonts if installed; fall back to Latin Modern
     if (is_system_font_available("Courier New")) {
       list(mono = "Courier New", sans = "Arial", serif = "Times New Roman")
     } else {
-      list(mono = "Latin Modern Mono", sans = "Latin Modern Sans",
-           serif = "Latin Modern Roman")
+      list(
+        mono = "Latin Modern Mono",
+        sans = "Latin Modern Sans",
+        serif = "Latin Modern Roman"
+      )
     }
   }
 }
@@ -289,9 +329,15 @@ resolve_afm_name <- function(font_family, bold = FALSE, italic = FALSE) {
     lookup_font_family(font_family)
   }
   info <- fr_env$fonts[[fam]]
-  if (bold && italic) return(info$afm_bolditalic)
-  if (bold)           return(info$afm_bold)
-  if (italic)         return(info$afm_italic)
+  if (bold && italic) {
+    return(info$afm_bolditalic)
+  }
+  if (bold) {
+    return(info$afm_bold)
+  }
+  if (italic) {
+    return(info$afm_italic)
+  }
   info$afm_name
 }
 
@@ -326,8 +372,8 @@ get_tex_font_cmd <- function(font_name) {
 
 fr_env$paper <- list(
   letter = c(width = 12240L, height = 15840L),
-  a4     = c(width = 11906L, height = 16838L),
-  legal  = c(width = 12240L, height = 20163L)
+  a4 = c(width = 11906L, height = 16838L),
+  legal = c(width = 12240L, height = 20163L)
 )
 
 
@@ -336,8 +382,10 @@ fr_env$paper <- list(
 paper_dims_twips <- function(paper = "letter", orientation = "landscape") {
   dims <- fr_env$paper[[paper]]
   if (is.null(dims)) {
-    cli_warn("Unknown paper size {.val {paper}}, using {.val letter}.")
-    dims <- fr_env$paper[["letter"]]
+    cli_abort(c(
+      "Unknown paper size {.val {paper}}.",
+      "i" = "Valid sizes: {.val {names(fr_env$paper)}}."
+    ))
   }
   if (orientation == "landscape") {
     c(width = unname(dims[["height"]]), height = unname(dims[["width"]]))
@@ -368,10 +416,10 @@ paper_dims_twips <- function(paper = "letter", orientation = "landscape") {
 #' Ref: Word 2007 RTF Specification §2.6.6.3.
 #' @noRd
 fr_env$linestyle_rtf <- list(
-  solid   = "\\brdrs",
-  dashed  = "\\brdrdash",
-  dotted  = "\\brdrdot",
-  double  = "\\brdrdb",
+  solid = "\\brdrs",
+  dashed = "\\brdrdash",
+  dotted = "\\brdrdot",
+  double = "\\brdrdb",
   dashdot = "\\brdrdashd"
 )
 
@@ -389,9 +437,9 @@ fr_env$valid_linestyles <- c("solid", "dashed", "dotted", "double", "dashdot")
 #' @noRd
 fr_env$line_widths <- c(
   hairline = 0.25,
-  thin     = 0.50,
-  medium   = 1.00,
-  thick    = 1.50
+  thin = 0.50,
+  medium = 1.00,
+  thick = 1.50
 )
 
 
@@ -406,10 +454,10 @@ fr_env$line_widths <- c(
 #' @param wd Character shorthand or positive numeric (pt). NULL → 0.5.
 #' @return Numeric. Width in points.
 #' @noRd
-resolve_line_width <- function(wd,
-                                arg  = caller_arg(wd),
-                                call = caller_env()) {
-  if (is.null(wd)) return(0.5)
+resolve_line_width <- function(wd, arg = caller_arg(wd), call = caller_env()) {
+  if (is.null(wd)) {
+    return(0.5)
+  }
 
   if (is.character(wd)) {
     if (length(wd) != 1L) {
@@ -418,10 +466,13 @@ resolve_line_width <- function(wd,
     w <- unname(fr_env$line_widths[wd])
     if (is.na(w)) {
       cli_abort(
-        c("{.arg {arg}} {.val {wd}} is not a recognised width name.",
+        c(
+          "{.arg {arg}} {.val {wd}} is not a recognised width name.",
           "i" = "Named options: {.val {names(fr_env$line_widths)}}.",
-          "i" = "Or pass a positive number in points, e.g. {.code wd = 0.75}."),
-        arg = arg, call = call
+          "i" = "Or pass a positive number in points, e.g. {.code wd = 0.75}."
+        ),
+        arg = arg,
+        call = call
       )
     }
     return(w)
@@ -433,27 +484,19 @@ resolve_line_width <- function(wd,
 
 
 fr_env$cell_border_rtf <- list(
-  top    = "\\clbrdrt",
+  top = "\\clbrdrt",
   bottom = "\\clbrdrb",
-  left   = "\\clbrdrl",
-  right  = "\\clbrdrr"
+  left = "\\clbrdrl",
+  right = "\\clbrdrr"
 )
 
 fr_env$para_border_rtf <- list(
-  top    = "\\brdrt",
+  top = "\\brdrt",
   bottom = "\\brdrb",
-  left   = "\\brdrl",
-  right  = "\\brdrr"
+  left = "\\brdrl",
+  right = "\\brdrr"
 )
 
-
-# ── Grouped sub-list: presets ──────────────────────────────────────────────
-#' Preset constants for rules and line widths.
-#' Access via fr_env$presets$hline, fr_env$presets$line_widths, etc.
-#' Legacy flat accessors (fr_env$hline_presets, fr_env$line_widths) are
-#' preserved below for backward compatibility.
-#' @noRd
-fr_env$presets <- list()
 
 #' hline preset definitions
 #'
@@ -471,42 +514,76 @@ fr_env$presets <- list()
 #' box is a special sentinel — backends render all four borders separately.
 #' @noRd
 fr_env$hline_presets <- list(
-
   # header — single thin rule below column header only.
   # The most common style in TFL outputs (ICH E3).
   # No top border, no bottom border; footnotes follow the last body row directly.
   header = list(
-    list(region = "header", side = "below", width = 0.5,
-         linestyle = "solid", fg = "#000000")
+    list(
+      region = "header",
+      side = "below",
+      width = 0.5,
+      linestyle = "solid",
+      fg = "#000000"
+    )
   ),
 
   # open — rule above header + rule below header; no bottom border.
   # Use when the table bottom is immediately followed by footnotes.
   open = list(
-    list(region = "header", side = "above", width = 0.5,
-         linestyle = "solid", fg = "#000000"),
-    list(region = "header", side = "below", width = 0.5,
-         linestyle = "solid", fg = "#000000")
+    list(
+      region = "header",
+      side = "above",
+      width = 0.5,
+      linestyle = "solid",
+      fg = "#000000"
+    ),
+    list(
+      region = "header",
+      side = "below",
+      width = 0.5,
+      linestyle = "solid",
+      fg = "#000000"
+    )
   ),
 
   # hsides — top and bottom rules only, no mid-rule.
   hsides = list(
-    list(region = "header", side = "above", width = 0.5,
-         linestyle = "solid", fg = "#000000"),
-    list(region = "body",   side = "below", width = 0.5,
-         linestyle = "solid", fg = "#000000")
+    list(
+      region = "header",
+      side = "above",
+      width = 0.5,
+      linestyle = "solid",
+      fg = "#000000"
+    ),
+    list(
+      region = "body",
+      side = "below",
+      width = 0.5,
+      linestyle = "solid",
+      fg = "#000000"
+    )
   ),
 
   # above — single rule above column header only.
   above = list(
-    list(region = "header", side = "above", width = 0.5,
-         linestyle = "solid", fg = "#000000")
+    list(
+      region = "header",
+      side = "above",
+      width = 0.5,
+      linestyle = "solid",
+      fg = "#000000"
+    )
   ),
 
   # below — single rule below last body row only.
   below = list(
-    list(region = "body", side = "below", width = 0.5,
-         linestyle = "solid", fg = "#000000")
+    list(
+      region = "body",
+      side = "below",
+      width = 0.5,
+      linestyle = "solid",
+      fg = "#000000"
+    )
   ),
 
   # box — all four outer sides (sentinel; backends expand to 4 borders).
@@ -517,22 +594,32 @@ fr_env$hline_presets <- list(
   #   \midrule    lightrulewidth ≈ 0.5pt
   #   \bottomrule heavyrulewidth ≈ 1.0pt
   booktabs = list(
-    list(region = "header", side = "above", width = 1.0,
-         linestyle = "solid", fg = "#000000"),
-    list(region = "header", side = "below", width = 0.5,
-         linestyle = "solid", fg = "#000000"),
-    list(region = "body",   side = "below", width = 1.0,
-         linestyle = "solid", fg = "#000000")
+    list(
+      region = "header",
+      side = "above",
+      width = 1.0,
+      linestyle = "solid",
+      fg = "#000000"
+    ),
+    list(
+      region = "header",
+      side = "below",
+      width = 0.5,
+      linestyle = "solid",
+      fg = "#000000"
+    ),
+    list(
+      region = "body",
+      side = "below",
+      width = 1.0,
+      linestyle = "solid",
+      fg = "#000000"
+    )
   ),
 
   # void — no rules.
   void = list()
 )
-
-# Grouped sub-list aliases for organized access
-fr_env$presets$hline       <- fr_env$hline_presets
-fr_env$presets$linestyles  <- fr_env$valid_linestyles
-fr_env$presets$line_widths <- fr_env$line_widths
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -541,21 +628,21 @@ fr_env$presets$line_widths <- fr_env$line_widths
 
 fr_env$latex_specials <- c(
   "\\" = "\\textbackslash{}",
-  "&"  = "\\&",
-  "%"  = "\\%",
-  "$"  = "\\$",
-  "#"  = "\\#",
-  "_"  = "\\_",
-  "{"  = "\\{",
-  "}"  = "\\}",
-  "~"  = "\\textasciitilde{}",
-  "^"  = "\\textasciicircum{}"
+  "&" = "\\&",
+  "%" = "\\%",
+  "$" = "\\$",
+  "#" = "\\#",
+  "_" = "\\_",
+  "{" = "\\{",
+  "}" = "\\}",
+  "~" = "\\textasciitilde{}",
+  "^" = "\\textasciicircum{}"
 )
 
 fr_env$rtf_specials <- c(
   "\\" = "\\\\",
-  "{"  = "\\{",
-  "}"  = "\\}"
+  "{" = "\\{",
+  "}" = "\\}"
 )
 
 #' Unicode → LaTeX command map
@@ -565,62 +652,62 @@ fr_env$rtf_specials <- c(
 #' @noRd
 fr_env$latex_unicode <- c(
   # ── Math operators & relations ──
-  "\u00b1" = "\\ensuremath{\\pm}",            # ± plus-minus
-  "\u2264" = "\\ensuremath{\\leq}",           # ≤ less-than-or-equal
-  "\u2265" = "\\ensuremath{\\geq}",           # ≥ greater-than-or-equal
-  "\u2260" = "\\ensuremath{\\neq}",           # ≠ not-equal
-  "\u00d7" = "\\ensuremath{\\times}",         # × multiplication
-  "\u00f7" = "\\ensuremath{\\div}",           # ÷ division
-  "\u221e" = "\\ensuremath{\\infty}",         # ∞ infinity
-  "\u2248" = "\\ensuremath{\\approx}",        # ≈ approximately
-  "\u221a" = "\\ensuremath{\\sqrt{}}",        # √ square root
+  "\u00b1" = "\\ensuremath{\\pm}", # ± plus-minus
+  "\u2264" = "\\ensuremath{\\leq}", # ≤ less-than-or-equal
+  "\u2265" = "\\ensuremath{\\geq}", # ≥ greater-than-or-equal
+  "\u2260" = "\\ensuremath{\\neq}", # ≠ not-equal
+  "\u00d7" = "\\ensuremath{\\times}", # × multiplication
+  "\u00f7" = "\\ensuremath{\\div}", # ÷ division
+  "\u221e" = "\\ensuremath{\\infty}", # ∞ infinity
+  "\u2248" = "\\ensuremath{\\approx}", # ≈ approximately
+  "\u221a" = "\\ensuremath{\\sqrt{}}", # √ square root
 
   # ── Superscript digits ──
-  "\u00b9" = "\\textsuperscript{1}",          # ¹ superscript one
-  "\u00b2" = "\\textsuperscript{2}",          # ² superscript two
-  "\u00b3" = "\\textsuperscript{3}",          # ³ superscript three
+  "\u00b9" = "\\textsuperscript{1}", # ¹ superscript one
+  "\u00b2" = "\\textsuperscript{2}", # ² superscript two
+  "\u00b3" = "\\textsuperscript{3}", # ³ superscript three
 
   # ── Greek letters (common in clinical statistics) ──
-  "\u03b1" = "\\ensuremath{\\alpha}",         # α alpha
-  "\u03b2" = "\\ensuremath{\\beta}",          # β beta
-  "\u03b3" = "\\ensuremath{\\gamma}",         # γ gamma
-  "\u03b4" = "\\ensuremath{\\delta}",         # δ delta
-  "\u03bb" = "\\ensuremath{\\lambda}",        # λ lambda
-  "\u03bc" = "\\ensuremath{\\mu}",            # μ mu
-  "\u03c0" = "\\ensuremath{\\pi}",            # π pi
-  "\u03c3" = "\\ensuremath{\\sigma}",         # σ sigma
-  "\u03c7" = "\\ensuremath{\\chi}",           # χ chi
+  "\u03b1" = "\\ensuremath{\\alpha}", # α alpha
+  "\u03b2" = "\\ensuremath{\\beta}", # β beta
+  "\u03b3" = "\\ensuremath{\\gamma}", # γ gamma
+  "\u03b4" = "\\ensuremath{\\delta}", # δ delta
+  "\u03bb" = "\\ensuremath{\\lambda}", # λ lambda
+  "\u03bc" = "\\ensuremath{\\mu}", # μ mu
+  "\u03c0" = "\\ensuremath{\\pi}", # π pi
+  "\u03c3" = "\\ensuremath{\\sigma}", # σ sigma
+  "\u03c7" = "\\ensuremath{\\chi}", # χ chi
 
   # ── Typographic symbols ──
-  "\u2020" = "\\textdagger{}",                # † dagger
-  "\u2021" = "\\textdaggerdbl{}",             # ‡ double dagger
-  "\u00a7" = "\\textsection{}",               # § section sign
-  "\u00b6" = "\\textparagraph{}",             # ¶ pilcrow / paragraph
-  "\u2022" = "\\textbullet{}",                # • bullet
-  "\u2013" = "\\textendash{}",                # – en-dash
-  "\u2014" = "\\textemdash{}",                # — em-dash
-  "\u2018" = "`",                             # ' left single quote
-  "\u2019" = "'",                             # ' right single quote
-  "\u201c" = "``",                            # " left double quote
-  "\u201d" = "''",                            # " right double quote
-  "\u2026" = "\\ldots{}",                     # … horizontal ellipsis
+  "\u2020" = "\\textdagger{}", # † dagger
+  "\u2021" = "\\textdaggerdbl{}", # ‡ double dagger
+  "\u00a7" = "\\textsection{}", # § section sign
+  "\u00b6" = "\\textparagraph{}", # ¶ pilcrow / paragraph
+  "\u2022" = "\\textbullet{}", # • bullet
+  "\u2013" = "\\textendash{}", # – en-dash
+  "\u2014" = "\\textemdash{}", # — em-dash
+  "\u2018" = "`", # ' left single quote
+  "\u2019" = "'", # ' right single quote
+  "\u201c" = "``", # " left double quote
+  "\u201d" = "''", # " right double quote
+  "\u2026" = "\\ldots{}", # … horizontal ellipsis
 
   # ── Legal / trademark ──
-  "\u00a9" = "\\textcopyright{}",             # © copyright
-  "\u00ae" = "\\textregistered{}",            # ® registered
-  "\u2122" = "\\texttrademark{}",             # ™ trademark
+  "\u00a9" = "\\textcopyright{}", # © copyright
+  "\u00ae" = "\\textregistered{}", # ® registered
+  "\u2122" = "\\texttrademark{}", # ™ trademark
 
   # ── Arrows (shift tables, forest plots) ──
-  "\u2190" = "\\ensuremath{\\leftarrow}",     # ← left arrow
-  "\u2191" = "\\ensuremath{\\uparrow}",       # ↑ up arrow
-  "\u2192" = "\\ensuremath{\\rightarrow}",    # → right arrow
-  "\u2193" = "\\ensuremath{\\downarrow}",     # ↓ down arrow
+  "\u2190" = "\\ensuremath{\\leftarrow}", # ← left arrow
+  "\u2191" = "\\ensuremath{\\uparrow}", # ↑ up arrow
+  "\u2192" = "\\ensuremath{\\rightarrow}", # → right arrow
+  "\u2193" = "\\ensuremath{\\downarrow}", # ↓ down arrow
 
   # ── Fractions & degree ──
-  "\u00b0" = "\\textdegree{}",                # ° degree
-  "\u00bc" = "\\textonequarter{}",            # ¼ one quarter
-  "\u00bd" = "\\textonehalf{}",               # ½ one half
-  "\u00be" = "\\textthreequarters{}"          # ¾ three quarters
+  "\u00b0" = "\\textdegree{}", # ° degree
+  "\u00bc" = "\\textonequarter{}", # ¼ one quarter
+  "\u00bd" = "\\textonehalf{}", # ½ one half
+  "\u00be" = "\\textthreequarters{}" # ¾ three quarters
 )
 
 #' Unicode → RTF control word map
@@ -629,15 +716,15 @@ fr_env$latex_unicode <- c(
 #' ? = ANSI fallback. Entries below use ANSI shorthand where available.
 #' @noRd
 fr_env$rtf_unicode <- c(
-  "\u2020" = "\\'86",                         # † dagger
-  "\u2021" = "\\'87",                         # ‡ double dagger
-  "\u2022" = "\\'95",                         # • bullet
-  "\u2013" = "\\'96",                         # – en-dash
-  "\u2014" = "\\'97",                         # — em-dash
-  "\u2018" = "\\'91",                         # ' left single quote
-  "\u2019" = "\\'92",                         # ' right single quote
-  "\u201c" = "\\'93",                         # " left double quote
-  "\u201d" = "\\'94"                          # " right double quote
+  "\u2020" = "\\'86", # † dagger
+  "\u2021" = "\\'87", # ‡ double dagger
+  "\u2022" = "\\'95", # • bullet
+  "\u2013" = "\\'96", # – en-dash
+  "\u2014" = "\\'97", # — em-dash
+  "\u2018" = "\\'91", # ' left single quote
+  "\u2019" = "\\'92", # ' right single quote
+  "\u201c" = "\\'93", # " left double quote
+  "\u201d" = "\\'94" # " right double quote
 )
 
 
@@ -649,154 +736,154 @@ fr_env$rtf_unicode <- c(
 # Standard across CSS, ggplot2, matplotlib, D3, and all modern dev tools.
 # See: https://www.w3.org/TR/css-color-4/#named-colors
 fr_env$named_colors <- c(
-  aliceblue            = "#F0F8FF",
-  antiquewhite         = "#FAEBD7",
-  aqua                 = "#00FFFF",
-  aquamarine           = "#7FFFD4",
-  azure                = "#F0FFFF",
-  beige                = "#F5F5DC",
-  bisque               = "#FFE4C4",
-  black                = "#000000",
-  blanchedalmond       = "#FFEBCD",
-  blue                 = "#0000FF",
-  blueviolet           = "#8A2BE2",
-  brown                = "#A52A2A",
-  burlywood            = "#DEB887",
-  cadetblue            = "#5F9EA0",
-  chartreuse           = "#7FFF00",
-  chocolate            = "#D2691E",
-  coral                = "#FF7F50",
-  cornflowerblue       = "#6495ED",
-  cornsilk             = "#FFF8DC",
-  crimson              = "#DC143C",
-  cyan                 = "#00FFFF",
-  darkblue             = "#00008B",
-  darkcyan             = "#008B8B",
-  darkgoldenrod        = "#B8860B",
-  darkgray             = "#A9A9A9",
-  darkgreen            = "#006400",
-  darkgrey             = "#A9A9A9",
-  darkkhaki            = "#BDB76B",
-  darkmagenta          = "#8B008B",
-  darkolivegreen       = "#556B2F",
-  darkorange           = "#FF8C00",
-  darkorchid           = "#9932CC",
-  darkred              = "#8B0000",
-  darksalmon           = "#E9967A",
-  darkseagreen         = "#8FBC8F",
-  darkslateblue        = "#483D8B",
-  darkslategray        = "#2F4F4F",
-  darkslategrey        = "#2F4F4F",
-  darkturquoise        = "#00CED1",
-  darkviolet           = "#9400D3",
-  deeppink             = "#FF1493",
-  deepskyblue          = "#00BFFF",
-  dimgray              = "#696969",
-  dimgrey              = "#696969",
-  dodgerblue           = "#1E90FF",
-  firebrick            = "#B22222",
-  floralwhite          = "#FFFAF0",
-  forestgreen          = "#228B22",
-  fuchsia              = "#FF00FF",
-  gainsboro            = "#DCDCDC",
-  ghostwhite           = "#F8F8FF",
-  gold                 = "#FFD700",
-  goldenrod            = "#DAA520",
-  gray                 = "#808080",
-  green                = "#008000",
-  greenyellow          = "#ADFF2F",
-  grey                 = "#808080",
-  honeydew             = "#F0FFF0",
-  hotpink              = "#FF69B4",
-  indianred            = "#CD5C5C",
-  indigo               = "#4B0082",
-  ivory                = "#FFFFF0",
-  khaki                = "#F0E68C",
-  lavender             = "#E6E6FA",
-  lavenderblush        = "#FFF0F5",
-  lawngreen            = "#7CFC00",
-  lemonchiffon         = "#FFFACD",
-  lightblue            = "#ADD8E6",
-  lightcoral           = "#F08080",
-  lightcyan            = "#E0FFFF",
+  aliceblue = "#F0F8FF",
+  antiquewhite = "#FAEBD7",
+  aqua = "#00FFFF",
+  aquamarine = "#7FFFD4",
+  azure = "#F0FFFF",
+  beige = "#F5F5DC",
+  bisque = "#FFE4C4",
+  black = "#000000",
+  blanchedalmond = "#FFEBCD",
+  blue = "#0000FF",
+  blueviolet = "#8A2BE2",
+  brown = "#A52A2A",
+  burlywood = "#DEB887",
+  cadetblue = "#5F9EA0",
+  chartreuse = "#7FFF00",
+  chocolate = "#D2691E",
+  coral = "#FF7F50",
+  cornflowerblue = "#6495ED",
+  cornsilk = "#FFF8DC",
+  crimson = "#DC143C",
+  cyan = "#00FFFF",
+  darkblue = "#00008B",
+  darkcyan = "#008B8B",
+  darkgoldenrod = "#B8860B",
+  darkgray = "#A9A9A9",
+  darkgreen = "#006400",
+  darkgrey = "#A9A9A9",
+  darkkhaki = "#BDB76B",
+  darkmagenta = "#8B008B",
+  darkolivegreen = "#556B2F",
+  darkorange = "#FF8C00",
+  darkorchid = "#9932CC",
+  darkred = "#8B0000",
+  darksalmon = "#E9967A",
+  darkseagreen = "#8FBC8F",
+  darkslateblue = "#483D8B",
+  darkslategray = "#2F4F4F",
+  darkslategrey = "#2F4F4F",
+  darkturquoise = "#00CED1",
+  darkviolet = "#9400D3",
+  deeppink = "#FF1493",
+  deepskyblue = "#00BFFF",
+  dimgray = "#696969",
+  dimgrey = "#696969",
+  dodgerblue = "#1E90FF",
+  firebrick = "#B22222",
+  floralwhite = "#FFFAF0",
+  forestgreen = "#228B22",
+  fuchsia = "#FF00FF",
+  gainsboro = "#DCDCDC",
+  ghostwhite = "#F8F8FF",
+  gold = "#FFD700",
+  goldenrod = "#DAA520",
+  gray = "#808080",
+  green = "#008000",
+  greenyellow = "#ADFF2F",
+  grey = "#808080",
+  honeydew = "#F0FFF0",
+  hotpink = "#FF69B4",
+  indianred = "#CD5C5C",
+  indigo = "#4B0082",
+  ivory = "#FFFFF0",
+  khaki = "#F0E68C",
+  lavender = "#E6E6FA",
+  lavenderblush = "#FFF0F5",
+  lawngreen = "#7CFC00",
+  lemonchiffon = "#FFFACD",
+  lightblue = "#ADD8E6",
+  lightcoral = "#F08080",
+  lightcyan = "#E0FFFF",
   lightgoldenrodyellow = "#FAFAD2",
-  lightgray            = "#D3D3D3",
-  lightgreen           = "#90EE90",
-  lightgrey            = "#D3D3D3",
-  lightpink            = "#FFB6C1",
-  lightsalmon          = "#FFA07A",
-  lightseagreen        = "#20B2AA",
-  lightskyblue         = "#87CEFA",
-  lightslategray       = "#778899",
-  lightslategrey       = "#778899",
-  lightsteelblue       = "#B0C4DE",
-  lightyellow          = "#FFFFE0",
-  lime                 = "#00FF00",
-  limegreen            = "#32CD32",
-  linen                = "#FAF0E6",
-  magenta              = "#FF00FF",
-  maroon               = "#800000",
-  mediumaquamarine     = "#66CDAA",
-  mediumblue           = "#0000CD",
-  mediumorchid         = "#BA55D3",
-  mediumpurple         = "#9370DB",
-  mediumseagreen       = "#3CB371",
-  mediumslateblue      = "#7B68EE",
-  mediumspringgreen    = "#00FA9A",
-  mediumturquoise      = "#48D1CC",
-  mediumvioletred      = "#C71585",
-  midnightblue         = "#191970",
-  mintcream            = "#F5FFFA",
-  mistyrose            = "#FFE4E1",
-  moccasin             = "#FFE4B5",
-  navajowhite          = "#FFDEAD",
-  navy                 = "#000080",
-  oldlace              = "#FDF5E6",
-  olive                = "#808000",
-  olivedrab            = "#6B8E23",
-  orange               = "#FFA500",
-  orangered            = "#FF4500",
-  orchid               = "#DA70D6",
-  palegoldenrod        = "#EEE8AA",
-  palegreen            = "#98FB98",
-  paleturquoise        = "#AFEEEE",
-  palevioletred        = "#DB7093",
-  papayawhip           = "#FFEFD5",
-  peachpuff            = "#FFDAB9",
-  peru                 = "#CD853F",
-  pink                 = "#FFC0CB",
-  plum                 = "#DDA0DD",
-  powderblue           = "#B0E0E6",
-  purple               = "#800080",
-  rebeccapurple        = "#663399",
-  red                  = "#FF0000",
-  rosybrown            = "#BC8F8F",
-  royalblue            = "#4169E1",
-  saddlebrown          = "#8B4513",
-  salmon               = "#FA8072",
-  sandybrown           = "#F4A460",
-  seagreen             = "#2E8B57",
-  seashell             = "#FFF5EE",
-  sienna               = "#A0522D",
-  silver               = "#C0C0C0",
-  skyblue              = "#87CEEB",
-  slateblue            = "#6A5ACD",
-  slategray            = "#708090",
-  slategrey            = "#708090",
-  snow                 = "#FFFAFA",
-  springgreen          = "#00FF7F",
-  steelblue            = "#4682B4",
-  tan                  = "#D2B48C",
-  teal                 = "#008080",
-  thistle              = "#D8BFD8",
-  tomato               = "#FF6347",
-  turquoise            = "#40E0D0",
-  violet               = "#EE82EE",
-  wheat                = "#F5DEB3",
-  white                = "#FFFFFF",
-  whitesmoke           = "#F5F5F5",
-  yellow               = "#FFFF00",
-  yellowgreen          = "#9ACD32"
+  lightgray = "#D3D3D3",
+  lightgreen = "#90EE90",
+  lightgrey = "#D3D3D3",
+  lightpink = "#FFB6C1",
+  lightsalmon = "#FFA07A",
+  lightseagreen = "#20B2AA",
+  lightskyblue = "#87CEFA",
+  lightslategray = "#778899",
+  lightslategrey = "#778899",
+  lightsteelblue = "#B0C4DE",
+  lightyellow = "#FFFFE0",
+  lime = "#00FF00",
+  limegreen = "#32CD32",
+  linen = "#FAF0E6",
+  magenta = "#FF00FF",
+  maroon = "#800000",
+  mediumaquamarine = "#66CDAA",
+  mediumblue = "#0000CD",
+  mediumorchid = "#BA55D3",
+  mediumpurple = "#9370DB",
+  mediumseagreen = "#3CB371",
+  mediumslateblue = "#7B68EE",
+  mediumspringgreen = "#00FA9A",
+  mediumturquoise = "#48D1CC",
+  mediumvioletred = "#C71585",
+  midnightblue = "#191970",
+  mintcream = "#F5FFFA",
+  mistyrose = "#FFE4E1",
+  moccasin = "#FFE4B5",
+  navajowhite = "#FFDEAD",
+  navy = "#000080",
+  oldlace = "#FDF5E6",
+  olive = "#808000",
+  olivedrab = "#6B8E23",
+  orange = "#FFA500",
+  orangered = "#FF4500",
+  orchid = "#DA70D6",
+  palegoldenrod = "#EEE8AA",
+  palegreen = "#98FB98",
+  paleturquoise = "#AFEEEE",
+  palevioletred = "#DB7093",
+  papayawhip = "#FFEFD5",
+  peachpuff = "#FFDAB9",
+  peru = "#CD853F",
+  pink = "#FFC0CB",
+  plum = "#DDA0DD",
+  powderblue = "#B0E0E6",
+  purple = "#800080",
+  rebeccapurple = "#663399",
+  red = "#FF0000",
+  rosybrown = "#BC8F8F",
+  royalblue = "#4169E1",
+  saddlebrown = "#8B4513",
+  salmon = "#FA8072",
+  sandybrown = "#F4A460",
+  seagreen = "#2E8B57",
+  seashell = "#FFF5EE",
+  sienna = "#A0522D",
+  silver = "#C0C0C0",
+  skyblue = "#87CEEB",
+  slateblue = "#6A5ACD",
+  slategray = "#708090",
+  slategrey = "#708090",
+  snow = "#FFFAFA",
+  springgreen = "#00FF7F",
+  steelblue = "#4682B4",
+  tan = "#D2B48C",
+  teal = "#008080",
+  thistle = "#D8BFD8",
+  tomato = "#FF6347",
+  turquoise = "#40E0D0",
+  violet = "#EE82EE",
+  wheat = "#F5DEB3",
+  white = "#FFFFFF",
+  whitesmoke = "#F5F5F5",
+  yellow = "#FFFF00",
+  yellowgreen = "#9ACD32"
 )
 
 
@@ -805,9 +892,14 @@ fr_env$named_colors <- c(
 hex_to_rgb <- function(hex) {
   hex <- sub("^#", "", hex)
   if (nchar(hex) == 3L) {
-    hex <- paste0(substr(hex, 1, 1), substr(hex, 1, 1),
-                  substr(hex, 2, 2), substr(hex, 2, 2),
-                  substr(hex, 3, 3), substr(hex, 3, 3))
+    hex <- paste0(
+      substr(hex, 1, 1),
+      substr(hex, 1, 1),
+      substr(hex, 2, 2),
+      substr(hex, 2, 2),
+      substr(hex, 3, 3),
+      substr(hex, 3, 3)
+    )
   }
   if (nchar(hex) != 6L) {
     cli_abort(c(
@@ -840,13 +932,19 @@ hex_to_latex_color <- function(hex) {
 #' Resolve color: accepts hex strings or CSS named colors
 #' @noRd
 resolve_color <- function(color, arg = caller_arg(color), call = caller_env()) {
-  if (is.null(color) || is.na(color)) return(NULL)
+  if (is.null(color) || is.na(color)) {
+    return(NULL)
+  }
   if (startsWith(color, "#")) {
     if (!grepl("^#[0-9A-Fa-f]{6}$", color)) {
-      cli_abort(c(
-        "Invalid hex color {.val {color}}.",
-        "i" = "Hex colors must be 6-digit format: {.val #RRGGBB}."
-      ), arg = arg, call = call)
+      cli_abort(
+        c(
+          "Invalid hex color {.val {color}}.",
+          "i" = "Hex colors must be 6-digit format: {.val #RRGGBB}."
+        ),
+        arg = arg,
+        call = call
+      )
     }
     return(toupper(color))
   }
@@ -857,14 +955,27 @@ resolve_color <- function(color, arg = caller_arg(color), call = caller_env()) {
     all_names <- names(fr_env$named_colors)
     close <- agrep(key, all_names, max.distance = 0.3, value = TRUE)
     hint <- if (length(close) > 0L) {
-      paste0("Did you mean: ", paste0("{.val ", close[seq_len(min(5L, length(close)))], "}", collapse = ", "), "?")
+      paste0(
+        "Did you mean: ",
+        paste0(
+          "{.val ",
+          close[seq_len(min(5L, length(close)))],
+          "}",
+          collapse = ", "
+        ),
+        "?"
+      )
     } else {
       "Use a hex string (e.g. {.val #003366}) or any CSS named colour (e.g. {.val steelblue}, {.val tomato})."
     }
-    cli_abort(c(
-      "Unknown color name {.val {color}}.",
-      "i" = hint
-    ), arg = arg, call = call)
+    cli_abort(
+      c(
+        "Unknown color name {.val {color}}.",
+        "i" = hint
+      ),
+      arg = arg,
+      call = call
+    )
   }
   unname(named)
 }
@@ -903,10 +1014,17 @@ fr_env$builtin_tokens <- c("thepage", "total_pages", "program", "datetime")
 #' @return Character vector with tokens resolved.
 #' @noRd
 resolve_tokens <- function(text, token_map, context = "page header/footer") {
-  if (is.null(text) || !is.character(text)) return(text)
-  vapply(text, function(txt) {
-    resolve_tokens_single(txt, token_map, context)
-  }, character(1), USE.NAMES = FALSE)
+  if (is.null(text) || !is.character(text)) {
+    return(text)
+  }
+  vapply(
+    text,
+    function(txt) {
+      resolve_tokens_single(txt, token_map, context)
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
 }
 
 
@@ -930,7 +1048,9 @@ resolve_tokens_single <- function(text, token_map, context) {
     is_markup <- startsWith(token_names, "fr_")
 
     for (i in seq_along(token_names)) {
-      if (is_markup[[i]]) next
+      if (is_markup[[i]]) {
+        next
+      }
       nm <- token_names[[i]]
       val <- token_map[[nm]]
       if (is.null(val)) {
@@ -958,16 +1078,16 @@ resolve_tokens_single <- function(text, token_map, context) {
 fr_env$valid_aligns <- c("left", "center", "right", "decimal")
 
 fr_env$align_to_rtf <- c(
-  left    = "\\ql",
-  center  = "\\qc",
-  right   = "\\qr",
+  left = "\\ql",
+  center = "\\qc",
+  right = "\\qr",
   decimal = "\\ql"
 )
 
 fr_env$align_to_latex <- c(
-  left    = "L",
-  center  = "C",
-  right   = "R",
+  left = "L",
+  center = "C",
+  right = "R",
   decimal = "L"
 )
 
@@ -979,13 +1099,13 @@ fr_env$valid_valigns <- c("top", "middle", "bottom")
 fr_env$valid_spaces <- c("indent", "preserve")
 
 fr_env$valign_to_rtf <- c(
-  top    = "",
+  top = "",
   middle = "\\clvertalc",
   bottom = "\\clvertalb"
 )
 
 fr_env$valign_to_latex <- c(
-  top    = "t",
+  top = "t",
   middle = "m",
   bottom = "b"
 )
@@ -1007,48 +1127,27 @@ fr_env$latex_rowsep <- "0pt"
 fr_env$group_sep <- "\x1f"
 
 # ── RTF rendering constants ────────────────────────────────────────────────
-fr_env$rtf_leading_factor    <- 1.4
-fr_env$rtf_min_headery       <- 360L
-fr_env$rtf_decimal_pad       <- 36L
-fr_env$rtf_box_border_wd     <- 0.5
-fr_env$rtf_spanner_brdrw     <- 10L
+fr_env$rtf_leading_factor <- 1.4
+fr_env$rtf_min_headery <- 360L
+fr_env$rtf_decimal_pad <- 36L
+fr_env$rtf_box_border_wd <- 0.5
+fr_env$rtf_spanner_brdrw <- 10L
 
 # ── Page break / keep-together defaults ───────────────────────────────────
-fr_env$default_orphan_min      <- 3L
-fr_env$default_widow_min       <- 3L
+fr_env$default_orphan_min <- 3L
+fr_env$default_widow_min <- 3L
 
 # ── LaTeX rendering constants (additional) ────────────────────────────────
-fr_env$latex_space_width_em    <- 0.55
-fr_env$latex_fn_sep_width_pt   <- 0.4
-fr_env$points_per_inch         <- 72
+fr_env$latex_space_width_em <- 0.55
+fr_env$latex_fn_sep_width_pt <- 0.4
+fr_env$points_per_inch <- 72
 
 fr_env$linestyle_latex <- c(
-  solid   = "solid",
-  dashed  = "dashed",
-  dotted  = "dotted",
-  double  = "double",
+  solid = "solid",
+  dashed = "dashed",
+  dotted = "dotted",
+  double = "double",
   dashdot = "dashed"
-)
-
-
-# ── Grouped sub-list: rtf ──────────────────────────────────────────────────
-#' RTF-specific constants for convenient grouped access.
-#' @noRd
-fr_env$rtf <- list(
-  linestyle   = fr_env$linestyle_rtf,
-  cell_border = fr_env$cell_border_rtf,
-  para_border = fr_env$para_border_rtf,
-  specials    = fr_env$rtf_specials,
-  unicode     = fr_env$rtf_unicode
-)
-
-# ── Grouped sub-list: validation ────────────────────────────────────────────
-#' Validation-related constants.
-#' @noRd
-fr_env$validation <- list(
-  aligns     = fr_env$valid_aligns,
-  valigns    = fr_env$valid_valigns,
-  linestyles = fr_env$valid_linestyles
 )
 
 

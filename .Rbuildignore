@@ -16,3 +16,4 @@
 ^presentations$
 ^\.github$
 ^deploy-site\.sh$
+^audit-findings\.md$

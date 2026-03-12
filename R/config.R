@@ -11,7 +11,6 @@
 #   4. Per-table verbs    fr_page(), fr_header(), etc.
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # Config Discovery
 # ══════════════════════════════════════════════════════════════════════════════
@@ -27,9 +26,13 @@
 find_config <- function(dir = getwd()) {
   repeat {
     candidate <- file.path(dir, "_tlframe.yml")
-    if (file.exists(candidate)) return(normalizePath(candidate, mustWork = FALSE))
+    if (file.exists(candidate)) {
+      return(normalizePath(candidate, mustWork = FALSE))
+    }
     parent <- dirname(dir)
-    if (parent == dir) break
+    if (parent == dir) {
+      break
+    }
     dir <- parent
   }
   # Fallback: package-bundled defaults
@@ -174,19 +177,25 @@ find_config <- function(dir = getwd()) {
 #'
 #' @export
 fr_config <- function(file = NULL) {
-  if (is.null(file)) file <- find_config()
+  if (is.null(file)) {
+    file <- find_config()
+  }
   check_scalar_chr(file, arg = "file")
 
   if (!file.exists(file)) {
     cli_abort(
-      c("Config file not found: {.path {file}}.",
-        "i" = "Create a {.file _tlframe.yml} at your project root or pass an explicit path."),
+      c(
+        "Config file not found: {.path {file}}.",
+        "i" = "Create a {.file _tlframe.yml} at your project root or pass an explicit path."
+      ),
       call = caller_env()
     )
   }
 
   cfg <- yaml::read_yaml(file)
-  if (!is.list(cfg)) cfg <- list()
+  if (!is.list(cfg)) {
+    cfg <- list()
+  }
 
   fr_env$config <- cfg
   fr_env$config_file <- file
@@ -242,7 +251,9 @@ fr_config <- function(file = NULL) {
 #'
 #' @export
 fr_config_get <- function() {
-  if (is.null(fr_env$config)) fr_config()
+  if (is.null(fr_env$config)) {
+    fr_config()
+  }
   as.list(fr_env$config)
 }
 
@@ -295,8 +306,12 @@ fr_config_reset <- function() {
 #' @return Merged list.
 #' @noRd
 merge_config <- function(base, override) {
-  if (is.null(override)) return(base)
-  if (is.null(base)) return(override)
+  if (is.null(override)) {
+    return(base)
+  }
+  if (is.null(base)) {
+    return(override)
+  }
   for (nm in names(override)) {
     if (is.list(base[[nm]]) && is.list(override[[nm]])) {
       base[[nm]] <- merge_config(base[[nm]], override[[nm]])
@@ -325,12 +340,25 @@ merge_config <- function(base, override) {
 #' @noRd
 apply_config <- function(spec) {
   cfg <- fr_env$config
-  if (is.null(cfg) || length(cfg) == 0L) return(spec)
+  if (is.null(cfg) || length(cfg) == 0L) {
+    return(spec)
+  }
 
   # Page defaults
-  spec <- apply_settings_section(spec, cfg$page, fr_page,
-    c("orientation", "paper", "font_family", "font_size", "margins",
-      "continuation", "col_gap"))
+  spec <- apply_settings_section(
+    spec,
+    cfg$page,
+    fr_page,
+    c(
+      "orientation",
+      "paper",
+      "font_family",
+      "font_size",
+      "margins",
+      "continuation",
+      "col_gap"
+    )
+  )
 
   # Column split/stub from config
   columns_cfg <- cfg$columns
@@ -348,7 +376,9 @@ apply_config <- function(spec) {
       spaces_val <- tryCatch(
         match_arg_fr(columns_cfg$spaces, fr_env$valid_spaces),
         error = function(e) {
-          cli_warn("Config {.field columns.spaces} ignored: {conditionMessage(e)}")
+          cli_warn(
+            "Config {.field columns.spaces} ignored: {conditionMessage(e)}"
+          )
           NULL
         }
       )
@@ -362,10 +392,18 @@ apply_config <- function(spec) {
   # Header defaults (stored on spec$header for render-time use)
   header_cfg <- cfg$header
   if (is.list(header_cfg)) {
-    if (!is.null(header_cfg$align))     spec$header$align     <- header_cfg$align
-    if (!is.null(header_cfg$valign))    spec$header$valign    <- header_cfg$valign
-    if (!is.null(header_cfg$bold))      spec$header$bold      <- header_cfg$bold
-    if (!is.null(header_cfg$span_gap))  spec$header$span_gap  <- header_cfg$span_gap
+    if (!is.null(header_cfg$align)) {
+      spec$header$align <- header_cfg$align
+    }
+    if (!is.null(header_cfg$valign)) {
+      spec$header$valign <- header_cfg$valign
+    }
+    if (!is.null(header_cfg$bold)) {
+      spec$header$bold <- header_cfg$bold
+    }
+    if (!is.null(header_cfg$span_gap)) {
+      spec$header$span_gap <- header_cfg$span_gap
+    }
     # n_format in header section → route to columns_meta for backward compat
     if (!is.null(header_cfg$n_format) && is.null(spec$columns_meta$n_format)) {
       spec$columns_meta$n_format <- header_cfg$n_format
@@ -373,12 +411,20 @@ apply_config <- function(spec) {
   }
 
   # Pagehead
-  spec <- apply_settings_section(spec, cfg$pagehead, fr_pagehead,
-    c("left", "center", "right", "font_size", "bold"))
+  spec <- apply_settings_section(
+    spec,
+    cfg$pagehead,
+    fr_pagehead,
+    c("left", "center", "right", "font_size", "bold")
+  )
 
   # Pagefoot
-  spec <- apply_settings_section(spec, cfg$pagefoot, fr_pagefoot,
-    c("left", "center", "right", "font_size", "bold"))
+  spec <- apply_settings_section(
+    spec,
+    cfg$pagefoot,
+    fr_pagefoot,
+    c("left", "center", "right", "font_size", "bold")
+  )
 
   # Rules
   rules_cfg <- cfg$rules
@@ -409,16 +455,31 @@ apply_config <- function(spec) {
   }
 
   # Spacing
-  spec <- apply_settings_section(spec, cfg$spacing, fr_spacing,
-    c("titles_after", "footnotes_before", "pagehead_after",
-      "pagefoot_before", "page_by_after"))
+  spec <- apply_settings_section(
+    spec,
+    cfg$spacing,
+    fr_spacing,
+    c(
+      "titles_after",
+      "footnotes_before",
+      "pagehead_after",
+      "pagefoot_before",
+      "page_by_after"
+    )
+  )
 
   # Titles defaults (stored as metadata defaults for title entries)
   titles_cfg <- cfg$titles
   if (is.list(titles_cfg)) {
-    if (!is.null(titles_cfg$align))     spec$meta$title_align     <- titles_cfg$align
-    if (!is.null(titles_cfg$bold))      spec$meta$title_bold      <- titles_cfg$bold
-    if (!is.null(titles_cfg$font_size)) spec$meta$title_font_size <- titles_cfg$font_size
+    if (!is.null(titles_cfg$align)) {
+      spec$meta$title_align <- titles_cfg$align
+    }
+    if (!is.null(titles_cfg$bold)) {
+      spec$meta$title_bold <- titles_cfg$bold
+    }
+    if (!is.null(titles_cfg$font_size)) {
+      spec$meta$title_font_size <- titles_cfg$font_size
+    }
   }
 
   # Custom tokens

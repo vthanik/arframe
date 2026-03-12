@@ -56,14 +56,19 @@ test_that("compile_xelatex_doc errors when XeLaTeX not found (mocked)", {
   # Also mock tinytex as unavailable
   local_mocked_bindings(
     requireNamespace = function(pkg, ...) {
-      if (pkg == "tinytex") return(FALSE)
+      if (pkg == "tinytex") {
+        return(FALSE)
+      }
       base::requireNamespace(pkg, ...)
     },
     .package = "base"
   )
   tmp_tex <- tempfile(fileext = ".tex")
   on.exit(unlink(tmp_tex), add = TRUE)
-  writeLines("\\documentclass{article}\\begin{document}hi\\end{document}", tmp_tex)
+  writeLines(
+    "\\documentclass{article}\\begin{document}hi\\end{document}",
+    tmp_tex
+  )
   expect_error(
     tlframe:::compile_xelatex_doc(tmp_tex),
     "XeLaTeX not found"
@@ -88,7 +93,9 @@ test_that("fr_latex_deps returns character vector containing tabularray", {
 test_that("fr_install_latex_deps errors without tinytex", {
   local_mocked_bindings(
     requireNamespace = function(pkg, ...) {
-      if (pkg == "tinytex") return(FALSE)
+      if (pkg == "tinytex") {
+        return(FALSE)
+      }
       base::requireNamespace(pkg, ...)
     },
     .package = "base"
@@ -102,11 +109,14 @@ test_that("fr_install_latex_deps errors without tinytex", {
 test_that("report_latex_failure detects missing packages from log", {
   log_file <- tempfile(fileext = ".log")
   on.exit(unlink(log_file), add = TRUE)
-  writeLines(c(
-    "This is XeTeX, Version 3.14",
-    "! LaTeX Error: File `tabularray.sty' not found.",
-    "Type X to quit or <RETURN> to proceed."
-  ), log_file)
+  writeLines(
+    c(
+      "This is XeTeX, Version 3.14",
+      "! LaTeX Error: File `tabularray.sty' not found.",
+      "Type X to quit or <RETURN> to proceed."
+    ),
+    log_file
+  )
 
   expect_error(
     tlframe:::report_latex_failure(log_file, "test.tex"),
@@ -117,11 +127,14 @@ test_that("report_latex_failure detects missing packages from log", {
 test_that("report_latex_failure shows log tail for non-package errors", {
   log_file <- tempfile(fileext = ".log")
   on.exit(unlink(log_file), add = TRUE)
-  writeLines(c(
-    "This is XeTeX, Version 3.14",
-    "! Undefined control sequence.",
-    "l.42 \\badcommand"
-  ), log_file)
+  writeLines(
+    c(
+      "This is XeTeX, Version 3.14",
+      "! Undefined control sequence.",
+      "l.42 \\badcommand"
+    ),
+    log_file
+  )
 
   expect_error(
     tlframe:::report_latex_failure(log_file, "test.tex"),
@@ -163,7 +176,10 @@ test_that("compile_xelatex_doc sets OSFONTDIR when TLFRAME_FONT_DIR is set", {
 
   tmp_tex <- tempfile(fileext = ".tex")
   on.exit(unlink(tmp_tex), add = TRUE)
-  writeLines("\\documentclass{article}\\begin{document}hi\\end{document}", tmp_tex)
+  writeLines(
+    "\\documentclass{article}\\begin{document}hi\\end{document}",
+    tmp_tex
+  )
   try(tlframe:::compile_xelatex_doc(tmp_tex), silent = TRUE)
 
   # OSFONTDIR should have been set during execution
@@ -197,7 +213,10 @@ test_that("compile_xelatex_doc appends to existing OSFONTDIR", {
 
   tmp_tex <- tempfile(fileext = ".tex")
   on.exit(unlink(tmp_tex), add = TRUE)
-  writeLines("\\documentclass{article}\\begin{document}hi\\end{document}", tmp_tex)
+  writeLines(
+    "\\documentclass{article}\\begin{document}hi\\end{document}",
+    tmp_tex
+  )
   try(tlframe:::compile_xelatex_doc(tmp_tex), silent = TRUE)
 
   # Should contain both the font dir and existing path

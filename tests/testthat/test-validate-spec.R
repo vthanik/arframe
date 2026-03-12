@@ -2,7 +2,6 @@
 # test-validate-spec.R — Tests for fr_validate() (api-validate.R)
 # ══════════════════════════════════════════════════════════════════════════════
 
-
 # ── Clean spec passes silently ───────────────────────────────────────────────
 
 test_that("fr_validate passes clean spec silently", {
@@ -72,7 +71,6 @@ test_that("fr_validate warns on multiple bad columns in column specs", {
 })
 
 test_that("fr_validate ignores gap columns (.__* prefix)", {
-
   spec <- tbl_demog |> fr_table()
   # Simulate a gap column injected by finalize
 
@@ -235,7 +233,7 @@ test_that("fr_validate warns when column widths exceed 110% of printable area", 
     col_names <- names(spec$columns)
   }
   for (nm in col_names) {
-    spec$columns[[nm]]$width <- 5.0  # 5 inches each — will blow past printable
+    spec$columns[[nm]]$width <- 5.0 # 5 inches each — will blow past printable
   }
   expect_warning(fr_validate(spec), "exceed.*110%|printable area")
 })

@@ -4,7 +4,6 @@
 # Catches misconfigurations before render time, giving users instant feedback.
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 #' Validate a Table Specification Before Rendering
 #'
 #' @description
@@ -91,9 +90,12 @@ fr_validate <- function(spec, strict = FALSE) {
     real_cols <- col_spec_names[!startsWith(col_spec_names, ".__")]
     bad <- setdiff(real_cols, data_names)
     if (length(bad) > 0L) {
-      issues <- c(issues, cli::format_inline(
-        "Column{?s} in {.fn fr_cols} not found in data: {.val {bad}}."
-      ))
+      issues <- c(
+        issues,
+        cli::format_inline(
+          "Column{?s} in {.fn fr_cols} not found in data: {.val {bad}}."
+        )
+      )
     }
   }
 
@@ -105,9 +107,12 @@ fr_validate <- function(spec, strict = FALSE) {
       if (length(cols) > 0L) {
         bad <- setdiff(cols, data_names)
         if (length(bad) > 0L) {
-          issues <- c(issues, cli::format_inline(
-            "{.arg {field}} column{?s} not found in data: {.val {bad}}."
-          ))
+          issues <- c(
+            issues,
+            cli::format_inline(
+              "{.arg {field}} column{?s} not found in data: {.val {bad}}."
+            )
+          )
         }
       }
     }
@@ -115,17 +120,23 @@ fr_validate <- function(spec, strict = FALSE) {
     if (length(body$sort_by) > 0L) {
       bad <- setdiff(body$sort_by, data_names)
       if (length(bad) > 0L) {
-        issues <- c(issues, cli::format_inline(
-          "{.arg sort_by} column{?s} not found in data: {.val {bad}}."
-        ))
+        issues <- c(
+          issues,
+          cli::format_inline(
+            "{.arg sort_by} column{?s} not found in data: {.val {bad}}."
+          )
+        )
       }
     }
     if (is.character(body$repeat_cols) && length(body$repeat_cols) > 0L) {
       bad <- setdiff(body$repeat_cols, data_names)
       if (length(bad) > 0L) {
-        issues <- c(issues, cli::format_inline(
-          "{.arg repeat_cols} column{?s} not found in data: {.val {bad}}."
-        ))
+        issues <- c(
+          issues,
+          cli::format_inline(
+            "{.arg repeat_cols} column{?s} not found in data: {.val {bad}}."
+          )
+        )
       }
     }
   }
@@ -136,9 +147,12 @@ fr_validate <- function(spec, strict = FALSE) {
     if (length(stub_cols) > 0L) {
       bad <- setdiff(stub_cols, data_names)
       if (length(bad) > 0L) {
-        issues <- c(issues, cli::format_inline(
-          "Stub column{?s} not found in data: {.val {bad}}."
-        ))
+        issues <- c(
+          issues,
+          cli::format_inline(
+            "Stub column{?s} not found in data: {.val {bad}}."
+          )
+        )
       }
     }
   }
@@ -146,12 +160,19 @@ fr_validate <- function(spec, strict = FALSE) {
   # 4. N-count names match column specs (from columns_meta)
   n_counts <- spec$columns_meta$n
   if (is.numeric(n_counts) && !is.null(names(n_counts))) {
-    col_names <- if (length(spec$columns) > 0L) names(spec$columns) else data_names
+    col_names <- if (length(spec$columns) > 0L) {
+      names(spec$columns)
+    } else {
+      data_names
+    }
     bad <- setdiff(names(n_counts), col_names)
     if (length(bad) > 0L) {
-      issues <- c(issues, cli::format_inline(
-        "N-count name{?s} don't match column specs: {.val {bad}}."
-      ))
+      issues <- c(
+        issues,
+        cli::format_inline(
+          "N-count name{?s} don't match column specs: {.val {bad}}."
+        )
+      )
     }
   }
 
@@ -167,29 +188,41 @@ fr_validate <- function(spec, strict = FALSE) {
       sp <- spans[[i]]
       bad <- setdiff(sp$columns, c(vis_names, data_names))
       if (length(bad) > 0L) {
-        issues <- c(issues, cli::format_inline(
-          "Span {i} references non-existent column{?s}: {.val {bad}}."
-        ))
+        issues <- c(
+          issues,
+          cli::format_inline(
+            "Span {i} references non-existent column{?s}: {.val {bad}}."
+          )
+        )
       }
     }
   }
 
   # 6. Column widths vs printable area
   split_mode <- spec$columns_meta$split
-  if (length(spec$columns) > 0L &&
-      (identical(split_mode, FALSE) || is.null(split_mode))) {
+  if (
+    length(spec$columns) > 0L &&
+      (identical(split_mode, FALSE) || is.null(split_mode))
+  ) {
     vis_cols <- visible_columns(spec$columns)
-    widths <- vapply(vis_cols, function(c) {
-      w <- c$width
-      if (is.numeric(w) && !is_fr_pct(w)) w else NA_real_
-    }, numeric(1))
+    widths <- vapply(
+      vis_cols,
+      function(c) {
+        w <- c$width
+        if (is.numeric(w) && !is_fr_pct(w)) w else NA_real_
+      },
+      numeric(1)
+    )
     if (!any(is.na(widths))) {
       total <- sum(widths)
       printable <- printable_area_inches(spec$page)[["width"]]
       if (total > printable * 1.1) {
-        issues <- c(issues, cli::format_inline(
-          "Column widths ({round(total, 2)}in) exceed 110% of printable area ({round(printable, 2)}in). Consider {.code fr_cols(.split = TRUE)} or narrower widths."
-        ))
+        issues <- c(
+          issues,
+          cli::format_inline(
+            "Column widths ({round(total, 2)}in) exceed 110% of printable area ({round(printable, 2)}in). Consider {.code fr_cols(.split = TRUE)} or narrower widths."
+          )
+        )
       }
     }
   }
@@ -198,20 +231,29 @@ fr_validate <- function(spec, strict = FALSE) {
   for (i in seq_along(spec$cell_styles)) {
     style <- spec$cell_styles[[i]]
     if (is.integer(style$rows) && any(style$rows > nr)) {
-      issues <- c(issues, cli::format_inline(
-        "Style {i}: row index {max(style$rows)} exceeds data rows ({nr})."
-      ))
+      issues <- c(
+        issues,
+        cli::format_inline(
+          "Style {i}: row index {max(style$rows)} exceeds data rows ({nr})."
+        )
+      )
     }
   }
 
   # 8. Font family recognised
   font <- spec$page$font_family
   if (!is.null(font)) {
-    known <- unlist(lapply(fr_env$fonts, function(f) f$names), use.names = FALSE)
+    known <- unlist(
+      lapply(fr_env$fonts, function(f) f$names),
+      use.names = FALSE
+    )
     if (!font %in% known) {
-      issues <- c(issues, cli::format_inline(
-        "Font family {.val {font}} not recognised. Metrics may be inaccurate."
-      ))
+      issues <- c(
+        issues,
+        cli::format_inline(
+          "Font family {.val {font}} not recognised. Metrics may be inaccurate."
+        )
+      )
     }
   }
 

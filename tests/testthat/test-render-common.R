@@ -60,7 +60,7 @@ test_that("build_cell_grid produces correct dimensions", {
   page <- new_fr_page()
 
   grid <- build_cell_grid(data, cols, list(), page)
-  expect_equal(nrow(grid), 4L)  # 2 rows x 2 cols
+  expect_equal(nrow(grid), 4L) # 2 rows x 2 cols
   expect_equal(ncol(grid), 13L) # row_idx, col_idx, col_name, content, align, valign, ...
   expect_equal(grid$content, c("x", "y", "1", "2"))
 })
@@ -78,9 +78,14 @@ test_that("build_cell_grid handles empty data", {
 test_that("resolve_borders maps hline presets correctly", {
   # Header preset: bottom border on header
   rules <- list(
-    new_fr_rule(direction = "horizontal", region = "header",
-                side = "below", width = 0.5, linestyle = "solid",
-                fg = "#000000")
+    new_fr_rule(
+      direction = "horizontal",
+      region = "header",
+      side = "below",
+      width = 0.5,
+      linestyle = "solid",
+      fg = "#000000"
+    )
   )
 
   borders <- resolve_borders(rules, nrow_body = 3L, ncol = 2L, nrow_header = 1L)
@@ -152,8 +157,7 @@ test_that("group_by + blank_after on same column produces single blank rows", {
     val = c("x", "y", "z", "w"),
     stringsAsFactors = FALSE
   )
-  spec <- df |> fr_table() |>
-    fr_rows(group_by = "grp", blank_after = "grp")
+  spec <- df |> fr_table() |> fr_rows(group_by = "grp", blank_after = "grp")
   spec <- finalize_spec(spec)
   # Should have 4 data rows + 1 blank row (between A and B)
   expect_equal(nrow(spec$data), 5L)
@@ -167,14 +171,12 @@ test_that("group_by alone does NOT auto-insert blank rows", {
     val = c("x", "y", "z", "w"),
     stringsAsFactors = FALSE
   )
-  spec <- df |> fr_table() |>
-    fr_rows(group_by = "grp")
+  spec <- df |> fr_table() |> fr_rows(group_by = "grp")
   spec <- finalize_spec(spec)
   # group_by auto-implies blank_after — a blank row is inserted between groups
   # 4 original rows + 1 blank row between groups A and B = 5
   expect_equal(nrow(spec$data), 5L)
 })
-
 
 
 # ── Decimal alignment (tests for R/decimal.R) ────────────────────────────────
@@ -300,7 +302,7 @@ test_that("align_decimal_column right-aligns plain integers", {
   nchars <- nchar(result)
   expect_true(all(nchars == nchars[1]))
   # Right-aligned: "100" has no leading space, " 84" has 1, "  7" has 2
-  expect_equal(nchar(sub("^ +", "", result[3])), 3L)  # "100"
+  expect_equal(nchar(sub("^ +", "", result[3])), 3L) # "100"
 })
 
 test_that("align_decimal_column handles mixed with missing", {
@@ -365,8 +367,10 @@ test_that("align_decimal_column: n_pct dominates over n_only in mixed count colu
   # Both should right-justify at the same position
   pos_45 <- regexpr("\\d+", result[1])
   pos_44 <- regexpr("\\d+", result[2])
-  expect_equal(attr(pos_45, "match.length") + as.integer(pos_45),
-               attr(pos_44, "match.length") + as.integer(pos_44))
+  expect_equal(
+    attr(pos_45, "match.length") + as.integer(pos_45),
+    attr(pos_44, "match.length") + as.integer(pos_44)
+  )
 })
 
 test_that("align_decimal_column: est_spread dominates with family tie-breaking (vitals)", {
@@ -407,7 +411,12 @@ test_that("align_decimal_column: scalar_float in estimate column aligns decimals
 test_that("compute_all_decimal_geometry aligns per group_by independently", {
   df <- data.frame(
     section = c("A", "A", "B", "B"),
-    stat = c("4 (8.9)", "41 (91.1)", "168.0 (152.4, 183.6)", "100.0 (90.0, 110.0)"),
+    stat = c(
+      "4 (8.9)",
+      "41 (91.1)",
+      "168.0 (152.4, 183.6)",
+      "100.0 (90.0, 110.0)"
+    ),
     stringsAsFactors = FALSE
   )
   spec <- df |>
@@ -453,7 +462,12 @@ test_that("compute_all_decimal_geometry aligns per page_by independently", {
 test_that("per-group center_offset varies by group formatted width", {
   df <- data.frame(
     section = c("A", "A", "B", "B"),
-    stat = c("4 (8.9)", "41 (91.1)", "168.0 (152.4, 183.6)", "100.0 (90.0, 110.0)"),
+    stat = c(
+      "4 (8.9)",
+      "41 (91.1)",
+      "168.0 (152.4, 183.6)",
+      "100.0 (90.0, 110.0)"
+    ),
     stringsAsFactors = FALSE
   )
   spec <- df |>
@@ -594,8 +608,15 @@ test_that("all-missing column returns all empty strings", {
 test_that("compute_stat_widths safety net: non-zero width when typed is empty", {
   parsed <- list(
     list(type = "n_only", n = "42", raw = "42"),
-    list(type = "n_pct", n = "3", pct_prefix = "", pct_int = "6",
-         pct_dec = "7", pct_sign = "%", raw = "3 (6.7%)")
+    list(
+      type = "n_pct",
+      n = "3",
+      pct_prefix = "",
+      pct_int = "6",
+      pct_dec = "7",
+      pct_sign = "%",
+      raw = "3 (6.7%)"
+    )
   )
   # Ask for widths of a type that doesn't exist in parsed_values
   widths <- compute_stat_widths(parsed, "est_spread")
@@ -634,7 +655,6 @@ test_that("build_cell_grid evaluates inline markup in cell content", {
 })
 
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # Additional coverage tests
 # ══════════════════════════════════════════════════════════════════════════════
@@ -665,8 +685,7 @@ test_that("n_spanner_levels returns 1 for single level", {
 # ── build_cell_grid with cell_styles ─────────────────────────────────────────
 
 test_that("build_cell_grid applies body cell_styles", {
-  data <- data.frame(a = c("x", "y"), b = c("1", "2"),
-                     stringsAsFactors = FALSE)
+  data <- data.frame(a = c("x", "y"), b = c("1", "2"), stringsAsFactors = FALSE)
   cols <- list(
     a = fr_col("A", width = 1, align = "left"),
     b = fr_col("B", width = 1, align = "right")
@@ -676,11 +695,19 @@ test_that("build_cell_grid applies body cell_styles", {
   page <- new_fr_page()
 
   style <- new_fr_cell_style(
-    region = "body", type = "cell",
-    rows = 1L, cols = "a",
-    bold = TRUE, italic = TRUE, fg = "#FF0000", bg = "#00FF00",
-    font_size = 12, align = "center", valign = "middle",
-    underline = TRUE, indent = 0.5
+    region = "body",
+    type = "cell",
+    rows = 1L,
+    cols = "a",
+    bold = TRUE,
+    italic = TRUE,
+    fg = "#FF0000",
+    bg = "#00FF00",
+    font_size = 12,
+    align = "center",
+    valign = "middle",
+    underline = TRUE,
+    indent = 0.5
   )
 
   grid <- build_cell_grid(data, cols, list(style), page)
@@ -708,8 +735,7 @@ test_that("build_cell_grid skips non-body/non-stub styles", {
   cols$a$id <- "a"
   page <- new_fr_page()
 
-  style <- new_fr_cell_style(region = "header", type = "cell",
-                              bold = TRUE)
+  style <- new_fr_cell_style(region = "header", type = "cell", bold = TRUE)
   grid <- build_cell_grid(data, cols, list(style), page)
   expect_false(grid$bold[1])
 })
@@ -724,8 +750,7 @@ test_that("build_cell_grid handles stub region style", {
   cols$b$id <- "b"
   page <- new_fr_page()
 
-  style <- new_fr_cell_style(region = "stub", type = "col",
-                              bold = TRUE)
+  style <- new_fr_cell_style(region = "stub", type = "col", bold = TRUE)
   grid <- build_cell_grid(data, cols, list(style), page)
   # Stub targets first column only
   expect_true(grid$bold[grid$col_idx == 1L])
@@ -759,8 +784,12 @@ test_that("resolve_style_mask handles numeric cols", {
     col_name = c("a", "b", "a", "b"),
     stringsAsFactors = FALSE
   )
-  style <- new_fr_cell_style(region = "body", type = "cell",
-                              cols = 2L, rows = "all")
+  style <- new_fr_cell_style(
+    region = "body",
+    type = "cell",
+    cols = 2L,
+    rows = "all"
+  )
   mask <- resolve_style_mask(style, grid, c("a", "b"))
   expect_equal(mask, c(FALSE, TRUE, FALSE, TRUE))
 })
@@ -772,8 +801,12 @@ test_that("resolve_style_mask handles character cols", {
     col_name = c("a", "b"),
     stringsAsFactors = FALSE
   )
-  style <- new_fr_cell_style(region = "body", type = "cell",
-                              cols = "b", rows = "all")
+  style <- new_fr_cell_style(
+    region = "body",
+    type = "cell",
+    cols = "b",
+    rows = "all"
+  )
   mask <- resolve_style_mask(style, grid, c("a", "b"))
   expect_equal(mask, c(FALSE, TRUE))
 })
@@ -785,8 +818,12 @@ test_that("resolve_style_mask with row type ignores cols", {
     col_name = c("a", "b", "a", "b"),
     stringsAsFactors = FALSE
   )
-  style <- new_fr_cell_style(region = "body", type = "row",
-                              rows = 1L, cols = "a")
+  style <- new_fr_cell_style(
+    region = "body",
+    type = "row",
+    rows = 1L,
+    cols = "a"
+  )
   mask <- resolve_style_mask(style, grid, c("a", "b"))
   # type = "row" means all columns in that row
   expect_equal(mask, c(TRUE, TRUE, FALSE, FALSE))
@@ -799,8 +836,7 @@ test_that("resolve_style_mask handles specific rows", {
     col_name = c("a", "a", "a"),
     stringsAsFactors = FALSE
   )
-  style <- new_fr_cell_style(region = "body", type = "cell",
-                              rows = c(1L, 3L))
+  style <- new_fr_cell_style(region = "body", type = "cell", rows = c(1L, 3L))
   mask <- resolve_style_mask(style, grid, c("a"))
   expect_equal(mask, c(TRUE, FALSE, TRUE))
 })
@@ -822,10 +858,20 @@ test_that("apply_styles_to_grid works with header region and header_row_idx", {
     font_size = c(9, 9),
     stringsAsFactors = FALSE
   )
-  style <- new_fr_cell_style(region = "header", type = "cell",
-                              cols = "a", bold = TRUE, fg = "#FF0000")
-  result <- apply_styles_to_grid(grid, list(style), "header", c("a", "b"),
-                                  header_row_idx = 1L)
+  style <- new_fr_cell_style(
+    region = "header",
+    type = "cell",
+    cols = "a",
+    bold = TRUE,
+    fg = "#FF0000"
+  )
+  result <- apply_styles_to_grid(
+    grid,
+    list(style),
+    "header",
+    c("a", "b"),
+    header_row_idx = 1L
+  )
   expect_true(result$bold[1])
   expect_false(result$bold[2])
   expect_equal(result$fg[1], "#FF0000")
@@ -833,28 +879,56 @@ test_that("apply_styles_to_grid works with header region and header_row_idx", {
 
 test_that("apply_styles_to_grid skips non-matching region", {
   grid <- data.frame(
-    col_idx = 1L, col_name = "a", align = "left", valign = "top",
-    bold = FALSE, italic = FALSE, underline = FALSE,
-    fg = "#000000", bg = NA_character_, font_size = 9,
+    col_idx = 1L,
+    col_name = "a",
+    align = "left",
+    valign = "top",
+    bold = FALSE,
+    italic = FALSE,
+    underline = FALSE,
+    fg = "#000000",
+    bg = NA_character_,
+    font_size = 9,
     stringsAsFactors = FALSE
   )
   style <- new_fr_cell_style(region = "body", type = "cell", bold = TRUE)
-  result <- apply_styles_to_grid(grid, list(style), "header", "a",
-                                  header_row_idx = 1L)
+  result <- apply_styles_to_grid(
+    grid,
+    list(style),
+    "header",
+    "a",
+    header_row_idx = 1L
+  )
   expect_false(result$bold[1])
 })
 
 test_that("apply_styles_to_grid skips header style with non-matching row_idx", {
   grid <- data.frame(
-    col_idx = 1L, col_name = "a", align = "left", valign = "top",
-    bold = FALSE, italic = FALSE, underline = FALSE,
-    fg = "#000000", bg = NA_character_, font_size = 9,
+    col_idx = 1L,
+    col_name = "a",
+    align = "left",
+    valign = "top",
+    bold = FALSE,
+    italic = FALSE,
+    underline = FALSE,
+    fg = "#000000",
+    bg = NA_character_,
+    font_size = 9,
     stringsAsFactors = FALSE
   )
-  style <- new_fr_cell_style(region = "header", type = "cell",
-                              rows = 3L, bold = TRUE)
-  result <- apply_styles_to_grid(grid, list(style), "header", "a",
-                                  header_row_idx = 1L)
+  style <- new_fr_cell_style(
+    region = "header",
+    type = "cell",
+    rows = 3L,
+    bold = TRUE
+  )
+  result <- apply_styles_to_grid(
+    grid,
+    list(style),
+    "header",
+    "a",
+    header_row_idx = 1L
+  )
   expect_false(result$bold[1])
 })
 
@@ -872,10 +946,19 @@ test_that("apply_styles_to_grid handles numeric cols in header", {
     font_size = c(9, 9),
     stringsAsFactors = FALSE
   )
-  style <- new_fr_cell_style(region = "header", type = "cell",
-                              cols = 2L, italic = TRUE)
-  result <- apply_styles_to_grid(grid, list(style), "header", c("a", "b"),
-                                  header_row_idx = 1L)
+  style <- new_fr_cell_style(
+    region = "header",
+    type = "cell",
+    cols = 2L,
+    italic = TRUE
+  )
+  result <- apply_styles_to_grid(
+    grid,
+    list(style),
+    "header",
+    c("a", "b"),
+    header_row_idx = 1L
+  )
   expect_false(result$italic[1])
   expect_true(result$italic[2])
 })
@@ -896,8 +979,12 @@ test_that("apply_styles_to_grid handles indent in body mode", {
     indent = c(0, 0),
     stringsAsFactors = FALSE
   )
-  style <- new_fr_cell_style(region = "body", type = "cell",
-                              rows = 2L, indent = 0.25)
+  style <- new_fr_cell_style(
+    region = "body",
+    type = "cell",
+    rows = 2L,
+    indent = 0.25
+  )
   result <- apply_styles_to_grid(grid, list(style), "body", "a")
   expect_equal(result$indent[1], 0)
   expect_equal(result$indent[2], 0.25)
@@ -928,11 +1015,20 @@ test_that("build_header_cell_grid uses header_cfg defaults", {
   cols <- list(a = fr_col("A", width = 1))
   cols$a$id <- "a"
   page <- new_fr_page()
-  hcfg <- new_fr_header(bold = TRUE, fg = "#0000FF", bg = "#FFFF00",
-                         font_size = 14)
+  hcfg <- new_fr_header(
+    bold = TRUE,
+    fg = "#0000FF",
+    bg = "#FFFF00",
+    font_size = 14
+  )
 
-  grid <- build_header_cell_grid(cols, list(), page, header_row_idx = 1L,
-                                  header_cfg = hcfg)
+  grid <- build_header_cell_grid(
+    cols,
+    list(),
+    page,
+    header_row_idx = 1L,
+    header_cfg = hcfg
+  )
   expect_true(grid$bold[1])
   expect_equal(grid$fg[1], "#0000FF")
   expect_equal(grid$bg[1], "#FFFF00")
@@ -948,8 +1044,13 @@ test_that("build_header_cell_grid applies header styles", {
   cols$b$id <- "b"
   page <- new_fr_page()
 
-  style <- new_fr_cell_style(region = "header", type = "cell",
-                              cols = "b", bold = TRUE, bg = "#CCCCCC")
+  style <- new_fr_cell_style(
+    region = "header",
+    type = "cell",
+    cols = "b",
+    bold = TRUE,
+    bg = "#CCCCCC"
+  )
   grid <- build_header_cell_grid(cols, list(style), page, header_row_idx = 1L)
   expect_false(grid$bold[1])
   expect_true(grid$bold[2])
@@ -971,8 +1072,12 @@ test_that("build_header_cell_grid skips style with non-matching row index", {
   cols$a$id <- "a"
   page <- new_fr_page()
 
-  style <- new_fr_cell_style(region = "header", type = "cell",
-                              rows = 5L, bold = TRUE)
+  style <- new_fr_cell_style(
+    region = "header",
+    type = "cell",
+    rows = 5L,
+    bold = TRUE
+  )
   grid <- build_header_cell_grid(cols, list(style), page, header_row_idx = 1L)
   expect_false(grid$bold[1])
 })
@@ -986,8 +1091,12 @@ test_that("build_header_cell_grid handles numeric cols in style", {
   cols$b$id <- "b"
   page <- new_fr_page()
 
-  style <- new_fr_cell_style(region = "header", type = "cell",
-                              cols = 1L, italic = TRUE)
+  style <- new_fr_cell_style(
+    region = "header",
+    type = "cell",
+    cols = 1L,
+    italic = TRUE
+  )
   grid <- build_header_cell_grid(cols, list(style), page, header_row_idx = 1L)
   expect_true(grid$italic[1])
   expect_false(grid$italic[2])
@@ -1002,8 +1111,7 @@ test_that("build_header_cell_grid row type applies to all columns", {
   cols$b$id <- "b"
   page <- new_fr_page()
 
-  style <- new_fr_cell_style(region = "header", type = "row",
-                              bold = TRUE)
+  style <- new_fr_cell_style(region = "header", type = "row", bold = TRUE)
   grid <- build_header_cell_grid(cols, list(style), page, header_row_idx = 1L)
   expect_true(all(grid$bold))
 })
@@ -1028,8 +1136,12 @@ test_that("build_row_heights returns NA for no row styles", {
 })
 
 test_that("build_row_heights applies height to specific rows", {
-  style <- new_fr_cell_style(type = "row", region = "body",
-                              rows = c(2L, 4L), height = 0.5)
+  style <- new_fr_cell_style(
+    type = "row",
+    region = "body",
+    rows = c(2L, 4L),
+    height = 0.5
+  )
   result <- build_row_heights(5L, list(style))
   expect_true(is.na(result[1]))
   expect_equal(result[2], 0.5)
@@ -1038,36 +1150,56 @@ test_that("build_row_heights applies height to specific rows", {
 })
 
 test_that("build_row_heights applies height to all rows", {
-  style <- new_fr_cell_style(type = "row", region = "body",
-                              rows = "all", height = 0.3)
+  style <- new_fr_cell_style(
+    type = "row",
+    region = "body",
+    rows = "all",
+    height = 0.3
+  )
   result <- build_row_heights(5L, list(style))
   expect_equal(result, rep(0.3, 5L))
 })
 
 test_that("build_row_heights with NULL rows applies to all", {
-  style <- new_fr_cell_style(type = "row", region = "body",
-                              rows = NULL, height = 0.4)
+  style <- new_fr_cell_style(
+    type = "row",
+    region = "body",
+    rows = NULL,
+    height = 0.4
+  )
   result <- build_row_heights(5L, list(style))
   expect_equal(result, rep(0.4, 5L))
 })
 
 test_that("build_row_heights skips non-row type styles", {
-  style <- new_fr_cell_style(type = "cell", region = "body",
-                              rows = 1L, height = 0.5)
+  style <- new_fr_cell_style(
+    type = "cell",
+    region = "body",
+    rows = 1L,
+    height = 0.5
+  )
   result <- build_row_heights(3L, list(style))
   expect_equal(result, rep(NA_real_, 3L))
 })
 
 test_that("build_row_heights skips styles without height", {
-  style <- new_fr_cell_style(type = "row", region = "body",
-                              rows = 1L, bold = TRUE)
+  style <- new_fr_cell_style(
+    type = "row",
+    region = "body",
+    rows = 1L,
+    bold = TRUE
+  )
   result <- build_row_heights(3L, list(style))
   expect_equal(result, rep(NA_real_, 3L))
 })
 
 test_that("build_row_heights clips out-of-bounds rows", {
-  style <- new_fr_cell_style(type = "row", region = "body",
-                              rows = c(1L, 10L), height = 0.5)
+  style <- new_fr_cell_style(
+    type = "row",
+    region = "body",
+    rows = c(1L, 10L),
+    height = 0.5
+  )
   result <- build_row_heights(3L, list(style))
   expect_equal(result[1], 0.5)
   expect_true(is.na(result[2]))
@@ -1083,8 +1215,11 @@ test_that("build_keep_mask returns FALSE for single row", {
 })
 
 test_that("build_keep_mask returns FALSE for empty keep_cols", {
-  data <- data.frame(grp = c("A", "A"), val = c("x", "y"),
-                     stringsAsFactors = FALSE)
+  data <- data.frame(
+    grp = c("A", "A"),
+    val = c("x", "y"),
+    stringsAsFactors = FALSE
+  )
   expect_equal(build_keep_mask(data, character(0)), c(FALSE, FALSE))
 })
 
@@ -1104,8 +1239,8 @@ test_that("build_keep_mask small groups kept entirely together", {
 
 test_that("build_keep_mask ignores blank rows", {
   data <- data.frame(
-    grp = c("A", "A", "",  "B", "B"),
-    val = c("1", "2", "",  "3", "4"),
+    grp = c("A", "A", "", "B", "B"),
+    val = c("1", "2", "", "3", "4"),
     stringsAsFactors = FALSE
   )
   mask <- build_keep_mask(data, "grp")
@@ -1135,12 +1270,12 @@ test_that("build_keep_mask large group uses orphan/widow minimums", {
   # Top: rows 1-2 keep-with-next (orphan_min - 1 = 2 rows)
   expect_true(mask[1])
   expect_true(mask[2])
-  expect_false(mask[3])  # Middle: free to split
+  expect_false(mask[3]) # Middle: free to split
   expect_false(mask[4])
   # Bottom: rows 8-9 keep-with-next (widow_min = 3 → last 3 glued)
   expect_true(mask[8])
   expect_true(mask[9])
-  expect_false(mask[10])  # Last row: no next row to keep with
+  expect_false(mask[10]) # Last row: no next row to keep with
 })
 
 test_that("build_keep_mask respects custom orphan_min/widow_min", {
@@ -1184,8 +1319,11 @@ test_that("insert_blank_after returns data unchanged for single row", {
 })
 
 test_that("insert_blank_after returns data unchanged when no blank_cols", {
-  data <- data.frame(grp = c("A", "B"), val = c("1", "2"),
-                     stringsAsFactors = FALSE)
+  data <- data.frame(
+    grp = c("A", "B"),
+    val = c("1", "2"),
+    stringsAsFactors = FALSE
+  )
   result <- insert_blank_after(data, character(0))
   expect_equal(nrow(result$data), 2L)
   expect_equal(result$insert_positions, integer(0))
@@ -1210,10 +1348,19 @@ test_that("insert_blank_after returns data unchanged when all keys are same", {
 
 test_that("remap_style_indices shifts numeric row indices", {
   styles <- list(
-    new_fr_cell_style(region = "body", type = "row", rows = c(1L, 3L),
-                      bold = TRUE),
-    new_fr_cell_style(region = "body", type = "col", rows = c(2L, 4L),
-                      cols = "a", italic = TRUE)
+    new_fr_cell_style(
+      region = "body",
+      type = "row",
+      rows = c(1L, 3L),
+      bold = TRUE
+    ),
+    new_fr_cell_style(
+      region = "body",
+      type = "col",
+      rows = c(2L, 4L),
+      cols = "a",
+      italic = TRUE
+    )
   )
   # Blank inserted after row 2 in original data
   result <- remap_style_indices(styles, c(2L))
@@ -1225,8 +1372,12 @@ test_that("remap_style_indices shifts numeric row indices", {
 
 test_that("remap_style_indices handles multiple insert positions", {
   styles <- list(
-    new_fr_cell_style(region = "body", type = "row", rows = c(1L, 2L, 3L, 4L, 5L),
-                      bold = TRUE)
+    new_fr_cell_style(
+      region = "body",
+      type = "row",
+      rows = c(1L, 2L, 3L, 4L, 5L),
+      bold = TRUE
+    )
   )
   # Blanks after rows 2 and 4 in original data
   result <- remap_style_indices(styles, c(2L, 4L))
@@ -1236,10 +1387,20 @@ test_that("remap_style_indices handles multiple insert positions", {
 
 test_that("remap_style_indices skips 'all' and NULL rows", {
   styles <- list(
-    new_fr_cell_style(region = "body", type = "col", rows = "all",
-                      cols = "a", bold = TRUE),
-    new_fr_cell_style(region = "body", type = "col", rows = NULL,
-                      cols = "b", italic = TRUE)
+    new_fr_cell_style(
+      region = "body",
+      type = "col",
+      rows = "all",
+      cols = "a",
+      bold = TRUE
+    ),
+    new_fr_cell_style(
+      region = "body",
+      type = "col",
+      rows = NULL,
+      cols = "b",
+      italic = TRUE
+    )
   )
   result <- remap_style_indices(styles, c(2L))
   expect_equal(result[[1]]$rows, "all")
@@ -1303,8 +1464,16 @@ test_that("apply_leading_indent strips spaces and creates indent styles", {
     a = c("  indented", "normal", "   deep"),
     stringsAsFactors = FALSE
   ))
-  spec$columns <- build_default_columns(spec$data, list(), NULL, "auto",
-                                         NULL, NULL, NULL, spec$page)
+  spec$columns <- build_default_columns(
+    spec$data,
+    list(),
+    NULL,
+    "auto",
+    NULL,
+    NULL,
+    NULL,
+    spec$page
+  )
   spec$columns_meta$spaces <- "indent"
   result <- apply_leading_indent(spec)
   # Data should have spaces stripped
@@ -1323,8 +1492,16 @@ test_that("apply_leading_indent skips preserve mode columns", {
     a = c("  indented", "normal"),
     stringsAsFactors = FALSE
   ))
-  spec$columns <- build_default_columns(spec$data, list(), NULL, "auto",
-                                         NULL, NULL, NULL, spec$page)
+  spec$columns <- build_default_columns(
+    spec$data,
+    list(),
+    NULL,
+    "auto",
+    NULL,
+    NULL,
+    NULL,
+    spec$page
+  )
   spec$columns$a$spaces <- "preserve"
   spec$columns_meta$spaces <- "indent"
   result <- apply_leading_indent(spec)
@@ -1338,8 +1515,16 @@ test_that("apply_leading_indent skips columns with no leading spaces", {
     a = c("no spaces", "here"),
     stringsAsFactors = FALSE
   ))
-  spec$columns <- build_default_columns(spec$data, list(), NULL, "auto",
-                                         NULL, NULL, NULL, spec$page)
+  spec$columns <- build_default_columns(
+    spec$data,
+    list(),
+    NULL,
+    "auto",
+    NULL,
+    NULL,
+    NULL,
+    spec$page
+  )
   spec$columns_meta$spaces <- "indent"
   result <- apply_leading_indent(spec)
   expect_length(result$cell_styles, 0L)
@@ -1350,8 +1535,16 @@ test_that("apply_leading_indent handles empty data", {
     a = character(0),
     stringsAsFactors = FALSE
   ))
-  spec$columns <- build_default_columns(spec$data, list(), NULL, "auto",
-                                         NULL, NULL, NULL, spec$page)
+  spec$columns <- build_default_columns(
+    spec$data,
+    list(),
+    NULL,
+    "auto",
+    NULL,
+    NULL,
+    NULL,
+    spec$page
+  )
   spec$columns_meta$spaces <- "indent"
   result <- apply_leading_indent(spec)
   expect_length(result$cell_styles, 0L)
@@ -1362,8 +1555,16 @@ test_that("apply_leading_indent global preserve mode skips all columns", {
     a = c("  indented", "normal"),
     stringsAsFactors = FALSE
   ))
-  spec$columns <- build_default_columns(spec$data, list(), NULL, "auto",
-                                         NULL, NULL, NULL, spec$page)
+  spec$columns <- build_default_columns(
+    spec$data,
+    list(),
+    NULL,
+    "auto",
+    NULL,
+    NULL,
+    NULL,
+    spec$page
+  )
   spec$columns_meta$spaces <- "preserve"
   result <- apply_leading_indent(spec)
   expect_equal(result$data$a[1], "  indented")
@@ -1375,12 +1576,21 @@ test_that("apply_leading_indent global preserve mode skips all columns", {
 
 test_that("resolve_borders handles vline preset 'all'", {
   vline <- structure(
-    list(preset = "all", cols = NULL, width = 0.5,
-         linestyle = "solid", fg = "#000000"),
+    list(
+      preset = "all",
+      cols = NULL,
+      width = 0.5,
+      linestyle = "solid",
+      fg = "#000000"
+    ),
     class = c("fr_vline_spec", "fr_rule")
   )
-  borders <- resolve_borders(list(vline), nrow_body = 2L, ncol = 3L,
-                              nrow_header = 1L)
+  borders <- resolve_borders(
+    list(vline),
+    nrow_body = 2L,
+    ncol = 3L,
+    nrow_header = 1L
+  )
   # Left edge of col 1
   expect_false(is.null(borders$header$left[1, 1][[1]]))
   expect_false(is.null(borders$body$left[1, 1][[1]]))
@@ -1394,12 +1604,21 @@ test_that("resolve_borders handles vline preset 'all'", {
 
 test_that("resolve_borders handles vline preset 'inner'", {
   vline <- structure(
-    list(preset = "inner", cols = NULL, width = 0.5,
-         linestyle = "solid", fg = "#000000"),
+    list(
+      preset = "inner",
+      cols = NULL,
+      width = 0.5,
+      linestyle = "solid",
+      fg = "#000000"
+    ),
     class = c("fr_vline_spec", "fr_rule")
   )
-  borders <- resolve_borders(list(vline), nrow_body = 2L, ncol = 3L,
-                              nrow_header = 1L)
+  borders <- resolve_borders(
+    list(vline),
+    nrow_body = 2L,
+    ncol = 3L,
+    nrow_header = 1L
+  )
   # Inner borders should be set
   expect_false(is.null(borders$header$right[1, 1][[1]]))
   expect_false(is.null(borders$header$left[1, 2][[1]]))
@@ -1410,12 +1629,21 @@ test_that("resolve_borders handles vline preset 'inner'", {
 
 test_that("resolve_borders handles vline preset 'box'", {
   vline <- structure(
-    list(preset = "box", cols = NULL, width = 0.5,
-         linestyle = "solid", fg = "#000000"),
+    list(
+      preset = "box",
+      cols = NULL,
+      width = 0.5,
+      linestyle = "solid",
+      fg = "#000000"
+    ),
     class = c("fr_vline_spec", "fr_rule")
   )
-  borders <- resolve_borders(list(vline), nrow_body = 2L, ncol = 3L,
-                              nrow_header = 1L)
+  borders <- resolve_borders(
+    list(vline),
+    nrow_body = 2L,
+    ncol = 3L,
+    nrow_header = 1L
+  )
   # Outer edges should be set
   expect_false(is.null(borders$header$left[1, 1][[1]]))
   expect_false(is.null(borders$header$right[1, 3][[1]]))
@@ -1425,12 +1653,21 @@ test_that("resolve_borders handles vline preset 'box'", {
 
 test_that("resolve_borders handles vline with specific cols", {
   vline <- structure(
-    list(preset = NULL, cols = 1L, width = 0.5,
-         linestyle = "solid", fg = "#000000"),
+    list(
+      preset = NULL,
+      cols = 1L,
+      width = 0.5,
+      linestyle = "solid",
+      fg = "#000000"
+    ),
     class = c("fr_vline_spec", "fr_rule")
   )
-  borders <- resolve_borders(list(vline), nrow_body = 2L, ncol = 3L,
-                              nrow_header = 1L)
+  borders <- resolve_borders(
+    list(vline),
+    nrow_body = 2L,
+    ncol = 3L,
+    nrow_header = 1L
+  )
   # Gap between col 1 and 2
   expect_false(is.null(borders$header$right[1, 1][[1]]))
   expect_false(is.null(borders$header$left[1, 2][[1]]))
@@ -1442,9 +1679,15 @@ test_that("resolve_borders handles vline with specific cols", {
 # ── resolve_borders: body rows ───────────────────────────────────────────────
 
 test_that("resolve_borders handles body below with rows='all'", {
-  rule <- new_fr_rule(direction = "horizontal", region = "body",
-                      side = "below", rows = "all",
-                      width = 0.5, linestyle = "solid", fg = "#000000")
+  rule <- new_fr_rule(
+    direction = "horizontal",
+    region = "body",
+    side = "below",
+    rows = "all",
+    width = 0.5,
+    linestyle = "solid",
+    fg = "#000000"
+  )
   borders <- resolve_borders(list(rule), nrow_body = 3L, ncol = 2L)
   for (i in 1:3) {
     expect_false(is.null(borders$body$bottom[i, 1][[1]]))
@@ -1452,9 +1695,15 @@ test_that("resolve_borders handles body below with rows='all'", {
 })
 
 test_that("resolve_borders handles body below with specific rows", {
-  rule <- new_fr_rule(direction = "horizontal", region = "body",
-                      side = "below", rows = c(1L, 3L),
-                      width = 0.5, linestyle = "solid", fg = "#000000")
+  rule <- new_fr_rule(
+    direction = "horizontal",
+    region = "body",
+    side = "below",
+    rows = c(1L, 3L),
+    width = 0.5,
+    linestyle = "solid",
+    fg = "#000000"
+  )
   borders <- resolve_borders(list(rule), nrow_body = 3L, ncol = 2L)
   expect_false(is.null(borders$body$bottom[1, 1][[1]]))
   expect_true(is.null(borders$body$bottom[2, 1][[1]]))
@@ -1462,42 +1711,61 @@ test_that("resolve_borders handles body below with specific rows", {
 })
 
 test_that("resolve_borders handles body above", {
-  rule <- new_fr_rule(direction = "horizontal", region = "body",
-                      side = "above",
-                      width = 0.5, linestyle = "solid", fg = "#000000")
+  rule <- new_fr_rule(
+    direction = "horizontal",
+    region = "body",
+    side = "above",
+    width = 0.5,
+    linestyle = "solid",
+    fg = "#000000"
+  )
   borders <- resolve_borders(list(rule), nrow_body = 3L, ncol = 2L)
   expect_false(is.null(borders$body$top[1, 1][[1]]))
   expect_true(is.null(borders$body$top[2, 1][[1]]))
 })
 
 test_that("resolve_borders handles header above", {
-  rule <- new_fr_rule(direction = "horizontal", region = "header",
-                      side = "above",
-                      width = 0.5, linestyle = "solid", fg = "#000000")
+  rule <- new_fr_rule(
+    direction = "horizontal",
+    region = "header",
+    side = "above",
+    width = 0.5,
+    linestyle = "solid",
+    fg = "#000000"
+  )
   borders <- resolve_borders(list(rule), nrow_body = 2L, ncol = 2L)
   expect_false(is.null(borders$header$top[1, 1][[1]]))
 })
 
 test_that("resolve_borders skips non-horizontal fr_rule", {
-  rule <- new_fr_rule(direction = "vertical", region = "header",
-                      side = "below")
+  rule <- new_fr_rule(direction = "vertical", region = "header", side = "below")
   borders <- resolve_borders(list(rule), nrow_body = 2L, ncol = 2L)
   # Should be all NULL
   expect_true(is.null(borders$header$bottom[1, 1][[1]]))
 })
 
 test_that("resolve_borders handles zero body rows", {
-  rule <- new_fr_rule(direction = "horizontal", region = "body",
-                      side = "below", fg = "#000000")
+  rule <- new_fr_rule(
+    direction = "horizontal",
+    region = "body",
+    side = "below",
+    fg = "#000000"
+  )
   borders <- resolve_borders(list(rule), nrow_body = 0L, ncol = 2L)
   # Should not error; body matrices have 1 row (max(1, 0))
   expect_equal(nrow(borders$body$bottom), 1L)
 })
 
 test_that("resolve_borders clips out-of-bound row indices", {
-  rule <- new_fr_rule(direction = "horizontal", region = "body",
-                      side = "below", rows = c(1L, 100L),
-                      width = 0.5, linestyle = "solid", fg = "#000000")
+  rule <- new_fr_rule(
+    direction = "horizontal",
+    region = "body",
+    side = "below",
+    rows = c(1L, 100L),
+    width = 0.5,
+    linestyle = "solid",
+    fg = "#000000"
+  )
   borders <- resolve_borders(list(rule), nrow_body = 3L, ncol = 2L)
   expect_false(is.null(borders$body$bottom[1, 1][[1]]))
   # Row 100 is out of bounds, should not crash
@@ -1508,18 +1776,12 @@ test_that("resolve_borders clips out-of-bound row indices", {
 # ── LaTeX sentinel resolver ─────────────────────────────────────────────────
 
 test_that("latex_sentinel_resolver handles all types", {
-  expect_equal(latex_sentinel_resolver("SUPER", "a"),
-               "\\textsuperscript{a}")
-  expect_equal(latex_sentinel_resolver("SUB", "x"),
-               "\\textsubscript{x}")
-  expect_equal(latex_sentinel_resolver("BOLD", "hi"),
-               "\\textbf{hi}")
-  expect_equal(latex_sentinel_resolver("ITALIC", "em"),
-               "\\textit{em}")
-  expect_equal(latex_sentinel_resolver("UNDERLINE", "u"),
-               "\\underline{u}")
-  expect_equal(latex_sentinel_resolver("NEWLINE", ""),
-               "\\\\")
+  expect_equal(latex_sentinel_resolver("SUPER", "a"), "\\textsuperscript{a}")
+  expect_equal(latex_sentinel_resolver("SUB", "x"), "\\textsubscript{x}")
+  expect_equal(latex_sentinel_resolver("BOLD", "hi"), "\\textbf{hi}")
+  expect_equal(latex_sentinel_resolver("ITALIC", "em"), "\\textit{em}")
+  expect_equal(latex_sentinel_resolver("UNDERLINE", "u"), "\\underline{u}")
+  expect_equal(latex_sentinel_resolver("NEWLINE", ""), "\\\\")
 })
 
 test_that("latex_sentinel_resolver returns content for unknown type", {
@@ -1630,13 +1892,9 @@ test_that("latex_encode_unicode_char returns mapped value for known chars", {
 
 test_that("latex_encode_unicode_char passes through unknown unicode", {
   # Use a rarely-mapped character
-  result <- latex_encode_unicode_char("\u4e16")  # CJK character
+  result <- latex_encode_unicode_char("\u4e16") # CJK character
   expect_equal(result, "\u4e16")
 })
-
-
-
-
 
 
 # ── collect_colors ───────────────────────────────────────────────────────────
@@ -1713,4 +1971,37 @@ test_that("newline_to_latex_break preserves leading spaces as ~", {
 test_that("newline_to_latex_break is vectorized", {
   result <- newline_to_latex_break(c("A\n  B", "C\nD"))
   expect_equal(result, c("A \\\\ ~~B", "C \\\\ D"))
+})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# fr_emdash / fr_endash — sentinel output
+# ══════════════════════════════════════════════════════════════════════════════
+
+test_that("fr_emdash returns a UNICODE sentinel for U+2014", {
+  m <- fr_emdash()
+  expect_s3_class(m, "fr_markup")
+  expect_equal(m$type, "UNICODE")
+  expect_equal(m$content, "\u2014")
+
+  s <- format(m)
+  expect_true(grepl("\x01", s, fixed = TRUE))
+  expect_true(grepl("\x02", s, fixed = TRUE))
+  expect_true(grepl("UNICODE", s, fixed = TRUE))
+})
+
+test_that("fr_endash returns a UNICODE sentinel for U+2013", {
+  m <- fr_endash()
+  expect_s3_class(m, "fr_markup")
+  expect_equal(m$type, "UNICODE")
+  expect_equal(m$content, "\u2013")
+
+  s <- format(m)
+  expect_true(grepl("\x01", s, fixed = TRUE))
+  expect_true(grepl("\x02", s, fixed = TRUE))
+  expect_true(grepl("UNICODE", s, fixed = TRUE))
+})
+
+test_that("fr_emdash and fr_endash produce distinct sentinels", {
+  expect_false(identical(format(fr_emdash()), format(fr_endash())))
 })

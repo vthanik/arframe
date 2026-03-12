@@ -2,7 +2,6 @@
 # api-rules.R — Line rule verbs: fr_hlines, fr_vlines, fr_grid
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 # ──────────────────────────────────────────────────────────────────────────────
 # Internal helpers for rule filtering
 # ──────────────────────────────────────────────────────────────────────────────
@@ -12,21 +11,30 @@
 #' @param keep_box Logical. Whether to keep fr_rule_box objects.
 #' @noRd
 keep_vertical_rules <- function(rules, keep_box = TRUE) {
-  Filter(function(r) {
-    if (inherits(r, "fr_rule_box")) return(keep_box)
-    inherits(r, "fr_vline_spec") ||
-      (inherits(r, "fr_rule") && identical(r$direction, "vertical"))
-  }, rules)
+  Filter(
+    function(r) {
+      if (inherits(r, "fr_rule_box")) {
+        return(keep_box)
+      }
+      inherits(r, "fr_vline_spec") ||
+        (inherits(r, "fr_rule") && identical(r$direction, "vertical"))
+    },
+    rules
+  )
 }
 
 #' Keep only horizontal rules and boxes (filter out vertical rules)
 #' @param rules List of rule objects.
 #' @noRd
 keep_horizontal_rules <- function(rules) {
-  Filter(function(r) {
-    !inherits(r, "fr_rule") || r$direction == "horizontal" ||
-      inherits(r, "fr_rule_box")
-  }, rules)
+  Filter(
+    function(r) {
+      !inherits(r, "fr_rule") ||
+        r$direction == "horizontal" ||
+        inherits(r, "fr_rule_box")
+    },
+    rules
+  )
 }
 
 
@@ -156,8 +164,13 @@ keep_horizontal_rules <- function(rules) {
 #'   and font overrides, [fr_footnotes()] for the `.separator` control.
 #'
 #' @export
-fr_hlines <- function(spec, preset = "header",
-                      width = NULL, color = NULL, linestyle = NULL) {
+fr_hlines <- function(
+  spec,
+  preset = "header",
+  width = NULL,
+  color = NULL,
+  linestyle = NULL
+) {
   call <- caller_env()
   check_fr_spec(spec, call = call)
 
@@ -173,21 +186,31 @@ fr_hlines <- function(spec, preset = "header",
   if (identical(rule_defs, "box")) {
     new_rules <- list(structure(list(preset = "box"), class = "fr_rule_box"))
   } else {
-    resolved_width     <- if (!is.null(width))     resolve_line_width(width, call = call) else NULL
-    resolved_color     <- if (!is.null(color))     resolve_color(color, call = call)       else NULL
+    resolved_width <- if (!is.null(width)) {
+      resolve_line_width(width, call = call)
+    } else {
+      NULL
+    }
+    resolved_color <- if (!is.null(color)) {
+      resolve_color(color, call = call)
+    } else {
+      NULL
+    }
     resolved_linestyle <- if (!is.null(linestyle)) {
       match_arg_fr(linestyle, fr_env$valid_linestyles, call = call)
-    } else NULL
+    } else {
+      NULL
+    }
 
     new_rules <- lapply(rule_defs, function(rd) {
       new_fr_rule(
         direction = "horizontal",
-        region    = rd$region,
-        side      = rd$side,
-        width     = resolved_width     %||% rd$width,
+        region = rd$region,
+        side = rd$side,
+        width = resolved_width %||% rd$width,
         linestyle = resolved_linestyle %||% rd$linestyle,
-        fg        = resolved_color     %||% rd$fg,
-        call      = call
+        fg = resolved_color %||% rd$fg,
+        call = call
       )
     })
   }
@@ -309,9 +332,16 @@ fr_hlines <- function(spec, preset = "header",
 #'   one call, [fr_styles()] for cell shading and font styling.
 #'
 #' @export
-fr_vlines <- function(spec, preset = "box", cols = NULL,
-                      width = NULL, color = NULL, linestyle = NULL,
-                      abovepos = NULL, belowpos = NULL) {
+fr_vlines <- function(
+  spec,
+  preset = "box",
+  cols = NULL,
+  width = NULL,
+  color = NULL,
+  linestyle = NULL,
+  abovepos = NULL,
+  belowpos = NULL
+) {
   call <- caller_env()
   check_fr_spec(spec, call = call)
 
@@ -326,16 +356,25 @@ fr_vlines <- function(spec, preset = "box", cols = NULL,
     return(spec)
   }
 
-  resolved_width     <- resolve_line_width(width, call = call)
-  resolved_color     <- if (!is.null(color)) resolve_color(color, call = call) else "#000000"
+  resolved_width <- resolve_line_width(width, call = call)
+  resolved_color <- if (!is.null(color)) {
+    resolve_color(color, call = call)
+  } else {
+    "#000000"
+  }
   resolved_linestyle <- if (!is.null(linestyle)) {
     match_arg_fr(linestyle, fr_env$valid_linestyles, call = call)
-  } else "solid"
+  } else {
+    "solid"
+  }
 
   # Validate custom cols
   if (!is.null(cols)) {
     if (!is.numeric(cols) || any(cols < 1L) || any(cols != as.integer(cols))) {
-      cli_abort("{.arg cols} must be a vector of positive integers.", call = call)
+      cli_abort(
+        "{.arg cols} must be a vector of positive integers.",
+        call = call
+      )
     }
     cols <- as.integer(cols)
   }
@@ -343,13 +382,13 @@ fr_vlines <- function(spec, preset = "box", cols = NULL,
   new_vlines <- list(
     structure(
       list(
-        preset    = preset,
-        cols      = cols,
-        width     = resolved_width,
+        preset = preset,
+        cols = cols,
+        width = resolved_width,
         linestyle = resolved_linestyle,
-        fg        = resolved_color,
-        abovepos  = abovepos,
-        belowpos  = belowpos
+        fg = resolved_color,
+        abovepos = abovepos,
+        belowpos = belowpos
       ),
       class = c("fr_vline_spec", "fr_rule")
     )
@@ -439,10 +478,20 @@ fr_vlines <- function(spec, preset = "box", cols = NULL,
 #'   vertical rules only.
 #'
 #' @export
-fr_grid <- function(spec, hpreset = "header", vpreset = "box",
-                    width = NULL, color = NULL, linestyle = NULL) {
+fr_grid <- function(
+  spec,
+  hpreset = "header",
+  vpreset = "box",
+  width = NULL,
+  color = NULL,
+  linestyle = NULL
+) {
   # Single-string shorthand: "hpreset/vpreset"
-  if (is.character(hpreset) && length(hpreset) == 1L && grepl("/", hpreset, fixed = TRUE)) {
+  if (
+    is.character(hpreset) &&
+      length(hpreset) == 1L &&
+      grepl("/", hpreset, fixed = TRUE)
+  ) {
     parts <- strsplit(hpreset, "/", fixed = TRUE)[[1L]]
     hpreset <- parts[1L]
     vpreset <- parts[2L]

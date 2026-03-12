@@ -2,7 +2,6 @@
 # api-page.R — Page layout verbs: fr_page, fr_pagehead, fr_pagefoot
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # fr_page — Set page layout options
 # ══════════════════════════════════════════════════════════════════════════════
@@ -151,27 +150,40 @@
 #'   [fr_cols()] with `.split` for column splitting.
 #'
 #' @export
-fr_page <- function(spec, orientation = NULL, paper = NULL, margins = NULL,
-                    font_family = NULL, font_size = NULL, orphan_min = NULL,
-                    widow_min = NULL, continuation = NULL, col_gap = NULL,
-                    tokens = NULL) {
+fr_page <- function(
+  spec,
+  orientation = NULL,
+  paper = NULL,
+  margins = NULL,
+  font_family = NULL,
+  font_size = NULL,
+  orphan_min = NULL,
+  widow_min = NULL,
+  continuation = NULL,
+  col_gap = NULL,
+  tokens = NULL
+) {
   call <- caller_env()
   check_fr_spec(spec, call = call)
 
   old <- spec$page
 
   spec$page <- new_fr_page(
-    orientation  = orientation  %||% old$orientation,
-    paper        = paper        %||% old$paper,
-    margins      = margins      %||% old$margins,
-    font_family  = font_family  %||% old$font_family,
-    font_size    = font_size    %||% old$font_size,
-    orphan_min   = orphan_min   %||% old$orphan_min,
-    widow_min    = widow_min    %||% old$widow_min,
-    continuation = if (!is.null(continuation)) continuation else old$continuation,
-    col_gap      = col_gap      %||% old$col_gap,
-    tokens       = if (!is.null(tokens)) tokens else old$tokens,
-    call         = call
+    orientation = orientation %||% old$orientation,
+    paper = paper %||% old$paper,
+    margins = margins %||% old$margins,
+    font_family = font_family %||% old$font_family,
+    font_size = font_size %||% old$font_size,
+    orphan_min = orphan_min %||% old$orphan_min,
+    widow_min = widow_min %||% old$widow_min,
+    continuation = if (!is.null(continuation)) {
+      continuation
+    } else {
+      old$continuation
+    },
+    col_gap = col_gap %||% old$col_gap,
+    tokens = if (!is.null(tokens)) tokens else old$tokens,
+    call = call
   )
   spec
 }
@@ -194,7 +206,8 @@ fr_page <- function(spec, orientation = NULL, paper = NULL, margins = NULL,
 #' * `{total_pages}` — total page count.
 #' * Custom tokens defined via `fr_page(tokens = list(...))`.
 #'
-#' Calling `fr_pagehead()` again **replaces** the previous header.
+#' Calling `fr_pagehead()` again **merges** with the previous header:
+#' only the arguments you explicitly supply are changed.
 #'
 #' @param spec An `fr_spec` object from [fr_table()].
 #' @param left Character scalar, character vector, or `NULL`. Left zone text.
@@ -205,7 +218,7 @@ fr_page <- function(spec, orientation = NULL, paper = NULL, margins = NULL,
 #'   evaluated at render time.
 #' @param font_size Font size for the header text in points. `NULL` inherits
 #'   from the page font size (`fr_page(font_size = ...)`).
-#' @param bold Logical. Whether header text is bold. Default `FALSE`.
+#' @param bold Logical. Whether header text is bold. Default `NULL` (not bold).
 #'
 #' @return A modified `fr_spec`. Header stored in `spec$pagehead`.
 #'
@@ -312,23 +325,36 @@ fr_page <- function(spec, orientation = NULL, paper = NULL, margins = NULL,
 #'   for gap control.
 #'
 #' @export
-fr_pagehead <- function(spec, left = NULL, center = NULL, right = NULL,
-                        font_size = NULL, bold = FALSE) {
+fr_pagehead <- function(
+  spec,
+  left = NULL,
+  center = NULL,
+  right = NULL,
+  font_size = NULL,
+  bold = NULL
+) {
   call <- caller_env()
   check_fr_spec(spec, call = call)
-  check_scalar_lgl(bold, arg = "bold", call = call)
-  if (!is.null(font_size)) check_positive_num(font_size, arg = "font_size",
-                                               call = call)
+  if (!missing(bold) && !is.null(bold)) {
+    check_scalar_lgl(bold, arg = "bold", call = call)
+  }
+  if (!is.null(font_size)) {
+    check_positive_num(font_size, arg = "font_size", call = call)
+  }
   # Collapse character vectors into newline-separated scalars
-  left   <- collapse_chrome_text(left)
+  left <- collapse_chrome_text(left)
   center <- collapse_chrome_text(center)
-  right  <- collapse_chrome_text(right)
+  right <- collapse_chrome_text(right)
 
-  spec$pagehead <- new_fr_pagechrome(left      = left,
-                                      center    = center,
-                                      right     = right,
-                                      font_size = font_size,
-                                      bold      = bold)
+  old <- spec$pagehead %||% new_fr_pagechrome()
+
+  spec$pagehead <- new_fr_pagechrome(
+    left = left %||% old$left,
+    center = center %||% old$center,
+    right = right %||% old$right,
+    font_size = font_size %||% old$font_size,
+    bold = if (!missing(bold)) bold else old$bold
+  )
   spec
 }
 
@@ -346,7 +372,8 @@ fr_pagehead <- function(spec, left = NULL, center = NULL, right = NULL,
 #'   (e.g. `"05MAR2026 14:24:25"`).
 #' * `{thepage}`, `{total_pages}`, and custom tokens are also supported.
 #'
-#' Calling `fr_pagefoot()` again **replaces** the previous footer.
+#' Calling `fr_pagefoot()` again **merges** with the previous footer:
+#' only the arguments you explicitly supply are changed.
 #'
 #' @param spec An `fr_spec` object from [fr_table()].
 #' @param left Character scalar or `NULL`. Left zone text.
@@ -354,7 +381,7 @@ fr_pagehead <- function(spec, left = NULL, center = NULL, right = NULL,
 #' @param right Character scalar or `NULL`. Right zone text.
 #'   All three zones support token placeholders evaluated at render time.
 #' @param font_size Font size in points. `NULL` inherits from page.
-#' @param bold Logical. Default `FALSE`.
+#' @param bold Logical. Default `NULL` (not bold).
 #'
 #' @return A modified `fr_spec`. Footer stored in `spec$pagefoot`.
 #'
@@ -433,23 +460,36 @@ fr_pagehead <- function(spec, left = NULL, center = NULL, right = NULL,
 #'   token definitions.
 #'
 #' @export
-fr_pagefoot <- function(spec, left = NULL, center = NULL, right = NULL,
-                        font_size = NULL, bold = FALSE) {
+fr_pagefoot <- function(
+  spec,
+  left = NULL,
+  center = NULL,
+  right = NULL,
+  font_size = NULL,
+  bold = NULL
+) {
   call <- caller_env()
   check_fr_spec(spec, call = call)
-  check_scalar_lgl(bold, arg = "bold", call = call)
-  if (!is.null(font_size)) check_positive_num(font_size, arg = "font_size",
-                                               call = call)
+  if (!missing(bold) && !is.null(bold)) {
+    check_scalar_lgl(bold, arg = "bold", call = call)
+  }
+  if (!is.null(font_size)) {
+    check_positive_num(font_size, arg = "font_size", call = call)
+  }
   # Collapse character vectors into newline-separated scalars
-  left   <- collapse_chrome_text(left)
+  left <- collapse_chrome_text(left)
   center <- collapse_chrome_text(center)
-  right  <- collapse_chrome_text(right)
+  right <- collapse_chrome_text(right)
 
-  spec$pagefoot <- new_fr_pagechrome(left      = left,
-                                      center    = center,
-                                      right     = right,
-                                      font_size = font_size,
-                                      bold      = bold)
+  old <- spec$pagefoot %||% new_fr_pagechrome()
+
+  spec$pagefoot <- new_fr_pagechrome(
+    left = left %||% old$left,
+    center = center %||% old$center,
+    right = right %||% old$right,
+    font_size = font_size %||% old$font_size,
+    bold = if (!missing(bold)) bold else old$bold
+  )
   spec
 }
 
@@ -463,16 +503,22 @@ fr_pagefoot <- function(spec, left = NULL, center = NULL, right = NULL,
 #' Validates type and provides clear dplyr-style error on misuse.
 #' @noRd
 collapse_chrome_text <- function(x, arg = caller_arg(x), call = caller_env()) {
-  if (is.null(x)) return(NULL)
+  if (is.null(x)) {
+    return(NULL)
+  }
   if (!is.character(x)) {
     cli_abort(
-      c("{.arg {arg}} must be a character string or character vector.",
+      c(
+        "{.arg {arg}} must be a character string or character vector.",
         "x" = "You supplied a {.cls {class(x)}} value.",
-        "i" = "Example: {.code fr_pagehead({arg} = \"Study: TFRM-2024-001\")}"),
+        "i" = "Example: {.code fr_pagehead({arg} = \"Study: TFRM-2024-001\")}"
+      ),
       call = call
     )
   }
-  if (length(x) <= 1L) return(x)
+  if (length(x) <= 1L) {
+    return(x)
+  }
   paste0(x, collapse = "\n")
 }
 
@@ -620,36 +666,51 @@ collapse_chrome_text <- function(x, arg = caller_arg(x), call = caller_env()) {
 #'   [fr_rows()].
 #'
 #' @export
-fr_spacing <- function(spec, titles_after = NULL, footnotes_before = NULL,
-                       pagehead_after = NULL, pagefoot_before = NULL,
-                       page_by_after = NULL) {
+fr_spacing <- function(
+  spec,
+  titles_after = NULL,
+  footnotes_before = NULL,
+  pagehead_after = NULL,
+  pagefoot_before = NULL,
+  page_by_after = NULL
+) {
   call <- caller_env()
   check_fr_spec(spec, call = call)
 
   if (!is.null(titles_after)) {
-    spec$spacing$titles_after <- check_non_negative_int(titles_after,
-                                                         arg = "titles_after",
-                                                         call = call)
+    spec$spacing$titles_after <- check_non_negative_int(
+      titles_after,
+      arg = "titles_after",
+      call = call
+    )
   }
   if (!is.null(footnotes_before)) {
-    spec$spacing$footnotes_before <- check_non_negative_int(footnotes_before,
-                                                             arg = "footnotes_before",
-                                                             call = call)
+    spec$spacing$footnotes_before <- check_non_negative_int(
+      footnotes_before,
+      arg = "footnotes_before",
+      call = call
+    )
   }
   if (!is.null(pagehead_after)) {
-    spec$spacing$pagehead_after <- check_non_negative_int(pagehead_after,
-                                                           arg = "pagehead_after",
-                                                           call = call)
+    spec$spacing$pagehead_after <- check_non_negative_int(
+      pagehead_after,
+      arg = "pagehead_after",
+      call = call
+    )
   }
   if (!is.null(pagefoot_before)) {
-    spec$spacing$pagefoot_before <- check_non_negative_int(pagefoot_before,
-                                                             arg = "pagefoot_before",
-                                                             call = call)
+    spec$spacing$pagefoot_before <- check_non_negative_int(
+      pagefoot_before,
+      arg = "pagefoot_before",
+      call = call
+    )
   }
   if (!is.null(page_by_after)) {
-    spec$spacing$page_by_after <- check_non_negative_int(page_by_after,
-                                                           arg = "page_by_after",
-                                                           call = call)
+    spec$spacing$page_by_after <- check_non_negative_int(
+      page_by_after,
+      arg = "page_by_after",
+      call = call
+    )
   }
 
   spec

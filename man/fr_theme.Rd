@@ -22,6 +22,9 @@ fr_theme(
   vlines = NULL,
   spacing = NULL,
   n_format = NULL,
+  continuation = NULL,
+  page_by_bold = NULL,
+  page_by_align = NULL,
   header = NULL,
   footnote_separator = NULL
 )
@@ -78,6 +81,17 @@ blank lines). \code{NULL} leaves unchanged. See \code{\link[=fr_spacing]{fr_spac
 labels. Applied to all tables that use \code{fr_col(n = ...)} or
 \code{fr_cols(.n = ...)} without an explicit \code{.n_format}. Available
 tokens: \code{{label}} and \code{{n}}. \code{NULL} leaves unchanged.}
+
+\item{continuation}{Character scalar appended to column headers on
+continuation pages (e.g. \code{"(continued)"}). \code{NULL} leaves unchanged.
+See \code{\link[=fr_page]{fr_page()}} for details.}
+
+\item{page_by_bold}{Logical. Whether \code{page_by} group labels are bold.
+\code{NULL} leaves unchanged. See \code{\link[=fr_rows]{fr_rows()}} for details.}
+
+\item{page_by_align}{Alignment for \code{page_by} group labels. One of
+\code{"left"}, \code{"center"}, \code{"right"}, or \code{"decimal"}. \code{NULL} leaves unchanged.
+See \code{\link[=fr_rows]{fr_rows()}} for details.}
 
 \item{header}{Named list of header defaults. Currently supports:
 \itemize{

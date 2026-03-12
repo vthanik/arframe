@@ -6,13 +6,16 @@ test_that("fr_config loads a YAML file and stores in fr_env", {
   # Create a temp config
   tmp <- tempfile(fileext = ".yml")
   on.exit(unlink(tmp), add = TRUE)
-  writeLines(c(
-    "page:",
-    "  font_size: 10",
-    "  orientation: portrait",
-    "rules:",
-    "  hlines: booktabs"
-  ), tmp)
+  writeLines(
+    c(
+      "page:",
+      "  font_size: 10",
+      "  orientation: portrait",
+      "rules:",
+      "  hlines: booktabs"
+    ),
+    tmp
+  )
 
   fr_config_reset()
   cfg <- fr_config(tmp)
@@ -57,13 +60,22 @@ test_that("fr_config_reset clears config", {
 test_that("apply_config applies page settings to fr_table", {
   fr_config_reset()
   tmp <- tempfile(fileext = ".yml")
-  on.exit({ fr_config_reset(); unlink(tmp) }, add = TRUE)
-  writeLines(c(
-    "page:",
-    "  font_size: 10",
-    "  orientation: portrait",
-    "  paper: a4"
-  ), tmp)
+  on.exit(
+    {
+      fr_config_reset()
+      unlink(tmp)
+    },
+    add = TRUE
+  )
+  writeLines(
+    c(
+      "page:",
+      "  font_size: 10",
+      "  orientation: portrait",
+      "  paper: a4"
+    ),
+    tmp
+  )
   fr_config(tmp)
 
   spec <- tbl_demog |> fr_table()
@@ -77,7 +89,14 @@ test_that("config < fr_theme < per-table verbs (precedence)", {
   fr_theme_reset()
 
   tmp <- tempfile(fileext = ".yml")
-  on.exit({ fr_config_reset(); fr_theme_reset(); unlink(tmp) }, add = TRUE)
+  on.exit(
+    {
+      fr_config_reset()
+      fr_theme_reset()
+      unlink(tmp)
+    },
+    add = TRUE
+  )
 
   # Config: font_size = 10
   writeLines("page:\n  font_size: 10", tmp)
@@ -97,13 +116,22 @@ test_that("config < fr_theme < per-table verbs (precedence)", {
 test_that("config applies header defaults", {
   fr_config_reset()
   tmp <- tempfile(fileext = ".yml")
-  on.exit({ fr_config_reset(); unlink(tmp) }, add = TRUE)
-  writeLines(c(
-    "header:",
-    "  align: right",
-    "  valign: top",
-    "  bold: false"
-  ), tmp)
+  on.exit(
+    {
+      fr_config_reset()
+      unlink(tmp)
+    },
+    add = TRUE
+  )
+  writeLines(
+    c(
+      "header:",
+      "  align: right",
+      "  valign: top",
+      "  bold: false"
+    ),
+    tmp
+  )
   fr_config(tmp)
 
   spec <- tbl_demog |> fr_table()
@@ -115,12 +143,21 @@ test_that("config applies header defaults", {
 test_that("config applies custom tokens", {
   fr_config_reset()
   tmp <- tempfile(fileext = ".yml")
-  on.exit({ fr_config_reset(); unlink(tmp) }, add = TRUE)
-  writeLines(c(
-    "tokens:",
-    "  company: Pharma Corp",
-    "  study_id: TFRM-001"
-  ), tmp)
+  on.exit(
+    {
+      fr_config_reset()
+      unlink(tmp)
+    },
+    add = TRUE
+  )
+  writeLines(
+    c(
+      "tokens:",
+      "  company: Pharma Corp",
+      "  study_id: TFRM-001"
+    ),
+    tmp
+  )
   fr_config(tmp)
 
   spec <- tbl_demog |> fr_table()
@@ -131,11 +168,20 @@ test_that("config applies custom tokens", {
 test_that("config applies rules", {
   fr_config_reset()
   tmp <- tempfile(fileext = ".yml")
-  on.exit({ fr_config_reset(); unlink(tmp) }, add = TRUE)
-  writeLines(c(
-    "rules:",
-    "  hlines: booktabs"
-  ), tmp)
+  on.exit(
+    {
+      fr_config_reset()
+      unlink(tmp)
+    },
+    add = TRUE
+  )
+  writeLines(
+    c(
+      "rules:",
+      "  hlines: booktabs"
+    ),
+    tmp
+  )
   fr_config(tmp)
 
   spec <- tbl_demog |> fr_table()
@@ -193,7 +239,7 @@ test_that("fr_spacing sets spacing values on spec", {
   spec2 <- spec |> fr_spacing(titles_after = 0L, footnotes_before = 2L)
   expect_equal(spec2$spacing$titles_after, 0L)
   expect_equal(spec2$spacing$footnotes_before, 2L)
-  expect_equal(spec2$spacing$pagehead_after, 0L)  # unchanged
+  expect_equal(spec2$spacing$pagehead_after, 0L) # unchanged
 })
 
 test_that("fr_spacing rejects negative values", {
@@ -208,12 +254,21 @@ test_that("fr_spacing rejects non-integer values", {
 
 test_that("config applies spacing from YAML", {
   tmp <- tempfile(fileext = ".yml")
-  on.exit({ unlink(tmp); fr_config_reset() }, add = TRUE)
-  writeLines(c(
-    "spacing:",
-    "  titles_after: 2",
-    "  footnotes_before: 0"
-  ), tmp)
+  on.exit(
+    {
+      unlink(tmp)
+      fr_config_reset()
+    },
+    add = TRUE
+  )
+  writeLines(
+    c(
+      "spacing:",
+      "  titles_after: 2",
+      "  footnotes_before: 0"
+    ),
+    tmp
+  )
 
   fr_config_reset()
   fr_config(tmp)
@@ -221,7 +276,7 @@ test_that("config applies spacing from YAML", {
 
   expect_equal(spec$spacing$titles_after, 2L)
   expect_equal(spec$spacing$footnotes_before, 0L)
-  expect_equal(spec$spacing$pagehead_after, 0L)  # default kept
+  expect_equal(spec$spacing$pagehead_after, 0L) # default kept
 })
 
 test_that("fr_theme applies spacing", {
@@ -373,7 +428,13 @@ test_that("fr_config errors on non-existent path with helpful message", {
 test_that("fr_config handles empty YAML file gracefully", {
   fr_config_reset()
   tmp <- tempfile(fileext = ".yml")
-  on.exit({ fr_config_reset(); unlink(tmp) }, add = TRUE)
+  on.exit(
+    {
+      fr_config_reset()
+      unlink(tmp)
+    },
+    add = TRUE
+  )
 
   # Empty file — yaml::read_yaml returns NULL, converted to list()
   writeLines("", tmp)
@@ -383,7 +444,7 @@ test_that("fr_config handles empty YAML file gracefully", {
 
   # apply_config should be a no-op on empty config
   spec <- data.frame(a = 1) |> fr_table()
-  expect_equal(spec$page$font_size, 9)  # package default
+  expect_equal(spec$page$font_size, 9) # package default
 })
 
 
@@ -411,16 +472,17 @@ test_that("apply_config applies header span_gap", {
 
 test_that("apply_config applies header n_format to columns_meta", {
   fr_config_reset()
-  fr_env$config <- list(header = list(
-    n_format = "{label} [N={n}]"
-  ))
+  fr_env$config <- list(
+    header = list(
+      n_format = "{label} [N={n}]"
+    )
+  )
   spec <- data.frame(a = 1) |> fr_table()
   expect_equal(spec$columns_meta$n_format, "{label} [N={n}]")
   fr_config_reset()
 })
 
 test_that("apply_config skips header when header config is not a list", {
-
   fr_config_reset()
   fr_env$config <- list(header = "not_a_list")
   # Should not error — just skip the header section
@@ -435,15 +497,24 @@ test_that("apply_config skips header when header config is not a list", {
 test_that("apply_config applies pagehead settings", {
   fr_config_reset()
   tmp <- tempfile(fileext = ".yml")
-  on.exit({ fr_config_reset(); unlink(tmp) }, add = TRUE)
-  writeLines(c(
-    "pagehead:",
-    "  left: 'Company XYZ'",
-    "  center: 'Study 001'",
-    "  right: 'Page {thepage}'",
-    "  font_size: 7",
-    "  bold: true"
-  ), tmp)
+  on.exit(
+    {
+      fr_config_reset()
+      unlink(tmp)
+    },
+    add = TRUE
+  )
+  writeLines(
+    c(
+      "pagehead:",
+      "  left: 'Company XYZ'",
+      "  center: 'Study 001'",
+      "  right: 'Page {thepage}'",
+      "  font_size: 7",
+      "  bold: true"
+    ),
+    tmp
+  )
   fr_config(tmp)
 
   spec <- data.frame(a = 1) |> fr_table()
@@ -457,14 +528,23 @@ test_that("apply_config applies pagehead settings", {
 test_that("apply_config applies pagefoot settings", {
   fr_config_reset()
   tmp <- tempfile(fileext = ".yml")
-  on.exit({ fr_config_reset(); unlink(tmp) }, add = TRUE)
-  writeLines(c(
-    "pagefoot:",
-    "  left: '{program}'",
-    "  right: '{datetime}'",
-    "  font_size: 7",
-    "  bold: true"
-  ), tmp)
+  on.exit(
+    {
+      fr_config_reset()
+      unlink(tmp)
+    },
+    add = TRUE
+  )
+  writeLines(
+    c(
+      "pagefoot:",
+      "  left: '{program}'",
+      "  right: '{datetime}'",
+      "  font_size: 7",
+      "  bold: true"
+    ),
+    tmp
+  )
   fr_config(tmp)
 
   spec <- data.frame(a = 1) |> fr_table()
@@ -480,11 +560,20 @@ test_that("apply_config applies pagefoot settings", {
 test_that("apply_config applies vlines from config", {
   fr_config_reset()
   tmp <- tempfile(fileext = ".yml")
-  on.exit({ fr_config_reset(); unlink(tmp) }, add = TRUE)
-  writeLines(c(
-    "rules:",
-    "  vlines: all"
-  ), tmp)
+  on.exit(
+    {
+      fr_config_reset()
+      unlink(tmp)
+    },
+    add = TRUE
+  )
+  writeLines(
+    c(
+      "rules:",
+      "  vlines: all"
+    ),
+    tmp
+  )
   fr_config(tmp)
 
   spec <- data.frame(a = 1, b = 2) |> fr_table()
@@ -495,11 +584,20 @@ test_that("apply_config applies vlines from config", {
 test_that("apply_config skips vlines when void", {
   fr_config_reset()
   tmp <- tempfile(fileext = ".yml")
-  on.exit({ fr_config_reset(); unlink(tmp) }, add = TRUE)
-  writeLines(c(
-    "rules:",
-    "  vlines: void"
-  ), tmp)
+  on.exit(
+    {
+      fr_config_reset()
+      unlink(tmp)
+    },
+    add = TRUE
+  )
+  writeLines(
+    c(
+      "rules:",
+      "  vlines: void"
+    ),
+    tmp
+  )
   fr_config(tmp)
 
   spec <- data.frame(a = 1, b = 2) |> fr_table()
@@ -549,11 +647,13 @@ test_that("apply_config skips footnotes when not a list", {
 
 test_that("apply_config applies titles config", {
   fr_config_reset()
-  fr_env$config <- list(titles = list(
-    align = "left",
-    bold = TRUE,
-    font_size = 12
-  ))
+  fr_env$config <- list(
+    titles = list(
+      align = "left",
+      bold = TRUE,
+      font_size = 12
+    )
+  )
   spec <- data.frame(a = 1) |> fr_table()
   expect_equal(spec$meta$title_align, "left")
   expect_true(spec$meta$title_bold)
@@ -598,13 +698,22 @@ test_that("apply_config tokens are low priority (existing tokens win)", {
 test_that("apply_config applies split and continuation from config", {
   fr_config_reset()
   tmp <- tempfile(fileext = ".yml")
-  on.exit({ fr_config_reset(); unlink(tmp) }, add = TRUE)
-  writeLines(c(
-    "columns:",
-    "  split: true",
-    "page:",
-    "  continuation: '(continued)'"
-  ), tmp)
+  on.exit(
+    {
+      fr_config_reset()
+      unlink(tmp)
+    },
+    add = TRUE
+  )
+  writeLines(
+    c(
+      "columns:",
+      "  split: true",
+      "page:",
+      "  continuation: '(continued)'"
+    ),
+    tmp
+  )
   fr_config(tmp)
 
   spec <- data.frame(a = 1) |> fr_table()
@@ -615,11 +724,20 @@ test_that("apply_config applies split and continuation from config", {
 test_that("apply_config applies font_family from config", {
   fr_config_reset()
   tmp <- tempfile(fileext = ".yml")
-  on.exit({ fr_config_reset(); unlink(tmp) }, add = TRUE)
-  writeLines(c(
-    "page:",
-    "  font_family: 'Times New Roman'"
-  ), tmp)
+  on.exit(
+    {
+      fr_config_reset()
+      unlink(tmp)
+    },
+    add = TRUE
+  )
+  writeLines(
+    c(
+      "page:",
+      "  font_family: 'Times New Roman'"
+    ),
+    tmp
+  )
   fr_config(tmp)
 
   spec <- data.frame(a = 1) |> fr_table()
@@ -629,15 +747,27 @@ test_that("apply_config applies font_family from config", {
 test_that("apply_config applies margins from config", {
   fr_config_reset()
   tmp <- tempfile(fileext = ".yml")
-  on.exit({ fr_config_reset(); unlink(tmp) }, add = TRUE)
-  writeLines(c(
-    "page:",
-    "  margins: [1.5, 1.0, 1.5, 1.0]"
-  ), tmp)
+  on.exit(
+    {
+      fr_config_reset()
+      unlink(tmp)
+    },
+    add = TRUE
+  )
+  writeLines(
+    c(
+      "page:",
+      "  margins: [1.5, 1.0, 1.5, 1.0]"
+    ),
+    tmp
+  )
   fr_config(tmp)
 
   spec <- data.frame(a = 1) |> fr_table()
-  expect_equal(spec$page$margins, list(top = 1.5, right = 1.0, bottom = 1.5, left = 1.0))
+  expect_equal(
+    spec$page$margins,
+    list(top = 1.5, right = 1.0, bottom = 1.5, left = 1.0)
+  )
 })
 
 
@@ -666,37 +796,46 @@ test_that("apply_config is a no-op when config is empty list", {
 test_that("apply_config roundtrip: comprehensive YAML config", {
   fr_config_reset()
   tmp <- tempfile(fileext = ".yml")
-  on.exit({ fr_config_reset(); unlink(tmp) }, add = TRUE)
-  writeLines(c(
-    "page:",
-    "  font_size: 8",
-    "  orientation: portrait",
-    "  paper: a4",
-    "  font_family: 'Times New Roman'",
-    "header:",
-    "  align: center",
-    "  valign: top",
-    "  bold: true",
-    "pagehead:",
-    "  left: 'Pharma Co'",
-    "  right: 'Page {thepage}'",
-    "pagefoot:",
-    "  left: '{program}'",
-    "rules:",
-    "  hlines: booktabs",
-    "  vlines: all",
-    "footnotes:",
-    "  separator: true",
-    "  placement: last",
-    "spacing:",
-    "  titles_after: 2",
-    "  footnotes_before: 0",
-    "titles:",
-    "  align: left",
-    "  bold: true",
-    "tokens:",
-    "  company: 'Test Corp'"
-  ), tmp)
+  on.exit(
+    {
+      fr_config_reset()
+      unlink(tmp)
+    },
+    add = TRUE
+  )
+  writeLines(
+    c(
+      "page:",
+      "  font_size: 8",
+      "  orientation: portrait",
+      "  paper: a4",
+      "  font_family: 'Times New Roman'",
+      "header:",
+      "  align: center",
+      "  valign: top",
+      "  bold: true",
+      "pagehead:",
+      "  left: 'Pharma Co'",
+      "  right: 'Page {thepage}'",
+      "pagefoot:",
+      "  left: '{program}'",
+      "rules:",
+      "  hlines: booktabs",
+      "  vlines: all",
+      "footnotes:",
+      "  separator: true",
+      "  placement: last",
+      "spacing:",
+      "  titles_after: 2",
+      "  footnotes_before: 0",
+      "titles:",
+      "  align: left",
+      "  bold: true",
+      "tokens:",
+      "  company: 'Test Corp'"
+    ),
+    tmp
+  )
   fr_config(tmp)
 
   spec <- data.frame(a = 1, b = 2) |> fr_table()
@@ -724,7 +863,7 @@ test_that("apply_config roundtrip: comprehensive YAML config", {
 
   # Rules
   hlines <- Filter(function(r) inherits(r, "fr_rule_hline"), spec$rules)
-  expect_true(length(hlines) >= 3L)  # booktabs = 3 rules
+  expect_true(length(hlines) >= 3L) # booktabs = 3 rules
   vlines <- Filter(function(r) inherits(r, "fr_vline_spec"), spec$rules)
   expect_true(length(vlines) > 0L)
 
@@ -765,7 +904,13 @@ test_that("fr_config_reset clears both config and config_file", {
 test_that("fr_config stores the file path in fr_env$config_file", {
   fr_config_reset()
   tmp <- tempfile(fileext = ".yml")
-  on.exit({ fr_config_reset(); unlink(tmp) }, add = TRUE)
+  on.exit(
+    {
+      fr_config_reset()
+      unlink(tmp)
+    },
+    add = TRUE
+  )
   writeLines("page:\n  font_size: 7", tmp)
 
   fr_config(tmp)

@@ -16,7 +16,6 @@
 #
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # fr_page — Page layout specification (internal constructor)
 #
@@ -25,20 +24,24 @@
 # ══════════════════════════════════════════════════════════════════════════════
 
 #' @noRd
-new_fr_page <- function(orientation = "landscape",
-                         paper = "letter",
-                         margins = 1,
-                         font_family = NULL,
-                         font_size = 9,
-                         orphan_min = 3L,
-                         widow_min = 3L,
-                         continuation = NULL,
-                         col_gap = 4L,
-                         tokens = list(),
-                         call = caller_env()) {
-
-  orientation <- match_arg_fr(orientation, c("landscape", "portrait"),
-                               call = call)
+new_fr_page <- function(
+  orientation = "landscape",
+  paper = "letter",
+  margins = 1,
+  font_family = NULL,
+  font_size = 9,
+  orphan_min = 3L,
+  widow_min = 3L,
+  continuation = NULL,
+  col_gap = 4L,
+  tokens = list(),
+  call = caller_env()
+) {
+  orientation <- match_arg_fr(
+    orientation,
+    c("landscape", "portrait"),
+    call = call
+  )
   paper <- match_arg_fr(paper, c("letter", "a4", "legal"), call = call)
 
   # ── Margin normalisation (ggplot2 / CSS convention) ───────────────────────
@@ -51,8 +54,10 @@ new_fr_page <- function(orientation = "landscape",
   check_positive_num(font_size, arg = "font_size", call = call)
   if (font_size < 4 || font_size > 72) {
     cli_abort(
-      c("{.arg font_size} must be between 4 and 72.",
-        "x" = "You supplied {.val {font_size}}."),
+      c(
+        "{.arg font_size} must be between 4 and 72.",
+        "x" = "You supplied {.val {font_size}}."
+      ),
       call = call
     )
   }
@@ -78,16 +83,16 @@ new_fr_page <- function(orientation = "landscape",
 
   structure(
     list(
-      orientation  = orientation,
-      paper        = paper,
-      margins      = margins,
-      font_family  = font_family,
-      font_size    = font_size,
-      orphan_min   = vec_cast(orphan_min, integer()),
-      widow_min    = vec_cast(widow_min, integer()),
+      orientation = orientation,
+      paper = paper,
+      margins = margins,
+      font_family = font_family,
+      font_size = font_size,
+      orphan_min = vec_cast(orphan_min, integer()),
+      widow_min = vec_cast(widow_min, integer()),
       continuation = continuation,
-      col_gap      = vec_cast(col_gap, integer()),
-      tokens       = as.list(tokens)
+      col_gap = vec_cast(col_gap, integer()),
+      tokens = as.list(tokens)
     ),
     class = "fr_page"
   )
@@ -120,17 +125,21 @@ normalise_margins <- function(margins, call = caller_env()) {
     req <- c("top", "bottom", "left", "right")
     if (!all(req %in% names(margins))) {
       cli_abort(
-        c("{.arg margins} as a list must have names: {.val {req}}.",
+        c(
+          "{.arg margins} as a list must have names: {.val {req}}.",
           "x" = "You supplied names: {.val {names(margins)}}.",
-          "i" = "Or pass a numeric: {.code 1} (all sides), {.code c(1, 0.75)} (vert, horiz), or {.code c(1, 0.75, 1, 0.75)} (t, r, b, l)."),
+          "i" = "Or pass a numeric: {.code 1} (all sides), {.code c(1, 0.75)} (vert, horiz), or {.code c(1, 0.75, 1, 0.75)} (t, r, b, l)."
+        ),
         call = call
       )
     }
     for (side in req) {
       if (!is.numeric(margins[[side]]) || margins[[side]] < 0) {
         cli_abort(
-          c("{.arg margins${side}} must be a non-negative number.",
-            "x" = "You supplied {.obj_type_friendly {margins[[side]]}}."),
+          c(
+            "{.arg margins${side}} must be a non-negative number.",
+            "x" = "You supplied {.obj_type_friendly {margins[[side]]}}."
+          ),
           call = call
         )
       }
@@ -141,34 +150,53 @@ normalise_margins <- function(margins, call = caller_env()) {
   # Numeric shorthand
   if (!is.numeric(margins)) {
     cli_abort(
-      c("{.arg margins} must be a numeric vector or a named list.",
+      c(
+        "{.arg margins} must be a numeric vector or a named list.",
         "x" = "You supplied {.obj_type_friendly {margins}}.",
-        "i" = "Examples: {.code 1}, {.code c(1, 0.75)}, {.code c(1, 0.75, 1, 0.75)}, or {.code list(top = 1, bottom = 1, left = 0.75, right = 0.75)}."),
+        "i" = "Examples: {.code 1}, {.code c(1, 0.75)}, {.code c(1, 0.75, 1, 0.75)}, or {.code list(top = 1, bottom = 1, left = 0.75, right = 0.75)}."
+      ),
       call = call
     )
   }
 
   if (any(margins < 0)) {
     cli_abort(
-      c("{.arg margins} values must be non-negative.",
-        "x" = "Negative value{?s}: {.val {margins[margins < 0]}}."),
+      c(
+        "{.arg margins} values must be non-negative.",
+        "x" = "Negative value{?s}: {.val {margins[margins < 0]}}."
+      ),
       call = call
     )
   }
 
   margins <- unname(margins)
   n <- length(margins)
-  result <- switch(as.character(n),
-    "1" = list(top = margins[1], bottom = margins[1],
-               left = margins[1], right = margins[1]),
-    "2" = list(top = margins[1], bottom = margins[1],
-               left = margins[2], right = margins[2]),
-    "4" = list(top = margins[1], right = margins[2],
-               bottom = margins[3], left = margins[4]),
+  result <- switch(
+    as.character(n),
+    "1" = list(
+      top = margins[1],
+      bottom = margins[1],
+      left = margins[1],
+      right = margins[1]
+    ),
+    "2" = list(
+      top = margins[1],
+      bottom = margins[1],
+      left = margins[2],
+      right = margins[2]
+    ),
+    "4" = list(
+      top = margins[1],
+      right = margins[2],
+      bottom = margins[3],
+      left = margins[4]
+    ),
     cli_abort(
-      c("{.arg margins} must have length 1, 2, or 4.",
+      c(
+        "{.arg margins} must have length 1, 2, or 4.",
         "x" = "You supplied length {.val {n}}.",
-        "i" = "{.code 1} = all sides, {.code c(vert, horiz)}, {.code c(top, right, bottom, left)}."),
+        "i" = "{.code 1} = all sides, {.code c(vert, horiz)}, {.code c(top, right, bottom, left)}."
+      ),
       call = call
     )
   )
@@ -182,12 +210,16 @@ normalise_margins <- function(margins, call = caller_env()) {
 #' Validate user tokens: error if overriding built-in tokens
 #' @noRd
 validate_user_tokens <- function(tokens, call = caller_env()) {
-  if (length(tokens) == 0L) return(invisible(NULL))
+  if (length(tokens) == 0L) {
+    return(invisible(NULL))
+  }
 
   if (!is.list(tokens) || is.null(names(tokens))) {
     cli_abort(
-      c("{.arg tokens} must be a named list (e.g., {.code list(study = \"ABC-001\")}).",
-        "x" = "You supplied {.obj_type_friendly {tokens}}."),
+      c(
+        "{.arg tokens} must be a named list (e.g., {.code list(study = \"ABC-001\")}).",
+        "x" = "You supplied {.obj_type_friendly {tokens}}."
+      ),
       call = call
     )
   }
@@ -198,9 +230,11 @@ validate_user_tokens <- function(tokens, call = caller_env()) {
   conflicts <- intersect(names(tokens), builtin_readonly)
   if (length(conflicts) > 0L) {
     cli_abort(
-      c("Cannot override built-in token{?s}: {.val {conflicts}}.",
+      c(
+        "Cannot override built-in token{?s}: {.val {conflicts}}.",
         "i" = "{.val thepage} and {.val total_pages} are set automatically by the pagination engine.",
-        "i" = "You can set {.val program} and {.val datetime} via {.arg tokens}."),
+        "i" = "You can set {.val program} and {.val datetime} via {.arg tokens}."
+      ),
       call = call
     )
   }
@@ -468,15 +502,17 @@ is_fr_pct <- function(x) inherits(x, "fr_pct")
 #'   [fr_super()], [fr_bold()], [fr_italic()] for inline markup in labels.
 #'
 #' @export
-fr_col <- function(label = "",
-                    width = NULL,
-                    align = NULL,
-                    header_align = NULL,
-                    visible = NULL,
-                    stub = FALSE,
-                    spaces = NULL,
-                    n = NULL,
-                    group = NULL) {
+fr_col <- function(
+  label = "",
+  width = NULL,
+  align = NULL,
+  header_align = NULL,
+  visible = NULL,
+  stub = FALSE,
+  spaces = NULL,
+  n = NULL,
+  group = NULL
+) {
   check_scalar_chr(label, arg = "label")
   if (!is.null(width)) {
     if (is.character(width)) {
@@ -490,26 +526,38 @@ fr_col <- function(label = "",
       check_positive_num(width, arg = "width")
     }
   }
-  if (!is.null(align)) align <- match_arg_fr(align, fr_env$valid_aligns)
-  if (!is.null(header_align)) header_align <- match_arg_fr(header_align, fr_env$valid_aligns)
-  if (!is.null(visible)) check_scalar_lgl(visible, arg = "visible")
+  if (!is.null(align)) {
+    align <- match_arg_fr(align, fr_env$valid_aligns)
+  }
+  if (!is.null(header_align)) {
+    header_align <- match_arg_fr(header_align, fr_env$valid_aligns)
+  }
+  if (!is.null(visible)) {
+    check_scalar_lgl(visible, arg = "visible")
+  }
   check_scalar_lgl(stub, arg = "stub")
-  if (!is.null(spaces)) spaces <- match_arg_fr(spaces, fr_env$valid_spaces)
-  if (!is.null(n)) n <- check_non_negative_int(n, arg = "n")
-  if (!is.null(group)) check_scalar_chr(group, arg = "group")
+  if (!is.null(spaces)) {
+    spaces <- match_arg_fr(spaces, fr_env$valid_spaces)
+  }
+  if (!is.null(n)) {
+    n <- check_non_negative_int(n, arg = "n")
+  }
+  if (!is.null(group)) {
+    check_scalar_chr(group, arg = "group")
+  }
 
   structure(
     list(
-      id           = "",
-      label        = label,
-      width        = width,
-      align        = align,
+      id = "",
+      label = label,
+      width = width,
+      align = align,
       header_align = header_align,
-      visible      = visible,
-      stub         = stub,
-      spaces       = spaces,
-      n            = n,
-      group        = group
+      visible = visible,
+      stub = stub,
+      spaces = spaces,
+      n = n,
+      group = group
     ),
     class = "fr_col"
   )
@@ -526,10 +574,10 @@ new_fr_span <- function(label, columns, level = 1L, hline = TRUE) {
 
   structure(
     list(
-      label   = label,
+      label = label,
       columns = vec_cast(columns, character()),
-      level   = vec_cast(level, integer()),
-      hline   = vec_cast(hline, logical())
+      level = vec_cast(level, integer()),
+      hline = vec_cast(hline, logical())
     ),
     class = "fr_span"
   )
@@ -541,23 +589,30 @@ new_fr_span <- function(label, columns, level = 1L, hline = TRUE) {
 # ══════════════════════════════════════════════════════════════════════════════
 
 #' @noRd
-new_fr_header <- function(spans = list(), repeat_on_page = TRUE,
-                          valign = "bottom", align = NULL,
-                          align_map = NULL,
-                          bold = NULL, bg = NULL, fg = NULL,
-                          font_size = NULL, span_gap = TRUE) {
+new_fr_header <- function(
+  spans = list(),
+  repeat_on_page = TRUE,
+  valign = "bottom",
+  align = NULL,
+  align_map = NULL,
+  bold = NULL,
+  bg = NULL,
+  fg = NULL,
+  font_size = NULL,
+  span_gap = TRUE
+) {
   structure(
     list(
-      spans          = spans,
+      spans = spans,
       repeat_on_page = repeat_on_page,
-      valign         = valign,
-      align          = align,
-      align_map      = align_map,
-      bold           = bold,
-      bg             = bg,
-      fg             = fg,
-      font_size      = font_size,
-      span_gap       = span_gap
+      valign = valign,
+      align = align,
+      align_map = align_map,
+      bold = bold,
+      bg = bg,
+      fg = fg,
+      font_size = font_size,
+      span_gap = span_gap
     ),
     class = "fr_header"
   )
@@ -569,26 +624,28 @@ new_fr_header <- function(spans = list(), repeat_on_page = TRUE,
 # ══════════════════════════════════════════════════════════════════════════════
 
 #' @noRd
-new_fr_body <- function(page_by = character(0),
-                         group_by = character(0),
-                         indent_by = character(0),
-                         blank_after = character(0),
-                         page_by_bold = FALSE,
-                         page_by_align = "left",
-                         sort_by = character(0),
-                         repeat_cols = character(0),
-                         wrap = FALSE) {
+new_fr_body <- function(
+  page_by = character(0),
+  group_by = character(0),
+  indent_by = character(0),
+  blank_after = character(0),
+  page_by_bold = FALSE,
+  page_by_align = "left",
+  sort_by = character(0),
+  repeat_cols = character(0),
+  wrap = FALSE
+) {
   structure(
     list(
-      page_by        = vec_cast(page_by, character()),
-      group_by       = vec_cast(group_by, character()),
-      indent_by      = vec_cast(indent_by, character()),
-      blank_after    = vec_cast(blank_after, character()),
-      page_by_bold   = page_by_bold,
-      page_by_align  = page_by_align,
-      sort_by        = vec_cast(sort_by, character()),
-      repeat_cols    = vec_cast(repeat_cols, character()),
-      wrap           = wrap
+      page_by = vec_cast(page_by, character()),
+      group_by = vec_cast(group_by, character()),
+      indent_by = vec_cast(indent_by, character()),
+      blank_after = vec_cast(blank_after, character()),
+      page_by_bold = page_by_bold,
+      page_by_align = page_by_align,
+      sort_by = vec_cast(sort_by, character()),
+      repeat_cols = vec_cast(repeat_cols, character()),
+      wrap = wrap
     ),
     class = "fr_body"
   )
@@ -635,23 +692,24 @@ new_fr_body <- function(page_by = character(0),
 # ══════════════════════════════════════════════════════════════════════════════
 
 #' @noRd
-new_fr_rule <- function(direction = "horizontal",
-                         region    = "header",
-                         side      = "below",
-                         rows      = NULL,
-                         cols      = NULL,
-                         width     = 0.5,
-                         linestyle = "solid",
-                         fg        = "#000000",
-                         leftpos   = NULL,
-                         rightpos  = NULL,
-                         abovepos  = NULL,
-                         belowpos  = NULL,
-                         call      = caller_env()) {
-
+new_fr_rule <- function(
+  direction = "horizontal",
+  region = "header",
+  side = "below",
+  rows = NULL,
+  cols = NULL,
+  width = 0.5,
+  linestyle = "solid",
+  fg = "#000000",
+  leftpos = NULL,
+  rightpos = NULL,
+  abovepos = NULL,
+  belowpos = NULL,
+  call = caller_env()
+) {
   direction <- match_arg_fr(direction, c("horizontal", "vertical"), call = call)
-  region    <- match_arg_fr(region, c("header", "body", "spanners"), call = call)
-  side      <- match_arg_fr(side,   c("above", "below"),             call = call)
+  region <- match_arg_fr(region, c("header", "body", "spanners"), call = call)
+  side <- match_arg_fr(side, c("above", "below"), call = call)
 
   # ── Validate rows ───────────────────────────────────────────────────────
   if (!is.null(rows)) {
@@ -660,16 +718,20 @@ new_fr_rule <- function(direction = "horizontal",
     } else if (is.numeric(rows)) {
       if (any(rows < 1L) || any(rows != as.integer(rows))) {
         cli_abort(
-          c("{.arg rows} must be positive integers or {.val all}.",
-            "x" = "You supplied {.val {rows}}."),
+          c(
+            "{.arg rows} must be positive integers or {.val all}.",
+            "x" = "You supplied {.val {rows}}."
+          ),
           call = call
         )
       }
       rows <- as.integer(rows)
     } else {
       cli_abort(
-        c("{.arg rows} must be {.val all}, an integer vector, or {.code NULL}.",
-          "x" = "You supplied {.obj_type_friendly {rows}}."),
+        c(
+          "{.arg rows} must be {.val all}, an integer vector, or {.code NULL}.",
+          "x" = "You supplied {.obj_type_friendly {rows}}."
+        ),
         call = call
       )
     }
@@ -682,39 +744,49 @@ new_fr_rule <- function(direction = "horizontal",
     } else if (is.numeric(cols)) {
       if (any(cols < 1L) || any(cols != as.integer(cols))) {
         cli_abort(
-          c("{.arg cols} must be positive integers or {.val all}.",
-            "x" = "You supplied {.val {cols}}."),
+          c(
+            "{.arg cols} must be positive integers or {.val all}.",
+            "x" = "You supplied {.val {cols}}."
+          ),
           call = call
         )
       }
       cols <- as.integer(cols)
     } else {
       cli_abort(
-        c("{.arg cols} must be {.val all}, an integer vector, or {.code NULL}.",
-          "x" = "You supplied {.obj_type_friendly {cols}}."),
+        c(
+          "{.arg cols} must be {.val all}, an integer vector, or {.code NULL}.",
+          "x" = "You supplied {.obj_type_friendly {cols}}."
+        ),
         call = call
       )
     }
   }
 
   linestyle <- match_arg_fr(linestyle, fr_env$valid_linestyles, call = call)
-  width     <- resolve_line_width(width, call = call)
+  width <- resolve_line_width(width, call = call)
 
-  if (!is.null(fg)) fg <- resolve_color(fg, call = call)
+  if (!is.null(fg)) {
+    fg <- resolve_color(fg, call = call)
+  }
 
   # ── Validate partial line fractions ────────────────────────────────────
   validate_fraction <- function(x, arg) {
-    if (is.null(x)) return(NULL)
+    if (is.null(x)) {
+      return(NULL)
+    }
     if (!is.numeric(x) || length(x) != 1L || is.na(x) || x < 0 || x > 1) {
       cli_abort(
-        c("{.arg {arg}} must be a number in [0, 1] or {.code NULL}.",
-          "x" = "You supplied {.val {x}}."),
+        c(
+          "{.arg {arg}} must be a number in [0, 1] or {.code NULL}.",
+          "x" = "You supplied {.val {x}}."
+        ),
         call = call
       )
     }
     x
   }
-  leftpos  <- validate_fraction(leftpos,  "leftpos")
+  leftpos <- validate_fraction(leftpos, "leftpos")
   rightpos <- validate_fraction(rightpos, "rightpos")
   abovepos <- validate_fraction(abovepos, "abovepos")
   belowpos <- validate_fraction(belowpos, "belowpos")
@@ -722,17 +794,17 @@ new_fr_rule <- function(direction = "horizontal",
   structure(
     list(
       direction = direction,
-      region    = region,
-      side      = side,
-      rows      = rows,
-      cols      = cols,
-      width     = width,
+      region = region,
+      side = side,
+      rows = rows,
+      cols = cols,
+      width = width,
       linestyle = linestyle,
-      fg        = fg %||% "#000000",
-      leftpos   = leftpos,
-      rightpos  = rightpos,
-      abovepos  = abovepos,
-      belowpos  = belowpos
+      fg = fg %||% "#000000",
+      leftpos = leftpos,
+      rightpos = rightpos,
+      abovepos = abovepos,
+      belowpos = belowpos
     ),
     class = c(
       if (direction == "horizontal") "fr_rule_hline" else "fr_rule_vline",
@@ -747,42 +819,44 @@ new_fr_rule <- function(direction = "horizontal",
 # ══════════════════════════════════════════════════════════════════════════════
 
 #' @noRd
-new_fr_cell_style <- function(type      = "cell",
-                               region    = "body",
-                               rows      = NULL,
-                               cols      = NULL,
-                               bold      = NULL,
-                               italic    = NULL,
-                               underline = NULL,
-                               fg        = NULL,
-                               bg        = NULL,
-                               font      = NULL,
-                               font_size = NULL,
-                               align     = NULL,
-                               valign    = NULL,
-                               indent    = NULL,
-                               colspan   = NULL,
-                               rowspan   = NULL,
-                               height    = NULL) {
+new_fr_cell_style <- function(
+  type = "cell",
+  region = "body",
+  rows = NULL,
+  cols = NULL,
+  bold = NULL,
+  italic = NULL,
+  underline = NULL,
+  fg = NULL,
+  bg = NULL,
+  font = NULL,
+  font_size = NULL,
+  align = NULL,
+  valign = NULL,
+  indent = NULL,
+  colspan = NULL,
+  rowspan = NULL,
+  height = NULL
+) {
   structure(
     list(
-      type      = type,
-      region    = region,
-      rows      = rows,
-      cols      = cols,
-      bold      = bold,
-      italic    = italic,
+      type = type,
+      region = region,
+      rows = rows,
+      cols = cols,
+      bold = bold,
+      italic = italic,
       underline = underline,
-      fg        = if (!is.null(fg)) resolve_color(fg) else NULL,
-      bg        = if (!is.null(bg)) resolve_color(bg) else NULL,
-      font      = font,
+      fg = if (!is.null(fg)) resolve_color(fg) else NULL,
+      bg = if (!is.null(bg)) resolve_color(bg) else NULL,
+      font = font,
       font_size = font_size,
-      align     = align,
-      valign    = valign,
-      indent    = indent,
-      colspan   = colspan,
-      rowspan   = rowspan,
-      height    = height
+      align = align,
+      valign = valign,
+      indent = indent,
+      colspan = colspan,
+      rowspan = rowspan,
+      height = height
     ),
     class = "fr_cell_style"
   )
@@ -805,57 +879,61 @@ new_fr_cell_style <- function(type      = "cell",
 # ══════════════════════════════════════════════════════════════════════════════
 
 #' @noRd
-new_fr_row_style <- function(rows      = NULL,
-                              bold      = NULL,
-                              italic    = NULL,
-                              underline = NULL,
-                              fg        = NULL,
-                              bg        = NULL,
-                              font_size = NULL,
-                              align     = NULL,
-                              valign    = NULL,
-                              height    = NULL) {
+new_fr_row_style <- function(
+  rows = NULL,
+  bold = NULL,
+  italic = NULL,
+  underline = NULL,
+  fg = NULL,
+  bg = NULL,
+  font_size = NULL,
+  align = NULL,
+  valign = NULL,
+  height = NULL
+) {
   new_fr_cell_style(
-    type      = "row",
-    region    = "body",
-    rows      = rows,
-    cols      = NULL,
-    bold      = bold,
-    italic    = italic,
+    type = "row",
+    region = "body",
+    rows = rows,
+    cols = NULL,
+    bold = bold,
+    italic = italic,
     underline = underline,
-    fg        = fg,
-    bg        = bg,
+    fg = fg,
+    bg = bg,
     font_size = font_size,
-    align     = align,
-    valign    = valign,
-    height    = height
+    align = align,
+    valign = valign,
+    height = height
   )
 }
 
 
 #' @noRd
-new_fr_col_style <- function(cols      = NULL,
-                              bold      = NULL,
-                              italic    = NULL,
-                              underline = NULL,
-                              fg        = NULL,
-                              bg        = NULL,
-                              font_size = NULL,
-                              align     = NULL,
-                              valign    = NULL) {
+new_fr_col_style <- function(
+  cols = NULL,
+  bold = NULL,
+  italic = NULL,
+  underline = NULL,
+  fg = NULL,
+  bg = NULL,
+  font_size = NULL,
+  align = NULL,
+  valign = NULL
+) {
   new_fr_cell_style(
-    type      = "col",
-    region    = "body",
-    rows      = NULL,
-    cols      = cols,
-    bold      = bold,
-    italic    = italic,
+    type = "col",
+    region = "body",
+    rows = NULL,
+    cols = cols,
+    bold = bold,
+    italic = italic,
     underline = underline,
-    fg        = fg,
-    bg        = bg,
+    fg = fg,
+    bg = bg,
     font_size = font_size,
-    align     = align,
-    valign    = valign
+    align = align,
+    valign = valign
   )
 }
 
@@ -865,14 +943,16 @@ new_fr_col_style <- function(cols      = NULL,
 # ══════════════════════════════════════════════════════════════════════════════
 
 #' @noRd
-new_fr_meta <- function(titles = list(),
-                         footnotes = list(),
-                         footnote_separator = FALSE) {
+new_fr_meta <- function(
+  titles = list(),
+  footnotes = list(),
+  footnote_separator = FALSE
+) {
   structure(
     list(
-      titles              = as.list(titles),
-      footnotes           = as.list(footnotes),
-      footnote_separator  = footnote_separator
+      titles = as.list(titles),
+      footnotes = as.list(footnotes),
+      footnote_separator = footnote_separator
     ),
     class = "fr_meta"
   )
@@ -889,15 +969,17 @@ new_fr_meta <- function(titles = list(),
 #' @param font_size Numeric or NULL (inherit from page).
 #' @return A named list (lightweight data container, not an S3 class).
 #' @noRd
-new_title_entry <- function(content,
-                             align = "center",
-                             bold = FALSE,
-                             font_size = NULL) {
+new_title_entry <- function(
+  content,
+  align = "center",
+  bold = FALSE,
+  font_size = NULL
+) {
   structure(
     list(
-      content   = content,
-      align     = match_arg_fr(align, c("left", "center", "right")),
-      bold      = bold,
+      content = content,
+      align = match_arg_fr(align, c("left", "center", "right")),
+      bold = bold,
       font_size = font_size
     ),
     class = "fr_title_entry"
@@ -907,9 +989,14 @@ new_title_entry <- function(content,
 #' @export
 print.fr_title_entry <- function(x, ...) {
   style <- if (x$bold) " [bold]" else ""
-  size  <- if (!is.null(x$font_size)) paste0(" ", x$font_size, "pt") else ""
-  cat(sprintf("<fr_title_entry> (%s%s%s) %s\n", x$align, style, size,
-              label_to_plain(x$content)))
+  size <- if (!is.null(x$font_size)) paste0(" ", x$font_size, "pt") else ""
+  cat(sprintf(
+    "<fr_title_entry> (%s%s%s) %s\n",
+    x$align,
+    style,
+    size,
+    label_to_plain(x$content)
+  ))
   invisible(x)
 }
 
@@ -922,14 +1009,16 @@ print.fr_title_entry <- function(x, ...) {
 #' @param font_size Numeric or NULL.
 #' @return A named list.
 #' @noRd
-new_footnote_entry <- function(content,
-                                align = "left",
-                                placement = "every",
-                                font_size = NULL) {
+new_footnote_entry <- function(
+  content,
+  align = "left",
+  placement = "every",
+  font_size = NULL
+) {
   structure(
     list(
-      content   = content,
-      align     = match_arg_fr(align, c("left", "center", "right")),
+      content = content,
+      align = match_arg_fr(align, c("left", "center", "right")),
       placement = match_arg_fr(placement, c("every", "last")),
       font_size = font_size
     ),
@@ -940,9 +1029,14 @@ new_footnote_entry <- function(content,
 #' @export
 print.fr_footnote_entry <- function(x, ...) {
   place <- if (x$placement == "last") " [last]" else ""
-  size  <- if (!is.null(x$font_size)) paste0(" ", x$font_size, "pt") else ""
-  cat(sprintf("<fr_footnote_entry> (%s%s%s) %s\n", x$align, place, size,
-              label_to_plain(x$content)))
+  size <- if (!is.null(x$font_size)) paste0(" ", x$font_size, "pt") else ""
+  cat(sprintf(
+    "<fr_footnote_entry> (%s%s%s) %s\n",
+    x$align,
+    place,
+    size,
+    label_to_plain(x$content)
+  ))
   invisible(x)
 }
 
@@ -952,18 +1046,20 @@ print.fr_footnote_entry <- function(x, ...) {
 # ══════════════════════════════════════════════════════════════════════════════
 
 #' @noRd
-new_fr_pagechrome <- function(left = NULL,
-                               center = NULL,
-                               right = NULL,
-                               font_size = NULL,
-                               bold = FALSE) {
+new_fr_pagechrome <- function(
+  left = NULL,
+  center = NULL,
+  right = NULL,
+  font_size = NULL,
+  bold = NULL
+) {
   structure(
     list(
-      left      = left,
-      center    = center,
-      right     = right,
+      left = left,
+      center = center,
+      right = right,
       font_size = font_size,
-      bold      = bold
+      bold = bold
     ),
     class = "fr_pagechrome"
   )
@@ -978,51 +1074,56 @@ new_fr_pagechrome <- function(left = NULL,
 # ══════════════════════════════════════════════════════════════════════════════
 
 #' @noRd
-new_fr_spec <- function(data,
-                         meta = new_fr_meta(),
-                         columns = list(),
-                         columns_meta = list(split = FALSE, width_mode = "auto", spaces = "indent"),
-                         header = new_fr_header(),
-                         body = new_fr_body(),
-                         rules = list(),
-                         cell_styles = list(),
-                         page = new_fr_page(),
-                         pagehead = NULL,
-                         pagefoot = NULL,
-                         spacing = list(titles_after = 1L,
-                                        footnotes_before = 1L,
-                                        pagehead_after = 0L,
-                                        pagefoot_before = 0L,
-                                        page_by_after = 1L),
-                         type = "table",
-                         plot = NULL,
-                         call = caller_env()) {
-
+new_fr_spec <- function(
+  data,
+  meta = new_fr_meta(),
+  columns = list(),
+  columns_meta = list(split = FALSE, width_mode = "auto", spaces = "indent"),
+  header = new_fr_header(),
+  body = new_fr_body(),
+  rules = list(),
+  cell_styles = list(),
+  page = new_fr_page(),
+  pagehead = NULL,
+  pagefoot = NULL,
+  spacing = list(
+    titles_after = 1L,
+    footnotes_before = 1L,
+    pagehead_after = 0L,
+    pagefoot_before = 0L,
+    page_by_after = 1L
+  ),
+  type = "table",
+  plot = NULL,
+  call = caller_env()
+) {
   if (!is.data.frame(data)) {
     cli_abort(
-      c("{.arg data} must be a data frame.",
+      c(
+        "{.arg data} must be a data frame.",
         "x" = "You supplied {.obj_type_friendly {data}}.",
-        "i" = "Example: {.code my_df |> fr_table()}"),
+        "i" = "Example: {.code my_df |> fr_table()}"
+      ),
       call = call
     )
   }
 
   structure(
     list(
-      data         = data,
-      meta         = meta,
-      columns      = columns,
+      data = data,
+      meta = meta,
+      columns = columns,
       columns_meta = columns_meta,
-      header       = header,
-      body         = body,
-      rules        = rules,
-      cell_styles  = cell_styles,
-      page         = page,
-      pagehead     = pagehead,
-      pagefoot     = pagefoot,
-      spacing      = spacing,
-      type         = type,
-      plot         = plot
+      header = header,
+      body = body,
+      rules = rules,
+      cell_styles = cell_styles,
+      page = page,
+      pagehead = pagehead,
+      pagefoot = pagefoot,
+      spacing = spacing,
+      type = type,
+      plot = plot
     ),
     class = "fr_spec"
   )
@@ -1040,8 +1141,12 @@ print.fr_spec <- function(x, ..., compact = FALSE) {
     cat(sprintf("<fr_spec> %d rows x %d columns [%s]", nr, nc, orient))
     if (n_titles > 0L || n_fn > 0L) {
       parts <- character(0)
-      if (n_titles > 0L) parts <- c(parts, sprintf("%d title(s)", n_titles))
-      if (n_fn > 0L)     parts <- c(parts, sprintf("%d footnote(s)", n_fn))
+      if (n_titles > 0L) {
+        parts <- c(parts, sprintf("%d title(s)", n_titles))
+      }
+      if (n_fn > 0L) {
+        parts <- c(parts, sprintf("%d footnote(s)", n_fn))
+      }
       cat(" | ", paste(parts, collapse = ", "))
     }
     cat("\n")
@@ -1050,8 +1155,10 @@ print.fr_spec <- function(x, ..., compact = FALSE) {
 
   # Rich tree view
   type_label <- x$type %||% "Table"
-  type_label <- paste0(toupper(substr(type_label, 1, 1)),
-                        substring(type_label, 2))
+  type_label <- paste0(
+    toupper(substr(type_label, 1, 1)),
+    substring(type_label, 2)
+  )
   cli::cli_h3("fr_spec: {type_label}")
 
   # Data summary
@@ -1062,10 +1169,10 @@ print.fr_spec <- function(x, ..., compact = FALSE) {
 
   # Page config
   orient <- x$page$orientation %||% "landscape"
-  paper  <- x$page$paper %||% "letter"
-  fs     <- x$page$font_size %||% 9
-  font   <- x$page$font_family %||% "Courier New"
-  cg     <- x$page$col_gap %||% 4L
+  paper <- x$page$paper %||% "letter"
+  fs <- x$page$font_size %||% 9
+  font <- x$page$font_family %||% "Courier New"
+  cg <- x$page$col_gap %||% 4L
   cg_str <- if (cg != 4L) paste0(", col_gap=", cg, "pt") else ""
   cli::cli_text("Page: {orient} {paper}, {fs}pt {font}{cg_str}")
 
@@ -1076,7 +1183,9 @@ print.fr_spec <- function(x, ..., compact = FALSE) {
     for (i in seq_along(titles)) {
       t <- titles[[i]]
       txt <- label_to_plain(t$content)
-      if (nchar(txt) > 60L) txt <- paste0(substr(txt, 1, 57), "...")
+      if (nchar(txt) > 60L) {
+        txt <- paste0(substr(txt, 1, 57), "...")
+      }
       cli::cli_text("  {i}. [{t$align}] {.val {txt}}")
     }
   }
@@ -1090,10 +1199,16 @@ print.fr_spec <- function(x, ..., compact = FALSE) {
     for (i in seq_len(show_n)) {
       col <- vis_cols[[i]]
       lbl <- label_to_plain(col$label %||% nms[i])
-      if (nchar(lbl) > 20L) lbl <- paste0(substr(lbl, 1, 17), "...")
-      w <- if (is_fr_pct(col$width)) sprintf("%.0f%%", unclass(col$width) * 100)
-           else if (is.numeric(col$width)) sprintf("%.2fin", col$width)
-           else "auto"
+      if (nchar(lbl) > 20L) {
+        lbl <- paste0(substr(lbl, 1, 17), "...")
+      }
+      w <- if (is_fr_pct(col$width)) {
+        sprintf("%.0f%%", unclass(col$width) * 100)
+      } else if (is.numeric(col$width)) {
+        sprintf("%.2fin", col$width)
+      } else {
+        "auto"
+      }
       a <- col$align %||% "left"
       cli::cli_text("  {nms[i]}  {.val {lbl}}  {w}  {a}")
     }
@@ -1106,10 +1221,18 @@ print.fr_spec <- function(x, ..., compact = FALSE) {
   h <- x$header
   if (!is.null(h)) {
     parts <- character(0)
-    if (isTRUE(h$bold)) parts <- c(parts, "bold")
-    if (!is.null(h$valign)) parts <- c(parts, paste0("valign=", h$valign))
-    if (!is.null(h$align)) parts <- c(parts, paste0("align=", h$align))
-    if (!is.null(h$align_map)) parts <- c(parts, "align_map")
+    if (isTRUE(h$bold)) {
+      parts <- c(parts, "bold")
+    }
+    if (!is.null(h$valign)) {
+      parts <- c(parts, paste0("valign=", h$valign))
+    }
+    if (!is.null(h$align)) {
+      parts <- c(parts, paste0("align=", h$align))
+    }
+    if (!is.null(h$align_map)) {
+      parts <- c(parts, "align_map")
+    }
     if (length(parts) > 0L) {
       cli::cli_text("Header: {paste(parts, collapse = ', ')}")
     }
@@ -1119,12 +1242,27 @@ print.fr_spec <- function(x, ..., compact = FALSE) {
   b <- x$body
   if (!is.null(b)) {
     parts <- character(0)
-    if (length(b$page_by) > 0L) parts <- c(parts, paste0("page_by=", paste(b$page_by, collapse = ",")))
-    if (length(b$group_by) > 0L) parts <- c(parts, paste0("group_by=", paste(b$group_by, collapse = ",")))
-    if (length(b$sort_by) > 0L) parts <- c(parts, paste0("sort_by=", paste(b$sort_by, collapse = ",")))
-    if (length(b$indent_by) > 0L) parts <- c(parts, paste0("indent_by=", paste(b$indent_by, collapse = ",")))
-    if (isTRUE(b$repeat_cols)) parts <- c(parts, "repeat_cols")
-    if (isTRUE(b$wrap)) parts <- c(parts, "wrap")
+    if (length(b$page_by) > 0L) {
+      parts <- c(parts, paste0("page_by=", paste(b$page_by, collapse = ",")))
+    }
+    if (length(b$group_by) > 0L) {
+      parts <- c(parts, paste0("group_by=", paste(b$group_by, collapse = ",")))
+    }
+    if (length(b$sort_by) > 0L) {
+      parts <- c(parts, paste0("sort_by=", paste(b$sort_by, collapse = ",")))
+    }
+    if (length(b$indent_by) > 0L) {
+      parts <- c(
+        parts,
+        paste0("indent_by=", paste(b$indent_by, collapse = ","))
+      )
+    }
+    if (isTRUE(b$repeat_cols)) {
+      parts <- c(parts, "repeat_cols")
+    }
+    if (isTRUE(b$wrap)) {
+      parts <- c(parts, "wrap")
+    }
     if (length(parts) > 0L) {
       cli::cli_text("Rows: {paste(parts, collapse = ', ')}")
     }
@@ -1132,11 +1270,23 @@ print.fr_spec <- function(x, ..., compact = FALSE) {
 
   # Rules
   if (length(x$rules) > 0L) {
-    n_h <- sum(vapply(x$rules, function(r) inherits(r, "fr_rule_hline"), logical(1)))
-    n_v <- sum(vapply(x$rules, function(r) inherits(r, "fr_rule_vline"), logical(1)))
+    n_h <- sum(vapply(
+      x$rules,
+      function(r) inherits(r, "fr_rule_hline"),
+      logical(1)
+    ))
+    n_v <- sum(vapply(
+      x$rules,
+      function(r) inherits(r, "fr_rule_vline"),
+      logical(1)
+    ))
     parts <- character(0)
-    if (n_h > 0L) parts <- c(parts, paste0(n_h, " hline(s)"))
-    if (n_v > 0L) parts <- c(parts, paste0(n_v, " vline(s)"))
+    if (n_h > 0L) {
+      parts <- c(parts, paste0(n_h, " hline(s)"))
+    }
+    if (n_v > 0L) {
+      parts <- c(parts, paste0(n_v, " vline(s)"))
+    }
     cli::cli_text("Rules: {paste(parts, collapse = ', ')}")
   }
 
@@ -1158,7 +1308,9 @@ print.fr_spec <- function(x, ..., compact = FALSE) {
     for (i in seq_along(footnotes)) {
       fn <- footnotes[[i]]
       txt <- label_to_plain(fn$content)
-      if (nchar(txt) > 60L) txt <- paste0(substr(txt, 1, 57), "...")
+      if (nchar(txt) > 60L) {
+        txt <- paste0(substr(txt, 1, 57), "...")
+      }
       place <- if (fn$placement == "last") " [last]" else ""
       cli::cli_text("  {i}. [{fn$align}{place}] {.val {txt}}")
     }
@@ -1182,14 +1334,26 @@ summary.fr_spec <- function(object, ...) {
 #' @export
 print.fr_col <- function(x, ...) {
   label <- x$label %||% x$id %||% ""
-  width <- if (is_fr_pct(x$width)) sprintf("%.0f%%", unclass(x$width) * 100)
-           else if (is.numeric(x$width)) sprintf("%.2fin", x$width)
-           else "auto"
+  width <- if (is_fr_pct(x$width)) {
+    sprintf("%.0f%%", unclass(x$width) * 100)
+  } else if (is.numeric(x$width)) {
+    sprintf("%.2fin", x$width)
+  } else {
+    "auto"
+  }
   align <- x$align %||% "left"
   stub <- if (isTRUE(x$stub)) " stub" else ""
   n_tag <- if (!is.null(x$n)) sprintf(" N=%d", x$n) else ""
   grp_tag <- if (!is.null(x$group)) sprintf(" group=%s", x$group) else ""
-  cat(sprintf("<fr_col> \"%s\" [%s, %s%s%s%s]\n", label, width, align, stub, n_tag, grp_tag))
+  cat(sprintf(
+    "<fr_col> \"%s\" [%s, %s%s%s%s]\n",
+    label,
+    width,
+    align,
+    stub,
+    n_tag,
+    grp_tag
+  ))
   invisible(x)
 }
 
@@ -1198,16 +1362,45 @@ print.fr_col <- function(x, ...) {
 # Validators
 # ══════════════════════════════════════════════════════════════════════════════
 
+#' Test if an Object is an fr_spec
+#'
+#' @param x An object to test.
+#' @return `TRUE` if `x` inherits from `"fr_spec"`, `FALSE` otherwise.
+#'
+#' @examples
+#' spec <- tbl_demog |> fr_table()
+#' is.fr_spec(spec)     # TRUE
+#' is.fr_spec(mtcars)   # FALSE
+#'
+#' @export
+is.fr_spec <- function(x) inherits(x, "fr_spec")
+
+
+#' Test if an Object is an fr_col
+#'
+#' @param x An object to test.
+#' @return `TRUE` if `x` inherits from `"fr_col"`, `FALSE` otherwise.
+#'
+#' @examples
+#' col <- fr_col(label = "Treatment", align = "center")
+#' is.fr_col(col)       # TRUE
+#' is.fr_col("text")    # FALSE
+#'
+#' @export
+is.fr_col <- function(x) inherits(x, "fr_col")
+
+
 #' Validate that an object is an fr_spec
 #' @noRd
-check_fr_spec <- function(x,
-                           arg = caller_arg(x),
-                           call = caller_env()) {
+check_fr_spec <- function(x, arg = caller_arg(x), call = caller_env()) {
   if (!inherits(x, "fr_spec")) {
     cli_abort(
-      c("{.arg {arg}} must be an {.cls fr_spec} object (created by {.fn fr_table}).",
-        "x" = "You supplied {.obj_type_friendly {x}}."),
-      arg = arg, call = call
+      c(
+        "{.arg {arg}} must be an {.cls fr_spec} object (created by {.fn fr_table}).",
+        "x" = "You supplied {.obj_type_friendly {x}}."
+      ),
+      arg = arg,
+      call = call
     )
   }
   invisible(x)
@@ -1215,14 +1408,15 @@ check_fr_spec <- function(x,
 
 #' Validate that an object is an fr_col
 #' @noRd
-check_fr_col <- function(x,
-                          arg = caller_arg(x),
-                          call = caller_env()) {
+check_fr_col <- function(x, arg = caller_arg(x), call = caller_env()) {
   if (!inherits(x, "fr_col")) {
     cli_abort(
-      c("{.arg {arg}} must be an {.cls fr_col} object (created by {.fn fr_col}).",
-        "x" = "You supplied {.obj_type_friendly {x}}."),
-      arg = arg, call = call
+      c(
+        "{.arg {arg}} must be an {.cls fr_col} object (created by {.fn fr_col}).",
+        "x" = "You supplied {.obj_type_friendly {x}}."
+      ),
+      arg = arg,
+      call = call
     )
   }
   invisible(x)

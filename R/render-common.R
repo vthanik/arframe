@@ -2,7 +2,6 @@
 # render-common.R — Shared backend utilities for rendering
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # 0. Span Level Count
 # ══════════════════════════════════════════════════════════════════════════════
@@ -16,8 +15,9 @@
 #' @return Integer — number of spanner rows (0 if no spans).
 #' @noRd
 n_spanner_levels <- function(spans) {
-
-  if (length(spans) == 0L) return(0L)
+  if (length(spans) == 0L) {
+    return(0L)
+  }
   length(unique(vapply(spans, function(s) s$level, integer(1))))
 }
 
@@ -46,11 +46,19 @@ build_cell_grid <- function(data, columns, cell_styles, page) {
 
   if (nr == 0L || nc == 0L) {
     return(vctrs::new_data_frame(list(
-      row_idx = integer(0), col_idx = integer(0), col_name = character(0),
-      content = character(0), align = character(0), valign = character(0),
-      bold = logical(0), italic = logical(0), underline = logical(0),
-      fg = character(0), bg = character(0),
-      indent = numeric(0), font_size = numeric(0)
+      row_idx = integer(0),
+      col_idx = integer(0),
+      col_name = character(0),
+      content = character(0),
+      align = character(0),
+      valign = character(0),
+      bold = logical(0),
+      italic = logical(0),
+      underline = logical(0),
+      fg = character(0),
+      bg = character(0),
+      indent = numeric(0),
+      font_size = numeric(0)
     )))
   }
 
@@ -62,43 +70,65 @@ build_cell_grid <- function(data, columns, cell_styles, page) {
   grid$col_name <- col_names[grid$col_idx]
 
   # Fill content — column-wise vectorization (C-level lapply + unlist)
-  grid$content <- unlist(lapply(col_names, function(nm) {
-    x <- as.character(data[[nm]])
-    x[is.na(x)] <- ""
-    x
-  }), use.names = FALSE)
+  grid$content <- unlist(
+    lapply(col_names, function(nm) {
+      x <- as.character(data[[nm]])
+      x[is.na(x)] <- ""
+      x
+    }),
+    use.names = FALSE
+  )
 
   # Evaluate inline markup ({fr_super()}, {fr_bold()}, etc.) in cell content
   grid$content <- eval_markup_vec(grid$content)
 
-  # Default properties from column spec
-  grid$align <- vapply(grid$col_idx, function(j) {
-    columns[[j]]$align %||% "left"
-  }, character(1))
-  grid$bold      <- FALSE
-  grid$italic    <- FALSE
+  # Default properties from column spec — vectorize by column, then broadcast
+  col_aligns <- vapply(columns, function(c) c$align %||% "left", character(1))
+  grid$align <- col_aligns[grid$col_idx]
+  grid$bold <- FALSE
+  grid$italic <- FALSE
   grid$underline <- FALSE
-  grid$fg        <- "#000000"
-  grid$bg        <- NA_character_
-  grid$valign    <- "top"
-  grid$indent    <- 0
+  grid$fg <- "#000000"
+  grid$bg <- NA_character_
+  grid$valign <- "top"
+  grid$indent <- 0
   grid$font_size <- page$font_size
 
   # Apply cell_styles in order (later wins) — body + stub regions
   for (style in cell_styles) {
-    if (style$region != "body" && style$region != "stub") next
+    if (style$region != "body" && style$region != "stub") {
+      next
+    }
     affected <- resolve_style_mask(style, grid, col_names)
-    if (!any(affected)) next
+    if (!any(affected)) {
+      next
+    }
 
-    if (!is.null(style$bold))      grid$bold[affected]      <- style$bold
-    if (!is.null(style$italic))    grid$italic[affected]    <- style$italic
-    if (!is.null(style$underline)) grid$underline[affected] <- style$underline
-    if (!is.null(style$fg))        grid$fg[affected]        <- style$fg
-    if (!is.null(style$bg))        grid$bg[affected]        <- style$bg
-    if (!is.null(style$indent))    grid$indent[affected]    <- style$indent
-    if (!is.null(style$font_size)) grid$font_size[affected] <- style$font_size
-    if (!is.null(style$align))     grid$align[affected]     <- style$align
-    if (!is.null(style$valign))    grid$valign[affected]    <- style$valign
+    if (!is.null(style$bold)) {
+      grid$bold[affected] <- style$bold
+    }
+    if (!is.null(style$italic)) {
+      grid$italic[affected] <- style$italic
+    }
+    if (!is.null(style$underline)) {
+      grid$underline[affected] <- style$underline
+    }
+    if (!is.null(style$fg)) {
+      grid$fg[affected] <- style$fg
+    }
+    if (!is.null(style$bg)) {
+      grid$bg[affected] <- style$bg
+    }
+    if (!is.null(style$indent)) {
+      grid$indent[affected] <- style$indent
+    }
+    if (!is.null(style$font_size)) {
+      grid$font_size[affected] <- style$font_size
+    }
+    if (!is.null(style$align)) {
+      grid$align[affected] <- style$align
+    }
+    if (!is.null(style$valign)) grid$valign[affected] <- style$valign
   }
 
   grid
@@ -122,7 +152,9 @@ resolve_style_mask <- function(style, grid, col_names) {
   }
 
   # Column mask
-  if (style$type == "row" || is.null(style$cols) || identical(style$cols, "all")) {
+  if (
+    style$type == "row" || is.null(style$cols) || identical(style$cols, "all")
+  ) {
     col_mask <- rep(TRUE, nrow(grid))
   } else if (is.character(style$cols)) {
     col_mask <- grid$col_name %in% style$cols
@@ -149,10 +181,17 @@ resolve_style_mask <- function(style, grid, col_names) {
 #' @param col_names Character vector of visible column names.
 #' @param header_row_idx Integer or NULL. For header grids, the row index.
 #' @noRd
-apply_styles_to_grid <- function(grid, cell_styles, region, col_names,
-                                  header_row_idx = NULL) {
+apply_styles_to_grid <- function(
+  grid,
+  cell_styles,
+  region,
+  col_names,
+  header_row_idx = NULL
+) {
   for (style in cell_styles) {
-    if (style$region != region) next
+    if (style$region != region) {
+      next
+    }
 
     # Row mask
     if (!is.null(header_row_idx)) {
@@ -160,8 +199,11 @@ apply_styles_to_grid <- function(grid, cell_styles, region, col_names,
       if (!is.null(style$rows) && !identical(style$rows, "all")) {
         if (!(header_row_idx %in% style$rows)) next
       }
-      col_mask <- if (is.null(style$cols) || identical(style$cols, "all") ||
-                      identical(style$type, "row")) {
+      col_mask <- if (
+        is.null(style$cols) ||
+          identical(style$cols, "all") ||
+          identical(style$type, "row")
+      ) {
         rep(TRUE, nrow(grid))
       } else if (is.character(style$cols)) {
         grid$col_name %in% style$cols
@@ -170,7 +212,9 @@ apply_styles_to_grid <- function(grid, cell_styles, region, col_names,
       } else {
         rep(TRUE, nrow(grid))
       }
-      if (!any(col_mask)) next
+      if (!any(col_mask)) {
+        next
+      }
       affected <- col_mask
     } else {
       # Body: use resolve_style_mask
@@ -178,15 +222,30 @@ apply_styles_to_grid <- function(grid, cell_styles, region, col_names,
       if (!any(affected)) next
     }
 
-    if (!is.null(style$bold))      grid$bold[affected]      <- style$bold
-    if (!is.null(style$italic))    grid$italic[affected]    <- style$italic
-    if (!is.null(style$underline)) grid$underline[affected] <- style$underline
-    if (!is.null(style$fg))        grid$fg[affected]        <- style$fg
-    if (!is.null(style$bg))        grid$bg[affected]        <- style$bg
-    if (!is.null(style$font_size)) grid$font_size[affected] <- style$font_size
-    if (!is.null(style$align))     grid$align[affected]     <- style$align
-    if (!is.null(style$indent) && "indent" %in% names(grid))
+    if (!is.null(style$bold)) {
+      grid$bold[affected] <- style$bold
+    }
+    if (!is.null(style$italic)) {
+      grid$italic[affected] <- style$italic
+    }
+    if (!is.null(style$underline)) {
+      grid$underline[affected] <- style$underline
+    }
+    if (!is.null(style$fg)) {
+      grid$fg[affected] <- style$fg
+    }
+    if (!is.null(style$bg)) {
+      grid$bg[affected] <- style$bg
+    }
+    if (!is.null(style$font_size)) {
+      grid$font_size[affected] <- style$font_size
+    }
+    if (!is.null(style$align)) {
+      grid$align[affected] <- style$align
+    }
+    if (!is.null(style$indent) && "indent" %in% names(grid)) {
       grid$indent[affected] <- style$indent
+    }
   }
   grid
 }
@@ -209,33 +268,48 @@ apply_styles_to_grid <- function(grid, cell_styles, region, col_names,
 #' @param header_cfg fr_header object with header-level defaults.
 #' @return A data frame with one row per header cell.
 #' @noRd
-build_header_cell_grid <- function(columns, cell_styles, page, header_row_idx,
-                                   default_valign = "bottom",
-                                   header_cfg = NULL) {
+build_header_cell_grid <- function(
+  columns,
+  cell_styles,
+  page,
+  header_row_idx,
+  default_valign = "bottom",
+  header_cfg = NULL
+) {
   col_names <- names(columns)
   nc <- length(col_names)
 
   # Use header_cfg for defaults when available
   default_bold <- if (!is.null(header_cfg$bold)) header_cfg$bold else FALSE
-  default_fg   <- if (!is.null(header_cfg$fg))   header_cfg$fg   else "#000000"
-  default_bg   <- if (!is.null(header_cfg$bg))   header_cfg$bg   else NA_character_
-  default_fs   <- if (!is.null(header_cfg$font_size)) header_cfg$font_size else page$font_size
+  default_fg <- if (!is.null(header_cfg$fg)) header_cfg$fg else "#000000"
+  default_bg <- if (!is.null(header_cfg$bg)) header_cfg$bg else NA_character_
+  default_fs <- if (!is.null(header_cfg$font_size)) {
+    header_cfg$font_size
+  } else {
+    page$font_size
+  }
 
   grid <- vctrs::new_data_frame(list(
-    col_idx   = seq_len(nc),
-    col_name  = col_names,
-    align     = vapply(columns, function(c) c$header_align %||% c$align %||% "left", character(1)),
-    valign    = rep(default_valign, nc),
-    bold      = rep(default_bold, nc),
-    italic    = rep(FALSE, nc),
+    col_idx = seq_len(nc),
+    col_name = col_names,
+    align = vapply(
+      columns,
+      function(c) c$header_align %||% c$align %||% "left",
+      character(1)
+    ),
+    valign = rep(default_valign, nc),
+    bold = rep(default_bold, nc),
+    italic = rep(FALSE, nc),
     underline = rep(FALSE, nc),
-    fg        = rep(default_fg, nc),
-    bg        = rep(default_bg, nc),
+    fg = rep(default_fg, nc),
+    bg = rep(default_bg, nc),
     font_size = rep(default_fs, nc)
   ))
 
   for (style in cell_styles) {
-    if (style$region != "header") next
+    if (style$region != "header") {
+      next
+    }
 
     # Row mask: match against header row index
     if (!is.null(style$rows) && !identical(style$rows, "all")) {
@@ -243,8 +317,11 @@ build_header_cell_grid <- function(columns, cell_styles, page, header_row_idx,
     }
 
     # Column mask
-    if (is.null(style$cols) || identical(style$cols, "all") ||
-        identical(style$type, "row")) {
+    if (
+      is.null(style$cols) ||
+        identical(style$cols, "all") ||
+        identical(style$type, "row")
+    ) {
       col_mask <- rep(TRUE, nc)
     } else if (is.character(style$cols)) {
       col_mask <- grid$col_name %in% style$cols
@@ -253,16 +330,32 @@ build_header_cell_grid <- function(columns, cell_styles, page, header_row_idx,
     } else {
       col_mask <- rep(TRUE, nc)
     }
-    if (!any(col_mask)) next
+    if (!any(col_mask)) {
+      next
+    }
 
-    if (!is.null(style$bold))      grid$bold[col_mask]      <- style$bold
-    if (!is.null(style$italic))    grid$italic[col_mask]    <- style$italic
-    if (!is.null(style$underline)) grid$underline[col_mask] <- style$underline
-    if (!is.null(style$fg))        grid$fg[col_mask]        <- style$fg
-    if (!is.null(style$bg))        grid$bg[col_mask]        <- style$bg
-    if (!is.null(style$font_size)) grid$font_size[col_mask] <- style$font_size
-    if (!is.null(style$align))     grid$align[col_mask]     <- style$align
-    if (!is.null(style$valign))    grid$valign[col_mask]    <- style$valign
+    if (!is.null(style$bold)) {
+      grid$bold[col_mask] <- style$bold
+    }
+    if (!is.null(style$italic)) {
+      grid$italic[col_mask] <- style$italic
+    }
+    if (!is.null(style$underline)) {
+      grid$underline[col_mask] <- style$underline
+    }
+    if (!is.null(style$fg)) {
+      grid$fg[col_mask] <- style$fg
+    }
+    if (!is.null(style$bg)) {
+      grid$bg[col_mask] <- style$bg
+    }
+    if (!is.null(style$font_size)) {
+      grid$font_size[col_mask] <- style$font_size
+    }
+    if (!is.null(style$align)) {
+      grid$align[col_mask] <- style$align
+    }
+    if (!is.null(style$valign)) grid$valign[col_mask] <- style$valign
   }
 
   grid
@@ -285,7 +378,9 @@ build_row_heights <- function(nr, cell_styles) {
   heights <- rep(NA_real_, nr)
 
   for (style in cell_styles) {
-    if (style$type != "row" || is.null(style$height)) next
+    if (style$type != "row" || is.null(style$height)) {
+      next
+    }
     if (is.null(style$rows) || identical(style$rows, "all")) {
       heights[] <- style$height
     } else {
@@ -296,7 +391,6 @@ build_row_heights <- function(nr, cell_styles) {
 
   heights
 }
-
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -317,16 +411,22 @@ build_row_heights <- function(nr, cell_styles) {
 #' @noRd
 insert_blank_after <- function(data, blank_cols) {
   empty <- list(data = data, insert_positions = integer(0))
-  if (nrow(data) <= 1L || length(blank_cols) == 0L) return(empty)
+  if (nrow(data) <= 1L || length(blank_cols) == 0L) {
+    return(empty)
+  }
 
   blank_cols <- intersect(blank_cols, names(data))
-  if (length(blank_cols) == 0L) return(empty)
+  if (length(blank_cols) == 0L) {
+    return(empty)
+  }
 
   keys <- inject(paste(!!!data[blank_cols], sep = fr_env$group_sep))
 
   # Find rows where the next row has a different key (group boundary)
   boundaries <- which(keys[-length(keys)] != keys[-1L])
-  if (length(boundaries) == 0L) return(empty)
+  if (length(boundaries) == 0L) {
+    return(empty)
+  }
 
   # Build a blank row template (all empty strings)
   blank_row <- vctrs::vec_init(data, 1L)
@@ -340,7 +440,10 @@ insert_blank_after <- function(data, blank_cols) {
     result[[2L * k]] <- blank_row
     prev <- boundaries[k] + 1L
   }
-  result[[2L * length(boundaries) + 1L]] <- vctrs::vec_slice(data, prev:nrow(data))
+  result[[2L * length(boundaries) + 1L]] <- vctrs::vec_slice(
+    data,
+    prev:nrow(data)
+  )
 
   list(data = vctrs::vec_rbind(!!!result), insert_positions = boundaries)
 }
@@ -358,12 +461,15 @@ insert_blank_after <- function(data, blank_cols) {
 #' @return Modified list of fr_cell_style objects with shifted row indices.
 #' @noRd
 remap_style_indices <- function(cell_styles, insert_positions) {
+  sorted_pos <- sort(insert_positions)
   for (i in seq_along(cell_styles)) {
     rows <- cell_styles[[i]]$rows
-    if (is.null(rows) || identical(rows, "all") || !is.numeric(rows)) next
-    cell_styles[[i]]$rows <- vapply(rows, function(r) {
-      as.integer(r + sum(insert_positions < r))
-    }, integer(1), USE.NAMES = FALSE)
+    if (is.null(rows) || identical(rows, "all") || !is.numeric(rows)) {
+      next
+    }
+    cell_styles[[i]]$rows <- as.integer(
+      rows + findInterval(rows - 1L, sorted_pos)
+    )
   }
   cell_styles
 }
@@ -389,7 +495,9 @@ remap_style_indices <- function(cell_styles, insert_positions) {
 #' @return List of fr_cell_style objects with remapped row indices.
 #' @noRd
 remap_styles_for_subpage <- function(cell_styles, sub_rows) {
-  if (length(cell_styles) == 0L) return(cell_styles)
+  if (length(cell_styles) == 0L) {
+    return(cell_styles)
+  }
 
   # Build a lookup: absolute index -> sub-page index
   remap <- integer(max(sub_rows))
@@ -413,7 +521,9 @@ remap_styles_for_subpage <- function(cell_styles, sub_rows) {
       new_rows <- remap[in_range]
       new_rows <- new_rows[new_rows > 0L]
 
-      if (length(new_rows) == 0L) next
+      if (length(new_rows) == 0L) {
+        next
+      }
 
       style$rows <- new_rows
       out[[i]] <- style
@@ -449,18 +559,26 @@ remap_styles_for_subpage <- function(cell_styles, sub_rows) {
 #' @noRd
 apply_indent_by <- function(spec) {
   indent_cols <- spec$body$indent_by
-  if (length(indent_cols) == 0L) return(spec)
+  if (length(indent_cols) == 0L) {
+    return(spec)
+  }
 
   # Only apply to columns that exist in data
   indent_cols <- intersect(indent_cols, names(spec$data))
-  if (length(indent_cols) == 0L) return(spec)
+  if (length(indent_cols) == 0L) {
+    return(spec)
+  }
 
   nr <- nrow(spec$data)
-  if (nr == 0L) return(spec)
+  if (nr == 0L) {
+    return(spec)
+  }
 
   # Calculate indent: 2 space-character widths in the current page font
   indent_twips <- measure_text_width_twips(
-    "  ", spec$page$font_family, spec$page$font_size
+    "  ",
+    spec$page$font_family,
+    spec$page$font_size
   )
   indent_inches <- twips_to_inches(indent_twips)
 
@@ -483,8 +601,10 @@ apply_indent_by <- function(spec) {
 
       if (length(detail_rows) > 0L) {
         indent_style <- new_fr_cell_style(
-          region = "body", type = "col",
-          rows = detail_rows, cols = indent_cols,
+          region = "body",
+          type = "col",
+          rows = detail_rows,
+          cols = indent_cols,
           indent = indent_inches
         )
         spec$cell_styles <- c(spec$cell_styles, list(indent_style))
@@ -493,8 +613,10 @@ apply_indent_by <- function(spec) {
   } else {
     # Without group_by: indent all rows in indent_by columns
     indent_style <- new_fr_cell_style(
-      region = "body", type = "col",
-      rows = "all", cols = indent_cols,
+      region = "body",
+      type = "col",
+      rows = "all",
+      cols = indent_cols,
       indent = indent_inches
     )
     spec$cell_styles <- c(spec$cell_styles, list(indent_style))
@@ -527,22 +649,34 @@ apply_indent_by <- function(spec) {
 apply_leading_indent <- function(spec) {
   default_spaces <- spec$columns_meta$spaces %||% "indent"
   nr <- nrow(spec$data)
-  if (nr == 0L) return(spec)
+  if (nr == 0L) {
+    return(spec)
+  }
 
   decimal_cols <- names(spec$decimal_geometry %||% list())
 
   # Pre-measure single space width (font is constant across columns)
   space_twips <- measure_text_width_twips(
-    " ", spec$page$font_family, spec$page$font_size
+    " ",
+    spec$page$font_family,
+    spec$page$font_size
   )
 
   for (nm in names(spec$columns)) {
     col <- spec$columns[[nm]]
     col_spaces <- col$spaces %||% default_spaces
-    if (col_spaces != "indent") next
-    if (nm %in% decimal_cols) next
-    if (!nm %in% names(spec$data)) next
-    if (isFALSE(col$visible)) next
+    if (col_spaces != "indent") {
+      next
+    }
+    if (nm %in% decimal_cols) {
+      next
+    }
+    if (!nm %in% names(spec$data)) {
+      next
+    }
+    if (isFALSE(col$visible)) {
+      next
+    }
 
     vals <- as.character(spec$data[[nm]])
     vals[is.na(vals)] <- ""
@@ -551,7 +685,9 @@ apply_leading_indent <- function(spec) {
     n_lead <- nchar(vals) - nchar(stripped)
     has_lead <- n_lead > 0L
 
-    if (!any(has_lead)) next
+    if (!any(has_lead)) {
+      next
+    }
 
     # Strip leading spaces from data
     spec$data[[nm]][has_lead] <- stripped[has_lead]
@@ -564,8 +700,10 @@ apply_leading_indent <- function(spec) {
       rows <- which(n_lead == n)
       indent_inches <- twips_to_inches(space_twips * n)
       new_styles[[k]] <- new_fr_cell_style(
-        region = "body", type = "cell",
-        rows = rows, cols = nm,
+        region = "body",
+        type = "cell",
+        rows = rows,
+        cols = nm,
         indent = indent_inches
       )
     }
@@ -606,11 +744,15 @@ apply_leading_indent <- function(spec) {
 #' @noRd
 build_keep_mask <- function(data, keep_cols, orphan_min = 3L, widow_min = 3L) {
   nr <- nrow(data)
-  if (nr <= 1L || length(keep_cols) == 0L) return(rep(FALSE, nr))
+  if (nr <= 1L || length(keep_cols) == 0L) {
+    return(rep(FALSE, nr))
+  }
 
   # Columns may not be visible but must exist in data
   keep_cols <- intersect(keep_cols, names(data))
-  if (length(keep_cols) == 0L) return(rep(FALSE, nr))
+  if (length(keep_cols) == 0L) {
+    return(rep(FALSE, nr))
+  }
 
   # Skip blank rows (inserted by blank_after)
   is_blank <- rowSums(data != "") == 0L
@@ -633,13 +775,17 @@ build_keep_mask <- function(data, keep_cols, orphan_min = 3L, widow_min = 3L) {
       group_end <- nr
     }
     # Skip trailing blanks
-    while (group_end > h && is_blank[group_end]) group_end <- group_end - 1L
+    while (group_end > h && is_blank[group_end]) {
+      group_end <- group_end - 1L
+    }
 
     # Non-blank rows in this group
     non_blank <- which(!is_blank[h:group_end]) + h - 1L
     group_size <- length(non_blank)
 
-    if (group_size <= 1L) next
+    if (group_size <= 1L) {
+      next
+    }
 
     if (group_size <= orphan_min + widow_min) {
       # Small group: keep entirely together (mark all but last for keep-with-next)
@@ -679,16 +825,16 @@ build_keep_mask <- function(data, keep_cols, orphan_min = 3L, widow_min = 3L) {
 resolve_borders <- function(rules, nrow_body, ncol, nrow_header = 1L) {
   # Initialize border matrices: each cell gets NULL or a border spec
   # Header borders
-  h_top    <- matrix(list(NULL), nrow = nrow_header, ncol = ncol)
+  h_top <- matrix(list(NULL), nrow = nrow_header, ncol = ncol)
   h_bottom <- matrix(list(NULL), nrow = nrow_header, ncol = ncol)
-  h_left   <- matrix(list(NULL), nrow = nrow_header, ncol = ncol)
-  h_right  <- matrix(list(NULL), nrow = nrow_header, ncol = ncol)
+  h_left <- matrix(list(NULL), nrow = nrow_header, ncol = ncol)
+  h_right <- matrix(list(NULL), nrow = nrow_header, ncol = ncol)
 
   # Body borders
-  b_top    <- matrix(list(NULL), nrow = max(1L, nrow_body), ncol = ncol)
+  b_top <- matrix(list(NULL), nrow = max(1L, nrow_body), ncol = ncol)
   b_bottom <- matrix(list(NULL), nrow = max(1L, nrow_body), ncol = ncol)
-  b_left   <- matrix(list(NULL), nrow = max(1L, nrow_body), ncol = ncol)
-  b_right  <- matrix(list(NULL), nrow = max(1L, nrow_body), ncol = ncol)
+  b_left <- matrix(list(NULL), nrow = max(1L, nrow_body), ncol = ncol)
+  b_right <- matrix(list(NULL), nrow = max(1L, nrow_body), ncol = ncol)
 
   border_spec <- function(width, linestyle, fg) {
     list(width = width, linestyle = linestyle, fg = fg)
@@ -699,20 +845,16 @@ resolve_borders <- function(rules, nrow_body, ncol, nrow_header = 1L) {
       # Box: all four outer sides
       bs <- border_spec(fr_env$rtf_box_border_wd, "solid", "#000000")
       # Top of header
-      for (j in seq_len(ncol)) h_top[1L, j] <- list(bs)
+      h_top[1L, ] <- list(bs)
       # Bottom of last body row
       if (nrow_body > 0L) {
-        for (j in seq_len(ncol)) b_bottom[nrow_body, j] <- list(bs)
+        b_bottom[nrow_body, ] <- list(bs)
       }
       # Left and right edges
-      for (i in seq_len(nrow_header)) {
-        h_left[i, 1L]    <- list(bs)
-        h_right[i, ncol] <- list(bs)
-      }
-      for (i in seq_len(max(1L, nrow_body))) {
-        b_left[i, 1L]    <- list(bs)
-        b_right[i, ncol] <- list(bs)
-      }
+      h_left[seq_len(nrow_header), 1L] <- list(bs)
+      h_right[seq_len(nrow_header), ncol] <- list(bs)
+      b_left[seq_len(max(1L, nrow_body)), 1L] <- list(bs)
+      b_right[seq_len(max(1L, nrow_body)), ncol] <- list(bs)
       next
     }
 
@@ -733,72 +875,76 @@ resolve_borders <- function(rules, nrow_body, ncol, nrow_header = 1L) {
         next
       }
 
+      h_rows <- seq_len(nrow_header)
+      b_rows <- seq_len(max(1L, nrow_body))
       for (g in gaps) {
         if (g == 0L) {
           # Left edge
-          for (i in seq_len(nrow_header)) h_left[i, 1L] <- list(bs)
-          for (i in seq_len(max(1L, nrow_body))) b_left[i, 1L] <- list(bs)
+          h_left[h_rows, 1L] <- list(bs)
+          b_left[b_rows, 1L] <- list(bs)
         } else if (g == ncol) {
           # Right edge
-          for (i in seq_len(nrow_header)) h_right[i, ncol] <- list(bs)
-          for (i in seq_len(max(1L, nrow_body))) b_right[i, ncol] <- list(bs)
+          h_right[h_rows, ncol] <- list(bs)
+          b_right[b_rows, ncol] <- list(bs)
         } else {
           # Between columns g and g+1
-          for (i in seq_len(nrow_header)) {
-            h_right[i, g]      <- list(bs)
-            h_left[i, g + 1L]  <- list(bs)
-          }
-          for (i in seq_len(max(1L, nrow_body))) {
-            b_right[i, g]      <- list(bs)
-            b_left[i, g + 1L]  <- list(bs)
-          }
+          h_right[h_rows, g] <- list(bs)
+          h_left[h_rows, g + 1L] <- list(bs)
+          b_right[b_rows, g] <- list(bs)
+          b_left[b_rows, g + 1L] <- list(bs)
         }
       }
       next
     }
 
-    if (!inherits(rule, "fr_rule")) next
-    if (rule$direction != "horizontal") next
+    if (!inherits(rule, "fr_rule")) {
+      next
+    }
+    if (rule$direction != "horizontal") {
+      next
+    }
 
     bs <- border_spec(rule$width, rule$linestyle, rule$fg)
 
     if (rule$region == "header") {
       if (rule$side == "above") {
-        for (j in seq_len(ncol)) h_top[1L, j] <- list(bs)
+        h_top[1L, ] <- list(bs)
       } else {
         # below header = bottom of last header row
-        for (j in seq_len(ncol)) h_bottom[nrow_header, j] <- list(bs)
+        h_bottom[nrow_header, ] <- list(bs)
       }
     } else if (rule$region == "body") {
       if (rule$side == "below") {
         if (nrow_body > 0L) {
           if (is.null(rule$rows)) {
             # Below last body row
-            for (j in seq_len(ncol)) b_bottom[nrow_body, j] <- list(bs)
+            b_bottom[nrow_body, ] <- list(bs)
           } else if (identical(rule$rows, "all")) {
-            for (i in seq_len(nrow_body)) {
-              for (j in seq_len(ncol)) b_bottom[i, j] <- list(bs)
-            }
+            b_bottom[seq_len(nrow_body), ] <- list(bs)
           } else {
-            for (i in rule$rows) {
-              if (i <= nrow_body) {
-                for (j in seq_len(ncol)) b_bottom[i, j] <- list(bs)
-              }
+            valid_rows <- rule$rows[rule$rows <= nrow_body]
+            if (length(valid_rows) > 0L) {
+              b_bottom[valid_rows, ] <- list(bs)
             }
           }
         }
       } else {
         # above body = top of first body row
         if (nrow_body > 0L) {
-          for (j in seq_len(ncol)) b_top[1L, j] <- list(bs)
+          b_top[1L, ] <- list(bs)
         }
       }
     }
   }
 
   list(
-    header = list(top = h_top, bottom = h_bottom, left = h_left, right = h_right),
-    body   = list(top = b_top, bottom = b_bottom, left = b_left, right = b_right)
+    header = list(
+      top = h_top,
+      bottom = h_bottom,
+      left = h_left,
+      right = h_right
+    ),
+    body = list(top = b_top, bottom = b_bottom, left = b_left, right = b_right)
   )
 }
 
@@ -815,14 +961,15 @@ resolve_borders <- function(rules, nrow_body, ncol, nrow_header = 1L) {
 #' codes. Without this, raw UTF-8 bytes would leak into the ANSI RTF file.
 #' @noRd
 rtf_sentinel_resolver <- function(type, content) {
-  switch(toupper(type),
-    "SUPER"     = paste0("{\\super ", rtf_escape_and_resolve(content), "}"),
-    "SUB"       = paste0("{\\sub ", rtf_escape_and_resolve(content), "}"),
-    "BOLD"      = paste0("{\\b ", rtf_escape_and_resolve(content), "}"),
-    "ITALIC"    = paste0("{\\i ", rtf_escape_and_resolve(content), "}"),
+  switch(
+    toupper(type),
+    "SUPER" = paste0("{\\super ", rtf_escape_and_resolve(content), "}"),
+    "SUB" = paste0("{\\sub ", rtf_escape_and_resolve(content), "}"),
+    "BOLD" = paste0("{\\b ", rtf_escape_and_resolve(content), "}"),
+    "ITALIC" = paste0("{\\i ", rtf_escape_and_resolve(content), "}"),
     "UNDERLINE" = paste0("{\\ul ", rtf_escape_and_resolve(content), "}"),
-    "NEWLINE"   = "\\line ",
-    "UNICODE"   = rtf_encode_unicode_char(content),
+    "NEWLINE" = "\\line ",
+    "UNICODE" = rtf_encode_unicode_char(content),
     content
   )
 }
@@ -835,14 +982,23 @@ rtf_sentinel_resolver <- function(type, content) {
 #' etc.) and nested sentinels are properly handled.
 #' @noRd
 latex_sentinel_resolver <- function(type, content) {
-  switch(toupper(type),
-    "SUPER"     = paste0("\\textsuperscript{", latex_escape_and_resolve(content), "}"),
-    "SUB"       = paste0("\\textsubscript{", latex_escape_and_resolve(content), "}"),
-    "BOLD"      = paste0("\\textbf{", latex_escape_and_resolve(content), "}"),
-    "ITALIC"    = paste0("\\textit{", latex_escape_and_resolve(content), "}"),
-    "UNDERLINE" = paste0("\\underline{", latex_escape_and_resolve(content), "}"),
-    "NEWLINE"   = "\\\\",
-    "UNICODE"   = latex_encode_unicode_char(content),
+  switch(
+    toupper(type),
+    "SUPER" = paste0(
+      "\\textsuperscript{",
+      latex_escape_and_resolve(content),
+      "}"
+    ),
+    "SUB" = paste0("\\textsubscript{", latex_escape_and_resolve(content), "}"),
+    "BOLD" = paste0("\\textbf{", latex_escape_and_resolve(content), "}"),
+    "ITALIC" = paste0("\\textit{", latex_escape_and_resolve(content), "}"),
+    "UNDERLINE" = paste0(
+      "\\underline{",
+      latex_escape_and_resolve(content),
+      "}"
+    ),
+    "NEWLINE" = "\\\\",
+    "UNICODE" = latex_encode_unicode_char(content),
     content
   )
 }
@@ -853,7 +1009,9 @@ latex_sentinel_resolver <- function(type, content) {
 latex_encode_unicode_char <- function(char) {
   # Check known LaTeX map first
   mapped <- fr_env$latex_unicode[char]
-  if (!is.na(mapped)) return(mapped)
+  if (!is.na(mapped)) {
+    return(mapped)
+  }
   # XeLaTeX handles Unicode natively — pass through
 
   char
@@ -869,28 +1027,45 @@ latex_encode_unicode_char <- function(char) {
 #' @return Character vector with LaTeX-safe text.
 #' @noRd
 latex_escape <- function(text) {
-  if (length(text) == 0L) return(character(0))
+  if (length(text) == 0L) {
+    return(character(0))
+  }
   # Order matters: backslash first
   specials <- fr_env$latex_specials
   for (i in seq_along(specials)) {
-    text <- stringi::stri_replace_all_fixed(text, names(specials)[i],
-                                             specials[i])
+    text <- stringi::stri_replace_all_fixed(
+      text,
+      names(specials)[i],
+      specials[i]
+    )
   }
 
-  # Convert known Unicode characters to LaTeX commands
-  vapply(text, function(t) {
-    chars <- strsplit(t, "")[[1L]]
-    if (length(chars) == 0L) return("")
-    result <- vapply(chars, function(ch) {
-      cp <- utf8ToInt(ch)
-      if (length(cp) == 1L && cp > 127L) {
-        mapped <- fr_env$latex_unicode[ch]
-        if (!is.na(mapped)) return(mapped)
-      }
-      ch
-    }, character(1), USE.NAMES = FALSE)
-    paste0(result, collapse = "")
-  }, character(1), USE.NAMES = FALSE)
+  # Short-circuit: skip Unicode processing for all-ASCII elements
+  has_non_ascii <- stringi::stri_detect_regex(text, "[^\\x00-\\x7F]")
+  if (!any(has_non_ascii)) {
+    return(text)
+  }
+
+  # Only process elements with non-ASCII characters
+  non_ascii_idx <- which(has_non_ascii)
+  non_ascii_text <- text[non_ascii_idx]
+
+  # Extract unique non-ASCII chars, build replacement map from known map
+  all_chars <- stringi::stri_extract_all_regex(non_ascii_text, "[^\\x00-\\x7F]")
+  unique_chars <- unique(unlist(all_chars, use.names = FALSE))
+  replacements <- fr_env$latex_unicode[unique_chars]
+
+  # Only replace chars that have known LaTeX mappings
+  known <- !is.na(replacements)
+  if (any(known)) {
+    text[non_ascii_idx] <- stringi::stri_replace_all_fixed(
+      non_ascii_text,
+      unique_chars[known],
+      replacements[known],
+      vectorize_all = FALSE
+    )
+  }
+  text
 }
 
 
@@ -903,7 +1078,9 @@ latex_escape <- function(text) {
 #' @return Character scalar with LaTeX-safe text and resolved sentinels.
 #' @noRd
 latex_escape_and_resolve <- function(text) {
-  if (!has_sentinel(text)) return(latex_escape(text))
+  if (!has_sentinel(text)) {
+    return(latex_escape(text))
+  }
 
   pattern <- fr_env$sentinel_pattern
   m <- gregexpr(pattern, text, perl = TRUE)
@@ -916,8 +1093,10 @@ latex_escape_and_resolve <- function(text) {
       parts <- c(parts, latex_escape(non_sentinels[i]))
     }
     if (i <= length(sentinels)) {
-      tok_parts <- regmatches(sentinels[i],
-                              regexec(pattern, sentinels[i], perl = TRUE))[[1L]]
+      tok_parts <- regmatches(
+        sentinels[i],
+        regexec(pattern, sentinels[i], perl = TRUE)
+      )[[1L]]
       resolved <- latex_sentinel_resolver(tok_parts[[2L]], tok_parts[[3L]])
       parts <- c(parts, resolved)
     }
@@ -932,13 +1111,19 @@ latex_escape_and_resolve <- function(text) {
 rtf_encode_unicode_char <- function(char) {
   # Check known RTF shorthand map first
   shorthand <- fr_env$rtf_unicode[char]
-  if (!is.na(shorthand)) return(shorthand)
+  if (!is.na(shorthand)) {
+    return(shorthand)
+  }
 
   # General: \uN? where N = signed 16-bit decimal codepoint
   cp <- utf8ToInt(char)
-  if (length(cp) == 0L) return("")
+  if (length(cp) == 0L) {
+    return("")
+  }
   # RTF uses signed 16-bit; codepoints > 32767 need negative representation
-  if (cp > 32767L) cp <- cp - 65536L
+  if (cp > 32767L) {
+    cp <- cp - 65536L
+  }
   paste0("\\u", cp, "?")
 }
 
@@ -957,19 +1142,26 @@ rtf_encode_unicode_char <- function(char) {
 #' @return Character vector with `\\n` replaced by `\\line` + preserved spaces.
 #' @noRd
 newline_to_rtf_line <- function(text) {
-  vapply(text, function(t) {
-    if (!grepl("\n", t, fixed = TRUE)) return(t)
-    parts <- strsplit(t, "\n", fixed = TRUE)[[1L]]
-    # First part stays as-is; subsequent parts get leading spaces → \~
-    for (i in seq_along(parts)[-1L]) {
-      stripped <- sub("^ +", "", parts[[i]])
-      n_spaces <- nchar(parts[[i]]) - nchar(stripped)
-      if (n_spaces > 0L) {
-        parts[[i]] <- paste0(strrep("\\~", n_spaces), stripped)
+  vapply(
+    text,
+    function(t) {
+      if (!grepl("\n", t, fixed = TRUE)) {
+        return(t)
       }
-    }
-    paste0(parts, collapse = "\\line ")
-  }, character(1), USE.NAMES = FALSE)
+      parts <- strsplit(t, "\n", fixed = TRUE)[[1L]]
+      # First part stays as-is; subsequent parts get leading spaces → \~
+      for (i in seq_along(parts)[-1L]) {
+        stripped <- sub("^ +", "", parts[[i]])
+        n_spaces <- nchar(parts[[i]]) - nchar(stripped)
+        if (n_spaces > 0L) {
+          parts[[i]] <- paste0(strrep("\\~", n_spaces), stripped)
+        }
+      }
+      paste0(parts, collapse = "\\line ")
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
 }
 
 #' Replace \\n with LaTeX \\\\, preserving leading spaces
@@ -981,18 +1173,25 @@ newline_to_rtf_line <- function(text) {
 #' @return Character vector with `\\n` replaced by `\\\\` + preserved spaces.
 #' @noRd
 newline_to_latex_break <- function(text) {
-  vapply(text, function(t) {
-    if (!grepl("\n", t, fixed = TRUE)) return(t)
-    parts <- strsplit(t, "\n", fixed = TRUE)[[1L]]
-    for (i in seq_along(parts)[-1L]) {
-      stripped <- sub("^ +", "", parts[[i]])
-      n_spaces <- nchar(parts[[i]]) - nchar(stripped)
-      if (n_spaces > 0L) {
-        parts[[i]] <- paste0(strrep("~", n_spaces), stripped)
+  vapply(
+    text,
+    function(t) {
+      if (!grepl("\n", t, fixed = TRUE)) {
+        return(t)
       }
-    }
-    paste0(parts, collapse = " \\\\ ")
-  }, character(1), USE.NAMES = FALSE)
+      parts <- strsplit(t, "\n", fixed = TRUE)[[1L]]
+      for (i in seq_along(parts)[-1L]) {
+        stripped <- sub("^ +", "", parts[[i]])
+        n_spaces <- nchar(parts[[i]]) - nchar(stripped)
+        if (n_spaces > 0L) {
+          parts[[i]] <- paste0(strrep("~", n_spaces), stripped)
+        }
+      }
+      paste0(parts, collapse = " \\\\ ")
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
 }
 
 #' Escape text for RTF output
@@ -1004,26 +1203,42 @@ newline_to_latex_break <- function(text) {
 #' @return Character vector with RTF-safe text.
 #' @noRd
 rtf_escape <- function(text) {
-  if (length(text) == 0L) return(character(0))
+  if (length(text) == 0L) {
+    return(character(0))
+  }
   # Must escape backslash first, then braces
   text <- stringi::stri_replace_all_fixed(text, "\\", "\\\\")
   text <- stringi::stri_replace_all_fixed(text, "{", "\\{")
   text <- stringi::stri_replace_all_fixed(text, "}", "\\}")
 
-  # Convert non-ASCII characters to \uN?
-  vapply(text, function(t) {
-    chars <- strsplit(t, "")[[1L]]
-    if (length(chars) == 0L) return("")
-    result <- vapply(chars, function(ch) {
-      cp <- utf8ToInt(ch)
-      if (length(cp) == 1L && cp > 127L) {
-        rtf_encode_unicode_char(ch)
-      } else {
-        ch
-      }
-    }, character(1), USE.NAMES = FALSE)
-    paste0(result, collapse = "")
-  }, character(1), USE.NAMES = FALSE)
+  # Short-circuit: skip Unicode processing for all-ASCII elements
+  has_non_ascii <- stringi::stri_detect_regex(text, "[^\\x00-\\x7F]")
+  if (!any(has_non_ascii)) {
+    return(text)
+  }
+
+  # Only process elements with non-ASCII characters
+  non_ascii_idx <- which(has_non_ascii)
+  non_ascii_text <- text[non_ascii_idx]
+
+  # Extract unique non-ASCII chars, build replacement map
+  all_chars <- stringi::stri_extract_all_regex(non_ascii_text, "[^\\x00-\\x7F]")
+  unique_chars <- unique(unlist(all_chars, use.names = FALSE))
+  replacements <- vapply(
+    unique_chars,
+    rtf_encode_unicode_char,
+    character(1),
+    USE.NAMES = FALSE
+  )
+
+  # Vectorized replace: one pass per unique non-ASCII char
+  text[non_ascii_idx] <- stringi::stri_replace_all_fixed(
+    non_ascii_text,
+    unique_chars,
+    replacements,
+    vectorize_all = FALSE
+  )
+  text
 }
 
 
@@ -1036,7 +1251,9 @@ rtf_escape <- function(text) {
 #' @return Character scalar with RTF-safe text and resolved sentinels.
 #' @noRd
 rtf_escape_and_resolve <- function(text) {
-  if (!has_sentinel(text)) return(rtf_escape(text))
+  if (!has_sentinel(text)) {
+    return(rtf_escape(text))
+  }
 
   # Split around sentinels: find all sentinel tokens
 
@@ -1054,8 +1271,10 @@ rtf_escape_and_resolve <- function(text) {
     }
     if (i <= length(sentinels)) {
       # Parse and resolve the sentinel
-      tok_parts <- regmatches(sentinels[i],
-                              regexec(pattern, sentinels[i], perl = TRUE))[[1L]]
+      tok_parts <- regmatches(
+        sentinels[i],
+        regexec(pattern, sentinels[i], perl = TRUE)
+      )[[1L]]
       resolved <- rtf_sentinel_resolver(tok_parts[[2L]], tok_parts[[3L]])
       parts <- c(parts, resolved)
     }
@@ -1075,7 +1294,7 @@ rtf_escape_and_resolve <- function(text) {
 #' @return Character vector of unique hex color strings.
 #' @noRd
 collect_colors <- function(spec) {
-  colors <- "#000000"  # Always include black
+  colors <- "#000000" # Always include black
 
   # From rules
   for (rule in spec$rules) {
@@ -1083,12 +1302,18 @@ collect_colors <- function(spec) {
   }
 
   # From header styling
-  if (!is.null(spec$header$bg)) colors <- c(colors, spec$header$bg)
-  if (!is.null(spec$header$fg)) colors <- c(colors, spec$header$fg)
+  if (!is.null(spec$header$bg)) {
+    colors <- c(colors, spec$header$bg)
+  }
+  if (!is.null(spec$header$fg)) {
+    colors <- c(colors, spec$header$fg)
+  }
 
   # From cell_styles
   for (style in spec$cell_styles) {
-    if (!is.null(style$fg)) colors <- c(colors, style$fg)
+    if (!is.null(style$fg)) {
+      colors <- c(colors, style$fg)
+    }
     if (!is.null(style$bg)) colors <- c(colors, style$bg)
   }
 
@@ -1105,10 +1330,23 @@ collect_colors <- function(spec) {
 build_rtf_colortbl <- function(colors) {
   colors <- unique(colors)
   # RTF colortbl: index 0 = auto (;), then each color
-  entries <- vapply(colors, function(hex) {
-    rgb <- hex_to_rgb(hex)
-    paste0("\\red", rgb[["r"]], "\\green", rgb[["g"]], "\\blue", rgb[["b"]], ";")
-  }, character(1), USE.NAMES = FALSE)
+  entries <- vapply(
+    colors,
+    function(hex) {
+      rgb <- hex_to_rgb(hex)
+      paste0(
+        "\\red",
+        rgb[["r"]],
+        "\\green",
+        rgb[["g"]],
+        "\\blue",
+        rgb[["b"]],
+        ";"
+      )
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
 
   rtf <- paste0("{\\colortbl;", paste0(entries, collapse = ""), "}")
 

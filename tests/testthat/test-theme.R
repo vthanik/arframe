@@ -3,7 +3,6 @@
 #                fr_theme_reset()
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # fr_theme_get / fr_theme_reset — baseline behaviour
 # ══════════════════════════════════════════════════════════════════════════════
@@ -133,11 +132,11 @@ test_that("fr_theme sets footnote_separator", {
 test_that("fr_theme sets multiple parameters simultaneously", {
   withr::defer(fr_theme_reset())
   fr_theme(
-    font_size   = 9,
+    font_size = 9,
     orientation = "landscape",
-    paper       = "letter",
-    hlines      = "booktabs",
-    vlines      = "all"
+    paper = "letter",
+    hlines = "booktabs",
+    vlines = "all"
   )
   theme <- fr_theme_get()
   expect_equal(theme$font_size, 9)
@@ -201,8 +200,16 @@ test_that("fr_theme_set sets parameters like fr_theme", {
 
 test_that("fr_theme accepts all valid hline presets", {
   withr::defer(fr_theme_reset())
-  for (preset in c("header", "open", "hsides", "above", "below",
-                    "box", "booktabs", "void")) {
+  for (preset in c(
+    "header",
+    "open",
+    "hsides",
+    "above",
+    "below",
+    "box",
+    "booktabs",
+    "void"
+  )) {
     fr_theme_reset()
     fr_theme(hlines = preset)
     expect_equal(fr_theme_get()$hlines, preset)
@@ -359,7 +366,10 @@ test_that("fr_theme margins apply to new specs", {
   withr::defer(fr_theme_reset())
   fr_theme(margins = c(0.5, 0.5, 0.5, 0.5))
   spec <- tbl_demog |> fr_table()
-  expect_equal(spec$page$margins, list(top = 0.5, right = 0.5, bottom = 0.5, left = 0.5))
+  expect_equal(
+    spec$page$margins,
+    list(top = 0.5, right = 0.5, bottom = 0.5, left = 0.5)
+  )
 })
 
 
@@ -454,18 +464,18 @@ test_that("fr_theme pagefoot with all three positions", {
 test_that("fr_theme full study workflow sets everything correctly", {
   withr::defer(fr_theme_reset())
   fr_theme(
-    orientation        = "landscape",
-    paper              = "letter",
-    font_family        = "Times New Roman",
-    font_size          = 9,
-    margins            = c(1, 1, 1, 1),
-    tokens             = list(study = "TFRM-001", cutoff = "31DEC2025"),
-    pagehead           = list(left = "{study}", right = "{cutoff}"),
-    pagefoot           = list(left = "{program}", right = "{datetime}"),
-    hlines             = "header",
-    vlines             = "box",
-    spacing            = list(titles_after = 1L, footnotes_before = 1L),
-    header             = list(span_gap = TRUE),
+    orientation = "landscape",
+    paper = "letter",
+    font_family = "Times New Roman",
+    font_size = 9,
+    margins = c(1, 1, 1, 1),
+    tokens = list(study = "TFRM-001", cutoff = "31DEC2025"),
+    pagehead = list(left = "{study}", right = "{cutoff}"),
+    pagefoot = list(left = "{program}", right = "{datetime}"),
+    hlines = "header",
+    vlines = "box",
+    spacing = list(titles_after = 1L, footnotes_before = 1L),
+    header = list(span_gap = TRUE),
     footnote_separator = TRUE
   )
 
@@ -490,4 +500,54 @@ test_that("fr_theme full study workflow sets everything correctly", {
   expect_equal(spec$page$font_size, 9)
   expect_equal(spec$page$orientation, "landscape")
   expect_equal(spec$page$font_family, "Times New Roman")
+})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# fr_theme — page_by_bold / page_by_align wiring into spec$body
+# ══════════════════════════════════════════════════════════════════════════════
+
+test_that("fr_theme wires page_by_bold and page_by_align into spec$body", {
+  withr::defer(fr_theme_reset())
+  fr_theme_reset()
+  fr_theme(page_by_bold = TRUE, page_by_align = "center")
+
+  spec <- tbl_demog |> fr_table()
+
+  expect_true(spec$body$page_by_bold)
+  expect_equal(spec$body$page_by_align, "center")
+})
+
+test_that("fr_theme page_by_bold FALSE is wired into spec$body", {
+  withr::defer(fr_theme_reset())
+  fr_theme_reset()
+  fr_theme(page_by_bold = FALSE, page_by_align = "right")
+
+  spec <- tbl_demog |> fr_table()
+
+  expect_false(spec$body$page_by_bold)
+  expect_equal(spec$body$page_by_align, "right")
+})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# fr_theme — continuation wiring into spec$page
+# ══════════════════════════════════════════════════════════════════════════════
+
+test_that("fr_theme wires continuation into spec$page", {
+  withr::defer(fr_theme_reset())
+  fr_theme_reset()
+  fr_theme(continuation = "(continued)")
+
+  spec <- tbl_demog |> fr_table()
+
+  expect_equal(spec$page$continuation, "(continued)")
+})
+
+test_that("fr_theme continuation is retrievable from theme store", {
+  withr::defer(fr_theme_reset())
+  fr_theme_reset()
+  fr_theme(continuation = "(cont.)")
+
+  expect_equal(fr_theme_get()$continuation, "(cont.)")
 })

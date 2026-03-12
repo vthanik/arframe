@@ -2,7 +2,6 @@
 # api-theme.R — Study-level theme management
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # fr_theme — Study-level defaults (ggplot2 theme pattern)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -63,6 +62,14 @@
 #'   labels. Applied to all tables that use `fr_col(n = ...)` or
 #'   `fr_cols(.n = ...)` without an explicit `.n_format`. Available
 #'   tokens: `{label}` and `{n}`. `NULL` leaves unchanged.
+#' @param continuation Character scalar appended to column headers on
+#'   continuation pages (e.g. `"(continued)"`). `NULL` leaves unchanged.
+#'   See [fr_page()] for details.
+#' @param page_by_bold Logical. Whether `page_by` group labels are bold.
+#'   `NULL` leaves unchanged. See [fr_rows()] for details.
+#' @param page_by_align Alignment for `page_by` group labels. One of
+#'   `"left"`, `"center"`, `"right"`, or `"decimal"`. `NULL` leaves unchanged.
+#'   See [fr_rows()] for details.
 #' @param header Named list of header defaults. Currently supports:
 #'   * `span_gap` — Logical. Insert gap columns between adjacent spans
 #'     (default `TRUE`). See [fr_header()] for details.
@@ -168,22 +175,47 @@
 #'   for running headers and footers, [fr_spacing()] for per-table gap control.
 #'
 #' @export
-fr_theme <- function(orientation = NULL, paper = NULL,
-                     margins = NULL, col_gap = NULL,
-                     font_family = NULL, font_size = NULL,
-                     spaces = NULL,
-                     split = NULL, stub = NULL,
-                     pagehead = NULL, pagefoot = NULL, tokens = NULL,
-                     hlines = NULL, vlines = NULL,
-                     spacing = NULL, n_format = NULL,
-                     header = NULL,
-                     footnote_separator = NULL) {
+fr_theme <- function(
+  orientation = NULL,
+  paper = NULL,
+  margins = NULL,
+  col_gap = NULL,
+  font_family = NULL,
+  font_size = NULL,
+  spaces = NULL,
+  split = NULL,
+  stub = NULL,
+  pagehead = NULL,
+  pagefoot = NULL,
+  tokens = NULL,
+  hlines = NULL,
+  vlines = NULL,
+  spacing = NULL,
+  n_format = NULL,
+  continuation = NULL,
+  page_by_bold = NULL,
+  page_by_align = NULL,
+  header = NULL,
+  footnote_separator = NULL
+) {
   call <- caller_env()
 
-  if (!is.null(font_size))          check_positive_num(font_size, arg = "font_size", call = call)
-  if (!is.null(col_gap))            check_non_negative_int(col_gap, arg = "col_gap", call = call)
-  if (!is.null(footnote_separator)) check_scalar_lgl(footnote_separator, arg = "footnote_separator", call = call)
-  if (!is.null(n_format)) check_scalar_chr(n_format, arg = "n_format", call = call)
+  if (!is.null(font_size)) {
+    check_positive_num(font_size, arg = "font_size", call = call)
+  }
+  if (!is.null(col_gap)) {
+    check_non_negative_int(col_gap, arg = "col_gap", call = call)
+  }
+  if (!is.null(footnote_separator)) {
+    check_scalar_lgl(
+      footnote_separator,
+      arg = "footnote_separator",
+      call = call
+    )
+  }
+  if (!is.null(n_format)) {
+    check_scalar_chr(n_format, arg = "n_format", call = call)
+  }
   if (!is.null(spaces)) {
     spaces <- match_arg_fr(spaces, fr_env$valid_spaces, call = call)
   }
@@ -192,44 +224,118 @@ fr_theme <- function(orientation = NULL, paper = NULL,
   }
   if (!is.null(stub)) {
     if (!is.character(stub)) {
-      cli_abort(c(
-        "{.arg stub} must be a character vector of column names.",
-        "x" = "You supplied {.obj_type_friendly {stub}}."
-      ), call = call)
+      cli_abort(
+        c(
+          "{.arg stub} must be a character vector of column names.",
+          "x" = "You supplied {.obj_type_friendly {stub}}."
+        ),
+        call = call
+      )
     }
   }
   if (!is.null(header)) {
-    if (!is.list(header)) cli_abort(c("{.arg header} must be a list.",
-                                     "x" = "You supplied {.obj_type_friendly {header}}."), call = call)
-    if (!is.null(header$span_gap)) check_scalar_lgl(header$span_gap, arg = "header$span_gap", call = call)
+    if (!is.list(header)) {
+      cli_abort(
+        c(
+          "{.arg header} must be a list.",
+          "x" = "You supplied {.obj_type_friendly {header}}."
+        ),
+        call = call
+      )
+    }
+    if (!is.null(header$span_gap)) {
+      check_scalar_lgl(header$span_gap, arg = "header$span_gap", call = call)
+    }
+  }
+  if (!is.null(continuation)) {
+    check_scalar_chr(continuation, arg = "continuation", call = call)
+  }
+  if (!is.null(page_by_bold)) {
+    check_scalar_lgl(page_by_bold, arg = "page_by_bold", call = call)
+  }
+  if (!is.null(page_by_align)) {
+    page_by_align <- match_arg_fr(
+      page_by_align,
+      fr_env$valid_aligns,
+      call = call
+    )
   }
   if (!is.null(hlines)) {
     hlines <- match_arg_fr(hlines, names(fr_env$hline_presets), call = call)
   }
   if (!is.null(vlines)) {
-    vlines <- match_arg_fr(vlines, c("box", "all", "inner", "void"), call = call)
+    vlines <- match_arg_fr(
+      vlines,
+      c("box", "all", "inner", "void"),
+      call = call
+    )
   }
 
   theme <- fr_env$theme %||% list()
 
-  if (!is.null(orientation))        theme[["orientation"]]        <- orientation
-  if (!is.null(paper))              theme[["paper"]]              <- paper
-  if (!is.null(margins))            theme[["margins"]]            <- margins
-  if (!is.null(col_gap))            theme[["col_gap"]]            <- col_gap
-  if (!is.null(spaces))             theme[["spaces"]]             <- spaces
-  if (!is.null(split))              theme[["split"]]              <- split
-  if (!is.null(stub))               theme[["stub"]]               <- stub
-  if (!is.null(font_family))        theme[["font_family"]]        <- font_family
-  if (!is.null(font_size))          theme[["font_size"]]          <- font_size
-  if (!is.null(pagehead))           theme[["pagehead"]]           <- pagehead
-  if (!is.null(pagefoot))           theme[["pagefoot"]]           <- pagefoot
-  if (!is.null(tokens))             theme[["tokens"]]             <- tokens
-  if (!is.null(hlines))             theme[["hlines"]]             <- hlines
-  if (!is.null(vlines))             theme[["vlines"]]             <- vlines
-  if (!is.null(spacing))            theme[["spacing"]]            <- spacing
-  if (!is.null(header))             theme[["header"]]             <- header
-  if (!is.null(n_format))           theme[["n_format"]]           <- n_format
-  if (!is.null(footnote_separator)) theme[["footnote_separator"]] <- footnote_separator
+  if (!is.null(orientation)) {
+    theme[["orientation"]] <- orientation
+  }
+  if (!is.null(paper)) {
+    theme[["paper"]] <- paper
+  }
+  if (!is.null(margins)) {
+    theme[["margins"]] <- margins
+  }
+  if (!is.null(col_gap)) {
+    theme[["col_gap"]] <- col_gap
+  }
+  if (!is.null(spaces)) {
+    theme[["spaces"]] <- spaces
+  }
+  if (!is.null(split)) {
+    theme[["split"]] <- split
+  }
+  if (!is.null(stub)) {
+    theme[["stub"]] <- stub
+  }
+  if (!is.null(font_family)) {
+    theme[["font_family"]] <- font_family
+  }
+  if (!is.null(font_size)) {
+    theme[["font_size"]] <- font_size
+  }
+  if (!is.null(pagehead)) {
+    theme[["pagehead"]] <- pagehead
+  }
+  if (!is.null(pagefoot)) {
+    theme[["pagefoot"]] <- pagefoot
+  }
+  if (!is.null(tokens)) {
+    theme[["tokens"]] <- tokens
+  }
+  if (!is.null(hlines)) {
+    theme[["hlines"]] <- hlines
+  }
+  if (!is.null(vlines)) {
+    theme[["vlines"]] <- vlines
+  }
+  if (!is.null(spacing)) {
+    theme[["spacing"]] <- spacing
+  }
+  if (!is.null(header)) {
+    theme[["header"]] <- header
+  }
+  if (!is.null(n_format)) {
+    theme[["n_format"]] <- n_format
+  }
+  if (!is.null(continuation)) {
+    theme[["continuation"]] <- continuation
+  }
+  if (!is.null(page_by_bold)) {
+    theme[["page_by_bold"]] <- page_by_bold
+  }
+  if (!is.null(page_by_align)) {
+    theme[["page_by_align"]] <- page_by_align
+  }
+  if (!is.null(footnote_separator)) {
+    theme[["footnote_separator"]] <- footnote_separator
+  }
 
   fr_env$theme <- theme
   invisible(NULL)

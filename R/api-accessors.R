@@ -7,7 +7,6 @@
 # or lists will NOT affect the original spec (R copy-on-modify semantics).
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 #' Get the Data Frame from a Spec
 #'
 #' @description

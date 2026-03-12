@@ -3,9 +3,9 @@
 # ──────────────────────────────────────────────────────────────────────────────
 
 df_simple <- data.frame(
-  arm    = c("Placebo", "Drug"),
-  n      = c(45L, 45L),
-  pct    = c(50.0, 50.0),
+  arm = c("Placebo", "Drug"),
+  n = c(45L, 45L),
+  pct = c(50.0, 50.0),
   stringsAsFactors = FALSE
 )
 
@@ -66,8 +66,7 @@ test_that("fr_cols with percentage .width sets fr_pct widths", {
     fr_cols(.width = "25%")
 
   for (col in spec$columns) {
-    expect_true(inherits(col$width, "fr_pct"),
-                info = paste("Column:", col$id))
+    expect_true(inherits(col$width, "fr_pct"), info = paste("Column:", col$id))
     expect_equal(as.numeric(col$width), 0.25)
   }
 })
@@ -88,7 +87,10 @@ test_that("fr_cols with NULL .width uses auto mode", {
   # Default is "auto" — columns get content-based widths, not fixed 1.5
   expect_identical(spec$columns_meta$width_mode, "auto")
   for (col in spec$columns) {
-    expect_true(is.numeric(col$width) && col$width > 0, info = paste("Column:", col$id))
+    expect_true(
+      is.numeric(col$width) && col$width > 0,
+      info = paste("Column:", col$id)
+    )
     expect_true(isTRUE(col$width_auto), info = paste("Column:", col$id))
   }
 })
@@ -249,7 +251,7 @@ test_that("fr_cols .list with character vector sets labels", {
 
   expect_equal(spec$columns[["arm"]]$label, "Treatment")
   expect_equal(spec$columns[["pct"]]$label, "Percent (%)")
-  expect_equal(spec$columns[["n"]]$label, "n")  # unchanged
+  expect_equal(spec$columns[["n"]]$label, "n") # unchanged
 })
 
 test_that("fr_cols .list with named list works", {
@@ -400,8 +402,10 @@ test_that("fr_cols visible = FALSE is stored on column", {
 
   expect_false(spec$columns[["arm"]]$visible)
   # Other columns should still be visible (NULL or TRUE)
-  expect_true(is.null(spec$columns[["n"]]$visible) ||
-                isTRUE(spec$columns[["n"]]$visible))
+  expect_true(
+    is.null(spec$columns[["n"]]$visible) ||
+      isTRUE(spec$columns[["n"]]$visible)
+  )
 })
 
 
@@ -414,7 +418,7 @@ test_that("fr_cols preserves data frame column order", {
     fr_cols(
       pct = "Percent",
       arm = "Treatment",
-      n   = "Count"
+      n = "Count"
     )
 
   expect_equal(names(spec$columns), c("arm", "n", "pct"))
@@ -451,8 +455,8 @@ test_that("fr_cols .width = 'auto' works with tbl_demog", {
 
   for (col in spec$columns) {
     expect_true(is.numeric(col$width))
-    expect_true(col$width >= 0.5)  # minimum clamp
-    expect_true(col$width <= 5.0)  # maximum clamp
+    expect_true(col$width >= 0.5) # minimum clamp
+    expect_true(col$width <= 5.0) # maximum clamp
   }
 })
 
@@ -506,5 +510,3 @@ test_that("fr_cols handles data with many columns", {
 
   expect_equal(length(spec$columns), 20L)
 })
-
-

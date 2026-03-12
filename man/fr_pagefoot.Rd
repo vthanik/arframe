@@ -10,7 +10,7 @@ fr_pagefoot(
   center = NULL,
   right = NULL,
   font_size = NULL,
-  bold = FALSE
+  bold = NULL
 )
 }
 \arguments{
@@ -25,7 +25,7 @@ All three zones support token placeholders evaluated at render time.}
 
 \item{font_size}{Font size in points. \code{NULL} inherits from page.}
 
-\item{bold}{Logical. Default \code{FALSE}.}
+\item{bold}{Logical. Default \code{NULL} (not bold).}
 }
 \value{
 A modified \code{fr_spec}. Footer stored in \code{spec$pagefoot}.
@@ -42,7 +42,8 @@ Supports \code{{token}} placeholders, evaluated at render time:
 \item \code{{thepage}}, \code{{total_pages}}, and custom tokens are also supported.
 }
 
-Calling \code{fr_pagefoot()} again \strong{replaces} the previous footer.
+Calling \code{fr_pagefoot()} again \strong{merges} with the previous footer:
+only the arguments you explicitly supply are changed.
 }
 \section{Regulatory conventions}{
 

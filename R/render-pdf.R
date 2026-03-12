@@ -6,7 +6,6 @@
 # packages), falls back to raw system2() otherwise.
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 # ── Exported helpers ─────────────────────────────────────────────────────────
 
 #' List Required LaTeX Packages
@@ -83,7 +82,7 @@ fr_install_latex_deps <- function() {
 #' @noRd
 render_pdf <- function(spec, page_groups, col_panels, path) {
   # 1. Write .tex to tempdir
-  base_name <- tools::file_path_sans_ext(basename(path))
+  base_name <- file_path_sans_ext(basename(path))
   tex_dir <- tempdir()
   tex_path <- file.path(tex_dir, paste0(base_name, ".tex"))
   render_latex(spec, page_groups, col_panels, tex_path)
@@ -93,8 +92,10 @@ render_pdf <- function(spec, page_groups, col_panels, path) {
 
   # 3. Copy PDF to output path (skip if already in place)
   pdf_temp <- file.path(tex_dir, paste0(base_name, ".pdf"))
-  if (normalizePath(pdf_temp, mustWork = FALSE) !=
-      normalizePath(path, mustWork = FALSE)) {
+  if (
+    normalizePath(pdf_temp, mustWork = FALSE) !=
+      normalizePath(path, mustWork = FALSE)
+  ) {
     file.copy(pdf_temp, path, overwrite = TRUE)
   }
 
@@ -118,7 +119,7 @@ render_pdf <- function(spec, page_groups, col_panels, path) {
 #' @noRd
 compile_xelatex_doc <- function(tex_path) {
   tex_dir <- dirname(tex_path)
-  base_name <- tools::file_path_sans_ext(basename(tex_path))
+  base_name <- file_path_sans_ext(basename(tex_path))
 
   # Set OSFONTDIR so XeLaTeX discovers fonts in TLFRAME_FONT_DIR
 
@@ -127,12 +128,22 @@ compile_xelatex_doc <- function(tex_path) {
     old_osfontdir <- Sys.getenv("OSFONTDIR", unset = NA)
     existing <- if (!is.na(old_osfontdir)) old_osfontdir else ""
     sep <- if (.Platform$OS.type == "windows") ";" else ":"
-    new_val <- if (nzchar(existing)) paste0(font_dir, sep, existing) else font_dir
+    new_val <- if (nzchar(existing)) {
+      paste0(font_dir, sep, existing)
+    } else {
+      font_dir
+    }
     Sys.setenv(OSFONTDIR = new_val)
-    on.exit({
-      if (is.na(old_osfontdir)) Sys.unsetenv("OSFONTDIR")
-      else Sys.setenv(OSFONTDIR = old_osfontdir)
-    }, add = TRUE)
+    on.exit(
+      {
+        if (is.na(old_osfontdir)) {
+          Sys.unsetenv("OSFONTDIR")
+        } else {
+          Sys.setenv(OSFONTDIR = old_osfontdir)
+        }
+      },
+      add = TRUE
+    )
   }
 
   if (requireNamespace("tinytex", quietly = TRUE)) {
@@ -158,7 +169,12 @@ compile_xelatex_doc <- function(tex_path) {
       ))
     }
 
-    args <- c("-interaction=nonstopmode", "-output-directory", tex_dir, tex_path)
+    args <- c(
+      "-interaction=nonstopmode",
+      "-output-directory",
+      tex_dir,
+      tex_path
+    )
     system2(xelatex, args, stdout = TRUE, stderr = TRUE)
     system2(xelatex, args, stdout = TRUE, stderr = TRUE)
 
@@ -199,15 +215,20 @@ report_latex_failure <- function(log_file, tex_path, original_msg = NULL) {
   # Detect missing .sty files
   sty_pattern <- "! LaTeX Error: File `([^']+)\\.sty' not found"
   sty_matches <- regmatches(log_lines, regexec(sty_pattern, log_lines))
-  missing_pkgs <- vapply(sty_matches, function(m) {
-    if (length(m) >= 2L) m[[2L]] else NA_character_
-  }, character(1))
+  missing_pkgs <- vapply(
+    sty_matches,
+    function(m) {
+      if (length(m) >= 2L) m[[2L]] else NA_character_
+    },
+    character(1)
+  )
   missing_pkgs <- unique(missing_pkgs[!is.na(missing_pkgs)])
 
   if (length(missing_pkgs) > 0L) {
     pkg_list <- paste0("{.pkg ", missing_pkgs, "}", collapse = ", ")
     cli_abort(c(
-      original_msg %||% "XeLaTeX compilation failed due to missing LaTeX packages.",
+      original_msg %||%
+        "XeLaTeX compilation failed due to missing LaTeX packages.",
       "x" = paste0("Missing: ", pkg_list),
       "i" = "Install with: {.code tlframe::fr_install_latex_deps()}",
       "i" = "Or manually: {.code tinytex::tlmgr_install({deparse(missing_pkgs)})}"
@@ -216,8 +237,12 @@ report_latex_failure <- function(log_file, tex_path, original_msg = NULL) {
 
   # Generic failure: show log tail
   log_tail <- utils::tail(log_lines, 20L)
-  safe_log <- gsub("{", "{{", fixed = TRUE,
-                   gsub("}", "}}", log_tail, fixed = TRUE))
+  safe_log <- gsub(
+    "{",
+    "{{",
+    fixed = TRUE,
+    gsub("}", "}}", log_tail, fixed = TRUE)
+  )
   cli_abort(c(
     original_msg %||% "XeLaTeX compilation failed.",
     "i" = "Source file: {.path {tex_path}}",
@@ -249,7 +274,9 @@ cleanup_latex_temps <- function(tex_dir, base_name) {
 find_xelatex <- function() {
   # 1. System PATH
   path <- Sys.which("xelatex")
-  if (nzchar(path)) return(unname(path))
+  if (nzchar(path)) {
+    return(unname(path))
+  }
 
   # 2. tinytex
   if (requireNamespace("tinytex", quietly = TRUE)) {
@@ -260,7 +287,9 @@ find_xelatex <- function() {
     if (!is.null(path)) {
       bin <- file.path(path, "bin", "*", "xelatex")
       candidates <- Sys.glob(bin)
-      if (length(candidates) > 0L) return(candidates[1L])
+      if (length(candidates) > 0L) {
+        return(candidates[1L])
+      }
 
       # Windows: .exe
       bin_exe <- file.path(path, "bin", "*", "xelatex.exe")

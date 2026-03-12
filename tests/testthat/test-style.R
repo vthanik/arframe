@@ -7,17 +7,17 @@
 # Shared fixture data
 df_style <- data.frame(
   characteristic = c("Age", "Sex", "Race", "Total"),
-  placebo        = c("35.2 (8.1)", "25 (55.6)", "40 (88.9)", "45"),
-  zom_50mg       = c("36.1 (7.9)", "22 (48.9)", "38 (84.4)", "45"),
-  total          = c("71.3 (8.0)", "47 (52.2)", "78 (86.7)", "90"),
+  placebo = c("35.2 (8.1)", "25 (55.6)", "40 (88.9)", "45"),
+  zom_50mg = c("36.1 (7.9)", "22 (48.9)", "38 (84.4)", "45"),
+  total = c("71.3 (8.0)", "47 (52.2)", "78 (86.7)", "90"),
   stringsAsFactors = FALSE
 )
 
 df_pval <- data.frame(
   characteristic = c("Age", "Sex", "Weight"),
-  treatment      = c("50 (23.5)", "30 (14.1)", "45 (21.1)"),
-  placebo        = c("55 (25.8)", "28 (13.1)", "52 (24.4)"),
-  pvalue         = c("0.042", "0.310", "0.003"),
+  treatment = c("50 (23.5)", "30 (14.1)", "45 (21.1)"),
+  placebo = c("55 (25.8)", "28 (13.1)", "52 (24.4)"),
+  pvalue = c("0.042", "0.310", "0.003"),
   stringsAsFactors = FALSE
 )
 
@@ -45,7 +45,11 @@ test_that("fr_rows_matches with pattern creates selector", {
 })
 
 test_that("fr_rows_matches with pattern and ignore.case", {
-  sel <- fr_rows_matches("characteristic", pattern = "total", ignore.case = TRUE)
+  sel <- fr_rows_matches(
+    "characteristic",
+    pattern = "total",
+    ignore.case = TRUE
+  )
   expect_true(sel$ignore.case)
 })
 
@@ -64,13 +68,18 @@ test_that("fr_rows_matches errors when both value and pattern given", {
 })
 
 test_that("fr_rows_matches errors when pattern is not a scalar string", {
-  expect_error(fr_rows_matches("col", pattern = c("a", "b")), class = "rlang_error")
+  expect_error(
+    fr_rows_matches("col", pattern = c("a", "b")),
+    class = "rlang_error"
+  )
   expect_error(fr_rows_matches("col", pattern = 42), class = "rlang_error")
 })
 
 test_that("fr_rows_matches errors on non-logical ignore.case", {
-  expect_error(fr_rows_matches("col", value = "x", ignore.case = "yes"),
-               class = "rlang_error")
+  expect_error(
+    fr_rows_matches("col", value = "x", ignore.case = "yes"),
+    class = "rlang_error"
+  )
 })
 
 
@@ -82,8 +91,10 @@ test_that("fr_rows_matches resolves exact value in fr_styles pipeline", {
   spec <- df_style |>
     fr_table() |>
     fr_styles(
-      fr_row_style(rows = fr_rows_matches("characteristic", value = "Total"),
-                   bold = TRUE)
+      fr_row_style(
+        rows = fr_rows_matches("characteristic", value = "Total"),
+        bold = TRUE
+      )
     )
   # Selector should be resolved to integer row index
   style <- spec$cell_styles[[1]]
@@ -109,8 +120,11 @@ test_that("fr_rows_matches pattern with ignore.case resolves correctly", {
     fr_table() |>
     fr_styles(
       fr_row_style(
-        rows = fr_rows_matches("characteristic", pattern = "total",
-                               ignore.case = TRUE),
+        rows = fr_rows_matches(
+          "characteristic",
+          pattern = "total",
+          ignore.case = TRUE
+        ),
         bold = TRUE
       )
     )
@@ -136,11 +150,20 @@ test_that("fr_rows_matches errors when column not found in data", {
 
 test_that("fr_style stores all properties correctly", {
   s <- fr_style(
-    region = "body", rows = c(1L, 2L), cols = c("placebo", "total"),
-    bold = TRUE, italic = TRUE, underline = TRUE,
-    fg = "#CC0000", bg = "#F0F0F0", font_size = 10,
-    align = "center", valign = "middle",
-    indent = 0.25, colspan = 2L, rowspan = 3L
+    region = "body",
+    rows = c(1L, 2L),
+    cols = c("placebo", "total"),
+    bold = TRUE,
+    italic = TRUE,
+    underline = TRUE,
+    fg = "#CC0000",
+    bg = "#F0F0F0",
+    font_size = 10,
+    align = "center",
+    valign = "middle",
+    indent = 0.25,
+    colspan = 2L,
+    rowspan = 3L
   )
   expect_s3_class(s, "fr_cell_style")
   expect_equal(s$type, "cell")
@@ -205,9 +228,16 @@ test_that("fr_style with decimal align", {
 
 test_that("fr_row_style stores all properties", {
   rs <- fr_row_style(
-    rows = c(2L, 4L), bold = TRUE, italic = TRUE, underline = TRUE,
-    fg = "#003366", bg = "#EBF5FB", font_size = 8,
-    align = "right", valign = "bottom", height = 0.5
+    rows = c(2L, 4L),
+    bold = TRUE,
+    italic = TRUE,
+    underline = TRUE,
+    fg = "#003366",
+    bg = "#EBF5FB",
+    font_size = 8,
+    align = "right",
+    valign = "bottom",
+    height = 0.5
   )
   expect_s3_class(rs, "fr_cell_style")
   expect_equal(rs$type, "row")
@@ -244,9 +274,15 @@ test_that("fr_row_style cols is always NULL (row type)", {
 
 test_that("fr_col_style stores all properties", {
   cs <- fr_col_style(
-    cols = c("placebo", "zom_50mg"), bold = TRUE, italic = TRUE,
-    underline = TRUE, fg = "#003366", bg = "#EBF5FB",
-    font_size = 11, align = "center", valign = "middle"
+    cols = c("placebo", "zom_50mg"),
+    bold = TRUE,
+    italic = TRUE,
+    underline = TRUE,
+    fg = "#003366",
+    bg = "#EBF5FB",
+    font_size = 11,
+    align = "center",
+    valign = "middle"
   )
   expect_s3_class(cs, "fr_cell_style")
   expect_equal(cs$type, "col")
@@ -281,8 +317,10 @@ test_that("fr_col_style rows is always NULL (col type)", {
 # ══════════════════════════════════════════════════════════════════════════════
 
 test_that("fr_styles errors when first arg is not an fr_spec", {
-  expect_error(fr_styles("not a spec", fr_style(bold = TRUE)),
-               class = "rlang_error")
+  expect_error(
+    fr_styles("not a spec", fr_style(bold = TRUE)),
+    class = "rlang_error"
+  )
 })
 
 test_that("fr_styles resolves fr_rows_matches in fr_style (cell type)", {
@@ -395,7 +433,8 @@ test_that("fr_style_if with function (not formula)", {
         cols = "characteristic",
         condition = is_total,
         apply_to = "row",
-        bold = TRUE, bg = "#E8E8E8"
+        bold = TRUE,
+        bg = "#E8E8E8"
       )
     )
   style <- spec$cell_styles[[1]]
@@ -478,37 +517,41 @@ test_that("fr_style_if errors on non-formula/function condition", {
 
 test_that("fr_style_if validates apply_to", {
   expect_error(
-    fr_style_if(condition = ~ TRUE, apply_to = "column"),
+    fr_style_if(condition = ~TRUE, apply_to = "column"),
     class = "rlang_error"
   )
 })
 
 test_that("fr_style_if validates align", {
   expect_error(
-    fr_style_if(condition = ~ TRUE, align = "justify"),
+    fr_style_if(condition = ~TRUE, align = "justify"),
     class = "rlang_error"
   )
 })
 
 test_that("fr_style_if with valid align stores it", {
-  s <- fr_style_if(condition = ~ TRUE, align = "center")
+  s <- fr_style_if(condition = ~TRUE, align = "center")
   expect_equal(s$align, "center")
 })
 
 test_that("fr_style_if resolves named colours", {
-  s <- fr_style_if(condition = ~ TRUE, fg = "red", bg = "navy")
+  s <- fr_style_if(condition = ~TRUE, fg = "red", bg = "navy")
   expect_equal(s$fg, "#FF0000")
   expect_equal(s$bg, "#000080")
 })
 
 test_that("fr_style_if stores all style properties", {
   s <- fr_style_if(
-    condition = ~ TRUE,
+    condition = ~TRUE,
     cols = "x",
     apply_to = "row",
-    bold = TRUE, italic = TRUE, underline = TRUE,
-    fg = "#CC0000", bg = "#F0F0F0",
-    font_size = 8, align = "right"
+    bold = TRUE,
+    italic = TRUE,
+    underline = TRUE,
+    fg = "#CC0000",
+    bg = "#F0F0F0",
+    font_size = 8,
+    align = "right"
   )
   expect_s3_class(s, "fr_conditional_style")
   expect_s3_class(s, "fr_cell_style")
@@ -528,7 +571,7 @@ test_that("fr_style_if errors when column not found in data", {
     df_style |>
       fr_table() |>
       fr_styles(
-        fr_style_if(cols = "nonexistent", condition = ~ TRUE, bold = TRUE)
+        fr_style_if(cols = "nonexistent", condition = ~TRUE, bold = TRUE)
       ),
     "not found"
   )
@@ -629,8 +672,13 @@ test_that("fr_style_explain with cell style override", {
     fr_styles(
       fr_col_style(cols = "total", bg = "#EBF5FB"),
       fr_row_style(rows = 1L, bg = "#FFF3CD", bold = TRUE),
-      fr_style(region = "body", rows = 1L, cols = "total",
-               fg = "#CC0000", italic = TRUE)
+      fr_style(
+        region = "body",
+        rows = 1L,
+        cols = "total",
+        fg = "#CC0000",
+        italic = TRUE
+      )
     )
   result <- fr_style_explain(spec, row = 1L, col = "total")
   expect_length(result$layers, 3L)
@@ -671,8 +719,10 @@ test_that("fr_style_explain errors on unknown column name", {
 })
 
 test_that("fr_style_explain errors when spec is not fr_spec", {
-  expect_error(fr_style_explain("not a spec", row = 1L, col = 1L),
-               class = "rlang_error")
+  expect_error(
+    fr_style_explain("not a spec", row = 1L, col = 1L),
+    class = "rlang_error"
+  )
 })
 
 test_that("fr_style_explain skips non-body/stub region styles", {
@@ -738,9 +788,15 @@ test_that("fr_style_explain shows font_size, align, valign, indent overrides", {
   spec <- df_style |>
     fr_table() |>
     fr_styles(
-      fr_style(region = "body", rows = 1L, cols = "total",
-               font_size = 8, align = "right", valign = "bottom",
-               indent = 0.5)
+      fr_style(
+        region = "body",
+        rows = 1L,
+        cols = "total",
+        font_size = 8,
+        align = "right",
+        valign = "bottom",
+        indent = 0.5
+      )
     )
   result <- fr_style_explain(spec, row = 1L, col = "total")
   expect_equal(result$final$font_size, 8)
@@ -782,7 +838,8 @@ test_that("fr_style_if resolved styles are visible in fr_style_explain", {
         cols = "characteristic",
         condition = ~ .x == "Total",
         apply_to = "row",
-        bold = TRUE, bg = "#FFF3CD"
+        bold = TRUE,
+        bg = "#FFF3CD"
       )
     )
   result <- fr_style_explain(spec, row = 4L, col = "total")
@@ -820,12 +877,20 @@ test_that("fr_styles accumulates conditional styles across calls", {
   spec <- df_style |>
     fr_table() |>
     fr_styles(
-      fr_style_if(cols = "characteristic", condition = ~ .x == "Age",
-                  bold = TRUE, apply_to = "row")
+      fr_style_if(
+        cols = "characteristic",
+        condition = ~ .x == "Age",
+        bold = TRUE,
+        apply_to = "row"
+      )
     ) |>
     fr_styles(
-      fr_style_if(cols = "characteristic", condition = ~ .x == "Total",
-                  bg = "#F0F0F0", apply_to = "row")
+      fr_style_if(
+        cols = "characteristic",
+        condition = ~ .x == "Total",
+        bg = "#F0F0F0",
+        apply_to = "row"
+      )
     )
   expect_length(spec$cell_styles, 2L)
 })

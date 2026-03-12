@@ -6,7 +6,6 @@
 # saveRDS/readRDS.
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 #' Create a Reusable Table Recipe
 #'
 #' @description
@@ -85,8 +84,10 @@ fr_recipe <- function(...) {
   calls <- enexprs(...)
   if (length(calls) == 0L) {
     cli_abort(
-      c("At least one verb call is required.",
-        "i" = "Example: {.code fr_recipe(fr_page(font_size = 9), fr_hlines(\"header\"))}"),
+      c(
+        "At least one verb call is required.",
+        "i" = "Example: {.code fr_recipe(fr_page(font_size = 9), fr_hlines(\"header\"))}"
+      ),
       call = caller_env()
     )
   }
@@ -140,8 +141,10 @@ fr_apply <- function(spec, recipe) {
   check_fr_spec(spec, call = call)
   if (!inherits(recipe, "fr_recipe")) {
     cli_abort(
-      c("{.arg recipe} must be an {.cls fr_recipe} object (created by {.fn fr_recipe}).",
-        "x" = "You supplied {.obj_type_friendly {recipe}}."),
+      c(
+        "{.arg recipe} must be an {.cls fr_recipe} object (created by {.fn fr_recipe}).",
+        "x" = "You supplied {.obj_type_friendly {recipe}}."
+      ),
       call = call
     )
   }
@@ -220,13 +223,19 @@ print.fr_recipe <- function(x, ...) {
     # Extract key arguments (skip first which is the function name)
     args <- x[[i]][-1L]
     if (length(args) > 0L) {
-      arg_strs <- vapply(seq_along(args), function(j) {
-        nm <- names(args)[j]
-        val <- deparse(args[[j]], width.cutoff = 30L)[1L]
-        if (!is.null(nm) && nzchar(nm)) paste0(nm, "=", val) else val
-      }, character(1))
+      arg_strs <- vapply(
+        seq_along(args),
+        function(j) {
+          nm <- names(args)[j]
+          val <- deparse(args[[j]], width.cutoff = 30L)[1L]
+          if (!is.null(nm) && nzchar(nm)) paste0(nm, "=", val) else val
+        },
+        character(1)
+      )
       arg_str <- paste(arg_strs, collapse = ", ")
-      if (nchar(arg_str) > 50L) arg_str <- paste0(substr(arg_str, 1, 47), "...")
+      if (nchar(arg_str) > 50L) {
+        arg_str <- paste0(substr(arg_str, 1, 47), "...")
+      }
       cli::cli_text("  {i}. {fn_name}({arg_str})")
     } else {
       cli::cli_text("  {i}. {fn_name}()")

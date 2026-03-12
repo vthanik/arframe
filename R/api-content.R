@@ -2,7 +2,6 @@
 # api-content.R — Content metadata verbs: fr_titles, fr_footnotes
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # Shared content entry normalization
 # ══════════════════════════════════════════════════════════════════════════════
@@ -17,31 +16,44 @@
 #' @param call Caller environment for error messages.
 #' @return A title/footnote entry object.
 #' @noRd
-normalize_content_entry <- function(x, constructor, defaults, entry_name,
-                                    call) {
+normalize_content_entry <- function(
+  x,
+  constructor,
+  defaults,
+  entry_name,
+  call
+) {
   if (is.character(x)) {
     check_scalar_chr(x, arg = entry_name, call = call)
     inject(constructor(content = normalise_text(x, env = call), !!!defaults))
   } else if (is.list(x)) {
     content <- x[["content"]] %||% x[[1L]]
     if (is.null(content)) {
-      cli_abort(c(
-        "Named list {entry_name} must have a {.field content} element or an unnamed first element.",
-        "i" = 'Example: {.code list(content = "text", align = "center")}'
-      ), call = call)
+      cli_abort(
+        c(
+          "Named list {entry_name} must have a {.field content} element or an unnamed first element.",
+          "i" = 'Example: {.code list(content = "text", align = "center")}'
+        ),
+        call = call
+      )
     }
     check_scalar_chr(content, arg = paste(entry_name, "content"), call = call)
     overrides <- defaults
     for (nm in intersect(names(x), names(defaults))) {
       overrides[[nm]] <- x[[nm]]
     }
-    inject(constructor(content = normalise_text(content, env = call),
-                       !!!overrides))
+    inject(constructor(
+      content = normalise_text(content, env = call),
+      !!!overrides
+    ))
   } else {
-    cli_abort(c(
-      "Each {entry_name} must be a character scalar or a named list.",
-      "x" = "You supplied {.obj_type_friendly {x}}."
-    ), call = call)
+    cli_abort(
+      c(
+        "Each {entry_name} must be a character scalar or a named list.",
+        "x" = "You supplied {.obj_type_friendly {x}}."
+      ),
+      call = call
+    )
   }
 }
 
@@ -177,8 +189,13 @@ normalize_content_entry <- function(x, constructor, defaults, entry_name,
 #'   control, [fr_bold()] and [fr_italic()] for inline markup.
 #'
 #' @export
-fr_titles <- function(spec, ..., .align = "center", .bold = FALSE,
-                      .font_size = NULL) {
+fr_titles <- function(
+  spec,
+  ...,
+  .align = "center",
+  .bold = FALSE,
+  .font_size = NULL
+) {
   call <- caller_env()
   check_fr_spec(spec, call = call)
 
@@ -191,9 +208,14 @@ fr_titles <- function(spec, ..., .align = "center", .bold = FALSE,
   }
 
   defaults <- list(align = .align, bold = .bold, font_size = .font_size)
-  entries <- lapply(dots, normalize_content_entry,
-                    constructor = new_title_entry, defaults = defaults,
-                    entry_name = "title", call = call)
+  entries <- lapply(
+    dots,
+    normalize_content_entry,
+    constructor = new_title_entry,
+    defaults = defaults,
+    entry_name = "title",
+    call = call
+  )
 
   spec$meta$titles <- entries
   spec
@@ -375,29 +397,43 @@ fr_titles <- function(spec, ..., .align = "center", .bold = FALSE,
 #'   markup symbols.
 #'
 #' @export
-fr_footnotes <- function(spec, ..., .align = "left", .placement = "every",
-                         .font_size = NULL, .separator = FALSE) {
+fr_footnotes <- function(
+  spec,
+  ...,
+  .align = "left",
+  .placement = "every",
+  .font_size = NULL,
+  .separator = FALSE
+) {
   call <- caller_env()
   check_fr_spec(spec, call = call)
 
-  .align     <- match_arg_fr(.align,     c("left", "center", "right"), call = call)
-  .placement <- match_arg_fr(.placement, c("every", "last"),           call = call)
+  .align <- match_arg_fr(.align, c("left", "center", "right"), call = call)
+  .placement <- match_arg_fr(.placement, c("every", "last"), call = call)
   check_scalar_lgl(.separator, arg = ".separator", call = call)
 
   dots <- list(...)
   if (length(dots) == 0L) {
-    spec$meta$footnotes         <- list()
+    spec$meta$footnotes <- list()
     spec$meta$footnote_separator <- .separator
     return(spec)
   }
 
-  defaults <- list(align = .align, placement = .placement,
-                   font_size = .font_size)
-  entries <- lapply(dots, normalize_content_entry,
-                    constructor = new_footnote_entry, defaults = defaults,
-                    entry_name = "footnote", call = call)
+  defaults <- list(
+    align = .align,
+    placement = .placement,
+    font_size = .font_size
+  )
+  entries <- lapply(
+    dots,
+    normalize_content_entry,
+    constructor = new_footnote_entry,
+    defaults = defaults,
+    entry_name = "footnote",
+    call = call
+  )
 
-  spec$meta$footnotes          <- entries
+  spec$meta$footnotes <- entries
   spec$meta$footnote_separator <- .separator
   spec
 }

@@ -6,7 +6,6 @@
 #         get_backend(), fr_register_backend(), fr_backends()
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # detect_format()
 # ══════════════════════════════════════════════════════════════════════════════
@@ -79,15 +78,21 @@ test_that("fr_register_backend registers and fr_backends lists it", {
 
 test_that("fr_register_backend validates inputs", {
   expect_error(fr_register_backend("x", character(0), identity), "non-empty")
-  expect_error(fr_register_backend("x", "ext", "not_a_fn"), "must be a function")
+  expect_error(
+    fr_register_backend("x", "ext", "not_a_fn"),
+    "must be a function"
+  )
 })
 
 test_that("registered backend is usable via fr_render", {
   fe <- tlframe:::fr_env
   orig <- fe$backends
-  on.exit({
-    fe$backends <- orig
-  }, add = TRUE)
+  on.exit(
+    {
+      fe$backends <- orig
+    },
+    add = TRUE
+  )
 
   tmp <- tempfile(fileext = ".zzz")
   on.exit(unlink(tmp), add = TRUE)
@@ -195,7 +200,8 @@ test_that("finalize_spec skips width distribution when col_split is enabled", {
   # Widths should be individual estimates, not distributed
   total_width <- sum(vapply(
     Filter(function(c) !isFALSE(c$visible), result$columns),
-    function(c) c$width, numeric(1)
+    function(c) c$width,
+    numeric(1)
   ))
   # With col_split, total can exceed printable area
   # Just verify columns have numeric widths
@@ -557,7 +563,7 @@ test_that("fit_panel_widths scales data columns to fill printable area", {
   result <- tlframe:::fit_panel_widths(spec, col_panels)
 
   printable_w <- tlframe:::printable_area_inches(spec$page)[["width"]]
-  available <- printable_w - 1.5  # minus stub width
+  available <- printable_w - 1.5 # minus stub width
 
   # Stub should keep original width
   expect_equal(result$columns$stub$width, 1.5)
@@ -703,7 +709,7 @@ test_that("match_trt_to_columns is case-insensitive", {
 test_that("match_trt_to_columns only matches column labels (not spanners)", {
   # Columns have sub-labels, not treatment names
   columns <- list(
-    pt     = fr_col("Parameter"),
+    pt = fr_col("Parameter"),
     bl_pbo = fr_col("Baseline"),
     val_pbo = fr_col("Value"),
     cfb_pbo = fr_col("CFB")
@@ -779,10 +785,10 @@ test_that("match_trt_to_spans returns empty when no spans", {
 
 test_that("mixed column + spanner N-count matching works together", {
   columns <- list(
-    pt     = fr_col("Parameter"),
+    pt = fr_col("Parameter"),
     bl_pbo = fr_col("Baseline"),
     val_pbo = fr_col("Value"),
-    total  = fr_col("Total")
+    total = fr_col("Total")
   )
   spans <- list(
     list(label = "Placebo", columns = c("bl_pbo", "val_pbo"), level = 1L)

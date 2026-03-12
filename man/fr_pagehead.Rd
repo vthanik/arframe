@@ -10,7 +10,7 @@ fr_pagehead(
   center = NULL,
   right = NULL,
   font_size = NULL,
-  bold = FALSE
+  bold = NULL
 )
 }
 \arguments{
@@ -28,7 +28,7 @@ evaluated at render time.}
 \item{font_size}{Font size for the header text in points. \code{NULL} inherits
 from the page font size (\code{fr_page(font_size = ...)}).}
 
-\item{bold}{Logical. Whether header text is bold. Default \code{FALSE}.}
+\item{bold}{Logical. Whether header text is bold. Default \code{NULL} (not bold).}
 }
 \value{
 A modified \code{fr_spec}. Header stored in \code{spec$pagehead}.
@@ -45,7 +45,8 @@ Supports \code{{token}} placeholders, evaluated at render time:
 \item Custom tokens defined via \code{fr_page(tokens = list(...))}.
 }
 
-Calling \code{fr_pagehead()} again \strong{replaces} the previous header.
+Calling \code{fr_pagehead()} again \strong{merges} with the previous header:
+only the arguments you explicitly supply are changed.
 }
 \section{Regulatory conventions}{
 

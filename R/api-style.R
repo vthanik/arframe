@@ -3,7 +3,6 @@
 #               fr_styles, fr_rows_matches, fr_style_explain
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # fr_rows_matches — Row selector helper for fr_row_style / fr_style
 # ══════════════════════════════════════════════════════════════════════════════
@@ -99,36 +98,50 @@
 #'   [fr_styles()] to apply styles to a spec.
 #'
 #' @export
-fr_rows_matches <- function(col, value = NULL, pattern = NULL,
-                             ignore.case = FALSE) {
+fr_rows_matches <- function(
+  col,
+  value = NULL,
+  pattern = NULL,
+  ignore.case = FALSE
+) {
   call <- caller_env()
 
   if (!is.character(col) || length(col) != 1L) {
-    cli_abort(c("{.arg col} must be a single character string (column name).",
-                "x" = "You supplied {.obj_type_friendly {col}}."),
-              call = call)
+    cli_abort(
+      c(
+        "{.arg col} must be a single character string (column name).",
+        "x" = "You supplied {.obj_type_friendly {col}}."
+      ),
+      call = call
+    )
   }
   if (is.null(value) && is.null(pattern)) {
-    cli_abort("Provide either {.arg value} (exact match) or {.arg pattern} (regex).",
-              call = call)
+    cli_abort(
+      "Provide either {.arg value} (exact match) or {.arg pattern} (regex).",
+      call = call
+    )
   }
   if (!is.null(value) && !is.null(pattern)) {
     cli_abort("Provide {.arg value} or {.arg pattern}, not both.", call = call)
   }
   if (!is.null(pattern) && (!is.character(pattern) || length(pattern) != 1L)) {
-    cli_abort("{.arg pattern} must be a single character regex string.", call = call)
+    cli_abort(
+      "{.arg pattern} must be a single character regex string.",
+      call = call
+    )
   }
   check_scalar_lgl(ignore.case, arg = "ignore.case", call = call)
 
   structure(
-    list(col         = col,
-         value       = value,
-         pattern     = pattern,
-         ignore.case = ignore.case),
+    list(
+      col = col,
+      value = value,
+      pattern = pattern,
+      ignore.case = ignore.case
+    ),
     class = "fr_rows_selector"
   )
 }
-
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -276,36 +289,53 @@ fr_rows_matches <- function(col, value = NULL, pattern = NULL,
 #'   column-level styling, [fr_styles()] to apply styles to a spec.
 #'
 #' @export
-fr_style <- function(region = "body", rows = NULL, cols = NULL,
-                     bold = NULL, italic = NULL, underline = NULL,
-                     fg = NULL, bg = NULL, font_size = NULL,
-                     align = NULL, valign = NULL, indent = NULL,
-                     colspan = NULL, rowspan = NULL) {
+fr_style <- function(
+  region = "body",
+  rows = NULL,
+  cols = NULL,
+  bold = NULL,
+  italic = NULL,
+  underline = NULL,
+  fg = NULL,
+  bg = NULL,
+  font_size = NULL,
+  align = NULL,
+  valign = NULL,
+  indent = NULL,
+  colspan = NULL,
+  rowspan = NULL
+) {
   call <- caller_env()
   region <- match_arg_fr(region, c("body", "header", "stub"), call = call)
 
   cols <- resolve_cols_expr(enquo(cols), call = call)
 
-  if (!is.null(align))  align  <- match_arg_fr(align,  fr_env$valid_aligns,  call = call)
-  if (!is.null(valign)) valign <- match_arg_fr(valign, fr_env$valid_valigns, call = call)
-  if (!is.null(font_size)) check_positive_num(font_size, arg = "font_size", call = call)
+  if (!is.null(align)) {
+    align <- match_arg_fr(align, fr_env$valid_aligns, call = call)
+  }
+  if (!is.null(valign)) {
+    valign <- match_arg_fr(valign, fr_env$valid_valigns, call = call)
+  }
+  if (!is.null(font_size)) {
+    check_positive_num(font_size, arg = "font_size", call = call)
+  }
 
   new_fr_cell_style(
-    type      = "cell",
-    region    = region,
-    rows      = rows,
-    cols      = cols,
-    bold      = bold,
-    italic    = italic,
+    type = "cell",
+    region = region,
+    rows = rows,
+    cols = cols,
+    bold = bold,
+    italic = italic,
     underline = underline,
-    fg        = fg,
-    bg        = bg,
+    fg = fg,
+    bg = bg,
     font_size = font_size,
-    align     = align,
-    valign    = valign,
-    indent    = indent,
-    colspan   = colspan,
-    rowspan   = rowspan
+    align = align,
+    valign = valign,
+    indent = indent,
+    colspan = colspan,
+    rowspan = rowspan
   )
 }
 
@@ -393,27 +423,43 @@ fr_style <- function(region = "body", rows = NULL, cols = NULL,
 #'   cell-level styling, [fr_styles()] to apply to a spec.
 #'
 #' @export
-fr_row_style <- function(rows = NULL, bold = NULL, italic = NULL,
-                          underline = NULL, fg = NULL, bg = NULL,
-                          font_size = NULL, align = NULL, valign = NULL,
-                          height = NULL) {
+fr_row_style <- function(
+  rows = NULL,
+  bold = NULL,
+  italic = NULL,
+  underline = NULL,
+  fg = NULL,
+  bg = NULL,
+  font_size = NULL,
+  align = NULL,
+  valign = NULL,
+  height = NULL
+) {
   call <- caller_env()
-  if (!is.null(align))  align  <- match_arg_fr(align,  fr_env$valid_aligns,  call = call)
-  if (!is.null(valign)) valign <- match_arg_fr(valign, fr_env$valid_valigns, call = call)
-  if (!is.null(font_size)) check_positive_num(font_size, arg = "font_size", call = call)
-  if (!is.null(height))    check_positive_num(height, arg = "height", call = call)
+  if (!is.null(align)) {
+    align <- match_arg_fr(align, fr_env$valid_aligns, call = call)
+  }
+  if (!is.null(valign)) {
+    valign <- match_arg_fr(valign, fr_env$valid_valigns, call = call)
+  }
+  if (!is.null(font_size)) {
+    check_positive_num(font_size, arg = "font_size", call = call)
+  }
+  if (!is.null(height)) {
+    check_positive_num(height, arg = "height", call = call)
+  }
 
   new_fr_row_style(
-    rows      = rows,
-    bold      = bold,
-    italic    = italic,
+    rows = rows,
+    bold = bold,
+    italic = italic,
     underline = underline,
-    fg        = fg,
-    bg        = bg,
+    fg = fg,
+    bg = bg,
     font_size = font_size,
-    align     = align,
-    valign    = valign,
-    height    = height
+    align = align,
+    valign = valign,
+    height = height
   )
 }
 
@@ -517,26 +563,40 @@ fr_row_style <- function(rows = NULL, bold = NULL, italic = NULL,
 #'   [fr_col()] for column-level alignment via `align`.
 #'
 #' @export
-fr_col_style <- function(cols = NULL, bold = NULL, italic = NULL,
-                          underline = NULL, fg = NULL, bg = NULL,
-                          font_size = NULL, align = NULL, valign = NULL) {
+fr_col_style <- function(
+  cols = NULL,
+  bold = NULL,
+  italic = NULL,
+  underline = NULL,
+  fg = NULL,
+  bg = NULL,
+  font_size = NULL,
+  align = NULL,
+  valign = NULL
+) {
   call <- caller_env()
   cols <- resolve_cols_expr(enquo(cols), call = call)
 
-  if (!is.null(align))  align  <- match_arg_fr(align,  fr_env$valid_aligns,  call = call)
-  if (!is.null(valign)) valign <- match_arg_fr(valign, fr_env$valid_valigns, call = call)
-  if (!is.null(font_size)) check_positive_num(font_size, arg = "font_size", call = call)
+  if (!is.null(align)) {
+    align <- match_arg_fr(align, fr_env$valid_aligns, call = call)
+  }
+  if (!is.null(valign)) {
+    valign <- match_arg_fr(valign, fr_env$valid_valigns, call = call)
+  }
+  if (!is.null(font_size)) {
+    check_positive_num(font_size, arg = "font_size", call = call)
+  }
 
   new_fr_col_style(
-    cols      = cols,
-    bold      = bold,
-    italic    = italic,
+    cols = cols,
+    bold = bold,
+    italic = italic,
     underline = underline,
-    fg        = fg,
-    bg        = bg,
+    fg = fg,
+    bg = bg,
     font_size = font_size,
-    align     = align,
-    valign    = valign
+    align = align,
+    valign = valign
   )
 }
 
@@ -659,13 +719,17 @@ fr_styles <- function(spec, ...) {
   check_fr_spec(spec, call = call)
 
   dots <- list(...)
-  if (length(dots) == 0L) return(spec)
+  if (length(dots) == 0L) {
+    return(spec)
+  }
 
   for (i in seq_along(dots)) {
     if (!inherits(dots[[i]], "fr_cell_style")) {
       cli_abort(
-        c("Argument {i} passed to {.fn fr_styles} is not a style object.",
-          "i" = "Use {.fn fr_style}, {.fn fr_row_style}, or {.fn fr_col_style} to create styles."),
+        c(
+          "Argument {i} passed to {.fn fr_styles} is not a style object.",
+          "i" = "Use {.fn fr_style}, {.fn fr_row_style}, or {.fn fr_col_style} to create styles."
+        ),
         call = call
       )
     }
@@ -838,38 +902,48 @@ fr_styles <- function(spec, ...) {
 #'
 #' @seealso [fr_styles()], [fr_style()], [fr_rows_matches()]
 #' @export
-fr_style_if <- function(condition,
-                         cols = NULL,
-                         apply_to = "cell",
-                         bold = NULL, italic = NULL, underline = NULL,
-                         fg = NULL, bg = NULL, font_size = NULL,
-                         align = NULL) {
+fr_style_if <- function(
+  condition,
+  cols = NULL,
+  apply_to = "cell",
+  bold = NULL,
+  italic = NULL,
+  underline = NULL,
+  fg = NULL,
+  bg = NULL,
+  font_size = NULL,
+  align = NULL
+) {
   call <- caller_env()
 
   if (!is.function(condition) && !inherits(condition, "formula")) {
     cli_abort(
-      c("{.arg condition} must be a formula (e.g., {.code ~ .x == \"Total\"}) or function.",
-        "x" = "You supplied {.obj_type_friendly {condition}}."),
+      c(
+        "{.arg condition} must be a formula (e.g., {.code ~ .x == \"Total\"}) or function.",
+        "x" = "You supplied {.obj_type_friendly {condition}}."
+      ),
       call = call
     )
   }
   cols <- resolve_cols_expr(enquo(cols), call = call)
   apply_to <- match_arg_fr(apply_to, c("cell", "row"), call = call)
 
-  if (!is.null(align)) align <- match_arg_fr(align, fr_env$valid_aligns, call = call)
+  if (!is.null(align)) {
+    align <- match_arg_fr(align, fr_env$valid_aligns, call = call)
+  }
 
   structure(
     list(
       condition = condition,
-      cols      = cols,
-      apply_to  = apply_to,
-      bold      = bold,
-      italic    = italic,
+      cols = cols,
+      apply_to = apply_to,
+      bold = bold,
+      italic = italic,
       underline = underline,
-      fg        = if (!is.null(fg)) resolve_color(fg, call = call) else NULL,
-      bg        = if (!is.null(bg)) resolve_color(bg, call = call) else NULL,
+      fg = if (!is.null(fg)) resolve_color(fg, call = call) else NULL,
+      bg = if (!is.null(bg)) resolve_color(bg, call = call) else NULL,
       font_size = font_size,
-      align     = align
+      align = align
     ),
     class = c("fr_conditional_style", "fr_cell_style")
   )
@@ -995,10 +1069,17 @@ fr_style_explain <- function(spec, row, col) {
 
   # Collect matching styles
   layers <- list()
-  final <- list(bold = FALSE, italic = FALSE, underline = FALSE,
-                fg = "#000000", bg = NA_character_, indent = 0,
-                font_size = spec$page$font_size, align = "left",
-                valign = "top")
+  final <- list(
+    bold = FALSE,
+    italic = FALSE,
+    underline = FALSE,
+    fg = "#000000",
+    bg = NA_character_,
+    indent = 0,
+    font_size = spec$page$font_size,
+    align = "left",
+    valign = "top"
+  )
 
   # Detect column default alignment
   if (!is.null(spec$columns[[col_name]])) {
@@ -1007,16 +1088,22 @@ fr_style_explain <- function(spec, row, col) {
 
   for (i in seq_along(spec$cell_styles)) {
     style <- spec$cell_styles[[i]]
-    if (style$region != "body" && style$region != "stub") next
+    if (style$region != "body" && style$region != "stub") {
+      next
+    }
 
     # Check row match
-    row_match <- is.null(style$rows) || identical(style$rows, "all") ||
+    row_match <- is.null(style$rows) ||
+      identical(style$rows, "all") ||
       (row %in% style$rows)
-    if (!row_match) next
+    if (!row_match) {
+      next
+    }
 
     # Check col match
-    col_match <- if (style$type == "row" || is.null(style$cols) ||
-                     identical(style$cols, "all")) {
+    col_match <- if (
+      style$type == "row" || is.null(style$cols) || identical(style$cols, "all")
+    ) {
       TRUE
     } else if (is.character(style$cols)) {
       col_name %in% style$cols
@@ -1025,13 +1112,24 @@ fr_style_explain <- function(spec, row, col) {
     } else {
       TRUE
     }
-    if (!col_match) next
+    if (!col_match) {
+      next
+    }
 
     # This style matches
     layer <- list(index = i, type = style$type, region = style$region)
     props <- character(0)
-    for (prop in c("bold", "italic", "underline", "fg", "bg",
-                   "font_size", "align", "valign", "indent")) {
+    for (prop in c(
+      "bold",
+      "italic",
+      "underline",
+      "fg",
+      "bg",
+      "font_size",
+      "align",
+      "valign",
+      "indent"
+    )) {
       val <- style[[prop]]
       if (!is.null(val)) {
         final[[prop]] <- val
@@ -1058,7 +1156,9 @@ fr_style_explain <- function(spec, row, col) {
   }
 
   cli::cli_text("")
-  cli::cli_text("Final: bold={final$bold}, italic={final$italic}, fg={final$fg}, bg={final$bg}, align={final$align}, valign={final$valign}, indent={final$indent}")
+  cli::cli_text(
+    "Final: bold={final$bold}, italic={final$italic}, fg={final$fg}, bg={final$bg}, align={final$align}, valign={final$valign}, indent={final$indent}"
+  )
 
   invisible(list(final = final, layers = layers))
 }
@@ -1096,13 +1196,17 @@ resolve_conditional_style <- function(cond_style, data, call = caller_env()) {
       as.logical(condition(values)),
       error = function(e) {
         cli_abort(
-          c("Error evaluating {.fn fr_style_if} condition: {conditionMessage(e)}"),
+          c(
+            "Error evaluating {.fn fr_style_if} condition: {conditionMessage(e)}"
+          ),
           call = call
         )
       }
     )
     matched_rows <- which(mask)
-    if (length(matched_rows) == 0L) return(list())
+    if (length(matched_rows) == 0L) {
+      return(list())
+    }
 
     # Build a single style with all matched rows
     style_args <- list(
@@ -1119,7 +1223,6 @@ resolve_conditional_style <- function(cond_style, data, call = caller_env()) {
       align = cond_style$align
     )
     return(list(inject(new_fr_cell_style(!!!style_args))))
-
   } else {
     # Column-based condition
     results <- list()
@@ -1135,35 +1238,49 @@ resolve_conditional_style <- function(cond_style, data, call = caller_env()) {
         as.logical(condition(values)),
         error = function(e) {
           cli_abort(
-            c("Error evaluating {.fn fr_style_if} condition on column {.val {col}}: {conditionMessage(e)}"),
+            c(
+              "Error evaluating {.fn fr_style_if} condition on column {.val {col}}: {conditionMessage(e)}"
+            ),
             call = call
           )
         }
       )
       mask[is.na(mask)] <- FALSE
       matched_rows <- which(mask)
-      if (length(matched_rows) == 0L) next
+      if (length(matched_rows) == 0L) {
+        next
+      }
 
       if (cond_style$apply_to == "row") {
         # Apply to all columns in matched rows
         style <- new_fr_cell_style(
-          type = "row", region = "body",
-          rows = as.integer(matched_rows), cols = NULL,
-          bold = cond_style$bold, italic = cond_style$italic,
+          type = "row",
+          region = "body",
+          rows = as.integer(matched_rows),
+          cols = NULL,
+          bold = cond_style$bold,
+          italic = cond_style$italic,
           underline = cond_style$underline,
-          fg = cond_style$fg, bg = cond_style$bg,
-          font_size = cond_style$font_size, align = cond_style$align
+          fg = cond_style$fg,
+          bg = cond_style$bg,
+          font_size = cond_style$font_size,
+          align = cond_style$align
         )
         results <- c(results, list(style))
       } else {
         # Apply only to the specific column cells
         style <- new_fr_cell_style(
-          type = "cell", region = "body",
-          rows = as.integer(matched_rows), cols = col,
-          bold = cond_style$bold, italic = cond_style$italic,
+          type = "cell",
+          region = "body",
+          rows = as.integer(matched_rows),
+          cols = col,
+          bold = cond_style$bold,
+          italic = cond_style$italic,
           underline = cond_style$underline,
-          fg = cond_style$fg, bg = cond_style$bg,
-          font_size = cond_style$font_size, align = cond_style$align
+          fg = cond_style$fg,
+          bg = cond_style$bg,
+          font_size = cond_style$font_size,
+          align = cond_style$align
         )
         results <- c(results, list(style))
       }

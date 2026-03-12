@@ -2,7 +2,6 @@
 # helpers.R — Error conditions, text utilities, internal helpers
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # 1. Typed Error Conditions
 #
@@ -27,19 +26,6 @@ tlframe_error <- function(message, ..., class = NULL, call = caller_env()) {
   cli_abort(message, ..., class = c(class, "tlframe_error"), call = call)
 }
 
-#' Render error (RTF or PDF backend)
-#' @noRd
-tlframe_error_render <- function(message, format, ..., call = caller_env()) {
-  tlframe_error(message, ..., format = format,
-                class = "tlframe_error_render", call = call)
-}
-
-#' Layout error (pagination, column split)
-#' @noRd
-tlframe_error_layout <- function(message, ..., call = caller_env()) {
-  tlframe_error(message, ..., class = "tlframe_error_layout", call = call)
-}
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 2. Text Normalisation
@@ -60,35 +46,22 @@ tlframe_error_layout <- function(message, ..., call = caller_env()) {
 #' @param call Caller environment for error messages.
 #' @return Character scalar (plain or with embedded sentinels).
 #' @noRd
-normalise_text <- function(x,
-                            arg = "text",
-                            env = parent.frame(),
-                            call = caller_env()) {
+normalise_text <- function(
+  x,
+  arg = "text",
+  env = parent.frame(),
+  call = caller_env()
+) {
   if (!is.character(x) || length(x) != 1L) {
     cli_abort(
-      c("{.arg {arg}} must be a single character string.",
-        "x" = "You supplied {.obj_type_friendly {x}}."),
+      c(
+        "{.arg {arg}} must be a single character string.",
+        "x" = "You supplied {.obj_type_friendly {x}}."
+      ),
       call = call
     )
   }
   eval_markup(x, env = env)
-}
-
-
-#' Normalise a character vector (multi-line titles/footnotes)
-#' @noRd
-normalise_text_vec <- function(texts,
-                                arg = "...",
-                                env = parent.frame(),
-                                call = caller_env()) {
-  if (!is.character(texts)) {
-    cli_abort(
-      c("{.arg {arg}} must be character strings.",
-        "x" = "You supplied {.obj_type_friendly {texts}}."),
-      call = call
-    )
-  }
-  eval_markup_vec(texts, env = env)
 }
 
 
@@ -113,8 +86,10 @@ resolve_rows_selector <- function(selector, data, call = caller_env()) {
 
   if (!col %in% names(data)) {
     cli_abort(
-      c("{.fn fr_rows_matches}: column {.val {col}} not found in the data.",
-        "i" = "Available columns: {.val {names(data)}}."),
+      c(
+        "{.fn fr_rows_matches}: column {.val {col}} not found in the data.",
+        "i" = "Available columns: {.val {names(data)}}."
+      ),
       call = call
     )
   }
@@ -123,8 +98,11 @@ resolve_rows_selector <- function(selector, data, call = caller_env()) {
 
   if (!is.null(selector$pattern)) {
     # Regex pattern match
-    matched <- grep(selector$pattern, as.character(col_vec),
-                    ignore.case = selector$ignore.case)
+    matched <- grep(
+      selector$pattern,
+      as.character(col_vec),
+      ignore.case = selector$ignore.case
+    )
   } else {
     # Exact value match
     matched <- which(col_vec == selector$value)
@@ -167,21 +145,32 @@ resolve_rows_selector <- function(selector, data, call = caller_env()) {
 #' @return NULL, character vector, or quosure (for deferred resolution).
 #' @noRd
 resolve_cols_expr <- function(quo, call = caller_env()) {
-  if (quo_is_null(quo)) return(NULL)
+  if (quo_is_null(quo)) {
+    return(NULL)
+  }
 
-  tryCatch({
-    val <- eval_tidy(quo)
-    if (is.null(val)) return(NULL)
-    if (is.character(val) || is.numeric(val)) return(val)
-    cli_abort(
-      c("{.arg cols} must be a character vector or tidyselect expression.",
-        "x" = "You supplied {.obj_type_friendly {val}}."),
-      call = call
-    )
-  }, error = function(e) {
-    # Likely a tidyselect expression — store quosure for deferred resolution
-    quo
-  })
+  tryCatch(
+    {
+      val <- eval_tidy(quo)
+      if (is.null(val)) {
+        return(NULL)
+      }
+      if (is.character(val) || is.numeric(val)) {
+        return(val)
+      }
+      cli_abort(
+        c(
+          "{.arg cols} must be a character vector or tidyselect expression.",
+          "x" = "You supplied {.obj_type_friendly {val}}."
+        ),
+        call = call
+      )
+    },
+    error = function(e) {
+      # Likely a tidyselect expression — store quosure for deferred resolution
+      quo
+    }
+  )
 }
 
 
@@ -214,7 +203,9 @@ resolve_style_cols <- function(style, data, call = caller_env()) {
 #' @return Character scalar with sentinels stripped.
 #' @noRd
 label_to_plain <- function(label) {
-  if (!is.character(label)) return(as.character(label))
+  if (!is.character(label)) {
+    return(as.character(label))
+  }
   sentinel_to_plain(label)
 }
 
@@ -234,20 +225,42 @@ label_to_plain <- function(label) {
 #' @noRd
 apply_fr_theme <- function(spec) {
   setup <- fr_env$theme
-  if (is.null(setup) || length(setup) == 0L) return(spec)
+  if (is.null(setup) || length(setup) == 0L) {
+    return(spec)
+  }
 
   # Page defaults
-  spec <- apply_settings_section(spec, setup, fr_page,
-    c("orientation", "paper", "font_family", "font_size", "margins", "tokens",
-      "col_gap"))
+  spec <- apply_settings_section(
+    spec,
+    setup,
+    fr_page,
+    c(
+      "orientation",
+      "paper",
+      "font_family",
+      "font_size",
+      "margins",
+      "tokens",
+      "col_gap",
+      "continuation"
+    )
+  )
 
   # Running header
-  spec <- apply_settings_section(spec, setup[["pagehead"]], fr_pagehead,
-    c("left", "center", "right", "font_size", "bold"))
+  spec <- apply_settings_section(
+    spec,
+    setup[["pagehead"]],
+    fr_pagehead,
+    c("left", "center", "right", "font_size", "bold")
+  )
 
   # Running footer
-  spec <- apply_settings_section(spec, setup[["pagefoot"]], fr_pagefoot,
-    c("left", "center", "right", "font_size", "bold"))
+  spec <- apply_settings_section(
+    spec,
+    setup[["pagefoot"]],
+    fr_pagefoot,
+    c("left", "center", "right", "font_size", "bold")
+  )
 
   # Horizontal rules
   if (!is.null(setup[["hlines"]])) {
@@ -260,9 +273,18 @@ apply_fr_theme <- function(spec) {
   }
 
   # Spacing
-  spec <- apply_settings_section(spec, setup[["spacing"]], fr_spacing,
-    c("titles_after", "footnotes_before", "pagehead_after",
-      "pagefoot_before", "page_by_after"))
+  spec <- apply_settings_section(
+    spec,
+    setup[["spacing"]],
+    fr_spacing,
+    c(
+      "titles_after",
+      "footnotes_before",
+      "pagehead_after",
+      "pagefoot_before",
+      "page_by_after"
+    )
+  )
 
   # Column spaces/split/stub/n_format defaults (from theme)
   if (!is.null(setup[["spaces"]])) {
@@ -281,9 +303,22 @@ apply_fr_theme <- function(spec) {
   }
 
   # Header defaults (from theme)
-  if (!is.null(setup[["header"]])) {
-    h <- setup[["header"]]
-    if (!is.null(h$span_gap))  spec$header$span_gap  <- h$span_gap
+  spec <- apply_settings_section(
+    spec,
+    setup[["header"]],
+    fr_header,
+    c("align", "valign", "bold", "bg", "fg", "font_size", "repeat_on_page")
+  )
+  if (!is.null(setup[["header"]]$span_gap)) {
+    spec$header$span_gap <- setup[["header"]]$span_gap
+  }
+
+  # Row defaults: page_by_bold, page_by_align
+  if (!is.null(setup[["page_by_bold"]])) {
+    spec$body$page_by_bold <- setup[["page_by_bold"]]
+  }
+  if (!is.null(setup[["page_by_align"]])) {
+    spec$body$page_by_align <- setup[["page_by_align"]]
   }
 
   # Footnote separator default
@@ -307,10 +342,14 @@ apply_fr_theme <- function(spec) {
 #' @return Modified fr_spec.
 #' @noRd
 apply_settings_section <- function(spec, cfg_section, verb_fn, param_names) {
-  if (!is.list(cfg_section)) return(spec)
+  if (!is.list(cfg_section)) {
+    return(spec)
+  }
   args <- cfg_section[intersect(names(cfg_section), param_names)]
   args <- args[!vapply(args, is.null, logical(1))]
-  if (length(args) == 0L) return(spec)
+  if (length(args) == 0L) {
+    return(spec)
+  }
   inject(verb_fn(spec, !!!args))
 }
 
@@ -341,6 +380,6 @@ stub_column_names <- function(columns) {
 split_footnotes <- function(footnotes) {
   list(
     every = Filter(function(fn) fn$placement == "every", footnotes),
-    last  = Filter(function(fn) fn$placement == "last", footnotes)
+    last = Filter(function(fn) fn$placement == "last", footnotes)
   )
 }

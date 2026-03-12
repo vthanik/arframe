@@ -13,24 +13,6 @@ test_that("tlframe_error raises error with tlframe_error class", {
   )
 })
 
-test_that("tlframe_error_render carries format metadata", {
-  err <- tryCatch(
-    tlframe_error_render("render failed", format = "rtf"),
-    tlframe_error_render = function(e) e
-  )
-  expect_true(inherits(err, "tlframe_error_render"))
-  expect_true(inherits(err, "tlframe_error"))
-})
-
-
-test_that("tlframe_error_layout has correct class hierarchy", {
-  err <- tryCatch(
-    tlframe_error_layout("layout failed"),
-    tlframe_error_layout = function(e) e
-  )
-  expect_true(inherits(err, "tlframe_error_layout"))
-  expect_true(inherits(err, "tlframe_error"))
-})
 
 test_that("tlframe_error supports cli interpolation via ...", {
   # cli_abort evaluates glue expressions in caller_env(), which is
@@ -64,17 +46,6 @@ test_that("normalise_text errors on non-character", {
 
 test_that("normalise_text errors on vector input", {
   expect_error(normalise_text(c("a", "b")), class = "rlang_error")
-})
-
-test_that("normalise_text_vec handles character vectors", {
-  result <- normalise_text_vec(c("plain", "{fr_bold('x')}"))
-  expect_length(result, 2)
-  expect_equal(result[1], "plain")
-  expect_true(grepl("BOLD", result[2]))
-})
-
-test_that("normalise_text_vec errors on non-character", {
-  expect_error(normalise_text_vec(123), class = "rlang_error")
 })
 
 

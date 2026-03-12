@@ -2,7 +2,6 @@
 # api-spans.R — Spanning header verb: fr_spans
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # fr_spans — Add spanning column headers
 # ══════════════════════════════════════════════════════════════════════════════
@@ -167,12 +166,16 @@ fr_spans <- function(spec, ..., .level = 1L, .hline = TRUE, .gap = NULL) {
   }
 
   quos <- enquos(...)
-  if (length(quos) == 0L) return(spec)
+  if (length(quos) == 0L) {
+    return(spec)
+  }
 
   if (is.null(names(quos)) || any(names(quos) == "")) {
     cli_abort(
-      c("All arguments to {.fn fr_spans} must be named.",
-        "i" = 'The name is the span label: {.code fr_spans(spec, "Treatment" = c("col1", "col2"))}.'),
+      c(
+        "All arguments to {.fn fr_spans} must be named.",
+        "i" = 'The name is the span label: {.code fr_spans(spec, "Treatment" = c("col1", "col2"))}.'
+      ),
       call = call
     )
   }
@@ -181,30 +184,43 @@ fr_spans <- function(spec, ..., .level = 1L, .hline = TRUE, .gap = NULL) {
     cols_quo <- quos[[label]]
 
     # Try direct evaluation first (character vectors), fall back to tidyselect
-    cols <- tryCatch({
-      val <- eval_tidy(cols_quo)
-      if (!is.character(val) || length(val) == 0L) {
-        cli_abort(
-          c("Span {.val {label}}: value must be a non-empty character vector or tidyselect expression.",
-            "x" = "You supplied {.obj_type_friendly {val}}."),
-          call = call
+    cols <- tryCatch(
+      {
+        val <- eval_tidy(cols_quo)
+        if (!is.character(val) || length(val) == 0L) {
+          cli_abort(
+            c(
+              "Span {.val {label}}: value must be a non-empty character vector or tidyselect expression.",
+              "x" = "You supplied {.obj_type_friendly {val}}."
+            ),
+            call = call
+          )
+        }
+        val
+      },
+      error = function(e) {
+        # Try as tidyselect expression
+        pos <- tidyselect::eval_select(
+          cols_quo,
+          data = spec$data,
+          error_call = call
         )
+        if (length(pos) == 0L) {
+          cli_abort(
+            c("Span {.val {label}}: tidyselect expression matched no columns."),
+            call = call
+          )
+        }
+        names(pos)
       }
-      val
-    }, error = function(e) {
-      # Try as tidyselect expression
-      pos <- tidyselect::eval_select(cols_quo, data = spec$data, error_call = call)
-      if (length(pos) == 0L) {
-        cli_abort(
-          c("Span {.val {label}}: tidyselect expression matched no columns."),
-          call = call
-        )
-      }
-      names(pos)
-    })
+    )
 
-    validate_cols_exist(cols, names(spec$data),
-                        arg = paste0("span '", label, "'"), call = call)
+    validate_cols_exist(
+      cols,
+      names(spec$data),
+      arg = paste0("span '", label, "'"),
+      call = call
+    )
     new_fr_span(label, cols, level = .level, hline = .hline)
   })
 
@@ -218,8 +234,10 @@ fr_spans <- function(spec, ..., .level = 1L, .hline = TRUE, .gap = NULL) {
       dup_cols <- unique(dups)
       lvl <- .level
       cli_abort(
-        c("Columns {.val {dup_cols}} appear in multiple spans at level {lvl}.",
-          "i" = "Each column can appear in at most one span per level."),
+        c(
+          "Columns {.val {dup_cols}} appear in multiple spans at level {lvl}.",
+          "i" = "Each column can appear in at most one span per level."
+        ),
         call = call
       )
     }

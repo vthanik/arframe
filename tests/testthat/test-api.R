@@ -4,16 +4,16 @@
 
 # Shared fixture: minimal data frames used across all tests
 df_simple <- data.frame(
-  arm    = c("Placebo", "Drug"),
-  n      = c(45L, 45L),
-  pct    = c(50.0, 50.0),
+  arm = c("Placebo", "Drug"),
+  n = c(45L, 45L),
+  pct = c(50.0, 50.0),
   stringsAsFactors = FALSE
 )
 
 df_ae <- data.frame(
   AEBODSYS = c("Nervous system disorders", "Gastrointestinal disorders"),
-  AEDECOD  = c("Headache", "Nausea"),
-  n        = c(10L, 15L),
+  AEDECOD = c("Headache", "Nausea"),
+  n = c(10L, 15L),
   stringsAsFactors = FALSE
 )
 
@@ -30,23 +30,23 @@ test_that("fr_table creates fr_spec from data frame", {
 
 test_that("fr_table spec has default meta, page, body, header", {
   spec <- fr_table(df_simple)
-  expect_s3_class(spec$meta,   "fr_meta")
-  expect_s3_class(spec$page,   "fr_page")
-  expect_s3_class(spec$body,   "fr_body")
+  expect_s3_class(spec$meta, "fr_meta")
+  expect_s3_class(spec$page, "fr_page")
+  expect_s3_class(spec$body, "fr_body")
   expect_s3_class(spec$header, "fr_header")
-  expect_equal(spec$meta$titles,    list())
+  expect_equal(spec$meta$titles, list())
   expect_equal(spec$meta$footnotes, list())
-  expect_equal(spec$rules,          list())
-  expect_equal(spec$cell_styles,    list())
+  expect_equal(spec$rules, list())
+  expect_equal(spec$cell_styles, list())
   expect_null(spec$pagehead)
   expect_null(spec$pagefoot)
 })
 
 test_that("fr_table errors on non-data.frame", {
-  expect_error(fr_table(list(a = 1)),  class = "rlang_error")
-  expect_error(fr_table("not a df"),   class = "rlang_error")
-  expect_error(fr_table(1:10),         class = "rlang_error")
-  expect_error(fr_table(NULL),         class = "rlang_error")
+  expect_error(fr_table(list(a = 1)), class = "rlang_error")
+  expect_error(fr_table("not a df"), class = "rlang_error")
+  expect_error(fr_table(1:10), class = "rlang_error")
+  expect_error(fr_table(NULL), class = "rlang_error")
 })
 
 test_that("fr_table works with built-in adsl dataset", {
@@ -64,7 +64,7 @@ test_that("fr_titles adds one title", {
   spec <- fr_table(df_simple) |> fr_titles("Table 14.1.1")
   expect_length(spec$meta$titles, 1L)
   expect_equal(spec$meta$titles[[1]]$content, "Table 14.1.1")
-  expect_equal(spec$meta$titles[[1]]$align,   "center")
+  expect_equal(spec$meta$titles[[1]]$align, "center")
   expect_false(spec$meta$titles[[1]]$bold)
 })
 
@@ -100,7 +100,7 @@ test_that("fr_titles with list allows per-title styling", {
   expect_true(spec$meta$titles[[1]]$bold)
   expect_equal(spec$meta$titles[[1]]$align, "left")
   expect_false(spec$meta$titles[[2]]$bold)
-  expect_equal(spec$meta$titles[[2]]$align, "center")  # default
+  expect_equal(spec$meta$titles[[2]]$align, "center") # default
 })
 
 test_that("fr_titles with no titles returns spec unchanged", {
@@ -128,8 +128,8 @@ test_that("fr_titles errors on non-fr_spec input", {
 test_that("fr_footnotes adds one footnote", {
   spec <- fr_table(df_simple) |> fr_footnotes("Source: ADSL")
   expect_length(spec$meta$footnotes, 1L)
-  expect_equal(spec$meta$footnotes[[1]]$content,   "Source: ADSL")
-  expect_equal(spec$meta$footnotes[[1]]$align,     "left")
+  expect_equal(spec$meta$footnotes[[1]]$content, "Source: ADSL")
+  expect_equal(spec$meta$footnotes[[1]]$align, "left")
   expect_equal(spec$meta$footnotes[[1]]$placement, "every")
 })
 
@@ -194,13 +194,13 @@ test_that("fr_cols fills defaults for unconfigured columns", {
   spec <- fr_table(df_simple) |>
     fr_cols(arm = fr_col("Treatment", width = 2.0))
   # n and pct should still exist with defaults
-  expect_s3_class(spec$columns[["n"]],   "fr_col")
+  expect_s3_class(spec$columns[["n"]], "fr_col")
   expect_s3_class(spec$columns[["pct"]], "fr_col")
 })
 
 test_that("fr_cols auto-aligns numeric columns to right", {
   spec <- fr_table(df_simple) |> fr_cols()
-  expect_equal(spec$columns[["n"]]$align,   "right")
+  expect_equal(spec$columns[["n"]]$align, "right")
   expect_equal(spec$columns[["pct"]]$align, "right")
   expect_equal(spec$columns[["arm"]]$align, "left")
 })
@@ -241,9 +241,9 @@ test_that("fr_spans adds a span", {
     fr_spans("Numbers" = c("n", "pct"))
   expect_length(spec$header$spans, 1L)
   expect_s3_class(spec$header$spans[[1]], "fr_span")
-  expect_equal(spec$header$spans[[1]]$label,   "Numbers")
+  expect_equal(spec$header$spans[[1]]$label, "Numbers")
   expect_equal(spec$header$spans[[1]]$columns, c("n", "pct"))
-  expect_equal(spec$header$spans[[1]]$level,   1L)
+  expect_equal(spec$header$spans[[1]]$level, 1L)
 })
 
 test_that("fr_spans appends on second call", {
@@ -305,13 +305,13 @@ test_that("fr_rows sets page_by", {
 test_that("fr_rows sets all body options", {
   spec <- fr_table(df_ae) |>
     fr_rows(
-      page_by       = "AEBODSYS",
-      group_by      = "AEBODSYS",
-      blank_after   = "AEBODSYS"
+      page_by = "AEBODSYS",
+      group_by = "AEBODSYS",
+      blank_after = "AEBODSYS"
     )
-  expect_equal(spec$body$page_by,       "AEBODSYS")
-  expect_equal(spec$body$group_by,      "AEBODSYS")
-  expect_equal(spec$body$blank_after,   "AEBODSYS")
+  expect_equal(spec$body$page_by, "AEBODSYS")
+  expect_equal(spec$body$group_by, "AEBODSYS")
+  expect_equal(spec$body$blank_after, "AEBODSYS")
 })
 
 test_that("fr_rows replaces body on second call", {
@@ -377,9 +377,9 @@ test_that("fr_page preserves unchanged options", {
 
 test_that("fr_page sets margins", {
   spec <- fr_table(df_simple) |> fr_page(margins = c(1, 0.75))
-  expect_equal(spec$page$margins$top,    1)
-  expect_equal(spec$page$margins$left,   0.75)
-  expect_equal(spec$page$margins$right,  0.75)
+  expect_equal(spec$page$margins$top, 1)
+  expect_equal(spec$page$margins$left, 0.75)
+  expect_equal(spec$page$margins$right, 0.75)
   expect_equal(spec$page$margins$bottom, 1)
 })
 
@@ -417,12 +417,15 @@ test_that("fr_page errors on overriding readonly token", {
 
 test_that("fr_pagehead sets left/center/right zones", {
   spec <- fr_table(df_simple) |>
-    fr_pagehead(left = "Study ABC", center = "CONFIDENTIAL",
-                right = "Page {thepage}")
+    fr_pagehead(
+      left = "Study ABC",
+      center = "CONFIDENTIAL",
+      right = "Page {thepage}"
+    )
   expect_s3_class(spec$pagehead, "fr_pagechrome")
-  expect_equal(spec$pagehead$left,   "Study ABC")
+  expect_equal(spec$pagehead$left, "Study ABC")
   expect_equal(spec$pagehead$center, "CONFIDENTIAL")
-  expect_equal(spec$pagehead$right,  "Page {thepage}")
+  expect_equal(spec$pagehead$right, "Page {thepage}")
 })
 
 test_that("fr_pagehead defaults: pagehead is NULL before being set", {
@@ -439,7 +442,7 @@ test_that("fr_pagefoot sets zones independently", {
   spec <- fr_table(df_simple) |>
     fr_pagefoot(left = "{program}", right = "{datetime}")
   expect_s3_class(spec$pagefoot, "fr_pagechrome")
-  expect_equal(spec$pagefoot$left,  "{program}")
+  expect_equal(spec$pagefoot$left, "{program}")
   expect_equal(spec$pagefoot$right, "{datetime}")
   expect_null(spec$pagefoot$center)
 })
@@ -478,17 +481,21 @@ test_that("fr_hlines booktabs creates 3 rules", {
 
 test_that("fr_hlines header creates 1 rule below header", {
   spec <- fr_table(df_simple) |> fr_hlines("header")
-  hlines <- Filter(function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
-                   spec$rules)
+  hlines <- Filter(
+    function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
+    spec$rules
+  )
   expect_length(hlines, 1L)
   expect_equal(hlines[[1]]$region, "header")
-  expect_equal(hlines[[1]]$side,   "below")
+  expect_equal(hlines[[1]]$side, "below")
 })
 
 test_that("fr_hlines open creates 2 rules (above + below header)", {
   spec <- fr_table(df_simple) |> fr_hlines("open")
-  hlines <- Filter(function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
-                   spec$rules)
+  hlines <- Filter(
+    function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
+    spec$rules
+  )
   expect_length(hlines, 2L)
   expect_equal(hlines[[1]]$side, "above")
   expect_equal(hlines[[2]]$side, "below")
@@ -496,23 +503,29 @@ test_that("fr_hlines open creates 2 rules (above + below header)", {
 
 test_that("fr_hlines booktabs rule widths are correct", {
   spec <- fr_table(df_simple) |> fr_hlines("booktabs")
-  hlines <- Filter(function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
-                   spec$rules)
+  hlines <- Filter(
+    function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
+    spec$rules
+  )
   widths <- vapply(hlines, `[[`, numeric(1), "width")
   expect_equal(widths, c(1.0, 0.5, 1.0))
 })
 
 test_that("fr_hlines hsides creates 2 rules", {
   spec <- fr_table(df_simple) |> fr_hlines("hsides")
-  hlines <- Filter(function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
-                   spec$rules)
+  hlines <- Filter(
+    function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
+    spec$rules
+  )
   expect_length(hlines, 2L)
 })
 
 test_that("fr_hlines above creates 1 rule", {
   spec <- fr_table(df_simple) |> fr_hlines("above")
-  hlines <- Filter(function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
-                   spec$rules)
+  hlines <- Filter(
+    function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
+    spec$rules
+  )
   expect_length(hlines, 1L)
   expect_equal(hlines[[1]]$side, "above")
 })
@@ -521,8 +534,10 @@ test_that("fr_hlines void clears all horizontal rules", {
   spec <- fr_table(df_simple) |>
     fr_hlines("booktabs") |>
     fr_hlines("void")
-  hlines <- Filter(function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
-                   spec$rules)
+  hlines <- Filter(
+    function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
+    spec$rules
+  )
   expect_length(hlines, 0L)
 })
 
@@ -545,43 +560,55 @@ test_that("fr_hlines replaces horizontal rules on second call", {
   spec <- fr_table(df_simple) |>
     fr_hlines("booktabs") |>
     fr_hlines("hsides")
-  hlines <- Filter(function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
-                   spec$rules)
+  hlines <- Filter(
+    function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
+    spec$rules
+  )
   expect_length(hlines, 2L)
 })
 
 test_that("fr_hlines width overrides rule width", {
   spec <- fr_table(df_simple) |> fr_hlines("header", width = "thick")
-  hlines <- Filter(function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
-                   spec$rules)
+  hlines <- Filter(
+    function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
+    spec$rules
+  )
   expect_equal(hlines[[1]]$width, 1.5)
 })
 
 test_that("fr_hlines width accepts numeric", {
   spec <- fr_table(df_simple) |> fr_hlines("header", width = 0.75)
-  hlines <- Filter(function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
-                   spec$rules)
+  hlines <- Filter(
+    function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
+    spec$rules
+  )
   expect_equal(hlines[[1]]$width, 0.75)
 })
 
 test_that("fr_hlines color overrides rule color", {
   spec <- fr_table(df_simple) |> fr_hlines("header", color = "#003366")
-  hlines <- Filter(function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
-                   spec$rules)
+  hlines <- Filter(
+    function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
+    spec$rules
+  )
   expect_equal(hlines[[1]]$fg, "#003366")
 })
 
 test_that("fr_hlines linestyle overrides rule style", {
   spec <- fr_table(df_simple) |> fr_hlines("header", linestyle = "dashed")
-  hlines <- Filter(function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
-                   spec$rules)
+  hlines <- Filter(
+    function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
+    spec$rules
+  )
   expect_equal(hlines[[1]]$linestyle, "dashed")
 })
 
 test_that("fr_hlines linestyle accepts dashdot", {
   spec <- fr_table(df_simple) |> fr_hlines("header", linestyle = "dashdot")
-  hlines <- Filter(function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
-                   spec$rules)
+  hlines <- Filter(
+    function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
+    spec$rules
+  )
   expect_equal(hlines[[1]]$linestyle, "dashdot")
 })
 
@@ -614,8 +641,10 @@ test_that("fr_vlines void preserves horizontal rules", {
     fr_hlines("header") |>
     fr_vlines("box") |>
     fr_vlines("void")
-  hlines <- Filter(function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
-                   spec$rules)
+  hlines <- Filter(
+    function(r) inherits(r, "fr_rule") && r$direction == "horizontal",
+    spec$rules
+  )
   expect_length(hlines, 1L)
 })
 
@@ -639,7 +668,7 @@ test_that("fr_vlines width and linestyle stored", {
   spec <- fr_table(df_simple) |>
     fr_vlines("box", width = "thick", linestyle = "dashed")
   vlines <- Filter(function(r) inherits(r, "fr_vline_spec"), spec$rules)
-  expect_equal(vlines[[1]]$width,     1.5)
+  expect_equal(vlines[[1]]$width, 1.5)
   expect_equal(vlines[[1]]$linestyle, "dashed")
 })
 
@@ -655,7 +684,7 @@ test_that("fr_vlines errors on unknown preset", {
 test_that("fr_style creates fr_cell_style with type=cell", {
   s <- fr_style(region = "header", bold = TRUE)
   expect_s3_class(s, "fr_cell_style")
-  expect_equal(s$type,   "cell")
+  expect_equal(s$type, "cell")
   expect_equal(s$region, "header")
   expect_true(s$bold)
 })
@@ -699,9 +728,9 @@ test_that("fr_style validates font_size", {
 test_that("fr_row_style creates row-type fr_cell_style", {
   rs <- fr_row_style(rows = 1L, bold = TRUE, bg = "#EEEEEE")
   expect_s3_class(rs, "fr_cell_style")
-  expect_equal(rs$type,   "row")
+  expect_equal(rs$type, "row")
   expect_equal(rs$region, "body")
-  expect_equal(rs$rows,   1L)
+  expect_equal(rs$rows, 1L)
   expect_true(rs$bold)
   expect_equal(rs$bg, "#EEEEEE")
   expect_null(rs$cols)
@@ -726,7 +755,7 @@ test_that("fr_row_style validates font_size", {
 })
 
 test_that("fr_row_style validates height", {
-  expect_error(fr_row_style(height = 0),  class = "rlang_error")
+  expect_error(fr_row_style(height = 0), class = "rlang_error")
   expect_error(fr_row_style(height = -1), class = "rlang_error")
 })
 
@@ -736,10 +765,10 @@ test_that("fr_row_style validates height", {
 test_that("fr_col_style creates col-type fr_cell_style", {
   cs <- fr_col_style(cols = "total", bg = "#EBF5FB")
   expect_s3_class(cs, "fr_cell_style")
-  expect_equal(cs$type,   "col")
+  expect_equal(cs$type, "col")
   expect_equal(cs$region, "body")
-  expect_equal(cs$cols,   "total")
-  expect_equal(cs$bg,     "#EBF5FB")
+  expect_equal(cs$cols, "total")
+  expect_equal(cs$bg, "#EBF5FB")
   expect_null(cs$rows)
 })
 
@@ -758,9 +787,9 @@ test_that("fr_col_style validates align", {
 test_that("fr_styles appends mixed style types", {
   spec <- fr_table(df_simple) |>
     fr_styles(
-      fr_style(region    = "header", bold = TRUE),
-      fr_row_style(rows  = 1L,       bg   = "#EEEEEE"),
-      fr_col_style(cols  = "a",      fg   = "#003366")
+      fr_style(region = "header", bold = TRUE),
+      fr_row_style(rows = 1L, bg = "#EEEEEE"),
+      fr_col_style(cols = "a", fg = "#003366")
     )
   expect_length(spec$cell_styles, 3L)
   expect_equal(spec$cell_styles[[1]]$type, "cell")
@@ -776,7 +805,7 @@ test_that("fr_styles accumulates across calls", {
 })
 
 test_that("fr_styles with no args returns spec unchanged", {
-  spec  <- fr_table(df_simple)
+  spec <- fr_table(df_simple)
   spec2 <- fr_styles(spec)
   expect_equal(spec2$cell_styles, list())
 })
@@ -808,15 +837,15 @@ test_that("full pipeline assembles correct fr_spec", {
     fr_styles(fr_style(region = "header", bold = TRUE))
 
   expect_s3_class(spec, "fr_spec")
-  expect_length(spec$meta$titles,    2L)
+  expect_length(spec$meta$titles, 2L)
   expect_length(spec$meta$footnotes, 1L)
-  expect_length(spec$header$spans,   1L)
-  expect_equal(spec$body$page_by,    "ARM")
-  expect_length(spec$rules,          3L)
-  expect_length(spec$cell_styles,    1L)
+  expect_length(spec$header$spans, 1L)
+  expect_equal(spec$body$page_by, "ARM")
+  expect_length(spec$rules, 3L)
+  expect_length(spec$cell_styles, 1L)
   expect_s3_class(spec$pagehead, "fr_pagechrome")
   expect_s3_class(spec$pagefoot, "fr_pagechrome")
-  expect_equal(spec$page$font_size,  9)
+  expect_equal(spec$page$font_size, 9)
 })
 
 

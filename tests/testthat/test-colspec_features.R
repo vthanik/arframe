@@ -1,14 +1,14 @@
 df_simple <- data.frame(
-  arm    = c("Placebo", "Drug"),
-  n      = c(45L, 45L),
-  pct    = c(50.0, 50.0),
+  arm = c("Placebo", "Drug"),
+  n = c(45L, 45L),
+  pct = c(50.0, 50.0),
   stringsAsFactors = FALSE
 )
 
 test_that("fr_cols accepts .list for pre-formatted labels", {
   spec <- fr_table(df_simple) |>
     fr_cols(.list = c("arm" = "Treatment\n(N=100)", "pct" = "Percent"))
-  
+
   expect_equal(spec$columns[["arm"]]$label, "Treatment\n(N=100)")
   expect_equal(spec$columns[["pct"]]$label, "Percent")
 })
@@ -49,7 +49,7 @@ test_that("build_header_cell_grid uses header_align over align", {
   spec <- fr_table(df_simple) |>
     fr_cols(
       arm = fr_col("Arm", align = "left", header_align = "center"),
-      n   = fr_col("N",   align = "right")
+      n = fr_col("N", align = "right")
     )
 
   vis <- Filter(function(c) !isFALSE(c$visible), spec$columns)
@@ -64,13 +64,13 @@ test_that("build_header_cell_grid uses header_align over align", {
 test_that("fr_cols tidyselect formulas correctly expand to matched columns", {
   # Requires tidyselect
   skip_if_not_installed("tidyselect")
-  
+
   spec <- fr_table(df_simple) |>
     fr_cols(
       c(n, pct) ~ fr_col(width = 2.5, align = "right"),
       starts_with("a") ~ "Treatment Arm"
     )
-  
+
   expect_equal(spec$columns[["n"]]$width, 2.5)
   expect_equal(spec$columns[["n"]]$align, "right")
   expect_equal(spec$columns[["pct"]]$width, 2.5)

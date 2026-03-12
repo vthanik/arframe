@@ -2,7 +2,6 @@
 # units.R — Unit conversion functions (twips, points, inches)
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # 1. Unit Conversions
 # ══════════════════════════════════════════════════════════════════════════════
@@ -69,9 +68,11 @@ fr_env$baseline_ratio <- 1.2
 #'   Equivalent to LaTeX \\extrarowheight.
 #' @return Integer. Row height in twips (positive = "at least").
 #' @noRd
-row_height_twips <- function(font_size_pt,
-                              array_stretch = 1.0,
-                              extra_row_height_pt = 1.0) {
+row_height_twips <- function(
+  font_size_pt,
+  array_stretch = 1.0,
+  extra_row_height_pt = 1.0
+) {
   baseline_skip_pt <- fr_env$baseline_ratio * font_size_pt
   height_pt <- array_stretch * (extra_row_height_pt + baseline_skip_pt)
   pt_to_twips(height_pt)

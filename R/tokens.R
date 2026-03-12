@@ -2,7 +2,6 @@
 # tokens.R — Token map building and provenance utilities
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # 1. Provenance Utilities
 #
@@ -18,15 +17,19 @@
 #' Get source file path (best effort)
 #' @noRd
 get_source_path <- function() {
-
   # 1. RStudio API (interactive in RStudio)
-  tryCatch({
-    if (requireNamespace("rstudioapi", quietly = TRUE) &&
-        rstudioapi::isAvailable()) {
-      ctx <- rstudioapi::getSourceEditorContext()
-      if (!is.null(ctx$path) && nzchar(ctx$path)) return(ctx$path)
-    }
-  }, error = function(e) NULL)
+  tryCatch(
+    {
+      if (
+        requireNamespace("rstudioapi", quietly = TRUE) &&
+          rstudioapi::isAvailable()
+      ) {
+        ctx <- rstudioapi::getSourceEditorContext()
+        if (!is.null(ctx$path) && nzchar(ctx$path)) return(ctx$path)
+      }
+    },
+    error = function(e) NULL
+  )
 
   # 2. source("script.R") — look for "ofile" in parent frames
   for (i in seq_len(sys.nframe())) {
@@ -43,8 +46,7 @@ get_source_path <- function() {
   # Long form: --file=script.R
   file_arg <- grep("^--file=", cmd_args, value = TRUE)
   if (length(file_arg) > 0L) {
-    return(normalizePath(sub("^--file=", "", file_arg[1L]),
-                         mustWork = FALSE))
+    return(normalizePath(sub("^--file=", "", file_arg[1L]), mustWork = FALSE))
   }
 
   # Short form: -f script.R
@@ -54,12 +56,15 @@ get_source_path <- function() {
   }
 
   # 4. knitr (rmarkdown / quarto)
-  tryCatch({
-    if (requireNamespace("knitr", quietly = TRUE)) {
-      input <- knitr::current_input()
-      if (!is.null(input) && nzchar(input)) return(input)
-    }
-  }, error = function(e) NULL)
+  tryCatch(
+    {
+      if (requireNamespace("knitr", quietly = TRUE)) {
+        input <- knitr::current_input()
+        if (!is.null(input) && nzchar(input)) return(input)
+      }
+    },
+    error = function(e) NULL
+  )
 
   NA_character_
 }
@@ -102,17 +107,19 @@ build_token_map <- function(page_num, total_pages, spec) {
 
   # Readonly tokens — always from pagination engine
   builtin <- list(
-    thepage     = as.character(page_num),
+    thepage = as.character(page_num),
     total_pages = as.character(total_pages)
   )
 
   # Overridable tokens — user can set via fr_page(tokens = ...)
   src_path <- get_source_path()
-  if (is.na(src_path)) src_path <- ""
+  if (is.na(src_path)) {
+    src_path <- ""
+  }
   overridable <- list(
-    program  = user_tokens[["program"]] %||% src_path,
+    program = user_tokens[["program"]] %||% src_path,
     datetime = user_tokens[["datetime"]] %||%
-                get_timestamp()
+      get_timestamp()
   )
 
   # Remove overridable token names from user list to get truly custom tokens

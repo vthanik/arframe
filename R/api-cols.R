@@ -2,7 +2,6 @@
 # api-cols.R — Column configuration verbs: fr_cols
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # fr_cols — Configure column display
 # ══════════════════════════════════════════════════════════════════════════════
@@ -367,9 +366,18 @@
 #'   advanced multi-level spanning headers, [fr_rows()] for pagination.
 #'
 #' @export
-fr_cols <- function(spec, ..., .list = NULL, .width = NULL, .align = NULL,
-                       .label_fn = NULL, .spaces = NULL, .split = NULL,
-                       .n = NULL, .n_format = NULL) {
+fr_cols <- function(
+  spec,
+  ...,
+  .list = NULL,
+  .width = NULL,
+  .align = NULL,
+  .label_fn = NULL,
+  .spaces = NULL,
+  .split = NULL,
+  .n = NULL,
+  .n_format = NULL
+) {
   call <- caller_env()
   check_fr_spec(spec, call = call)
 
@@ -403,7 +411,9 @@ fr_cols <- function(spec, ..., .list = NULL, .width = NULL, .align = NULL,
     check_positive_num(.width, arg = ".width", call = call)
     width_mode <- "fixed"
   }
-  if (!is.null(.align)) .align <- match_arg_fr(.align, fr_env$valid_aligns, call = call)
+  if (!is.null(.align)) {
+    .align <- match_arg_fr(.align, fr_env$valid_aligns, call = call)
+  }
 
   # Validate .label_fn
   if (!is.null(.label_fn)) {
@@ -414,14 +424,20 @@ fr_cols <- function(spec, ..., .list = NULL, .width = NULL, .align = NULL,
   if (!is.null(.list)) {
     if ((!is.list(.list) && !is.character(.list)) || is.null(names(.list))) {
       cli_abort(
-        c("{.arg .list} must be a named list or named character vector.",
+        c(
+          "{.arg .list} must be a named list or named character vector.",
           "i" = "Each name is a data column name; each value is the label string.",
-          "i" = 'Example: {.code list(col1 = "Drug 50 mg\\n(N=45)")}'),
+          "i" = 'Example: {.code list(col1 = "Drug 50 mg\\n(N=45)")}'
+        ),
         call = call
       )
     }
-    validate_cols_exist(names(.list), names(spec$data), arg = ".list",
-                        call = call)
+    validate_cols_exist(
+      names(.list),
+      names(spec$data),
+      arg = ".list",
+      call = call
+    )
     labels_vec <- as.list(.list)
   } else {
     labels_vec <- list()
@@ -453,16 +469,20 @@ fr_cols <- function(spec, ..., .list = NULL, .width = NULL, .align = NULL,
         # Named argument
         if (is.null(nm) || nm == "") {
           cli_abort(
-            c("All arguments to {.fn fr_cols} must be named or formula column selectors.",
+            c(
+              "All arguments to {.fn fr_cols} must be named or formula column selectors.",
               "i" = "Example named: {.code characteristic = fr_col(...)}",
-              "i" = "Example formula: {.code starts_with('col') ~ fr_col(...)}"),
+              "i" = "Example formula: {.code starts_with('col') ~ fr_col(...)}"
+            ),
             call = call
           )
         }
         if (!nm %in% names(spec$data)) {
           cli_abort(
-            c("Column {.val {nm}} not found in the data.",
-              "i" = "Available columns: {.val {names(spec$data)}}."),
+            c(
+              "Column {.val {nm}} not found in the data.",
+              "i" = "Available columns: {.val {names(spec$data)}}."
+            ),
             call = call
           )
         }
@@ -477,22 +497,33 @@ fr_cols <- function(spec, ..., .list = NULL, .width = NULL, .align = NULL,
     val <- expanded_dots[[nm]]
     if (is.character(val)) {
       check_scalar_chr(val, arg = nm, call = call)
-      configured_cols[[nm]] <- structure(list(id = "", label = val, width = NULL, align = NULL, header_align = NULL, visible = NULL),
-                class = "fr_col")
+      configured_cols[[nm]] <- structure(
+        list(
+          id = "",
+          label = val,
+          width = NULL,
+          align = NULL,
+          header_align = NULL,
+          visible = NULL
+        ),
+        class = "fr_col"
+      )
     } else {
       check_fr_col(val, arg = nm, call = call)
       configured_cols[[nm]] <- val
     }
   }
 
-  spec$columns <- build_default_columns(spec$data,
-                                         configured     = configured_cols,
-                                         default_width  = .width,
-                                         width_mode     = width_mode,
-                                         default_align  = .align,
-                                         label_fn       = .label_fn,
-                                         labels         = labels_vec,
-                                         page           = spec$page)
+  spec$columns <- build_default_columns(
+    spec$data,
+    configured = configured_cols,
+    default_width = .width,
+    width_mode = width_mode,
+    default_align = .align,
+    label_fn = .label_fn,
+    labels = labels_vec,
+    page = spec$page
+  )
 
   spec$columns_meta$width_mode <- width_mode
 
@@ -508,5 +539,3 @@ fr_cols <- function(spec, ..., .list = NULL, .width = NULL, .align = NULL,
 
   spec
 }
-
-

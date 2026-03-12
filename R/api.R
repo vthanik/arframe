@@ -15,7 +15,6 @@
 #           api-style.R (fr_style, fr_row_style, fr_col_style, fr_styles).
 # ─────────────────────────────────────────────────────────────────────────────
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # fr_table — Pipeline entry point
 # ══════════════════════════════════════════════════════════════════════════════
@@ -179,10 +178,14 @@
 #' @export
 fr_table <- function(data) {
   if (!is.data.frame(data)) {
-    cli_abort(c("{.arg data} must be a data frame.",
-                "x" = "You supplied {.obj_type_friendly {data}}.",
-                "i" = "Example: {.code my_df |> fr_table()}"),
-              call = caller_env())
+    cli_abort(
+      c(
+        "{.arg data} must be a data frame.",
+        "x" = "You supplied {.obj_type_friendly {data}}.",
+        "i" = "Example: {.code my_df |> fr_table()}"
+      ),
+      call = caller_env()
+    )
   }
   spec <- new_fr_spec(data)
   spec <- apply_config(spec)
@@ -298,17 +301,20 @@ fr_table <- function(data) {
 #' @export
 fr_listing <- function(data) {
   if (!is.data.frame(data)) {
-    cli_abort(c("{.arg data} must be a data frame.",
-                "x" = "You supplied {.obj_type_friendly {data}}.",
-                "i" = "Example: {.code my_df |> fr_listing()}"),
-              call = caller_env())
+    cli_abort(
+      c(
+        "{.arg data} must be a data frame.",
+        "x" = "You supplied {.obj_type_friendly {data}}.",
+        "i" = "Example: {.code my_df |> fr_listing()}"
+      ),
+      call = caller_env()
+    )
   }
 
   spec <- new_fr_spec(data, type = "listing")
   spec <- apply_config(spec)
-  spec <- apply_fr_theme(spec)
 
-  # Listing defaults (overridable by subsequent verb calls)
+  # Listing defaults applied BEFORE theme so theme can override them
   spec$page$font_size <- 8
   spec$columns_meta$split <- TRUE
   spec$body$wrap <- TRUE
@@ -322,8 +328,11 @@ fr_listing <- function(data) {
     }
   }
 
-  # Default header rule
+  # Default header rule (before theme so theme can override)
   spec <- fr_hlines(spec, "header")
+
+  # Theme applied last — can override all listing defaults
+  spec <- apply_fr_theme(spec)
 
   spec
 }
@@ -423,15 +432,21 @@ fr_figure <- function(plot, width = NULL, height = NULL) {
 
   if (!is_ggplot && !is_recorded) {
     cli_abort(
-      c("{.arg plot} must be a {.cls ggplot} or {.cls recordedplot} object.",
+      c(
+        "{.arg plot} must be a {.cls ggplot} or {.cls recordedplot} object.",
         "x" = "You supplied {.obj_type_friendly {plot}}.",
-        "i" = "Use {.fn ggplot2::ggplot} or {.fn recordPlot} to create plots."),
+        "i" = "Use {.fn ggplot2::ggplot} or {.fn recordPlot} to create plots."
+      ),
       call = call
     )
   }
 
-  if (!is.null(width))  check_positive_num(width, arg = "width", call = call)
-  if (!is.null(height)) check_positive_num(height, arg = "height", call = call)
+  if (!is.null(width)) {
+    check_positive_num(width, arg = "width", call = call)
+  }
+  if (!is.null(height)) {
+    check_positive_num(height, arg = "height", call = call)
+  }
 
   # Create spec with empty data frame
   spec <- new_fr_spec(

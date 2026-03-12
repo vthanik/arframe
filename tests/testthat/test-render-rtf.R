@@ -695,7 +695,9 @@ test_that("rtf_write silently skips empty strings", {
 # ── rtf_resolve_page_fields ──────────────────────────────────────────────────
 
 test_that("rtf_resolve_page_fields replaces PAGE placeholder", {
-  result <- tlframe:::rtf_resolve_page_fields("Page \x01RTFPAGE\x02 of \x01RTFNUMPAGES\x02")
+  result <- tlframe:::rtf_resolve_page_fields(
+    "Page \x01RTFPAGE\x02 of \x01RTFNUMPAGES\x02"
+  )
   expect_true(grepl("fldinst PAGE", result, fixed = TRUE))
   expect_true(grepl("fldinst NUMPAGES", result, fixed = TRUE))
 })
@@ -835,18 +837,15 @@ test_that("rtf_section_def works with A4 paper", {
 test_that("find_bottom_rule returns rule when present", {
   spec <- data.frame(x = 1, stringsAsFactors = FALSE) |>
     fr_table() |>
-    fr_hlines("header")
+    fr_hlines("hsides")
   spec <- tlframe:::finalize_spec(spec)
 
   rule <- tlframe:::find_bottom_rule(spec)
-  # "header" preset includes body bottom border
-  expect_true(!is.null(rule) || is.null(rule))
-  # If a body/below rule exists, it should have the right fields
-  if (!is.null(rule)) {
-    expect_equal(rule$region, "body")
-    expect_equal(rule$side, "below")
-    expect_null(rule$rows)
-  }
+  # "hsides" preset includes body/below rule
+  expect_false(is.null(rule))
+  expect_equal(rule$region, "body")
+  expect_equal(rule$side, "below")
+  expect_null(rule$rows)
 })
 
 test_that("find_bottom_rule returns NULL when no rules", {
@@ -898,7 +897,7 @@ test_that("estimate_single_page accounts for pagehead", {
   spec <- tlframe:::finalize_spec(spec)
 
   result <- tlframe:::estimate_single_page(spec, small_data)
-  expect_true(result)  # Still fits with pagehead
+  expect_true(result) # Still fits with pagehead
 })
 
 # ── rtf_page_header (pagehead) ───────────────────────────────────────────────
@@ -906,7 +905,11 @@ test_that("estimate_single_page accounts for pagehead", {
 test_that("rtf_page_header returns empty string when no pagehead", {
   spec <- data.frame(x = 1, stringsAsFactors = FALSE) |> fr_table()
   spec <- tlframe:::finalize_spec(spec)
-  token_map <- tlframe:::build_token_map(page_num = 1, total_pages = 1, spec = spec)
+  token_map <- tlframe:::build_token_map(
+    page_num = 1,
+    total_pages = 1,
+    spec = spec
+  )
 
   result <- tlframe:::rtf_page_header(spec, token_map)
   expect_equal(result, "")
@@ -917,7 +920,11 @@ test_that("rtf_page_header wraps content in header group", {
     fr_table() |>
     fr_pagehead(left = "Protocol: XYZ")
   spec <- tlframe:::finalize_spec(spec)
-  token_map <- tlframe:::build_token_map(page_num = 1, total_pages = 1, spec = spec)
+  token_map <- tlframe:::build_token_map(
+    page_num = 1,
+    total_pages = 1,
+    spec = spec
+  )
 
   result <- tlframe:::rtf_page_header(spec, token_map)
   expect_true(grepl("\\header", result, fixed = TRUE))
@@ -962,11 +969,20 @@ test_that("pagehead with bold = TRUE uses \\b control word", {
 test_that("rtf_footer_group returns empty when no footnotes and no pagefoot", {
   spec <- data.frame(x = 1, stringsAsFactors = FALSE) |> fr_table()
   spec <- tlframe:::finalize_spec(spec)
-  token_map <- tlframe:::build_token_map(page_num = 1, total_pages = 1, spec = spec)
+  token_map <- tlframe:::build_token_map(
+    page_num = 1,
+    total_pages = 1,
+    spec = spec
+  )
   vis_columns <- spec$columns
 
-  result <- tlframe:::rtf_footer_group(spec, token_map, is_last = TRUE,
-                                        vis_columns, skip_footnotes = FALSE)
+  result <- tlframe:::rtf_footer_group(
+    spec,
+    token_map,
+    is_last = TRUE,
+    vis_columns,
+    skip_footnotes = FALSE
+  )
   expect_equal(result, "")
 })
 
@@ -975,10 +991,19 @@ test_that("rtf_footer_group includes pagefoot content", {
     fr_table() |>
     fr_pagefoot(left = "Page Footer Left")
   spec <- tlframe:::finalize_spec(spec)
-  token_map <- tlframe:::build_token_map(page_num = 1, total_pages = 1, spec = spec)
+  token_map <- tlframe:::build_token_map(
+    page_num = 1,
+    total_pages = 1,
+    spec = spec
+  )
 
-  result <- tlframe:::rtf_footer_group(spec, token_map, is_last = TRUE,
-                                        spec$columns, skip_footnotes = FALSE)
+  result <- tlframe:::rtf_footer_group(
+    spec,
+    token_map,
+    is_last = TRUE,
+    spec$columns,
+    skip_footnotes = FALSE
+  )
   expect_true(grepl("\\footer", result, fixed = TRUE))
   expect_true(grepl("Page Footer Left", result, fixed = TRUE))
 })
@@ -989,10 +1014,19 @@ test_that("rtf_footer_group skips footnotes when skip_footnotes = TRUE", {
     fr_footnotes("Skipped footnote") |>
     fr_pagefoot(left = "Footer")
   spec <- tlframe:::finalize_spec(spec)
-  token_map <- tlframe:::build_token_map(page_num = 1, total_pages = 1, spec = spec)
+  token_map <- tlframe:::build_token_map(
+    page_num = 1,
+    total_pages = 1,
+    spec = spec
+  )
 
-  result <- tlframe:::rtf_footer_group(spec, token_map, is_last = TRUE,
-                                        spec$columns, skip_footnotes = TRUE)
+  result <- tlframe:::rtf_footer_group(
+    spec,
+    token_map,
+    is_last = TRUE,
+    spec$columns,
+    skip_footnotes = TRUE
+  )
   expect_false(grepl("Skipped footnote", result, fixed = TRUE))
   expect_true(grepl("Footer", result, fixed = TRUE))
 })
@@ -1002,10 +1036,19 @@ test_that("rtf_footer_group includes footnote separator when enabled", {
     fr_table() |>
     fr_footnotes("Note 1", .separator = TRUE)
   spec <- tlframe:::finalize_spec(spec)
-  token_map <- tlframe:::build_token_map(page_num = 1, total_pages = 1, spec = spec)
+  token_map <- tlframe:::build_token_map(
+    page_num = 1,
+    total_pages = 1,
+    spec = spec
+  )
 
-  result <- tlframe:::rtf_footer_group(spec, token_map, is_last = FALSE,
-                                        spec$columns, skip_footnotes = FALSE)
+  result <- tlframe:::rtf_footer_group(
+    spec,
+    token_map,
+    is_last = FALSE,
+    spec$columns,
+    skip_footnotes = FALSE
+  )
   expect_true(grepl("brdrt.*brdrs.*brdrw5", result))
 })
 
@@ -1015,9 +1058,13 @@ test_that("rtf_title_rows returns empty when no titles", {
   spec <- data.frame(x = 1, stringsAsFactors = FALSE) |> fr_table()
   spec <- tlframe:::finalize_spec(spec)
 
-  result <- tlframe:::rtf_title_rows(spec, spec$columns,
-                                      tlframe:::build_rtf_colortbl(
-                                        tlframe:::collect_colors(spec)))
+  result <- tlframe:::rtf_title_rows(
+    spec,
+    spec$columns,
+    tlframe:::build_rtf_colortbl(
+      tlframe:::collect_colors(spec)
+    )
+  )
   expect_equal(result, "")
 })
 
@@ -1046,14 +1093,22 @@ test_that("rtf_title_rows appends continuation text to first title", {
   color_info <- tlframe:::build_rtf_colortbl(colors)
 
   # Panel 1: no continuation text
-  result1 <- tlframe:::rtf_title_rows(spec, spec$columns, color_info,
-                                       panel_idx = 1L)
+  result1 <- tlframe:::rtf_title_rows(
+    spec,
+    spec$columns,
+    color_info,
+    panel_idx = 1L
+  )
   expect_true(grepl("Table 1", result1, fixed = TRUE))
   expect_false(grepl("(continued)", result1, fixed = TRUE))
 
   # Panel 2+: continuation text appended
-  result2 <- tlframe:::rtf_title_rows(spec, spec$columns, color_info,
-                                       panel_idx = 2L)
+  result2 <- tlframe:::rtf_title_rows(
+    spec,
+    spec$columns,
+    color_info,
+    panel_idx = 2L
+  )
   expect_true(grepl("Table 1", result2, fixed = TRUE))
   expect_true(grepl("(continued)", result2, fixed = TRUE))
 })
@@ -1120,8 +1175,12 @@ test_that("rtf_col_header_row produces \\trhdr row with all column labels", {
   color_info <- tlframe:::build_rtf_colortbl(colors)
   borders <- tlframe:::resolve_borders(spec$rules, 1L, 2L, 1L)
 
-  result <- tlframe:::rtf_col_header_row(spec, spec$columns, borders,
-                                          color_info)
+  result <- tlframe:::rtf_col_header_row(
+    spec,
+    spec$columns,
+    borders,
+    color_info
+  )
   expect_true(grepl("\\trhdr", result, fixed = TRUE))
   expect_true(grepl("Parameter", result, fixed = TRUE))
   expect_true(grepl("Value", result, fixed = TRUE))
@@ -1137,9 +1196,13 @@ test_that("rtf_col_header_row respects label_overrides", {
   borders <- tlframe:::resolve_borders(spec$rules, 1L, 2L, 1L)
 
   overrides <- c(a = "A (N=50)", b = "B (N=60)")
-  result <- tlframe:::rtf_col_header_row(spec, spec$columns, borders,
-                                          color_info,
-                                          label_overrides = overrides)
+  result <- tlframe:::rtf_col_header_row(
+    spec,
+    spec$columns,
+    borders,
+    color_info,
+    label_overrides = overrides
+  )
   expect_true(grepl("A (N=50)", result, fixed = TRUE))
   expect_true(grepl("B (N=60)", result, fixed = TRUE))
 })
@@ -1181,13 +1244,19 @@ test_that("rtf_body_rows returns empty string for zero-row data", {
   color_info <- tlframe:::build_rtf_colortbl(colors)
   cell_grid <- tlframe:::build_cell_grid(
     data.frame(x = character(0), stringsAsFactors = FALSE),
-    spec$columns, spec$cell_styles, spec$page
+    spec$columns,
+    spec$cell_styles,
+    spec$page
   )
   borders <- tlframe:::resolve_borders(spec$rules, 0L, 1L, 1L)
 
   result <- tlframe:::rtf_body_rows(
-    spec, data.frame(x = character(0), stringsAsFactors = FALSE),
-    spec$columns, cell_grid, borders, color_info
+    spec,
+    data.frame(x = character(0), stringsAsFactors = FALSE),
+    spec$columns,
+    cell_grid,
+    borders,
+    color_info
   )
   expect_equal(result, "")
 })
@@ -1355,8 +1424,13 @@ test_that("rtf_cell_border_string respects sides parameter", {
   borders <- tlframe:::resolve_borders(spec$rules, 1L, 1L, 1L)
 
   # Only request top and left
-  result <- tlframe:::rtf_cell_border_string(borders$body, 1L, 1L, color_info,
-                                              sides = c("top", "left"))
+  result <- tlframe:::rtf_cell_border_string(
+    borders$body,
+    1L,
+    1L,
+    color_info,
+    sides = c("top", "left")
+  )
   # Should NOT have bottom or right borders
   expect_false(grepl("\\\\clbrdrb", result))
   expect_false(grepl("\\\\clbrdrr", result))
@@ -1380,7 +1454,11 @@ test_that("rtf_chrome_content returns empty for chrome with no text", {
   spec <- data.frame(x = 1, stringsAsFactors = FALSE) |> fr_table()
   spec <- tlframe:::finalize_spec(spec)
   chrome <- list(left = NULL, center = NULL, right = NULL, bold = FALSE)
-  token_map <- tlframe:::build_token_map(page_num = 1, total_pages = 1, spec = spec)
+  token_map <- tlframe:::build_token_map(
+    page_num = 1,
+    total_pages = 1,
+    spec = spec
+  )
 
   result <- tlframe:::rtf_chrome_content(chrome, spec, token_map, "test")
   expect_equal(result, "")
@@ -1389,9 +1467,18 @@ test_that("rtf_chrome_content returns empty for chrome with no text", {
 test_that("rtf_chrome_content uses table layout for L+C zones", {
   spec <- data.frame(x = 1, stringsAsFactors = FALSE) |> fr_table()
   spec <- tlframe:::finalize_spec(spec)
-  chrome <- list(left = "L", center = "C", right = NULL, bold = FALSE,
-                 font_size = NULL)
-  token_map <- tlframe:::build_token_map(page_num = 1, total_pages = 1, spec = spec)
+  chrome <- list(
+    left = "L",
+    center = "C",
+    right = NULL,
+    bold = FALSE,
+    font_size = NULL
+  )
+  token_map <- tlframe:::build_token_map(
+    page_num = 1,
+    total_pages = 1,
+    spec = spec
+  )
 
   result <- tlframe:::rtf_chrome_content(chrome, spec, token_map, "test")
   # Table row structure
@@ -1414,9 +1501,18 @@ test_that("rtf_chrome_content uses table layout for L+C zones", {
 test_that("rtf_chrome_content uses table layout for L+R zones (no center)", {
   spec <- data.frame(x = 1, stringsAsFactors = FALSE) |> fr_table()
   spec <- tlframe:::finalize_spec(spec)
-  chrome <- list(left = "L", center = NULL, right = "R", bold = FALSE,
-                 font_size = NULL)
-  token_map <- tlframe:::build_token_map(page_num = 1, total_pages = 1, spec = spec)
+  chrome <- list(
+    left = "L",
+    center = NULL,
+    right = "R",
+    bold = FALSE,
+    font_size = NULL
+  )
+  token_map <- tlframe:::build_token_map(
+    page_num = 1,
+    total_pages = 1,
+    spec = spec
+  )
 
   result <- tlframe:::rtf_chrome_content(chrome, spec, token_map, "test")
   # Table structure
@@ -1432,9 +1528,18 @@ test_that("rtf_chrome_content uses table layout for L+R zones (no center)", {
 test_that("rtf_chrome_content handles 3-zone L+C+R layout", {
   spec <- data.frame(x = 1, stringsAsFactors = FALSE) |> fr_table()
   spec <- tlframe:::finalize_spec(spec)
-  chrome <- list(left = "Left", center = "Center", right = "Right",
-                 bold = FALSE, font_size = NULL)
-  token_map <- tlframe:::build_token_map(page_num = 1, total_pages = 1, spec = spec)
+  chrome <- list(
+    left = "Left",
+    center = "Center",
+    right = "Right",
+    bold = FALSE,
+    font_size = NULL
+  )
+  token_map <- tlframe:::build_token_map(
+    page_num = 1,
+    total_pages = 1,
+    spec = spec
+  )
 
   result <- tlframe:::rtf_chrome_content(chrome, spec, token_map, "test")
   expect_true(grepl("\\ql", result, fixed = TRUE))
@@ -1450,9 +1555,18 @@ test_that("rtf_chrome_content handles 3-zone L+C+R layout", {
 test_that("rtf_chrome_content handles single-zone layout", {
   spec <- data.frame(x = 1, stringsAsFactors = FALSE) |> fr_table()
   spec <- tlframe:::finalize_spec(spec)
-  chrome <- list(left = NULL, center = "Only", right = NULL,
-                 bold = FALSE, font_size = NULL)
-  token_map <- tlframe:::build_token_map(page_num = 1, total_pages = 1, spec = spec)
+  chrome <- list(
+    left = NULL,
+    center = "Only",
+    right = NULL,
+    bold = FALSE,
+    font_size = NULL
+  )
+  token_map <- tlframe:::build_token_map(
+    page_num = 1,
+    total_pages = 1,
+    spec = spec
+  )
 
   result <- tlframe:::rtf_chrome_content(chrome, spec, token_map, "test")
   expect_true(grepl("\\qc", result, fixed = TRUE))
@@ -1464,10 +1578,18 @@ test_that("rtf_chrome_content handles single-zone layout", {
 test_that("rtf_chrome_content multi-line right text stays right-aligned", {
   spec <- data.frame(x = 1, stringsAsFactors = FALSE) |> fr_table()
   spec <- tlframe:::finalize_spec(spec)
-  chrome <- list(left = "Protocol XYZ", center = NULL,
-                 right = "Page 1 of 2\nDatabase Lock: 15MAR2025",
-                 bold = FALSE, font_size = NULL)
-  token_map <- tlframe:::build_token_map(page_num = 1, total_pages = 1, spec = spec)
+  chrome <- list(
+    left = "Protocol XYZ",
+    center = NULL,
+    right = "Page 1 of 2\nDatabase Lock: 15MAR2025",
+    bold = FALSE,
+    font_size = NULL
+  )
+  token_map <- tlframe:::build_token_map(
+    page_num = 1,
+    total_pages = 1,
+    spec = spec
+  )
 
   result <- tlframe:::rtf_chrome_content(chrome, spec, token_map, "test")
   # Right cell has its own \qr alignment — multi-line text uses \line within
@@ -1518,8 +1640,14 @@ test_that("col_split creates multiple panels with \\sect", {
   # Create wide table that should split
   data <- data.frame(
     param = "Test",
-    a = "1", b = "2", c = "3", d = "4",
-    e = "5", f = "6", g = "7", h = "8",
+    a = "1",
+    b = "2",
+    c = "3",
+    d = "4",
+    e = "5",
+    f = "6",
+    g = "7",
+    h = "8",
     stringsAsFactors = FALSE
   )
   data |>
@@ -1759,7 +1887,11 @@ test_that("deterministic row height: zero cell padding on all rows", {
     fr_render(tmp)
 
   txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
-  expect_true(grepl("\\trpaddt0\\trpaddft3\\trpaddb0\\trpaddfb3", txt, fixed = TRUE))
+  expect_true(grepl(
+    "\\trpaddt0\\trpaddft3\\trpaddb0\\trpaddfb3",
+    txt,
+    fixed = TRUE
+  ))
 })
 
 test_that("cell paragraphs have zero space before/after", {
@@ -1790,4 +1922,226 @@ test_that("continuation text does not appear on panel 1 (single-panel table)", {
   txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
   # Panel 1: continuation should NOT appear
   expect_false(grepl("(cont.)", txt, fixed = TRUE))
+})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# NA values — end-to-end render
+# ══════════════════════════════════════════════════════════════════════════════
+
+test_that("NA values render as empty cells in RTF output", {
+  tmp <- tempfile(fileext = ".rtf")
+  on.exit(unlink(tmp), add = TRUE)
+
+  data.frame(x = c("a", NA, "b"), stringsAsFactors = FALSE) |>
+    fr_table() |>
+    fr_render(tmp)
+
+  expect_true(file.exists(tmp))
+  txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
+  # Data values present
+  expect_true(grepl("\\ba\\b", txt, perl = TRUE))
+  expect_true(grepl("\\bb\\b", txt, perl = TRUE))
+  # "NA" string should NOT appear in the body
+  expect_false(grepl("\\bNA\\b", txt, perl = TRUE))
+})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# is.fr_spec / is.fr_col — predicate tests
+# ══════════════════════════════════════════════════════════════════════════════
+
+test_that("is.fr_spec returns TRUE for fr_spec objects", {
+  spec <- data.frame(x = 1) |> fr_table()
+  expect_true(is.fr_spec(spec))
+  expect_false(is.fr_spec(mtcars))
+  expect_false(is.fr_spec(NULL))
+  expect_false(is.fr_spec("text"))
+})
+
+test_that("is.fr_col returns TRUE for fr_col objects", {
+  col <- fr_col(label = "Test")
+  expect_true(is.fr_col(col))
+  expect_false(is.fr_col(list(label = "Test")))
+  expect_false(is.fr_col(NULL))
+})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# fr_rows / fr_pagehead / fr_pagefoot — merge semantics
+# ══════════════════════════════════════════════════════════════════════════════
+
+test_that("fr_rows merges with previous configuration", {
+  spec <- tbl_ae_soc |>
+    fr_table() |>
+    fr_rows(page_by = "soc") |>
+    fr_rows(group_by = "soc")
+
+  # Both should be preserved
+  expect_true(length(spec$body$page_by) > 0L)
+  expect_true(length(spec$body$group_by) > 0L)
+})
+
+test_that("fr_pagehead merges with previous header", {
+  spec <- tbl_demog |>
+    fr_table() |>
+    fr_pagehead(left = "Study X") |>
+    fr_pagehead(right = "Page 1")
+
+  # Both should be preserved
+  expect_equal(spec$pagehead$left, "Study X")
+  expect_equal(spec$pagehead$right, "Page 1")
+})
+
+test_that("fr_pagefoot merges with previous footer", {
+  spec <- tbl_demog |>
+    fr_table() |>
+    fr_pagefoot(left = "{program}") |>
+    fr_pagefoot(right = "{datetime}")
+
+  expect_equal(spec$pagefoot$left, "{program}")
+  expect_equal(spec$pagefoot$right, "{datetime}")
+})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Theme header wiring
+# ══════════════════════════════════════════════════════════════════════════════
+
+test_that("fr_theme_set(header = list(bold = TRUE)) wires through to spec", {
+  on.exit(fr_theme_reset(), add = TRUE)
+  fr_theme_reset()
+
+  fr_theme(header = list(bold = TRUE, bg = "#F0F0F0"))
+  spec <- tbl_demog |> fr_table()
+
+  expect_true(spec$header$bold)
+  expect_equal(spec$header$bg, "#F0F0F0")
+})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Edge-case render tests
+# ══════════════════════════════════════════════════════════════════════════════
+
+test_that("fr_render handles empty data frame without error", {
+  tmp <- tempfile(fileext = ".rtf")
+  on.exit(unlink(tmp), add = TRUE)
+
+  data.frame(x = character(0), stringsAsFactors = FALSE) |>
+    fr_table() |>
+    fr_render(tmp)
+
+  expect_true(file.exists(tmp))
+  txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
+  expect_true(startsWith(txt, "{\\rtf1"))
+})
+
+test_that("fr_render encodes Unicode characters as RTF escapes", {
+  tmp <- tempfile(fileext = ".rtf")
+  on.exit(unlink(tmp), add = TRUE)
+
+  data.frame(
+    x = c("hello", "caf\u00e9", "\u00e9\u00e8\u00ea"),
+    stringsAsFactors = FALSE
+  ) |>
+    fr_table() |>
+    fr_render(tmp)
+
+  expect_true(file.exists(tmp))
+  txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
+  # Non-ASCII characters must appear as RTF \uN escapes
+  expect_true(grepl("\\u", txt, fixed = TRUE))
+})
+
+test_that("fr_render handles single-row data frame", {
+  tmp <- tempfile(fileext = ".rtf")
+  on.exit(unlink(tmp), add = TRUE)
+
+  data.frame(x = "only", stringsAsFactors = FALSE) |>
+    fr_table() |>
+    fr_render(tmp)
+
+  expect_true(file.exists(tmp))
+  txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
+  expect_true(startsWith(txt, "{\\rtf1"))
+  expect_true(grepl("only", txt, fixed = TRUE))
+})
+
+# ── NA value handling ────────────────────────────────────────────────────────
+
+test_that("NA values render as empty strings in RTF output", {
+  tmp <- tempfile(fileext = ".rtf")
+  on.exit(unlink(tmp), add = TRUE)
+
+  df <- data.frame(
+    x = c("a", NA, "c"),
+    y = c(1, 2, NA),
+    stringsAsFactors = FALSE
+  )
+
+  df |> fr_table() |> fr_render(tmp)
+
+  expect_true(file.exists(tmp))
+  txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
+
+  # Non-NA values must be present
+  expect_true(grepl("\\ba\\b", txt, perl = TRUE))
+  expect_true(grepl("\\bc\\b", txt, perl = TRUE))
+  expect_true(grepl("\\b2\\b", txt, perl = TRUE))
+
+  # Extract cell content between \cell markers — this is where body data lives.
+  # Strip RTF control words to avoid false positives, then check plain-text fragments.
+  cells <- regmatches(
+    txt,
+    gregexpr("(?<=\\\\cell).*?(?=\\\\cell|\\})", txt, perl = TRUE)
+  )[[1]]
+  cell_text <- gsub("\\\\[a-z]+[0-9]*\\b\\s?", "", cells)
+  cell_text <- gsub("[{}\\\\]", "", cell_text)
+  cell_text <- trimws(cell_text)
+  expect_false(
+    any(cell_text == "NA"),
+    info = paste(
+      "Found literal 'NA' in cell content:",
+      toString(cell_text[cell_text == "NA"])
+    )
+  )
+})
+
+test_that("NA values in all columns render as empty strings in RTF", {
+  tmp <- tempfile(fileext = ".rtf")
+  on.exit(unlink(tmp), add = TRUE)
+
+  # All-NA row and mixed NA columns
+  df <- data.frame(
+    lab = c("Row1", "Row2", NA),
+    val = c(NA, NA, NA),
+    cat = c(NA, "present", NA),
+    stringsAsFactors = FALSE
+  )
+
+  df |> fr_table() |> fr_render(tmp)
+
+  expect_true(file.exists(tmp))
+  txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
+
+  # The word "present" must survive
+  expect_true(grepl("present", txt, fixed = TRUE))
+
+  # "Row1" and "Row2" must survive
+  expect_true(grepl("Row1", txt, fixed = TRUE))
+  expect_true(grepl("Row2", txt, fixed = TRUE))
+
+  # No literal "NA" as standalone cell content
+  cells <- regmatches(
+    txt,
+    gregexpr("(?<=\\\\cell).*?(?=\\\\cell|\\})", txt, perl = TRUE)
+  )[[1]]
+  cell_text <- gsub("\\\\[a-z]+[0-9]*\\b\\s?", "", cells)
+  cell_text <- gsub("[{}\\\\]", "", cell_text)
+  cell_text <- trimws(cell_text)
+  expect_false(
+    any(cell_text == "NA"),
+    info = "Literal 'NA' found in RTF cell content for all-NA column"
+  )
 })

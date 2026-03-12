@@ -21,10 +21,7 @@ test_that("calculate_col_panels splits columns when .split = TRUE and table too 
   data$stub <- "row"
 
   spec <- fr_table(data)
-  spec <- fr_cols(spec,
-    stub = fr_col(stub = TRUE),
-    .split = TRUE
-  )
+  spec <- fr_cols(spec, stub = fr_col(stub = TRUE), .split = TRUE)
   spec <- fr_page(spec, orientation = "portrait")
 
   # Force narrow widths
@@ -64,10 +61,7 @@ test_that("col_split renders multiple sections in RTF", {
   data$param <- c("A", "B")
 
   spec <- fr_table(data)
-  spec <- fr_cols(spec,
-    param = fr_col(stub = TRUE),
-    .split = TRUE
-  )
+  spec <- fr_cols(spec, param = fr_col(stub = TRUE), .split = TRUE)
   spec <- fr_page(spec, orientation = "portrait")
   spec <- finalize_spec(spec)
 
@@ -101,10 +95,7 @@ test_that("page_by + col_split: group-first ordering (all panels per group)", {
   data$param <- c("R1", "R2", "R1", "R2")
 
   spec <- fr_table(data)
-  spec <- fr_cols(spec,
-    param = fr_col(stub = TRUE),
-    .split = TRUE
-  )
+  spec <- fr_cols(spec, param = fr_col(stub = TRUE), .split = TRUE)
   spec <- fr_page(spec, orientation = "portrait")
   spec <- fr_rows(spec, page_by = "grp")
   spec <- finalize_spec(spec)
@@ -130,8 +121,10 @@ test_that("page_by + col_split: group-first ordering (all panels per group)", {
   expect_true(length(pos_b) > 0L)
 
   # All Group A occurrences must come before any Group B occurrence
-  expect_true(max(pos_a) < min(pos_b),
-              label = "All Group A panels appear before Group B panels")
+  expect_true(
+    max(pos_a) < min(pos_b),
+    label = "All Group A panels appear before Group B panels"
+  )
 })
 
 test_that("auto-stub inference picks group_by/indent_by columns", {
@@ -172,10 +165,7 @@ test_that(".split = TRUE with .width = 'auto' does not run fit_panel_widths", {
   data$stub <- "row"
 
   spec <- fr_table(data)
-  spec <- fr_cols(spec,
-    stub = fr_col(stub = TRUE),
-    .split = TRUE
-  )
+  spec <- fr_cols(spec, stub = fr_col(stub = TRUE), .split = TRUE)
   spec <- fr_page(spec, orientation = "portrait")
   spec <- finalize_spec(spec)
 
@@ -216,13 +206,14 @@ test_that("fr_listing() sets split = TRUE on columns_meta", {
 })
 
 test_that("distribute_fit_widths preserves explicit fr_col(width) values", {
-  data <- data.frame(stub_col = "x", auto1 = "abc", auto2 = "defgh",
-                     stringsAsFactors = FALSE)
-  spec <- fr_table(data)
-  spec <- fr_cols(spec,
-    stub_col = fr_col("Stub", width = 1.2),
-    .width = "fit"
+  data <- data.frame(
+    stub_col = "x",
+    auto1 = "abc",
+    auto2 = "defgh",
+    stringsAsFactors = FALSE
   )
+  spec <- fr_table(data)
+  spec <- fr_cols(spec, stub_col = fr_col("Stub", width = 1.2), .width = "fit")
 
   # stub_col should keep its explicit width (1.2)
   expect_equal(spec$columns[["stub_col"]]$width, 1.2)
@@ -232,14 +223,14 @@ test_that("distribute_fit_widths preserves explicit fr_col(width) values", {
 })
 
 test_that("distribute_auto_widths preserves explicit fr_col(width) values", {
-  data <- data.frame(stub_col = "x", auto1 = paste(rep("x", 100), collapse = ""),
-                     auto2 = paste(rep("y", 100), collapse = ""),
-                     stringsAsFactors = FALSE)
-  spec <- fr_table(data)
-  spec <- fr_cols(spec,
-    stub_col = fr_col("Stub", width = 1.2),
-    .width = "auto"
+  data <- data.frame(
+    stub_col = "x",
+    auto1 = paste(rep("x", 100), collapse = ""),
+    auto2 = paste(rep("y", 100), collapse = ""),
+    stringsAsFactors = FALSE
   )
+  spec <- fr_table(data)
+  spec <- fr_cols(spec, stub_col = fr_col("Stub", width = 1.2), .width = "auto")
   spec <- finalize_spec(spec)
 
   # stub_col should keep its explicit width (1.2)
@@ -267,7 +258,8 @@ test_that(".width = 'fit' + .split = TRUE triggers fit_panel_widths", {
   data$stub <- "row"
 
   spec <- fr_table(data)
-  spec <- fr_cols(spec,
+  spec <- fr_cols(
+    spec,
     stub = fr_col(stub = TRUE),
     .split = TRUE,
     .width = "fit"

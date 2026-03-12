@@ -17,8 +17,12 @@ test_that("fr_col creates fr_col object with defaults", {
 })
 
 test_that("fr_col accepts all valid parameters", {
-  col <- fr_col(label = "Parameter", width = 2.5, align = "decimal",
-                visible = FALSE)
+  col <- fr_col(
+    label = "Parameter",
+    width = 2.5,
+    align = "decimal",
+    visible = FALSE
+  )
   expect_equal(col$label, "Parameter")
   expect_equal(col$width, 2.5)
   expect_equal(col$align, "decimal")
@@ -116,8 +120,10 @@ test_that("normalise_margins errors on non-numeric non-list", {
 })
 
 test_that("normalise_margins errors on incomplete named list", {
-  expect_error(normalise_margins(list(top = 1, bottom = 1)),
-               class = "rlang_error")
+  expect_error(
+    normalise_margins(list(top = 1, bottom = 1)),
+    class = "rlang_error"
+  )
 })
 
 test_that("normalise_margins errors on negative values in list", {
@@ -146,13 +152,11 @@ test_that("validate_user_tokens allows overriding program and datetime", {
 })
 
 test_that("validate_user_tokens errors on overriding thepage", {
-  expect_error(validate_user_tokens(list(thepage = "99")),
-               "thepage")
+  expect_error(validate_user_tokens(list(thepage = "99")), "thepage")
 })
 
 test_that("validate_user_tokens errors on overriding total_pages", {
-  expect_error(validate_user_tokens(list(total_pages = "100")),
-               "total_pages")
+  expect_error(validate_user_tokens(list(total_pages = "100")), "total_pages")
 })
 
 test_that("validate_user_tokens errors on unnamed list", {
@@ -321,8 +325,8 @@ test_that("new_fr_rule validates linestyle including dashdot", {
     r <- new_fr_rule(linestyle = ls)
     expect_equal(r$linestyle, ls)
   }
-  expect_error(new_fr_rule(linestyle = "wavy"),  class = "rlang_error")
-  expect_error(new_fr_rule(linestyle = "dash"),  class = "rlang_error")
+  expect_error(new_fr_rule(linestyle = "wavy"), class = "rlang_error")
+  expect_error(new_fr_rule(linestyle = "dash"), class = "rlang_error")
 })
 
 test_that("new_fr_rule validates direction", {
@@ -365,10 +369,10 @@ test_that("new_fr_rule validates cols parameter", {
 })
 
 test_that("new_fr_rule accepts named width shorthands", {
-  expect_equal(new_fr_rule(width = "thin")$width,     0.50)
+  expect_equal(new_fr_rule(width = "thin")$width, 0.50)
   expect_equal(new_fr_rule(width = "hairline")$width, 0.25)
-  expect_equal(new_fr_rule(width = "medium")$width,   1.00)
-  expect_equal(new_fr_rule(width = "thick")$width,    1.50)
+  expect_equal(new_fr_rule(width = "medium")$width, 1.00)
+  expect_equal(new_fr_rule(width = "thick")$width, 1.50)
 })
 
 test_that("new_fr_rule accepts numeric width in points", {
@@ -376,14 +380,14 @@ test_that("new_fr_rule accepts numeric width in points", {
 })
 
 test_that("new_fr_rule errors on invalid width", {
-  expect_error(new_fr_rule(width = 0),       class = "rlang_error")
-  expect_error(new_fr_rule(width = -1),      class = "rlang_error")
-  expect_error(new_fr_rule(width = "huge"),  class = "rlang_error")
+  expect_error(new_fr_rule(width = 0), class = "rlang_error")
+  expect_error(new_fr_rule(width = -1), class = "rlang_error")
+  expect_error(new_fr_rule(width = "huge"), class = "rlang_error")
 })
 
 test_that("new_fr_rule stores partial line fields", {
   r <- new_fr_rule(leftpos = 0.1, rightpos = 0.9)
-  expect_equal(r$leftpos,  0.1)
+  expect_equal(r$leftpos, 0.1)
   expect_equal(r$rightpos, 0.9)
   expect_null(r$abovepos)
   expect_null(r$belowpos)
@@ -391,8 +395,8 @@ test_that("new_fr_rule stores partial line fields", {
 
 test_that("new_fr_rule validates partial line fractions", {
   expect_error(new_fr_rule(leftpos = -0.1), class = "rlang_error")
-  expect_error(new_fr_rule(leftpos = 1.1),  class = "rlang_error")
-  expect_error(new_fr_rule(rightpos = 2),   class = "rlang_error")
+  expect_error(new_fr_rule(leftpos = 1.1), class = "rlang_error")
+  expect_error(new_fr_rule(rightpos = 2), class = "rlang_error")
 })
 
 test_that("new_fr_rule validates and resolves color", {
@@ -411,7 +415,7 @@ test_that("new_fr_rule validates and resolves color", {
 test_that("new_fr_cell_style creates object with NULLs and type=cell", {
   cs <- new_fr_cell_style()
   expect_s3_class(cs, "fr_cell_style")
-  expect_equal(cs$type,   "cell")
+  expect_equal(cs$type, "cell")
   expect_equal(cs$region, "body")
   expect_null(cs$bold)
   expect_null(cs$fg)
@@ -422,8 +426,12 @@ test_that("new_fr_cell_style creates object with NULLs and type=cell", {
 
 test_that("new_fr_cell_style accepts style properties", {
   cs <- new_fr_cell_style(
-    region = "header", bold = TRUE, italic = FALSE,
-    fg = "#FF0000", bg = "#EEEEEE", font_size = 10
+    region = "header",
+    bold = TRUE,
+    italic = FALSE,
+    fg = "#FF0000",
+    bg = "#EEEEEE",
+    font_size = 10
   )
   expect_equal(cs$region, "header")
   expect_true(cs$bold)
@@ -441,10 +449,10 @@ test_that("new_fr_cell_style stores colspan and rowspan", {
 test_that("new_fr_row_style creates row-type cell_style", {
   rs <- new_fr_row_style(rows = c(1L, 2L), bg = "#EEEEEE", bold = TRUE)
   expect_s3_class(rs, "fr_cell_style")
-  expect_equal(rs$type,   "row")
+  expect_equal(rs$type, "row")
   expect_equal(rs$region, "body")
-  expect_equal(rs$rows,   c(1L, 2L))
-  expect_equal(rs$bg,     "#EEEEEE")
+  expect_equal(rs$rows, c(1L, 2L))
+  expect_equal(rs$bg, "#EEEEEE")
   expect_true(rs$bold)
   expect_null(rs$cols)
 })
@@ -452,10 +460,10 @@ test_that("new_fr_row_style creates row-type cell_style", {
 test_that("new_fr_col_style creates col-type cell_style", {
   cs <- new_fr_col_style(cols = c("a", "b"), fg = "#003366")
   expect_s3_class(cs, "fr_cell_style")
-  expect_equal(cs$type,   "col")
+  expect_equal(cs$type, "col")
   expect_equal(cs$region, "body")
-  expect_equal(cs$cols,   c("a", "b"))
-  expect_equal(cs$fg,     "#003366")
+  expect_equal(cs$cols, c("a", "b"))
+  expect_equal(cs$fg, "#003366")
   expect_null(cs$rows)
 })
 
@@ -509,8 +517,10 @@ test_that("fr_footnote_entry has a print method", {
 })
 
 test_that("new_footnote_entry validates placement", {
-  expect_error(new_footnote_entry("x", placement = "first"),
-               class = "rlang_error")
+  expect_error(
+    new_footnote_entry("x", placement = "first"),
+    class = "rlang_error"
+  )
 })
 
 test_that("new_footnote_entry defaults to left align and every placement", {
@@ -530,7 +540,7 @@ test_that("new_fr_pagechrome creates fr_pagechrome", {
   expect_equal(pc$left, "Study ABC")
   expect_equal(pc$right, "Page 1")
   expect_null(pc$center)
-  expect_false(pc$bold)
+  expect_null(pc$bold)
 })
 
 test_that("new_fr_pagechrome accepts multi-line character vectors", {
@@ -930,7 +940,9 @@ test_that("print.fr_spec rich view shows many columns", {
   cols_list <- setNames(lapply(paste0("C", 1:12), fr_col), paste0("c", 1:12))
   spec <- df |> fr_table()
   spec$columns <- cols_list
-  for (nm in names(cols_list)) spec$columns[[nm]]$id <- nm
+  for (nm in names(cols_list)) {
+    spec$columns[[nm]]$id <- nm
+  }
 
   combined <- capture_print(spec)
   expect_match(combined, "Columns")
@@ -1011,8 +1023,11 @@ test_that("print.fr_spec shows type label for figure", {
 })
 
 test_that("print.fr_spec shows plot class when present", {
-  spec <- new_fr_spec(data.frame(x = 1), type = "figure",
-                       plot = structure(list(), class = "gg"))
+  spec <- new_fr_spec(
+    data.frame(x = 1),
+    type = "figure",
+    plot = structure(list(), class = "gg")
+  )
   combined <- capture_print(spec)
   expect_match(combined, "Plot.*gg")
 })
@@ -1073,8 +1088,9 @@ test_that("new_fr_page casts orphan_min and widow_min to integer", {
 
 
 test_that("new_fr_page accepts named list margins", {
-  page <- new_fr_page(margins = list(top = 0.5, bottom = 0.5,
-                                      left = 1.0, right = 1.0))
+  page <- new_fr_page(
+    margins = list(top = 0.5, bottom = 0.5, left = 1.0, right = 1.0)
+  )
   expect_equal(page$margins$top, 0.5)
   expect_equal(page$margins$left, 1.0)
 })
@@ -1097,8 +1113,13 @@ test_that("validate_user_tokens errors on both readonly tokens together", {
 # ══════════════════════════════════════════════════════════════════════════════
 
 test_that("fr_col with all parameters set", {
-  col <- fr_col(label = "Parameter", width = 2.0, align = "decimal",
-                header_align = "center", visible = TRUE)
+  col <- fr_col(
+    label = "Parameter",
+    width = 2.0,
+    align = "decimal",
+    header_align = "center",
+    visible = TRUE
+  )
   expect_equal(col$label, "Parameter")
   expect_equal(col$width, 2.0)
   expect_equal(col$align, "decimal")
@@ -1207,9 +1228,13 @@ test_that("new_fr_spec stores plot field", {
 })
 
 test_that("new_fr_spec stores custom spacing", {
-  custom_spacing <- list(titles_after = 2L, footnotes_before = 0L,
-                          pagehead_after = 1L, pagefoot_before = 1L,
-                          page_by_after = 0L)
+  custom_spacing <- list(
+    titles_after = 2L,
+    footnotes_before = 0L,
+    pagehead_after = 1L,
+    pagefoot_before = 1L,
+    page_by_after = 0L
+  )
   spec <- new_fr_spec(data.frame(x = 1), spacing = custom_spacing)
   expect_equal(spec$spacing$titles_after, 2L)
   expect_equal(spec$spacing$footnotes_before, 0L)

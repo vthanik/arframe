@@ -43,7 +43,8 @@ test_that("fr_get_page returns a list with default page properties", {
 })
 
 test_that("fr_get_page reflects fr_page() settings", {
-  spec <- tbl_demog |> fr_table() |>
+  spec <- tbl_demog |>
+    fr_table() |>
     fr_page(orientation = "landscape", font_size = 8)
   pg <- fr_get_page(spec)
   expect_equal(pg$orientation, "landscape")
@@ -74,7 +75,8 @@ test_that("fr_get_columns returns empty list for unconfigured spec", {
 })
 
 test_that("fr_get_columns returns configured columns", {
-  spec <- tbl_demog |> fr_table() |>
+  spec <- tbl_demog |>
+    fr_table() |>
     fr_cols(
       characteristic = fr_col("Characteristic", width = 2.5),
       placebo = fr_col("Placebo", align = "right")
@@ -96,7 +98,8 @@ test_that("fr_get_columns errors on non-spec input", {
 # ── fr_get_col ───────────────────────────────────────────────────────────────
 
 test_that("fr_get_col retrieves a single column spec", {
-  spec <- tbl_demog |> fr_table() |>
+  spec <- tbl_demog |>
+    fr_table() |>
     fr_cols(characteristic = fr_col("Characteristic", width = 2.5))
   col <- fr_get_col(spec, "characteristic")
   expect_s3_class(col, "fr_col")
@@ -105,14 +108,12 @@ test_that("fr_get_col retrieves a single column spec", {
 })
 
 test_that("fr_get_col errors on non-existent column", {
-  spec <- tbl_demog |> fr_table() |>
-    fr_cols(characteristic = fr_col("Char"))
+  spec <- tbl_demog |> fr_table() |> fr_cols(characteristic = fr_col("Char"))
   expect_error(fr_get_col(spec, "nonexistent"), "not found")
 })
 
 test_that("fr_get_col error message lists available columns", {
-  spec <- tbl_demog |> fr_table() |>
-    fr_cols(characteristic = fr_col("Char"))
+  spec <- tbl_demog |> fr_table() |> fr_cols(characteristic = fr_col("Char"))
   expect_error(fr_get_col(spec, "xyz"), "characteristic")
 })
 
@@ -145,7 +146,8 @@ test_that("fr_get_titles returns empty list when no titles set", {
 })
 
 test_that("fr_get_titles returns configured titles", {
-  spec <- tbl_demog |> fr_table() |>
+  spec <- tbl_demog |>
+    fr_table() |>
     fr_titles("Table 14.1.1", "Summary of Demographics")
   titles <- fr_get_titles(spec)
   expect_length(titles, 2)
@@ -154,14 +156,14 @@ test_that("fr_get_titles returns configured titles", {
 })
 
 test_that("fr_get_titles preserves bold setting", {
-  spec <- tbl_demog |> fr_table() |>
-    fr_titles("Title", .bold = TRUE)
+  spec <- tbl_demog |> fr_table() |> fr_titles("Title", .bold = TRUE)
   titles <- fr_get_titles(spec)
   expect_true(titles[[1]]$bold)
 })
 
 test_that("fr_get_titles preserves align setting", {
-  spec <- tbl_demog |> fr_table() |>
+  spec <- tbl_demog |>
+    fr_table() |>
     fr_titles("Centered Title", .align = "center")
   titles <- fr_get_titles(spec)
   expect_equal(titles[[1]]$align, "center")
@@ -182,7 +184,8 @@ test_that("fr_get_footnotes returns empty list when no footnotes set", {
 })
 
 test_that("fr_get_footnotes returns configured footnotes", {
-  spec <- tbl_demog |> fr_table() |>
+  spec <- tbl_demog |>
+    fr_table() |>
     fr_footnotes("Source: ADSL", "[a] Fisher's exact test")
   fns <- fr_get_footnotes(spec)
   expect_length(fns, 2)
@@ -191,8 +194,7 @@ test_that("fr_get_footnotes returns configured footnotes", {
 })
 
 test_that("fr_get_footnotes preserves placement setting", {
-  spec <- tbl_demog |> fr_table() |>
-    fr_footnotes("Note", .placement = "last")
+  spec <- tbl_demog |> fr_table() |> fr_footnotes("Note", .placement = "last")
   fns <- fr_get_footnotes(spec)
   expect_equal(fns[[1]]$placement, "last")
 })
@@ -212,7 +214,8 @@ test_that("fr_get_styles returns empty list when no styles set", {
 })
 
 test_that("fr_get_styles returns configured styles", {
-  spec <- tbl_demog |> fr_table() |>
+  spec <- tbl_demog |>
+    fr_table() |>
     fr_styles(
       fr_row_style(rows = 1L, bold = TRUE),
       fr_col_style(cols = "total", bg = "#EBF5FB")
@@ -236,7 +239,6 @@ test_that("fr_get_rules returns empty list when no rules set", {
 })
 
 test_that("fr_get_rules returns rules after fr_hlines", {
-
   spec <- tbl_demog |> fr_table() |> fr_hlines("header")
   rules <- fr_get_rules(spec)
   expect_type(rules, "list")
@@ -272,7 +274,8 @@ test_that("fr_get_page returns a copy (modifying result doesn't affect spec)", {
 })
 
 test_that("fr_get_columns returns a copy (modifying result doesn't affect spec)", {
-  spec <- tbl_demog |> fr_table() |>
+  spec <- tbl_demog |>
+    fr_table() |>
     fr_cols(characteristic = fr_col("Char", width = 2.0))
   cols <- fr_get_columns(spec)
   cols$characteristic$width <- 99
@@ -316,8 +319,7 @@ test_that("accessors work on a fully configured spec", {
 })
 
 test_that("accessors work with tbl_ae_soc dataset", {
-  spec <- tbl_ae_soc |> fr_table() |>
-    fr_titles("Adverse Events")
+  spec <- tbl_ae_soc |> fr_table() |> fr_titles("Adverse Events")
   expect_identical(fr_get_data(spec), tbl_ae_soc)
   expect_length(fr_get_titles(spec), 1)
 })

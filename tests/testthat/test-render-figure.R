@@ -5,7 +5,10 @@
 test_that("compile_xelatex_doc runs without error when xelatex available", {
   skip_if(!nzchar(Sys.which("xelatex")), "XeLaTeX not available")
   tmp_tex <- tempfile(fileext = ".tex")
-  writeLines("\\documentclass{article}\\begin{document}test\\end{document}", tmp_tex)
+  writeLines(
+    "\\documentclass{article}\\begin{document}test\\end{document}",
+    tmp_tex
+  )
   on.exit(unlink(c(tmp_tex, sub("\\.tex$", ".pdf", tmp_tex))), add = TRUE)
   expect_no_error(tlframe:::compile_xelatex_doc(tmp_tex))
 })
@@ -125,5 +128,70 @@ test_that("render_figure_rtf with landscape orientation", {
 
   tlframe:::render_figure_rtf(finalized, tmp)
   content <- paste(readLines(tmp, warn = FALSE), collapse = "\n")
+  expect_match(content, "lndscpsxn")
+})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# fr_figure — public API dispatch via fr_render
+# ══════════════════════════════════════════════════════════════════════════════
+
+test_that("fr_figure renders via public fr_render API", {
+  skip_if_not_installed("ggplot2")
+
+  p <- ggplot2::ggplot(data.frame(x = 1:5, y = 1:5), ggplot2::aes(x, y)) +
+    ggplot2::geom_point()
+
+  tmp <- tempfile(fileext = ".rtf")
+  on.exit(unlink(tmp), add = TRUE)
+
+  p |>
+    fr_figure() |>
+    fr_titles("Figure 1") |>
+    fr_render(tmp)
+
+  expect_true(file.exists(tmp))
+  content <- paste(readLines(tmp, warn = FALSE), collapse = "\n")
+  expect_match(content, "\\\\rtf1")
+  expect_match(content, "Figure 1", fixed = TRUE)
+})
+
+
+test_that("fr_figure full pipeline with titles/footnotes/pagehead via fr_render", {
+  skip_if_not_installed("ggplot2")
+
+  p <- ggplot2::ggplot(data.frame(x = 1:5, y = 1:5), ggplot2::aes(x, y)) +
+    ggplot2::geom_point()
+
+  tmp_rtf <- tempfile(fileext = ".rtf")
+  on.exit(unlink(tmp_rtf), add = TRUE)
+
+  # Full pipeline through the public API with all chrome
+  p |>
+    fr_figure(width = 4, height = 3) |>
+    fr_titles("Figure 14.1.1", "Scatter Plot of X vs Y") |>
+    fr_footnotes("Source: test data", "Program: test-render-figure.R") |>
+    fr_pagehead(left = "Study ABC") |>
+    fr_page(orientation = "landscape") |>
+    fr_render(tmp_rtf)
+
+  expect_true(file.exists(tmp_rtf))
+  expect_gt(file.info(tmp_rtf)$size, 0)
+
+  content <- paste(readLines(tmp_rtf, warn = FALSE), collapse = "\n")
+
+  # RTF document structure
+  expect_match(content, "\\\\rtf1")
+  expect_match(content, "\\\\pngblip")
+
+  # Titles rendered in output
+  expect_match(content, "Figure 14.1.1", fixed = TRUE)
+  expect_match(content, "Scatter Plot of X vs Y", fixed = TRUE)
+
+  # Footnotes rendered in output
+  expect_match(content, "Source: test data", fixed = TRUE)
+  expect_match(content, "Program: test-render-figure.R", fixed = TRUE)
+
+  # Landscape orientation applied
   expect_match(content, "lndscpsxn")
 })

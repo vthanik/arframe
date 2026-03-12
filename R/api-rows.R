@@ -2,7 +2,6 @@
 # api-rows.R — Row grouping and pagination verb: fr_rows
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # fr_rows — Row grouping and pagination control
 # ══════════════════════════════════════════════════════════════════════════════
@@ -12,7 +11,8 @@
 #' @description
 #'
 #' Controls how data rows are grouped, paginated, indented, and spaced.
-#' Calling `fr_rows()` again **replaces** the previous row configuration.
+#' Calling `fr_rows()` again **merges** with the previous row configuration:
+#' only the arguments you explicitly supply are changed.
 #'
 #' tlframe uses a two-level greedy pagination algorithm (identical for RTF and
 #' PDF output):
@@ -171,37 +171,73 @@
 #'   [fr_cols()] to hide structural columns from display.
 #'
 #' @export
-fr_rows <- function(spec, page_by = NULL,
-                    group_by = NULL, indent_by = NULL, blank_after = NULL,
-                    page_by_bold = FALSE, page_by_align = "left",
-                    sort_by = NULL, repeat_cols = NULL, wrap = FALSE) {
+fr_rows <- function(
+  spec,
+  page_by = NULL,
+  group_by = NULL,
+  indent_by = NULL,
+  blank_after = NULL,
+  page_by_bold = FALSE,
+  page_by_align = "left",
+  sort_by = NULL,
+  repeat_cols = NULL,
+  wrap = FALSE
+) {
   call <- caller_env()
   check_fr_spec(spec, call = call)
 
   validate_cols <- function(x, arg) {
-    if (is.null(x)) return(character(0))
+    if (is.null(x)) {
+      return(NULL)
+    }
     if (!is.character(x)) {
-      cli_abort(c("{.arg {arg}} must be a character vector of column names.",
-                  "x" = "You supplied {.obj_type_friendly {x}}."),
-                call = call)
+      cli_abort(
+        c(
+          "{.arg {arg}} must be a character vector of column names.",
+          "x" = "You supplied {.obj_type_friendly {x}}."
+        ),
+        call = call
+      )
     }
     validate_cols_exist(x, names(spec$data), arg = arg, call = call)
   }
 
-  check_scalar_lgl(page_by_bold, arg = "page_by_bold", call = call)
-  check_scalar_lgl(wrap, arg = "wrap", call = call)
-  page_by_align <- match_arg_fr(page_by_align, fr_env$valid_aligns, call = call)
+  if (!missing(page_by_bold)) {
+    check_scalar_lgl(page_by_bold, arg = "page_by_bold", call = call)
+  }
+  if (!missing(wrap)) {
+    check_scalar_lgl(wrap, arg = "wrap", call = call)
+  }
+  if (!missing(page_by_align)) {
+    page_by_align <- match_arg_fr(
+      page_by_align,
+      fr_env$valid_aligns,
+      call = call
+    )
+  }
+
+  old <- spec$body
 
   spec$body <- new_fr_body(
-    page_by       = validate_cols(page_by,       "page_by"),
-    group_by      = validate_cols(group_by,      "group_by"),
-    indent_by     = validate_cols(indent_by,     "indent_by"),
-    blank_after   = validate_cols(blank_after,   "blank_after"),
-    page_by_bold  = page_by_bold,
-    page_by_align = page_by_align,
-    sort_by       = validate_cols(sort_by,       "sort_by"),
-    repeat_cols   = validate_cols(repeat_cols,   "repeat_cols"),
-    wrap          = wrap
+    page_by = validate_cols(page_by, "page_by") %||% old$page_by,
+    group_by = validate_cols(group_by, "group_by") %||% old$group_by,
+    indent_by = validate_cols(indent_by, "indent_by") %||% old$indent_by,
+    blank_after = validate_cols(blank_after, "blank_after") %||%
+      old$blank_after,
+    page_by_bold = if (!missing(page_by_bold)) {
+      page_by_bold
+    } else {
+      old$page_by_bold
+    },
+    page_by_align = if (!missing(page_by_align)) {
+      page_by_align
+    } else {
+      old$page_by_align
+    },
+    sort_by = validate_cols(sort_by, "sort_by") %||% old$sort_by,
+    repeat_cols = validate_cols(repeat_cols, "repeat_cols") %||%
+      old$repeat_cols,
+    wrap = if (!missing(wrap)) wrap else old$wrap
   )
   spec
 }

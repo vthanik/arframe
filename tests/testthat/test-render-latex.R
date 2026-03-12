@@ -322,18 +322,15 @@ test_that("latex_escape handles all 10 LaTeX special characters", {
 })
 
 test_that("latex_sentinel_resolver handles all markup types", {
-  expect_equal(latex_sentinel_resolver("SUPER", "1"),
-               "\\textsuperscript{1}")
-  expect_equal(latex_sentinel_resolver("SUB", "2"),
-               "\\textsubscript{2}")
-  expect_equal(latex_sentinel_resolver("BOLD", "text"),
-               "\\textbf{text}")
-  expect_equal(latex_sentinel_resolver("ITALIC", "text"),
-               "\\textit{text}")
-  expect_equal(latex_sentinel_resolver("UNDERLINE", "text"),
-               "\\underline{text}")
-  expect_equal(latex_sentinel_resolver("NEWLINE", ""),
-               "\\\\")
+  expect_equal(latex_sentinel_resolver("SUPER", "1"), "\\textsuperscript{1}")
+  expect_equal(latex_sentinel_resolver("SUB", "2"), "\\textsubscript{2}")
+  expect_equal(latex_sentinel_resolver("BOLD", "text"), "\\textbf{text}")
+  expect_equal(latex_sentinel_resolver("ITALIC", "text"), "\\textit{text}")
+  expect_equal(
+    latex_sentinel_resolver("UNDERLINE", "text"),
+    "\\underline{text}"
+  )
+  expect_equal(latex_sentinel_resolver("NEWLINE", ""), "\\\\")
 })
 
 test_that("latex_escape_and_resolve resolves sentinels within escaped text", {
@@ -509,16 +506,18 @@ test_that("'last' footnotes appear in lastfoot of final section only", {
 
   # Find lastfoot declaration lines and the content lines after them
   lastfoot_idx <- grep("DeclareTblrTemplate\\{lastfoot\\}", all_lines)
-  expect_equal(length(lastfoot_idx), 2L)  # one per section
+  expect_equal(length(lastfoot_idx), 2L) # one per section
 
   # Extract content between each lastfoot declaration and its closing }
   get_template_body <- function(start_idx) {
-    paste(all_lines[start_idx:min(start_idx + 10L, length(all_lines))],
-          collapse = "\n")
+    paste(
+      all_lines[start_idx:min(start_idx + 10L, length(all_lines))],
+      collapse = "\n"
+    )
   }
 
   first_body <- get_template_body(lastfoot_idx[1L])
-  last_body  <- get_template_body(lastfoot_idx[2L])
+  last_body <- get_template_body(lastfoot_idx[2L])
 
   # First section: lastfoot should NOT contain "Last only note"
   expect_false(grepl("Last only note", first_body, fixed = TRUE))
@@ -555,7 +554,6 @@ test_that("latex_preamble includes tolerance and emergencystretch", {
   expect_true(grepl("\\tolerance=200", preamble, fixed = TRUE))
   expect_true(grepl("\\emergencystretch=1em", preamble, fixed = TRUE))
 })
-
 
 
 test_that("span gap columns keep original width in LaTeX output", {
@@ -661,9 +659,12 @@ test_that("align_to_latex maps decimal to L", {
 
 test_that("finalize_spec pre-computes decimal geometry for decimal columns", {
   df <- data.frame(a = c("12.3", "4.56"), b = c("x", "y"))
-  spec <- df |> fr_table() |>
-    fr_cols(a = fr_col("A", align = "decimal", width = 2),
-            b = fr_col("B", align = "left", width = 2))
+  spec <- df |>
+    fr_table() |>
+    fr_cols(
+      a = fr_col("A", align = "decimal", width = 2),
+      b = fr_col("B", align = "left", width = 2)
+    )
   fspec <- finalize_spec(spec)
   expect_true("a" %in% names(fspec$decimal_geometry))
   geom <- fspec$decimal_geometry$a
@@ -674,13 +675,25 @@ test_that("finalize_spec pre-computes decimal geometry for decimal columns", {
 
 test_that("latex_body_rows produces hspace for decimal cells", {
   df <- data.frame(a = c("12.3", "4.56"), b = c("x", "y"))
-  spec <- df |> fr_table() |>
-    fr_cols(a = fr_col("A", align = "decimal", width = 2),
-            b = fr_col("B", align = "left", width = 2))
+  spec <- df |>
+    fr_table() |>
+    fr_cols(
+      a = fr_col("A", align = "decimal", width = 2),
+      b = fr_col("B", align = "left", width = 2)
+    )
   fspec <- finalize_spec(spec)
-  grid <- build_cell_grid(fspec$data, fspec$columns, fspec$cell_styles, fspec$page)
-  rows <- latex_body_rows(fspec$data, fspec$columns, grid,
-                           dec_geom = fspec$decimal_geometry)
+  grid <- build_cell_grid(
+    fspec$data,
+    fspec$columns,
+    fspec$cell_styles,
+    fspec$page
+  )
+  rows <- latex_body_rows(
+    fspec$data,
+    fspec$columns,
+    grid,
+    dec_geom = fspec$decimal_geometry
+  )
   expect_true(all(grepl("\\\\hspace\\{", rows)))
   # No makebox (old approach removed)
   expect_false(any(grepl("\\\\makebox\\[", rows)))
@@ -688,26 +701,50 @@ test_that("latex_body_rows produces hspace for decimal cells", {
 
 test_that("latex_body_rows handles empty decimal cells", {
   df <- data.frame(a = c("12.3", ""), b = c("x", "y"))
-  spec <- df |> fr_table() |>
-    fr_cols(a = fr_col("A", align = "decimal", width = 2),
-            b = fr_col("B", align = "left", width = 2))
+  spec <- df |>
+    fr_table() |>
+    fr_cols(
+      a = fr_col("A", align = "decimal", width = 2),
+      b = fr_col("B", align = "left", width = 2)
+    )
   fspec <- finalize_spec(spec)
-  grid <- build_cell_grid(fspec$data, fspec$columns, fspec$cell_styles, fspec$page)
-  rows <- latex_body_rows(fspec$data, fspec$columns, grid,
-                           dec_geom = fspec$decimal_geometry)
+  grid <- build_cell_grid(
+    fspec$data,
+    fspec$columns,
+    fspec$cell_styles,
+    fspec$page
+  )
+  rows <- latex_body_rows(
+    fspec$data,
+    fspec$columns,
+    grid,
+    dec_geom = fspec$decimal_geometry
+  )
   expect_length(rows, 2L)
   expect_match(rows[1], "\\\\hspace\\{", fixed = FALSE)
 })
 
 test_that("latex_body_rows uses non-breaking spaces for decimal alignment", {
   df <- data.frame(a = c("5 (45%)", "12 (55%)"), b = c("x", "y"))
-  spec <- df |> fr_table() |>
-    fr_cols(a = fr_col("A", align = "decimal", width = 2),
-            b = fr_col("B", align = "left", width = 2))
+  spec <- df |>
+    fr_table() |>
+    fr_cols(
+      a = fr_col("A", align = "decimal", width = 2),
+      b = fr_col("B", align = "left", width = 2)
+    )
   fspec <- finalize_spec(spec)
-  grid <- build_cell_grid(fspec$data, fspec$columns, fspec$cell_styles, fspec$page)
-  rows <- latex_body_rows(fspec$data, fspec$columns, grid,
-                           dec_geom = fspec$decimal_geometry)
+  grid <- build_cell_grid(
+    fspec$data,
+    fspec$columns,
+    fspec$cell_styles,
+    fspec$page
+  )
+  rows <- latex_body_rows(
+    fspec$data,
+    fspec$columns,
+    grid,
+    dec_geom = fspec$decimal_geometry
+  )
   # Non-breaking spaces (~) used for alignment in LaTeX
   expect_true(any(grepl("~", rows, fixed = TRUE)))
   # No makebox
@@ -716,13 +753,25 @@ test_that("latex_body_rows uses non-breaking spaces for decimal alignment", {
 
 test_that("latex_body_rows handles n_pct with decimal percentage", {
   df <- data.frame(a = c("28 (62.2%)", "5 (11.1%)"), b = c("x", "y"))
-  spec <- df |> fr_table() |>
-    fr_cols(a = fr_col("A", align = "decimal", width = 2),
-            b = fr_col("B", align = "left", width = 2))
+  spec <- df |>
+    fr_table() |>
+    fr_cols(
+      a = fr_col("A", align = "decimal", width = 2),
+      b = fr_col("B", align = "left", width = 2)
+    )
   fspec <- finalize_spec(spec)
-  grid <- build_cell_grid(fspec$data, fspec$columns, fspec$cell_styles, fspec$page)
-  rows <- latex_body_rows(fspec$data, fspec$columns, grid,
-                           dec_geom = fspec$decimal_geometry)
+  grid <- build_cell_grid(
+    fspec$data,
+    fspec$columns,
+    fspec$cell_styles,
+    fspec$page
+  )
+  rows <- latex_body_rows(
+    fspec$data,
+    fspec$columns,
+    grid,
+    dec_geom = fspec$decimal_geometry
+  )
   expect_match(rows[1], "\\\\hspace\\{", fixed = FALSE)
   expect_match(rows[1], "28", fixed = TRUE)
 })
@@ -731,7 +780,6 @@ test_that("latex_body_rows handles n_pct with decimal percentage", {
 # ══════════════════════════════════════════════════════════════════════════════
 # Additional coverage tests
 # ══════════════════════════════════════════════════════════════════════════════
-
 
 # -- latex_setmainfont -- Latin Modern fallback for different font families --
 
@@ -817,7 +865,12 @@ test_that("latex_col_header_row uses parbox for centered multiline headers", {
   spec <- df |>
     fr_table() |>
     fr_cols(
-      a = fr_col("Line1\nLine2", width = 2, align = "left", header_align = "center"),
+      a = fr_col(
+        "Line1\nLine2",
+        width = 2,
+        align = "left",
+        header_align = "center"
+      ),
       b = fr_col("Simple", width = 2)
     )
   fspec <- finalize_spec(spec)
@@ -832,7 +885,12 @@ test_that("latex_col_header_row uses parbox for right-aligned multiline headers"
   spec <- df |>
     fr_table() |>
     fr_cols(
-      a = fr_col("Top\nBottom", width = 2, align = "left", header_align = "right"),
+      a = fr_col(
+        "Top\nBottom",
+        width = 2,
+        align = "left",
+        header_align = "right"
+      ),
       b = fr_col("Simple", width = 2)
     )
   fspec <- finalize_spec(spec)
@@ -845,7 +903,10 @@ test_that("latex_col_header_row uses label_overrides when provided", {
   df <- data.frame(a = 1, b = 2)
   spec <- df |>
     fr_table() |>
-    fr_cols(a = fr_col("Original A", width = 2), b = fr_col("Original B", width = 2))
+    fr_cols(
+      a = fr_col("Original A", width = 2),
+      b = fr_col("Original B", width = 2)
+    )
   fspec <- finalize_spec(spec)
   overrides <- c(a = "Override A", b = "Override B")
   row <- latex_col_header_row(fspec, fspec$columns, label_overrides = overrides)
@@ -871,7 +932,12 @@ test_that("latex_body_rows converts leading whitespace to leftskip indent", {
     fr_table() |>
     fr_cols(a = fr_col("A", width = 3), b = fr_col("B", width = 2))
   fspec <- finalize_spec(spec)
-  grid <- build_cell_grid(fspec$data, fspec$columns, fspec$cell_styles, fspec$page)
+  grid <- build_cell_grid(
+    fspec$data,
+    fspec$columns,
+    fspec$cell_styles,
+    fspec$page
+  )
   rows <- latex_body_rows(fspec$data, fspec$columns, grid)
   # Leading spaces converted to paragraph-level \leftskip indent upstream
   expect_match(rows[1], "\\\\leftskip=", perl = TRUE)
@@ -885,10 +951,17 @@ test_that("latex_body_rows preserves leading whitespace as hspace in preserve mo
   df <- data.frame(a = c("  indented", "normal"), b = c("x", "y"))
   spec <- df |>
     fr_table() |>
-    fr_cols(a = fr_col("A", width = 3, spaces = "preserve"),
-            b = fr_col("B", width = 2))
+    fr_cols(
+      a = fr_col("A", width = 3, spaces = "preserve"),
+      b = fr_col("B", width = 2)
+    )
   fspec <- finalize_spec(spec)
-  grid <- build_cell_grid(fspec$data, fspec$columns, fspec$cell_styles, fspec$page)
+  grid <- build_cell_grid(
+    fspec$data,
+    fspec$columns,
+    fspec$cell_styles,
+    fspec$page
+  )
   rows <- latex_body_rows(fspec$data, fspec$columns, grid)
   # Preserve mode: leading spaces become \hspace{...em}
   expect_match(rows[1], "\\\\hspace\\{", perl = TRUE)
@@ -902,7 +975,12 @@ test_that("latex_body_rows handles empty data frame", {
     fr_table() |>
     fr_cols(a = fr_col("A", width = 2), b = fr_col("B", width = 2))
   fspec <- finalize_spec(spec)
-  grid <- build_cell_grid(fspec$data, fspec$columns, fspec$cell_styles, fspec$page)
+  grid <- build_cell_grid(
+    fspec$data,
+    fspec$columns,
+    fspec$cell_styles,
+    fspec$page
+  )
   rows <- latex_body_rows(fspec$data, fspec$columns, grid)
   expect_length(rows, 0L)
 })
@@ -913,7 +991,12 @@ test_that("latex_body_rows works without decimal widths", {
     fr_table() |>
     fr_cols(a = fr_col("A", width = 2), b = fr_col("B", width = 2))
   fspec <- finalize_spec(spec)
-  grid <- build_cell_grid(fspec$data, fspec$columns, fspec$cell_styles, fspec$page)
+  grid <- build_cell_grid(
+    fspec$data,
+    fspec$columns,
+    fspec$cell_styles,
+    fspec$page
+  )
   rows <- latex_body_rows(fspec$data, fspec$columns, grid, dec_geom = NULL)
   expect_length(rows, 2L)
   expect_false(any(grepl("makebox", rows, fixed = TRUE)))
@@ -933,12 +1016,20 @@ test_that("latex_header_style_specs generates halign for centered headers", {
   fspec <- finalize_spec(spec)
   nrow_header <- 1L
   hgrid <- build_header_cell_grid(
-    fspec$columns, fspec$cell_styles, fspec$page,
-    nrow_header, default_valign = "bottom", header_cfg = fspec$header
+    fspec$columns,
+    fspec$cell_styles,
+    fspec$page,
+    nrow_header,
+    default_valign = "bottom",
+    header_cfg = fspec$header
   )
-  specs <- latex_header_style_specs(hgrid, nrow_header, length(fspec$columns),
-                                     columns = fspec$columns,
-                                     header_default_align = NULL)
+  specs <- latex_header_style_specs(
+    hgrid,
+    nrow_header,
+    length(fspec$columns),
+    columns = fspec$columns,
+    header_default_align = NULL
+  )
   spec_str <- paste(specs, collapse = " ")
   expect_match(spec_str, "halign=c", fixed = TRUE)
 })
@@ -954,12 +1045,20 @@ test_that("latex_header_style_specs generates halign for right-aligned headers",
   fspec <- finalize_spec(spec)
   nrow_header <- 1L
   hgrid <- build_header_cell_grid(
-    fspec$columns, fspec$cell_styles, fspec$page,
-    nrow_header, default_valign = "bottom", header_cfg = fspec$header
+    fspec$columns,
+    fspec$cell_styles,
+    fspec$page,
+    nrow_header,
+    default_valign = "bottom",
+    header_cfg = fspec$header
   )
-  specs <- latex_header_style_specs(hgrid, nrow_header, length(fspec$columns),
-                                     columns = fspec$columns,
-                                     header_default_align = NULL)
+  specs <- latex_header_style_specs(
+    hgrid,
+    nrow_header,
+    length(fspec$columns),
+    columns = fspec$columns,
+    header_default_align = NULL
+  )
   spec_str <- paste(specs, collapse = " ")
   expect_match(spec_str, "halign=r", fixed = TRUE)
 })
@@ -972,12 +1071,20 @@ test_that("latex_header_style_specs skips halign when header matches body align"
   fspec <- finalize_spec(spec)
   nrow_header <- 1L
   hgrid <- build_header_cell_grid(
-    fspec$columns, fspec$cell_styles, fspec$page,
-    nrow_header, default_valign = "bottom", header_cfg = fspec$header
+    fspec$columns,
+    fspec$cell_styles,
+    fspec$page,
+    nrow_header,
+    default_valign = "bottom",
+    header_cfg = fspec$header
   )
-  specs <- latex_header_style_specs(hgrid, nrow_header, length(fspec$columns),
-                                     columns = fspec$columns,
-                                     header_default_align = NULL)
+  specs <- latex_header_style_specs(
+    hgrid,
+    nrow_header,
+    length(fspec$columns),
+    columns = fspec$columns,
+    header_default_align = NULL
+  )
   # No halign needed since header_align defaults to body align
   spec_str <- paste(specs, collapse = " ")
   expect_false(grepl("halign", spec_str, fixed = TRUE))
@@ -992,12 +1099,20 @@ test_that("latex_header_style_specs handles bold header cells", {
   fspec <- finalize_spec(spec)
   nrow_header <- 1L
   hgrid <- build_header_cell_grid(
-    fspec$columns, fspec$cell_styles, fspec$page,
-    nrow_header, default_valign = "bottom", header_cfg = fspec$header
+    fspec$columns,
+    fspec$cell_styles,
+    fspec$page,
+    nrow_header,
+    default_valign = "bottom",
+    header_cfg = fspec$header
   )
-  specs <- latex_header_style_specs(hgrid, nrow_header, length(fspec$columns),
-                                     columns = fspec$columns,
-                                     header_default_align = fspec$header$align)
+  specs <- latex_header_style_specs(
+    hgrid,
+    nrow_header,
+    length(fspec$columns),
+    columns = fspec$columns,
+    header_default_align = fspec$header$align
+  )
   spec_str <- paste(specs, collapse = " ")
   expect_match(spec_str, "bfseries", fixed = TRUE)
 })
@@ -1011,12 +1126,20 @@ test_that("latex_header_style_specs handles header bg/fg colors", {
   fspec <- finalize_spec(spec)
   nrow_header <- 1L
   hgrid <- build_header_cell_grid(
-    fspec$columns, fspec$cell_styles, fspec$page,
-    nrow_header, default_valign = "bottom", header_cfg = fspec$header
+    fspec$columns,
+    fspec$cell_styles,
+    fspec$page,
+    nrow_header,
+    default_valign = "bottom",
+    header_cfg = fspec$header
   )
-  specs <- latex_header_style_specs(hgrid, nrow_header, length(fspec$columns),
-                                     columns = fspec$columns,
-                                     header_default_align = fspec$header$align)
+  specs <- latex_header_style_specs(
+    hgrid,
+    nrow_header,
+    length(fspec$columns),
+    columns = fspec$columns,
+    header_default_align = fspec$header$align
+  )
   spec_str <- paste(specs, collapse = " ")
   expect_match(spec_str, "bg=tblrCCCCCC", fixed = TRUE)
   expect_match(spec_str, "fg=tblrFF0000", fixed = TRUE)
@@ -1034,12 +1157,20 @@ test_that("latex_header_style_specs uses header_default_align for all columns", 
   fspec <- finalize_spec(spec)
   nrow_header <- 1L
   hgrid <- build_header_cell_grid(
-    fspec$columns, fspec$cell_styles, fspec$page,
-    nrow_header, default_valign = "bottom", header_cfg = fspec$header
+    fspec$columns,
+    fspec$cell_styles,
+    fspec$page,
+    nrow_header,
+    default_valign = "bottom",
+    header_cfg = fspec$header
   )
-  specs <- latex_header_style_specs(hgrid, nrow_header, length(fspec$columns),
-                                     columns = fspec$columns,
-                                     header_default_align = fspec$header$align)
+  specs <- latex_header_style_specs(
+    hgrid,
+    nrow_header,
+    length(fspec$columns),
+    columns = fspec$columns,
+    header_default_align = fspec$header$align
+  )
   spec_str <- paste(specs, collapse = " ")
   # Both columns should get halign=c since header default is center but body is left
   expect_equal(length(grep("halign=c", specs, fixed = TRUE)), 2L)
@@ -1113,7 +1244,9 @@ test_that("latex_preamble sets footskip=0pt when no pagefoot", {
 
 test_that("latex_preamble includes lastpage when total_pages token used", {
   df <- data.frame(x = 1)
-  spec <- df |> fr_table() |> fr_pagefoot(right = "Page {thepage} of {total_pages}")
+  spec <- df |>
+    fr_table() |>
+    fr_pagefoot(right = "Page {thepage} of {total_pages}")
   fspec <- finalize_spec(spec)
   preamble <- paste(latex_preamble(fspec), collapse = "\n")
   expect_match(preamble, "usepackage\\{lastpage\\}", perl = TRUE)
@@ -1144,9 +1277,21 @@ test_that("latex_foot_template suppresses all foot templates when no footnotes",
   fspec <- finalize_spec(spec)
   lines <- latex_foot_template(fspec, is_last = TRUE)
   lines_str <- paste(lines, collapse = "\n")
-  expect_match(lines_str, "DefTblrTemplate\\{firstfoot\\}\\{default\\}\\{\\}", perl = TRUE)
-  expect_match(lines_str, "DefTblrTemplate\\{middlefoot\\}\\{default\\}\\{\\}", perl = TRUE)
-  expect_match(lines_str, "DefTblrTemplate\\{lastfoot\\}\\{default\\}\\{\\}", perl = TRUE)
+  expect_match(
+    lines_str,
+    "DefTblrTemplate\\{firstfoot\\}\\{default\\}\\{\\}",
+    perl = TRUE
+  )
+  expect_match(
+    lines_str,
+    "DefTblrTemplate\\{middlefoot\\}\\{default\\}\\{\\}",
+    perl = TRUE
+  )
+  expect_match(
+    lines_str,
+    "DefTblrTemplate\\{lastfoot\\}\\{default\\}\\{\\}",
+    perl = TRUE
+  )
 })
 
 test_that("latex_foot_template handles only 'last' footnotes", {
@@ -1158,8 +1303,16 @@ test_that("latex_foot_template handles only 'last' footnotes", {
   lines <- latex_foot_template(fspec, is_last = TRUE)
   lines_str <- paste(lines, collapse = "\n")
   # firstfoot and middlefoot should be suppressed
-  expect_match(lines_str, "DefTblrTemplate\\{firstfoot\\}\\{default\\}\\{\\}", perl = TRUE)
-  expect_match(lines_str, "DefTblrTemplate\\{middlefoot\\}\\{default\\}\\{\\}", perl = TRUE)
+  expect_match(
+    lines_str,
+    "DefTblrTemplate\\{firstfoot\\}\\{default\\}\\{\\}",
+    perl = TRUE
+  )
+  expect_match(
+    lines_str,
+    "DefTblrTemplate\\{middlefoot\\}\\{default\\}\\{\\}",
+    perl = TRUE
+  )
   # lastfoot should contain the note
   expect_match(lines_str, "DeclareTblrTemplate\\{lastfoot\\}", perl = TRUE)
   expect_match(lines_str, "Last only note", fixed = TRUE)
@@ -1189,7 +1342,11 @@ test_that("latex_foot_template handles every+last footnote combination", {
   lines <- latex_foot_template(fspec, is_last = TRUE)
   lines_str <- paste(lines, collapse = "\n")
   # firstfoot/middlefoot should have "Every page" but not "Last page"
-  expect_match(lines_str, "DeclareTblrTemplate\\{firstfoot, middlefoot\\}", perl = TRUE)
+  expect_match(
+    lines_str,
+    "DeclareTblrTemplate\\{firstfoot, middlefoot\\}",
+    perl = TRUE
+  )
   # lastfoot should have both
   expect_match(lines_str, "DeclareTblrTemplate\\{lastfoot\\}", perl = TRUE)
   expect_match(lines_str, "Every page", fixed = TRUE)
@@ -1224,7 +1381,11 @@ test_that("latex_head_template includes group label when provided", {
   lines_str <- paste(lines, collapse = "\n")
   expect_match(lines_str, "Parameter: Height", fixed = TRUE)
   expect_match(lines_str, "DeclareTblrTemplate\\{firsthead\\}", perl = TRUE)
-  expect_match(lines_str, "DeclareTblrTemplate\\{middlehead, lasthead\\}", perl = TRUE)
+  expect_match(
+    lines_str,
+    "DeclareTblrTemplate\\{middlehead, lasthead\\}",
+    perl = TRUE
+  )
 })
 
 test_that("latex_head_template without titles or group_label suppresses templates", {
@@ -1233,8 +1394,16 @@ test_that("latex_head_template without titles or group_label suppresses template
   fspec <- finalize_spec(spec)
   lines <- latex_head_template(fspec)
   lines_str <- paste(lines, collapse = "\n")
-  expect_match(lines_str, "DefTblrTemplate\\{conthead\\}\\{default\\}\\{\\}", perl = TRUE)
-  expect_match(lines_str, "DefTblrTemplate\\{contfoot\\}\\{default\\}\\{\\}", perl = TRUE)
+  expect_match(
+    lines_str,
+    "DefTblrTemplate\\{conthead\\}\\{default\\}\\{\\}",
+    perl = TRUE
+  )
+  expect_match(
+    lines_str,
+    "DefTblrTemplate\\{contfoot\\}\\{default\\}\\{\\}",
+    perl = TRUE
+  )
 })
 
 
@@ -1354,10 +1523,14 @@ test_that("latex_fancyhdr_setup handles bold pagefoot", {
 
 test_that("latex_cell_style_specs returns empty for empty cell_grid", {
   grid <- data.frame(
-    row_idx = integer(0), col_idx = integer(0),
-    bold = logical(0), italic = logical(0),
-    bg = character(0), fg = character(0),
-    indent = numeric(0), content = character(0),
+    row_idx = integer(0),
+    col_idx = integer(0),
+    bold = logical(0),
+    italic = logical(0),
+    bg = character(0),
+    fg = character(0),
+    indent = numeric(0),
+    content = character(0),
     stringsAsFactors = FALSE
   )
   result <- latex_cell_style_specs(grid, 2, 2, 1)
@@ -1371,8 +1544,18 @@ test_that("latex_cell_style_specs generates indent style", {
     fr_cols(a = fr_col("A", width = 2), b = fr_col("B", width = 2)) |>
     fr_rows(indent_by = "a")
   fspec <- finalize_spec(spec)
-  grid <- build_cell_grid(fspec$data, fspec$columns, fspec$cell_styles, fspec$page)
-  specs <- latex_cell_style_specs(grid, nrow(fspec$data), length(fspec$columns), 1L)
+  grid <- build_cell_grid(
+    fspec$data,
+    fspec$columns,
+    fspec$cell_styles,
+    fspec$page
+  )
+  specs <- latex_cell_style_specs(
+    grid,
+    nrow(fspec$data),
+    length(fspec$columns),
+    1L
+  )
   spec_str <- paste(specs, collapse = " ")
   # If indentation was applied, should see preto={\hspace{...}}
   # This depends on actual indent_by behavior
@@ -1390,10 +1573,18 @@ test_that("latex_border_specs generates hlines from fr_hlines", {
     fr_hlines("box")
   fspec <- finalize_spec(spec)
   nrow_header <- 1L
-  borders <- resolve_borders(fspec$rules, nrow(fspec$data),
-                              length(fspec$columns), nrow_header)
-  specs <- latex_border_specs(borders, nrow(fspec$data), length(fspec$columns),
-                               nrow_header)
+  borders <- resolve_borders(
+    fspec$rules,
+    nrow(fspec$data),
+    length(fspec$columns),
+    nrow_header
+  )
+  specs <- latex_border_specs(
+    borders,
+    nrow(fspec$data),
+    length(fspec$columns),
+    nrow_header
+  )
   spec_str <- paste(specs, collapse = "\n")
   expect_match(spec_str, "hline", fixed = TRUE)
 })

@@ -2,7 +2,6 @@
 # test-validate.R — Tests for R/validate.R validation helpers
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # match_arg_fr
 # ══════════════════════════════════════════════════════════════════════════════
@@ -141,41 +140,6 @@ test_that("check_scalar_lgl returns NULL invisibly when allow_null is TRUE", {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# check_color
-# ══════════════════════════════════════════════════════════════════════════════
-
-test_that("check_color accepts NULL when allow_null is TRUE (default)", {
-  result <- check_color(NULL)
-  expect_null(result)
-})
-
-test_that("check_color accepts valid hex color", {
-  expect_invisible(check_color("#FF0000"))
-})
-
-test_that("check_color accepts valid named color", {
-  expect_invisible(check_color("black"))
-  expect_invisible(check_color("steelblue"))
-})
-
-test_that("check_color errors on non-character input", {
-  expect_error(check_color(123), class = "rlang_error")
-})
-
-test_that("check_color errors on character vector length > 1", {
-  expect_error(check_color(c("red", "blue")), class = "rlang_error")
-})
-
-test_that("check_color errors on invalid color name", {
-  expect_error(check_color("notacolor"), class = "rlang_error")
-})
-
-test_that("check_color errors on NULL when allow_null is FALSE", {
-  expect_error(check_color(NULL, allow_null = FALSE), class = "rlang_error")
-})
-
-
-# ══════════════════════════════════════════════════════════════════════════════
 # check_non_negative_int
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -185,7 +149,7 @@ test_that("check_non_negative_int accepts zero", {
 
 test_that("check_non_negative_int accepts positive integers", {
   expect_equal(check_non_negative_int(5L), 5L)
-  expect_equal(check_non_negative_int(3), 3L)  # numeric coerced to integer
+  expect_equal(check_non_negative_int(3), 3L) # numeric coerced to integer
 })
 
 test_that("check_non_negative_int errors on negative numbers", {
@@ -294,10 +258,12 @@ test_that("validate_n_param errors on non-numeric inner list value", {
 })
 
 test_that("validate_n_param accepts named list with named numeric entries", {
-  expect_silent(validate_n_param(n = list(
-    grp1 = c(a = 10, b = 20),
-    grp2 = c(a = 15, b = 25)
-  )))
+  expect_silent(validate_n_param(
+    n = list(
+      grp1 = c(a = 10, b = 20),
+      grp2 = c(a = 15, b = 25)
+    )
+  ))
 })
 
 test_that("validate_n_param accepts 2-col data frame", {

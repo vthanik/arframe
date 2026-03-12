@@ -9,7 +9,6 @@
 #   Pass 2 (targeted): Expensive stri_wrap() only on candidates
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 #' Compute available character width per column
 #'
 #' @param columns Named list of fr_col objects (visible only).
@@ -20,10 +19,14 @@ compute_column_char_widths <- function(columns, page) {
   # Approximate: column width in inches * characters-per-inch for the font
   # Use AFM space width as the average character width
   space_twips <- measure_text_width_twips(" ", page$font_family, page$font_size)
-  vapply(columns, function(col) {
-    col_twips <- inches_to_twips(col$width)
-    max(1L, as.integer(col_twips / space_twips))
-  }, integer(1))
+  vapply(
+    columns,
+    function(col) {
+      col_twips <- inches_to_twips(col$width)
+      max(1L, as.integer(col_twips / space_twips))
+    },
+    integer(1)
+  )
 }
 
 
@@ -34,7 +37,9 @@ compute_column_char_widths <- function(columns, page) {
 #' @return Integer. Number of lines this cell needs.
 #' @noRd
 measure_cell_height <- function(text, char_width) {
-  if (!nzchar(text)) return(1L)
+  if (!nzchar(text)) {
+    return(1L)
+  }
 
   # Split by explicit newlines first
   parts <- strsplit(text, "\n", fixed = TRUE)[[1L]]
@@ -46,8 +51,7 @@ measure_cell_height <- function(text, char_width) {
       next
     }
     # Estimate line wrapping
-    wrapped <- stringi::stri_wrap(part, width = char_width,
-                                   simplify = TRUE)
+    wrapped <- stringi::stri_wrap(part, width = char_width, simplify = TRUE)
     total <- total + length(wrapped)
   }
 
@@ -67,7 +71,9 @@ measure_cell_height <- function(text, char_width) {
 #' @noRd
 calculate_row_heights <- function(data, columns, page) {
   nr <- nrow(data)
-  if (nr == 0L) return(integer(0))
+  if (nr == 0L) {
+    return(integer(0))
+  }
 
   heights <- rep(1L, nr)
   col_chars <- compute_column_char_widths(columns, page)
@@ -75,7 +81,9 @@ calculate_row_heights <- function(data, columns, page) {
   for (j in seq_along(columns)) {
     nm <- names(columns)[j]
     content <- data[[nm]]
-    if (!is.character(content)) next
+    if (!is.character(content)) {
+      next
+    }
 
     # Strip sentinel tokens so width estimation uses visible text only
     content <- sentinel_to_plain_vec(content)
@@ -84,7 +92,9 @@ calculate_row_heights <- function(data, columns, page) {
     nl_count <- stringi::stri_count_fixed(content, "\n")
     char_count <- nchar(content)
     candidates <- which(nl_count > 0L | char_count > col_chars[j])
-    if (length(candidates) == 0L) next
+    if (length(candidates) == 0L) {
+      next
+    }
 
     # Pass 2: Expensive wrap only for candidates
     for (i in candidates) {
@@ -112,7 +122,7 @@ calculate_page_budget <- function(spec) {
 
   # Margins (top + bottom)
   margins <- spec$page$margins
-  margin_top    <- inches_to_twips(margins$top)
+  margin_top <- inches_to_twips(margins$top)
   margin_bottom <- inches_to_twips(margins$bottom)
 
   # Row height for one line at current font size
@@ -138,14 +148,21 @@ calculate_page_budget <- function(spec) {
   n_pagefoot <- if (!is.null(spec$pagefoot)) 2L else 0L
 
   # Available height for body
-  chrome_rows <- n_titles + titles_after + n_header_rows +
-    footnotes_before + n_footnotes + n_pagehead + n_pagefoot
-  available_twips <- page_height - margin_top - margin_bottom -
+  chrome_rows <- n_titles +
+    titles_after +
+    n_header_rows +
+    footnotes_before +
+    n_footnotes +
+    n_pagehead +
+    n_pagefoot
+  available_twips <- page_height -
+    margin_top -
+    margin_bottom -
     chrome_rows * one_row_twips
 
   # Budget in line-equivalents
   budget <- as.integer(available_twips / one_row_twips)
-  max(5L, budget)  # minimum 5 rows per page
+  max(5L, budget) # minimum 5 rows per page
 }
 
 
@@ -153,7 +170,16 @@ calculate_page_budget <- function(spec) {
 #'
 #' Greedy page-filling algorithm that respects group boundaries.
 #' Groups smaller than `orphan_min + widow_min` are kept together.
-#' Larger groups may split, but enforce minimum rows at page boundaries.
+#' Larger groups may split with two safeguards:
+#'
+#' - **Orphan/widow protection**: ensures at least `orphan_min` non-blank
+#'   rows at the bottom of a page and `widow_min` at the top of the next.
+#'   When a widow violation is detected (too few rows on the next page),
+#'   rows are stolen from the current page (but never below `orphan_min`).
+#' - **Blank suppression at page breaks**: trailing blank rows at the
+#'   bottom of a page and leading blank rows at the top of the next page
+#'   are suppressed (assigned page 0, not rendered). This prevents wasted
+#'   vertical space at page boundaries within a split group.
 #'
 #' @param row_heights Integer vector — height in lines per body row.
 #' @param budget Integer — lines available per page.
@@ -164,10 +190,18 @@ calculate_page_budget <- function(spec) {
 #' @return Integer vector — page number (1-based) for each row, or
 #'   0 for excluded trailing blank rows (not rendered).
 #' @noRd
-paginate_rows <- function(row_heights, budget, data, group_by,
-                           orphan_min = 3L, widow_min = 3L) {
+paginate_rows <- function(
+  row_heights,
+  budget,
+  data,
+  group_by,
+  orphan_min = 3L,
+  widow_min = 3L
+) {
   nr <- length(row_heights)
-  if (nr == 0L) return(integer(0))
+  if (nr == 0L) {
+    return(integer(0))
+  }
 
   pages <- rep(0L, nr)
   current_page <- 1L
@@ -203,7 +237,9 @@ paginate_rows <- function(row_heights, budget, data, group_by,
     }
 
     # Skip trailing blanks from group end
-    while (g_end > g_start && is_blank[g_end]) g_end <- g_end - 1L
+    while (g_end > g_start && is_blank[g_end]) {
+      g_end <- g_end - 1L
+    }
 
     group_rows <- g_start:g_end
     group_height <- sum(row_heights[group_rows])
@@ -228,19 +264,93 @@ paginate_rows <- function(row_heights, budget, data, group_by,
       pages[group_rows] <- current_page
       used <- group_height
     } else {
-      # Branch 4: group larger than one page — must split row-by-row
+      # Branch 4: group larger than one page — split with orphan/widow
+      # control and blank suppression at page boundaries.
+      #
+      # Strategy: greedy page-fill, then adjust for widow/orphan violations.
+      # Blank rows at page boundaries are suppressed (page 0 = not rendered).
       if (used > 0L) {
         current_page <- current_page + 1L
         used <- 0L
       }
 
-      for (r in group_rows) {
-        if (used + row_heights[r] > budget && used > 0L) {
-          current_page <- current_page + 1L
-          used <- 0L
+      n_group <- length(group_rows)
+      gi <- 1L # group-local index
+
+      while (gi <= n_group) {
+        # --- Skip leading blank rows at page start (suppress) ---
+        while (gi <= n_group && is_blank[group_rows[gi]] && used == 0L) {
+          # Blank at page start: leave at page 0 (not rendered)
+          gi <- gi + 1L
         }
-        pages[r] <- current_page
-        used <- used + row_heights[r]
+        if (gi > n_group) {
+          break
+        }
+
+        # --- Greedy scan: find how many rows fit on this page ---
+        scan_end <- gi
+        scan_used <- 0L
+        while (scan_end <= n_group) {
+          h <- row_heights[group_rows[scan_end]]
+          if (scan_used + h > budget && scan_end > gi) {
+            break
+          }
+          scan_used <- scan_used + h
+          scan_end <- scan_end + 1L
+        }
+        # [gi, scan_end - 1] fit on this page
+
+        # If everything remaining fits, assign all and exit
+        if (scan_end > n_group) {
+          for (idx in gi:n_group) {
+            pages[group_rows[idx]] <- current_page
+          }
+          used <- scan_used
+          break
+        }
+
+        # --- Trim trailing blank rows from this page's slice ---
+        # Helper: walk backward past blanks (reused after widow steal)
+        trimmed_end <- scan_end - 1L
+        while (trimmed_end > gi && is_blank[group_rows[trimmed_end]]) {
+          trimmed_end <- trimmed_end - 1L
+        }
+
+        # --- Widow/orphan check ---
+        # Note: trimmed_end < n_group is guaranteed here because the
+        # "everything fits" guard above catches scan_end > n_group.
+        n_data_remaining <- sum(
+          !is_blank[group_rows[(trimmed_end + 1L):n_group]]
+        )
+        n_data_on_page <- sum(!is_blank[group_rows[gi:trimmed_end]])
+
+        if (n_data_remaining > 0L && n_data_remaining < widow_min) {
+          # Widow violation: too few rows would land on the next page.
+          # Steal rows from this page to give the next page enough.
+          steal <- widow_min - n_data_remaining
+          if (n_data_on_page - steal >= orphan_min) {
+            stolen <- 0L
+            while (stolen < steal && trimmed_end > gi) {
+              if (!is_blank[group_rows[trimmed_end]]) {
+                stolen <- stolen + 1L
+              }
+              trimmed_end <- trimmed_end - 1L
+            }
+            # Re-trim trailing blanks after stealing
+            while (trimmed_end > gi && is_blank[group_rows[trimmed_end]]) {
+              trimmed_end <- trimmed_end - 1L
+            }
+          }
+        }
+
+        # --- Assign rows [gi, trimmed_end] to current page ---
+        for (idx in gi:trimmed_end) {
+          pages[group_rows[idx]] <- current_page
+        }
+
+        gi <- trimmed_end + 1L
+        current_page <- current_page + 1L
+        used <- 0L
       }
     }
 

@@ -12,17 +12,33 @@ test_that("fr_env exists and is an environment", {
 
 test_that("fr_env contains all expected members", {
   expected <- c(
-    "fonts", "paper", "baseline_ratio",
-    "linestyle_rtf", "valid_linestyles", "cell_border_rtf", "para_border_rtf",
-    "hline_presets", "line_widths",
-    "latex_specials", "rtf_specials", "latex_unicode", "rtf_unicode",
-    "named_colors", "builtin_tokens",
-    "valid_aligns", "align_to_rtf", "align_to_latex",
-    "sentinel_start", "sentinel_end", "sentinel_pattern"
+    "fonts",
+    "paper",
+    "baseline_ratio",
+    "linestyle_rtf",
+    "valid_linestyles",
+    "cell_border_rtf",
+    "para_border_rtf",
+    "hline_presets",
+    "line_widths",
+    "latex_specials",
+    "rtf_specials",
+    "latex_unicode",
+    "rtf_unicode",
+    "named_colors",
+    "builtin_tokens",
+    "valid_aligns",
+    "align_to_rtf",
+    "align_to_latex",
+    "sentinel_start",
+    "sentinel_end",
+    "sentinel_pattern"
   )
   for (member in expected) {
-    expect_true(exists(member, envir = fr_env),
-                info = paste0("fr_env$", member, " should exist"))
+    expect_true(
+      exists(member, envir = fr_env),
+      info = paste0("fr_env$", member, " should exist")
+    )
   }
 })
 
@@ -57,7 +73,10 @@ test_that("resolve_afm_name resolves font families to AFM names", {
   expect_equal(resolve_afm_name("roman"), "Times-Roman")
   expect_equal(resolve_afm_name("modern", bold = TRUE), "Courier-Bold")
   expect_equal(resolve_afm_name("swiss", italic = TRUE), "Helvetica-Oblique")
-  expect_equal(resolve_afm_name("roman", bold = TRUE, italic = TRUE), "Times-BoldItalic")
+  expect_equal(
+    resolve_afm_name("roman", bold = TRUE, italic = TRUE),
+    "Times-BoldItalic"
+  )
 })
 
 test_that("resolve_afm_name resolves font names to AFM names", {
@@ -81,14 +100,14 @@ test_that("measure_text_width_twips scales with font size", {
 
 test_that("measure_text_width_twips differentiates narrow vs wide chars", {
   w_narrow <- measure_text_width_twips("iiii", "Helvetica", 10)
-  w_wide   <- measure_text_width_twips("MMMM", "Helvetica", 10)
-  expect_gt(w_wide, w_narrow * 2)  # M is ~3.75x wider than i
+  w_wide <- measure_text_width_twips("MMMM", "Helvetica", 10)
+  expect_gt(w_wide, w_narrow * 2) # M is ~3.75x wider than i
 })
 
 test_that("measure_text_width_twips is consistent for monospace", {
   w_narrow <- measure_text_width_twips("iiii", "Courier", 10)
-  w_wide   <- measure_text_width_twips("MMMM", "Courier", 10)
-  expect_equal(w_narrow, w_wide)  # Courier is monospaced
+  w_wide <- measure_text_width_twips("MMMM", "Courier", 10)
+  expect_equal(w_narrow, w_wide) # Courier is monospaced
 })
 
 test_that("measure_text_width_twips handles empty and NA", {
@@ -216,14 +235,18 @@ test_that("baseline_skip_twips uses 1.2 ratio", {
 # ══════════════════════════════════════════════════════════════════════════════
 
 test_that("valid_linestyles contains all required values", {
-  expect_true(all(c("solid", "dashed", "dotted", "double", "dashdot") %in%
-                    fr_env$valid_linestyles))
+  expect_true(all(
+    c("solid", "dashed", "dotted", "double", "dashdot") %in%
+      fr_env$valid_linestyles
+  ))
 })
 
 test_that("linestyle_rtf maps all valid linestyles", {
   for (style in fr_env$valid_linestyles) {
-    expect_true(style %in% names(fr_env$linestyle_rtf),
-                info = paste0("linestyle_rtf should contain '", style, "'"))
+    expect_true(
+      style %in% names(fr_env$linestyle_rtf),
+      info = paste0("linestyle_rtf should contain '", style, "'")
+    )
   }
 })
 
@@ -232,11 +255,21 @@ test_that("linestyle_rtf maps dashdot to brdrdashd", {
 })
 
 test_that("hline_presets contain all required preset names", {
-  expected_presets <- c("header", "open", "void", "above", "below",
-                        "hsides", "box", "booktabs")
+  expected_presets <- c(
+    "header",
+    "open",
+    "void",
+    "above",
+    "below",
+    "hsides",
+    "box",
+    "booktabs"
+  )
   for (preset in expected_presets) {
-    expect_true(preset %in% names(fr_env$hline_presets),
-                info = paste0("hline_presets should contain '", preset, "'"))
+    expect_true(
+      preset %in% names(fr_env$hline_presets),
+      info = paste0("hline_presets should contain '", preset, "'")
+    )
   }
 })
 
@@ -244,7 +277,7 @@ test_that("hline_presets$header has 1 rule (below header)", {
   p <- fr_env$hline_presets$header
   expect_length(p, 1L)
   expect_equal(p[[1]]$region, "header")
-  expect_equal(p[[1]]$side,   "below")
+  expect_equal(p[[1]]$side, "below")
 })
 
 test_that("hline_presets$open has 2 rules (above + below header)", {
@@ -265,10 +298,10 @@ test_that("hline_presets$booktabs has 3 rules (top, mid, bottom)", {
 test_that("line_widths contains named sizes as positive numbers", {
   expect_named(fr_env$line_widths, c("hairline", "thin", "medium", "thick"))
   expect_true(all(fr_env$line_widths > 0))
-  expect_equal(fr_env$line_widths[["thin"]],     0.50)
+  expect_equal(fr_env$line_widths[["thin"]], 0.50)
   expect_equal(fr_env$line_widths[["hairline"]], 0.25)
-  expect_equal(fr_env$line_widths[["medium"]],   1.00)
-  expect_equal(fr_env$line_widths[["thick"]],    1.50)
+  expect_equal(fr_env$line_widths[["medium"]], 1.00)
+  expect_equal(fr_env$line_widths[["thick"]], 1.50)
 })
 
 test_that("resolve_line_width returns 0.5 for NULL", {
@@ -276,15 +309,15 @@ test_that("resolve_line_width returns 0.5 for NULL", {
 })
 
 test_that("resolve_line_width resolves named shorthands", {
-  expect_equal(resolve_line_width("thin"),     0.50)
+  expect_equal(resolve_line_width("thin"), 0.50)
   expect_equal(resolve_line_width("hairline"), 0.25)
-  expect_equal(resolve_line_width("medium"),   1.00)
-  expect_equal(resolve_line_width("thick"),    1.50)
+  expect_equal(resolve_line_width("medium"), 1.00)
+  expect_equal(resolve_line_width("thick"), 1.50)
 })
 
 test_that("resolve_line_width passes through positive numeric", {
   expect_equal(resolve_line_width(0.75), 0.75)
-  expect_equal(resolve_line_width(2.0),  2.0)
+  expect_equal(resolve_line_width(2.0), 2.0)
 })
 
 test_that("resolve_line_width errors on bad name", {
@@ -292,8 +325,8 @@ test_that("resolve_line_width errors on bad name", {
 })
 
 test_that("resolve_line_width errors on non-positive numeric", {
-  expect_error(resolve_line_width(0),    class = "rlang_error")
-  expect_error(resolve_line_width(-1),   class = "rlang_error")
+  expect_error(resolve_line_width(0), class = "rlang_error")
+  expect_error(resolve_line_width(-1), class = "rlang_error")
 })
 
 
@@ -304,8 +337,10 @@ test_that("resolve_line_width errors on non-positive numeric", {
 test_that("latex_specials maps all dangerous characters", {
   dangerous <- c("\\", "{", "}", "&", "%", "$", "#", "_", "~", "^")
   for (ch in dangerous) {
-    expect_true(ch %in% names(fr_env$latex_specials),
-                info = paste0("latex_specials should map '", ch, "'"))
+    expect_true(
+      ch %in% names(fr_env$latex_specials),
+      info = paste0("latex_specials should map '", ch, "'")
+    )
   }
 })
 
@@ -317,7 +352,7 @@ test_that("rtf_specials maps backslash, braces", {
 
 test_that("latex_unicode maps common symbols", {
   expect_true(length(fr_env$latex_unicode) > 0)
-  expect_true("\u2020" %in% names(fr_env$latex_unicode))  # dagger
+  expect_true("\u2020" %in% names(fr_env$latex_unicode)) # dagger
 })
 
 test_that("rtf_unicode maps common symbols", {
@@ -372,7 +407,7 @@ test_that("resolve_color resolves CSS named colors", {
   expect_equal(resolve_color("tomato"), "#FF6347")
   expect_equal(resolve_color("cornflowerblue"), "#6495ED")
   expect_equal(resolve_color("lightgray"), "#D3D3D3")
-  expect_equal(resolve_color("SteelBlue"), "#4682B4")  # case-insensitive
+  expect_equal(resolve_color("SteelBlue"), "#4682B4") # case-insensitive
 })
 
 test_that("resolve_color errors on invalid color with suggestions", {
@@ -554,8 +589,8 @@ test_that("markup_sentinel roundtrips via sentinel_pattern", {
 
 test_that("lm_fallback maps all font family types", {
   expect_equal(fr_env$lm_fallback[["modern"]], "Latin Modern Mono")
-  expect_equal(fr_env$lm_fallback[["swiss"]],  "Latin Modern Sans")
-  expect_equal(fr_env$lm_fallback[["roman"]],  "Latin Modern Roman")
+  expect_equal(fr_env$lm_fallback[["swiss"]], "Latin Modern Sans")
+  expect_equal(fr_env$lm_fallback[["roman"]], "Latin Modern Roman")
 })
 
 test_that("is_system_font_available returns TRUE for Latin Modern fonts", {
@@ -635,12 +670,12 @@ test_that("resolve_latex_font maps families correctly in fallback", {
     font_name %in% fr_env$lm_fallback
   })
 
-  mono  <- resolve_latex_font("Courier New")
-  sans  <- resolve_latex_font("Arial")
+  mono <- resolve_latex_font("Courier New")
+  sans <- resolve_latex_font("Arial")
   serif <- resolve_latex_font("Times New Roman")
 
-  expect_equal(mono,  "Latin Modern Mono")
-  expect_equal(sans,  "Latin Modern Sans")
+  expect_equal(mono, "Latin Modern Mono")
+  expect_equal(sans, "Latin Modern Sans")
   expect_equal(serif, "Latin Modern Roman")
 })
 
@@ -691,45 +726,86 @@ test_that("resolve_color normalizes hex to uppercase", {
 # ── resolve_afm_name: all family + style combinations ─────────────────────
 
 test_that("resolve_afm_name covers all bold/italic combos for modern", {
-  expect_equal(resolve_afm_name("modern"),                              "Courier")
-  expect_equal(resolve_afm_name("modern", bold = TRUE),                 "Courier-Bold")
-  expect_equal(resolve_afm_name("modern", italic = TRUE),               "Courier-Oblique")
-  expect_equal(resolve_afm_name("modern", bold = TRUE, italic = TRUE),  "Courier-BoldOblique")
+  expect_equal(resolve_afm_name("modern"), "Courier")
+  expect_equal(resolve_afm_name("modern", bold = TRUE), "Courier-Bold")
+  expect_equal(resolve_afm_name("modern", italic = TRUE), "Courier-Oblique")
+  expect_equal(
+    resolve_afm_name("modern", bold = TRUE, italic = TRUE),
+    "Courier-BoldOblique"
+  )
 })
 
 test_that("resolve_afm_name covers all bold/italic combos for swiss", {
-  expect_equal(resolve_afm_name("swiss"),                              "Helvetica")
-  expect_equal(resolve_afm_name("swiss", bold = TRUE),                 "Helvetica-Bold")
-  expect_equal(resolve_afm_name("swiss", italic = TRUE),               "Helvetica-Oblique")
-  expect_equal(resolve_afm_name("swiss", bold = TRUE, italic = TRUE),  "Helvetica-BoldOblique")
+  expect_equal(resolve_afm_name("swiss"), "Helvetica")
+  expect_equal(resolve_afm_name("swiss", bold = TRUE), "Helvetica-Bold")
+  expect_equal(resolve_afm_name("swiss", italic = TRUE), "Helvetica-Oblique")
+  expect_equal(
+    resolve_afm_name("swiss", bold = TRUE, italic = TRUE),
+    "Helvetica-BoldOblique"
+  )
 })
 
 test_that("resolve_afm_name covers all bold/italic combos for roman", {
-  expect_equal(resolve_afm_name("roman"),                              "Times-Roman")
-  expect_equal(resolve_afm_name("roman", bold = TRUE),                 "Times-Bold")
-  expect_equal(resolve_afm_name("roman", italic = TRUE),               "Times-Italic")
-  expect_equal(resolve_afm_name("roman", bold = TRUE, italic = TRUE),  "Times-BoldItalic")
+  expect_equal(resolve_afm_name("roman"), "Times-Roman")
+  expect_equal(resolve_afm_name("roman", bold = TRUE), "Times-Bold")
+  expect_equal(resolve_afm_name("roman", italic = TRUE), "Times-Italic")
+  expect_equal(
+    resolve_afm_name("roman", bold = TRUE, italic = TRUE),
+    "Times-BoldItalic"
+  )
 })
 
 test_that("resolve_afm_name falls back to modern for unknown font names", {
   expect_equal(resolve_afm_name("UnknownFont"), "Courier")
   expect_equal(resolve_afm_name("UnknownFont", bold = TRUE), "Courier-Bold")
-  expect_equal(resolve_afm_name("UnknownFont", italic = TRUE), "Courier-Oblique")
-  expect_equal(resolve_afm_name("UnknownFont", bold = TRUE, italic = TRUE), "Courier-BoldOblique")
+  expect_equal(
+    resolve_afm_name("UnknownFont", italic = TRUE),
+    "Courier-Oblique"
+  )
+  expect_equal(
+    resolve_afm_name("UnknownFont", bold = TRUE, italic = TRUE),
+    "Courier-BoldOblique"
+  )
 })
 
 test_that("resolve_afm_name resolves all font names in each family", {
   # Modern family fonts
-  for (fn in c("Courier", "Consolas", "Lucida Console", "DejaVu Sans Mono", "Liberation Mono")) {
+  for (fn in c(
+    "Courier",
+    "Consolas",
+    "Lucida Console",
+    "DejaVu Sans Mono",
+    "Liberation Mono"
+  )) {
     expect_equal(resolve_afm_name(fn), "Courier", info = paste0("Font: ", fn))
   }
   # Swiss family fonts
-  for (fn in c("Helvetica", "Calibri", "Verdana", "Tahoma", "Segoe UI", "DejaVu Sans", "Liberation Sans")) {
+  for (fn in c(
+    "Helvetica",
+    "Calibri",
+    "Verdana",
+    "Tahoma",
+    "Segoe UI",
+    "DejaVu Sans",
+    "Liberation Sans"
+  )) {
     expect_equal(resolve_afm_name(fn), "Helvetica", info = paste0("Font: ", fn))
   }
   # Roman family fonts
-  for (fn in c("Times", "Georgia", "Palatino", "Book Antiqua", "Cambria", "DejaVu Serif", "Liberation Serif")) {
-    expect_equal(resolve_afm_name(fn), "Times-Roman", info = paste0("Font: ", fn))
+  for (fn in c(
+    "Times",
+    "Georgia",
+    "Palatino",
+    "Book Antiqua",
+    "Cambria",
+    "DejaVu Serif",
+    "Liberation Serif"
+  )) {
+    expect_equal(
+      resolve_afm_name(fn),
+      "Times-Roman",
+      info = paste0("Font: ", fn)
+    )
   }
 })
 
@@ -739,7 +815,11 @@ test_that("resolve_afm_name resolves all font names in each family", {
 test_that("get_rtf_font_family returns correct family for all font names", {
   # Modern fonts
   for (fn in c("Courier New", "Courier", "Consolas", "Lucida Console")) {
-    expect_equal(get_rtf_font_family(fn), "fmodern", info = paste0("Font: ", fn))
+    expect_equal(
+      get_rtf_font_family(fn),
+      "fmodern",
+      info = paste0("Font: ", fn)
+    )
   }
   # Swiss fonts
   for (fn in c("Arial", "Helvetica", "Calibri", "Verdana", "Tahoma")) {
@@ -756,9 +836,9 @@ test_that("get_rtf_font_family falls back to fmodern for unknown fonts", {
 })
 
 test_that("get_rtf_font_prq returns correct pitch for all families", {
-  expect_equal(get_rtf_font_prq("Courier New"), 1L)      # modern = fixed
-  expect_equal(get_rtf_font_prq("Times New Roman"), 2L)   # roman = variable
-  expect_equal(get_rtf_font_prq("Arial"), 2L)             # swiss = variable
+  expect_equal(get_rtf_font_prq("Courier New"), 1L) # modern = fixed
+  expect_equal(get_rtf_font_prq("Times New Roman"), 2L) # roman = variable
+  expect_equal(get_rtf_font_prq("Arial"), 2L) # swiss = variable
 })
 
 test_that("get_rtf_font_prq falls back to modern pitch for unknown fonts", {
@@ -774,7 +854,7 @@ test_that("get_tex_font_cmd falls back to ttfamily for unknown fonts", {
 
 test_that("paper_dims_twips portrait returns original dimensions", {
   letter <- paper_dims_twips("letter", "portrait")
-  expect_equal(letter[["width"]],  12240L)
+  expect_equal(letter[["width"]], 12240L)
   expect_equal(letter[["height"]], 15840L)
 })
 
@@ -782,38 +862,38 @@ test_that("paper_dims_twips landscape swaps for all paper sizes", {
   for (sz in c("letter", "a4", "legal")) {
     p <- paper_dims_twips(sz, "portrait")
     l <- paper_dims_twips(sz, "landscape")
-    expect_equal(p[["width"]],  l[["height"]], info = paste0(sz, " width"))
-    expect_equal(p[["height"]], l[["width"]],  info = paste0(sz, " height"))
+    expect_equal(p[["width"]], l[["height"]], info = paste0(sz, " width"))
+    expect_equal(p[["height"]], l[["width"]], info = paste0(sz, " height"))
   }
 })
 
 test_that("paper_dims_twips a4 has correct dimensions", {
   a4 <- paper_dims_twips("a4", "portrait")
-  expect_equal(a4[["width"]],  11906L)
+  expect_equal(a4[["width"]], 11906L)
   expect_equal(a4[["height"]], 16838L)
 })
 
 test_that("paper_dims_twips legal has correct dimensions", {
   legal <- paper_dims_twips("legal", "portrait")
-  expect_equal(legal[["width"]],  12240L)
+  expect_equal(legal[["width"]], 12240L)
   expect_equal(legal[["height"]], 20163L)
 })
 
-test_that("paper_dims_twips warns and falls back for unknown paper size", {
-  expect_warning(
-    dims <- paper_dims_twips("tabloid", "portrait"),
+test_that("paper_dims_twips errors for unknown paper size", {
+  expect_error(
+    paper_dims_twips("tabloid", "portrait"),
     "Unknown paper size"
   )
-  letter <- paper_dims_twips("letter", "portrait")
-  expect_equal(dims, letter)
 })
 
 
 # ── is_system_font_available: Windows always TRUE ────────────────────────
 
 test_that("is_system_font_available returns TRUE for standard fonts on Windows", {
-  skip_if_not(tolower(Sys.info()[["sysname"]]) == "windows",
-              "Test only runs on Windows")
+  skip_if_not(
+    tolower(Sys.info()[["sysname"]]) == "windows",
+    "Test only runs on Windows"
+  )
   expect_true(is_system_font_available("Arial"))
   expect_true(is_system_font_available("Courier New"))
   expect_true(is_system_font_available("Times New Roman"))
@@ -898,38 +978,11 @@ test_that("os_default_fonts returns fonts that exist in font tables", {
   fonts <- os_default_fonts()
   for (nm in c("mono", "sans", "serif")) {
     fam <- lookup_font_family(fonts[[nm]])
-    expect_true(fam %in% c("modern", "swiss", "roman"),
-                info = paste0("Font: ", fonts[[nm]]))
+    expect_true(
+      fam %in% c("modern", "swiss", "roman"),
+      info = paste0("Font: ", fonts[[nm]])
+    )
   }
-})
-
-
-# ── Grouped sub-lists ────────────────────────────────────────────────────
-
-test_that("fr_env$presets contains hline, linestyles, and line_widths", {
-  expect_true(is.list(fr_env$presets))
-  expect_true("hline" %in% names(fr_env$presets))
-  expect_true("linestyles" %in% names(fr_env$presets))
-  expect_true("line_widths" %in% names(fr_env$presets))
-  expect_identical(fr_env$presets$hline, fr_env$hline_presets)
-  expect_identical(fr_env$presets$linestyles, fr_env$valid_linestyles)
-  expect_identical(fr_env$presets$line_widths, fr_env$line_widths)
-})
-
-test_that("fr_env$rtf contains linestyle, cell_border, para_border, specials, unicode", {
-  expect_true(is.list(fr_env$rtf))
-  expect_named(fr_env$rtf, c("linestyle", "cell_border", "para_border", "specials", "unicode"),
-               ignore.order = TRUE)
-  expect_identical(fr_env$rtf$linestyle, fr_env$linestyle_rtf)
-  expect_identical(fr_env$rtf$cell_border, fr_env$cell_border_rtf)
-  expect_identical(fr_env$rtf$specials, fr_env$rtf_specials)
-})
-
-test_that("fr_env$validation contains aligns, valigns, linestyles", {
-  expect_true(is.list(fr_env$validation))
-  expect_identical(fr_env$validation$aligns, fr_env$valid_aligns)
-  expect_identical(fr_env$validation$valigns, fr_env$valid_valigns)
-  expect_identical(fr_env$validation$linestyles, fr_env$valid_linestyles)
 })
 
 
@@ -961,8 +1014,10 @@ test_that("valid_valigns contains all expected values", {
 
 test_that("valign_to_rtf maps all valid vertical alignments", {
   for (v in fr_env$valid_valigns) {
-    expect_true(v %in% names(fr_env$valign_to_rtf),
-                info = paste0("valign_to_rtf should contain '", v, "'"))
+    expect_true(
+      v %in% names(fr_env$valign_to_rtf),
+      info = paste0("valign_to_rtf should contain '", v, "'")
+    )
   }
   # top maps to empty string (default)
   expect_equal(fr_env$valign_to_rtf[["top"]], "")
@@ -972,8 +1027,10 @@ test_that("valign_to_rtf maps all valid vertical alignments", {
 
 test_that("valign_to_latex maps all valid vertical alignments", {
   for (v in fr_env$valid_valigns) {
-    expect_true(v %in% names(fr_env$valign_to_latex),
-                info = paste0("valign_to_latex should contain '", v, "'"))
+    expect_true(
+      v %in% names(fr_env$valign_to_latex),
+      info = paste0("valign_to_latex should contain '", v, "'")
+    )
   }
   expect_equal(fr_env$valign_to_latex[["top"]], "t")
   expect_equal(fr_env$valign_to_latex[["middle"]], "m")
@@ -985,8 +1042,10 @@ test_that("valign_to_latex maps all valid vertical alignments", {
 
 test_that("linestyle_latex maps all valid linestyles", {
   for (style in fr_env$valid_linestyles) {
-    expect_true(style %in% names(fr_env$linestyle_latex),
-                info = paste0("linestyle_latex should contain '", style, "'"))
+    expect_true(
+      style %in% names(fr_env$linestyle_latex),
+      info = paste0("linestyle_latex should contain '", style, "'")
+    )
   }
   expect_equal(fr_env$linestyle_latex[["solid"]], "solid")
   expect_equal(fr_env$linestyle_latex[["dashdot"]], "dashed")
@@ -996,13 +1055,19 @@ test_that("linestyle_latex maps all valid linestyles", {
 # ── RTF border map completeness ──────────────────────────────────────────
 
 test_that("cell_border_rtf maps all four sides", {
-  expect_named(fr_env$cell_border_rtf, c("top", "bottom", "left", "right"),
-               ignore.order = TRUE)
+  expect_named(
+    fr_env$cell_border_rtf,
+    c("top", "bottom", "left", "right"),
+    ignore.order = TRUE
+  )
 })
 
 test_that("para_border_rtf maps all four sides", {
-  expect_named(fr_env$para_border_rtf, c("top", "bottom", "left", "right"),
-               ignore.order = TRUE)
+  expect_named(
+    fr_env$para_border_rtf,
+    c("top", "bottom", "left", "right"),
+    ignore.order = TRUE
+  )
 })
 
 
@@ -1037,9 +1102,9 @@ test_that("hline_presets$below has single rule below body", {
 
 test_that("hline_presets$booktabs has correct widths (thick/thin/thick)", {
   p <- fr_env$hline_presets$booktabs
-  expect_equal(p[[1]]$width, 1.0)  # toprule
-  expect_equal(p[[2]]$width, 0.5)  # midrule
-  expect_equal(p[[3]]$width, 1.0)  # bottomrule
+  expect_equal(p[[1]]$width, 1.0) # toprule
+  expect_equal(p[[2]]$width, 0.5) # midrule
+  expect_equal(p[[3]]$width, 1.0) # bottomrule
 })
 
 

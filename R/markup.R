@@ -22,7 +22,6 @@
 #
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # 1. S3 Constructor (internal)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -71,14 +70,15 @@ as.character.fr_markup <- function(x, ...) {
 
 #' @export
 print.fr_markup <- function(x, ...) {
-  preview <- switch(toupper(x$type),
-    "SUPER"     = paste0("^{", x$content, "}"),
-    "SUB"       = paste0("_{", x$content, "}"),
-    "BOLD"      = paste0("**", x$content, "**"),
-    "ITALIC"    = paste0("_",  x$content, "_"),
+  preview <- switch(
+    toupper(x$type),
+    "SUPER" = paste0("^{", x$content, "}"),
+    "SUB" = paste0("_{", x$content, "}"),
+    "BOLD" = paste0("**", x$content, "**"),
+    "ITALIC" = paste0("_", x$content, "_"),
     "UNDERLINE" = paste0("__", x$content, "__"),
-    "UNICODE"   = x$content,
-    "NEWLINE"   = "<newline>",
+    "UNICODE" = x$content,
+    "NEWLINE" = "<newline>",
     paste0("<", x$type, ":", x$content, ">")
   )
   cat("<fr_markup> ", preview, "\n", sep = "")
@@ -339,8 +339,10 @@ fr_underline <- function(x) new_fr_markup("UNDERLINE", x)
 fr_unicode <- function(codepoint) {
   if (!is.numeric(codepoint) || length(codepoint) != 1L) {
     cli_abort(
-      c("{.arg codepoint} must be a single integer (e.g., {.code 0x00B1}).",
-        "x" = "You supplied {.obj_type_friendly {codepoint}}."),
+      c(
+        "{.arg codepoint} must be a single integer (e.g., {.code 0x00B1}).",
+        "x" = "You supplied {.obj_type_friendly {codepoint}}."
+      ),
       call = caller_env()
     )
   }
@@ -532,8 +534,12 @@ fr_newline <- function() new_fr_markup("NEWLINE", "")
 #' @return Character scalar with sentinel tokens embedded.
 #' @noRd
 eval_markup <- function(text, env = parent.frame()) {
-  if (!is.character(text) || length(text) != 1L) return(text)
-  if (!has_fr_markup(text)) return(text)
+  if (!is.character(text) || length(text) != 1L) {
+    return(text)
+  }
+  if (!has_fr_markup(text)) {
+    return(text)
+  }
   as.character(glue(text, .envir = env, .open = "{", .close = "}"))
 }
 
@@ -548,8 +554,12 @@ eval_markup <- function(text, env = parent.frame()) {
 #' @return Character vector with sentinels.
 #' @noRd
 eval_markup_vec <- function(texts, env = parent.frame()) {
-  vapply(texts, function(t) eval_markup(t, env = env), character(1),
-         USE.NAMES = FALSE)
+  vapply(
+    texts,
+    function(t) eval_markup(t, env = env),
+    character(1),
+    USE.NAMES = FALSE
+  )
 }
 
 
@@ -571,11 +581,15 @@ has_sentinel <- function(text) {
 #' @return Character scalar with sentinels replaced.
 #' @noRd
 resolve_sentinels <- function(text, resolver) {
-  if (!has_sentinel(text)) return(text)
+  if (!has_sentinel(text)) {
+    return(text)
+  }
   pattern <- fr_env$sentinel_pattern
   m <- gregexpr(pattern, text, perl = TRUE)
   tokens <- regmatches(text, m)[[1]]
-  if (length(tokens) == 0L) return(text)
+  if (length(tokens) == 0L) {
+    return(text)
+  }
 
   for (tok in tokens) {
     parts <- regmatches(tok, regexec(pattern, tok, perl = TRUE))[[1]]
@@ -591,8 +605,12 @@ resolve_sentinels <- function(text, resolver) {
 #' Resolve sentinels across a character vector
 #' @noRd
 resolve_sentinels_vec <- function(texts, resolver) {
-  vapply(texts, function(t) resolve_sentinels(t, resolver), character(1),
-         USE.NAMES = FALSE)
+  vapply(
+    texts,
+    function(t) resolve_sentinels(t, resolver),
+    character(1),
+    USE.NAMES = FALSE
+  )
 }
 
 
@@ -608,9 +626,13 @@ resolve_sentinels_vec <- function(texts, resolver) {
 #' @return Character scalar with sentinels replaced by their content.
 #' @noRd
 sentinel_to_plain <- function(text) {
-  if (!has_sentinel(text)) return(text)
+  if (!has_sentinel(text)) {
+    return(text)
+  }
   resolve_sentinels(text, function(type, content) {
-    if (toupper(type) == "NEWLINE") return("\n")
+    if (toupper(type) == "NEWLINE") {
+      return("\n")
+    }
     content
   })
 }
@@ -620,6 +642,5 @@ sentinel_to_plain <- function(text) {
 sentinel_to_plain_vec <- function(texts) {
   vapply(texts, sentinel_to_plain, character(1), USE.NAMES = FALSE)
 }
-
 
 # ══════════════════════════════════════════════════════════════════════════════

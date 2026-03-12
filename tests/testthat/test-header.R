@@ -27,7 +27,7 @@ test_that("fr_cols stores .n and .n_format on columns_meta", {
     fr_table() |>
     fr_cols(
       zom_50mg = fr_col("Zomerane 50 mg"),
-      placebo  = fr_col("Placebo"),
+      placebo = fr_col("Placebo"),
       .n = c("Zomerane 50 mg" = 45, "Placebo" = 45),
       .n_format = "{label}\n(N={n})"
     )
@@ -41,7 +41,7 @@ test_that("per-column n resolves during finalize_spec", {
     fr_table() |>
     fr_cols(
       zom_50mg = fr_col("Zomerane 50 mg", align = "right", n = 45L),
-      placebo  = fr_col("Placebo", align = "right", n = 45L),
+      placebo = fr_col("Placebo", align = "right", n = 45L),
       .n_format = "{label}\n(N={n})"
     )
 
@@ -56,7 +56,7 @@ test_that("bulk .n resolves during finalize_spec", {
     fr_table() |>
     fr_cols(
       zom_50mg = fr_col("Zomerane 50 mg", align = "right"),
-      placebo  = fr_col("Placebo", align = "right"),
+      placebo = fr_col("Placebo", align = "right"),
       .n = c("Zomerane 50 mg" = 45, "Placebo" = 45),
       .n_format = "{label}\n(N={n})"
     )
@@ -162,7 +162,10 @@ test_that("header_cfg flows to build_header_cell_grid", {
 
   h_row <- 1L + length(fspec$header$spans)
   hgrid <- tlframe:::build_header_cell_grid(
-    vis_cols, fspec$cell_styles, fspec$page, h_row,
+    vis_cols,
+    fspec$cell_styles,
+    fspec$page,
+    h_row,
     default_valign = "bottom",
     header_cfg = fspec$header
   )
@@ -194,7 +197,7 @@ test_that("per-column n takes priority over bulk .n", {
     fr_table() |>
     fr_cols(
       zom_50mg = fr_col("Zomerane 50 mg", n = 99L),
-      placebo  = fr_col("Placebo"),
+      placebo = fr_col("Placebo"),
       .n = c("Zomerane 50 mg" = 50, "Placebo" = 45),
       .n_format = "{label}\n(N={n})"
     )
@@ -216,7 +219,7 @@ test_that("fr_cols stores per-group list .n", {
     fr_table() |>
     fr_cols(
       zom_50mg = fr_col("Zomerane 50 mg"),
-      placebo  = fr_col("Placebo"),
+      placebo = fr_col("Placebo"),
       .n = list(
         "Group A" = c("Zomerane 50 mg" = 42, "Placebo" = 40),
         "Group B" = c("Zomerane 50 mg" = 45, "Placebo" = 44)
@@ -233,7 +236,7 @@ test_that("per-group list .n skips global resolution in finalize_spec", {
     fr_table() |>
     fr_cols(
       zom_50mg = fr_col("Zomerane 50 mg", align = "right"),
-      placebo  = fr_col("Placebo", align = "right"),
+      placebo = fr_col("Placebo", align = "right"),
       .n = list("Group A" = c("Zomerane 50 mg" = 42, "Placebo" = 40)),
       .n_format = "{label}\n(N={n})"
     )
@@ -251,7 +254,7 @@ test_that("resolve_group_labels returns overrides for per-group list", {
     fr_table() |>
     fr_cols(
       zom_50mg = fr_col("Zomerane 50 mg"),
-      placebo  = fr_col("Placebo"),
+      placebo = fr_col("Placebo"),
       .n = list(
         "Group A" = c("Zomerane 50 mg" = 42, "Placebo" = 40),
         "Group B" = c("Zomerane 50 mg" = 45, "Placebo" = 44)
@@ -290,7 +293,7 @@ test_that("resolve_group_labels returns NULL for global numeric .n", {
     fr_table() |>
     fr_cols(
       zom_50mg = fr_col("Zomerane 50 mg"),
-      placebo  = fr_col("Placebo"),
+      placebo = fr_col("Placebo"),
       .n = c("Zomerane 50 mg" = 45, "Placebo" = 45),
       .n_format = "{label}\n(N={n})"
     )
@@ -342,7 +345,7 @@ test_that("parse_df_n_counts handles 3-col data frame", {
   df <- data.frame(
     grp = c("G1", "G1", "G2"),
     trt = c("A", "B", "A"),
-    n   = c(10L, 20L, 30L)
+    n = c(10L, 20L, 30L)
   )
   result <- tlframe:::parse_df_n_counts(df, spec)
   expect_equal(result$type, "per_group")
@@ -423,10 +426,11 @@ test_that("fr_spans errors on overlapping columns at same level", {
   # Same call: two spans sharing a column at level 1
 
   expect_error(
-    spec |> fr_spans(
-      "A" = c("zom_50mg", "zom_100mg"),
-      "B" = c("zom_100mg", "total")
-    ),
+    spec |>
+      fr_spans(
+        "A" = c("zom_50mg", "zom_100mg"),
+        "B" = c("zom_100mg", "total")
+      ),
     "multiple spans"
   )
 
@@ -478,14 +482,14 @@ test_that("validate_n_param rejects non-numeric last column", {
 test_that("2-col data frame resolves globally via finalize_spec", {
   df <- data.frame(
     trt = c("Zom", "Placebo"),
-    n   = c(99L, 88L)
+    n = c(99L, 88L)
   )
 
   spec <- tbl_demog |>
     fr_table() |>
     fr_cols(
       zom_50mg = fr_col("Zom"),
-      placebo  = fr_col("Placebo"),
+      placebo = fr_col("Placebo"),
       .n = df,
       .n_format = "{label}\n(N={n})"
     )
@@ -498,12 +502,12 @@ test_that("2-col data frame resolves globally via finalize_spec", {
 test_that("3-col data frame resolves per-group via resolve_group_labels", {
   df <- data.frame(
     param = c("G1", "G1", "G2", "G2"),
-    trt   = c("Col A", "Col B", "Col A", "Col B"),
-    n     = c(10L, 20L, 30L, 40L)
+    trt = c("Col A", "Col B", "Col A", "Col B"),
+    n = c(10L, 20L, 30L, 40L)
   )
 
   display <- data.frame(
-    grp   = c("G1", "G2"),
+    grp = c("G1", "G2"),
     col_a = c("x", "y"),
     col_b = c("x", "y"),
     stringsAsFactors = FALSE
@@ -552,15 +556,15 @@ test_that("3-col data frame without page_by emits warning", {
 test_that("2-col data frame matches spanner labels", {
   df <- data.frame(
     trt = c("Zomerane", "Placebo"),
-    n   = c(89L, 45L)
+    n = c(89L, 45L)
   )
 
   spec <- tbl_demog |>
     fr_table() |>
     fr_cols(
-      zom_50mg  = fr_col("Zom 50mg"),
+      zom_50mg = fr_col("Zom 50mg"),
       zom_100mg = fr_col("Zom 100mg"),
-      placebo   = fr_col("Placebo"),
+      placebo = fr_col("Placebo"),
       .n = df,
       .n_format = "{label}\n(N={n})"
     ) |>
@@ -577,12 +581,12 @@ test_that("2-col data frame matches spanner labels", {
 test_that("unmatched page_by group warns in resolve_group_labels", {
   df <- data.frame(
     param = c("G1", "G1"),
-    trt   = c("Col A", "Col B"),
-    n     = c(10L, 20L)
+    trt = c("Col A", "Col B"),
+    n = c(10L, 20L)
   )
 
   display <- data.frame(
-    grp   = c("G1", "G2"),
+    grp = c("G1", "G2"),
     col_a = c("x", "y"),
     col_b = c("x", "y"),
     stringsAsFactors = FALSE
@@ -617,10 +621,10 @@ test_that("fr_col group generates auto-spans", {
     fr_table() |>
     fr_cols(
       characteristic = fr_col("Characteristic"),
-      zom_50mg       = fr_col("50 mg",  group = "Zomerane"),
-      zom_100mg      = fr_col("100 mg", group = "Zomerane"),
-      placebo        = fr_col("Placebo"),
-      total          = fr_col("Total")
+      zom_50mg = fr_col("50 mg", group = "Zomerane"),
+      zom_100mg = fr_col("100 mg", group = "Zomerane"),
+      placebo = fr_col("Placebo"),
+      total = fr_col("Total")
     )
 
   fspec <- tlframe:::finalize_spec(spec)
@@ -636,7 +640,7 @@ test_that("group auto-span is overridden by explicit fr_spans", {
   spec <- tbl_demog |>
     fr_table() |>
     fr_cols(
-      zom_50mg  = fr_col("50 mg",  group = "Zomerane"),
+      zom_50mg = fr_col("50 mg", group = "Zomerane"),
       zom_100mg = fr_col("100 mg", group = "Zomerane")
     ) |>
     fr_spans("Zomerane" = c("zom_50mg", "zom_100mg", "placebo"))
@@ -666,16 +670,16 @@ test_that("single-column group creates single-column span", {
 test_that("bulk .n auto-routes to spans from group=", {
   n_df <- data.frame(
     trt = c("Zomerane", "Placebo"),
-    n   = c(90L, 45L)
+    n = c(90L, 45L)
   )
 
   spec <- tbl_demog |>
     fr_table() |>
     fr_cols(
       characteristic = fr_col("Characteristic"),
-      zom_50mg       = fr_col("50 mg",  group = "Zomerane"),
-      zom_100mg      = fr_col("100 mg", group = "Zomerane"),
-      placebo        = fr_col("Placebo"),
+      zom_50mg = fr_col("50 mg", group = "Zomerane"),
+      zom_100mg = fr_col("100 mg", group = "Zomerane"),
+      placebo = fr_col("Placebo"),
       .n = n_df,
       .n_format = "{label}\n(N={n})"
     )
@@ -683,7 +687,10 @@ test_that("bulk .n auto-routes to spans from group=", {
   fspec <- tlframe:::finalize_spec(spec)
 
   # "Zomerane" matches group → span should get N
-  zom_spans <- Filter(function(s) grepl("Zomerane", s$label), fspec$header$spans)
+  zom_spans <- Filter(
+    function(s) grepl("Zomerane", s$label),
+    fspec$header$spans
+  )
   expect_length(zom_spans, 1L)
   expect_equal(zom_spans[[1]]$label, "Zomerane\n(N=90)")
 
@@ -701,15 +708,17 @@ test_that("fr_header align as named list resolves via tidyselect", {
     fr_table() |>
     fr_cols(
       characteristic = fr_col("Characteristic"),
-      zom_50mg       = fr_col("Zomerane 50 mg"),
-      placebo        = fr_col("Placebo"),
-      total          = fr_col("Total")
+      zom_50mg = fr_col("Zomerane 50 mg"),
+      placebo = fr_col("Placebo"),
+      total = fr_col("Total")
     ) |>
-    fr_header(align = list(
-      left   = "characteristic",
-      center = c(starts_with("zom"), "placebo"),
-      right  = "total"
-    ))
+    fr_header(
+      align = list(
+        left = "characteristic",
+        center = c(starts_with("zom"), "placebo"),
+        right = "total"
+      )
+    )
 
   expect_null(spec$header$align)
   expect_equal(spec$header$align_map[["characteristic"]], "left")
@@ -723,12 +732,14 @@ test_that("align_map overrides scalar align but not fr_col header_align", {
     fr_table() |>
     fr_cols(
       characteristic = fr_col("Characteristic", header_align = "left"),
-      zom_50mg       = fr_col("Zomerane 50 mg"),
-      placebo        = fr_col("Placebo")
+      zom_50mg = fr_col("Zomerane 50 mg"),
+      placebo = fr_col("Placebo")
     ) |>
-    fr_header(align = list(
-      center = c("characteristic", "zom_50mg", "placebo")
-    ))
+    fr_header(
+      align = list(
+        center = c("characteristic", "zom_50mg", "placebo")
+      )
+    )
 
   fspec <- tlframe:::finalize_spec(spec)
 

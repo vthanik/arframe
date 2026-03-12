@@ -8,7 +8,6 @@
 #   fr_spec → finalize_spec() → prepare_pages() → render_backend()
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 #' Render a Table to File
 #'
 #' @description
@@ -138,8 +137,10 @@ fr_render <- function(spec, path, format = NULL, ...) {
       render_figure_rtf(spec, path)
     } else {
       cli_abort(
-        c("Figure rendering is only supported for {.val pdf} and {.val rtf} output.",
-          "x" = "You requested format {.val {format}}."),
+        c(
+          "Figure rendering is only supported for {.val pdf} and {.val rtf} output.",
+          "x" = "You requested format {.val {format}}."
+        ),
         call = call
       )
     }
@@ -178,8 +179,10 @@ detect_format <- function(path, call = caller_env()) {
   ext <- tolower(tools::file_ext(path))
   if (ext == "") {
     cli_abort(
-      c("Cannot detect format from {.path {path}}.",
-        "i" = "Provide a file extension (e.g. {.path .rtf}) or set {.arg format} explicitly."),
+      c(
+        "Cannot detect format from {.path {path}}.",
+        "i" = "Provide a file extension (e.g. {.path .rtf}) or set {.arg format} explicitly."
+      ),
       call = call
     )
   }
@@ -187,8 +190,10 @@ detect_format <- function(path, call = caller_env()) {
   result <- unname(format_map[ext])
   if (is.na(result)) {
     cli_abort(
-      c("Unsupported file extension {.val {ext}}.",
-        "i" = "Supported extensions: {.val {names(format_map)}}."),
+      c(
+        "Unsupported file extension {.val {ext}}.",
+        "i" = "Supported extensions: {.val {names(format_map)}}."
+      ),
       call = call
     )
   }
@@ -200,8 +205,10 @@ detect_format <- function(path, call = caller_env()) {
 build_extension_map <- function() {
   # Return cached map if registry hasn't changed
   reg <- fr_env$backends
-  if (!is.null(fr_env$extension_map_cache) &&
-      identical(names(reg), fr_env$extension_map_cache_keys)) {
+  if (
+    !is.null(fr_env$extension_map_cache) &&
+      identical(names(reg), fr_env$extension_map_cache_keys)
+  ) {
     return(fr_env$extension_map_cache)
   }
   format_map <- character(0)
@@ -228,8 +235,10 @@ get_backend <- function(format, call = caller_env()) {
   if (is.null(backend)) {
     available <- names(reg)
     cli_abort(
-      c("No backend available for format {.val {format}}.",
-        "i" = "Available backends: {.val {available}}."),
+      c(
+        "No backend available for format {.val {format}}.",
+        "i" = "Available backends: {.val {available}}."
+      ),
       call = call
     )
   }
@@ -280,23 +289,37 @@ get_backend <- function(format, call = caller_env()) {
 #'
 #' @seealso [fr_backends()] to list registered backends, [fr_render()].
 #' @export
-fr_register_backend <- function(format, extensions, render_fn,
-                                 description = "") {
+fr_register_backend <- function(
+  format,
+  extensions,
+  render_fn,
+  description = ""
+) {
   call <- caller_env()
   check_scalar_chr(format, arg = "format", call = call)
   if (!is.character(extensions) || length(extensions) == 0L) {
-    cli_abort(c("{.arg extensions} must be a non-empty character vector.",
-                "x" = "You supplied {.obj_type_friendly {extensions}}."), call = call)
+    cli_abort(
+      c(
+        "{.arg extensions} must be a non-empty character vector.",
+        "x" = "You supplied {.obj_type_friendly {extensions}}."
+      ),
+      call = call
+    )
   }
   if (!is.function(render_fn)) {
-    cli_abort(c("{.arg render_fn} must be a function.",
-                "x" = "You supplied {.obj_type_friendly {render_fn}}."), call = call)
+    cli_abort(
+      c(
+        "{.arg render_fn} must be a function.",
+        "x" = "You supplied {.obj_type_friendly {render_fn}}."
+      ),
+      call = call
+    )
   }
   check_scalar_chr(description, arg = "description", call = call)
 
   fr_env$backends[[format]] <- list(
-    render      = render_fn,
-    extensions  = extensions,
+    render = render_fn,
+    extensions = extensions,
     description = description
   )
   # Invalidate cached extension map
@@ -321,6 +344,7 @@ fr_register_backend <- function(format, extensions, render_fn,
 #' fr_backends()
 #'
 #' # After registering a custom backend, it appears in the list
+#' old_backends <- fr_backends()
 #' fr_register_backend(
 #'   format = "csv",
 #'   extensions = "csv",
@@ -330,6 +354,10 @@ fr_register_backend <- function(format, extensions, render_fn,
 #'   description = "CSV export (data only)"
 #' )
 #' fr_backends()
+#' # Clean up
+#' tlframe:::fr_env$backends <- tlframe:::fr_env$backends[
+#'   names(tlframe:::fr_env$backends) != "csv"
+#' ]
 #'
 #' @seealso [fr_register_backend()], [fr_render()]
 #' @export
@@ -344,8 +372,11 @@ fr_backends <- function() {
   }
   vctrs::new_data_frame(list(
     format = names(reg),
-    extensions = vapply(reg, function(b) paste(b$extensions, collapse = ", "),
-                         character(1)),
+    extensions = vapply(
+      reg,
+      function(b) paste(b$extensions, collapse = ", "),
+      character(1)
+    ),
     description = vapply(reg, function(b) b$description %||% "", character(1))
   ))
 }
@@ -369,6 +400,15 @@ finalize_spec <- function(spec) {
   spec <- finalize_labels(spec)
   spec <- finalize_rows(spec)
 
+  # Apply default footnote placement from config/theme to entries without one
+  if (!is.null(spec$meta$footnote_placement)) {
+    for (i in seq_along(spec$meta$footnotes)) {
+      if (is.null(spec$meta$footnotes[[i]]$placement)) {
+        spec$meta$footnotes[[i]]$placement <- spec$meta$footnote_placement
+      }
+    }
+  }
+
   # Pre-compute decimal alignment geometry (used by both RTF and LaTeX)
   spec$decimal_geometry <- compute_all_decimal_geometry(spec)
 
@@ -382,14 +422,14 @@ finalize_columns <- function(spec) {
   # If no columns configured, auto-generate defaults
   if (length(spec$columns) == 0L) {
     spec$columns <- build_default_columns(
-      data          = spec$data,
-      configured    = list(),
+      data = spec$data,
+      configured = list(),
       default_width = NULL,
-      width_mode    = "auto",
+      width_mode = "auto",
       default_align = NULL,
-      label_fn      = NULL,
-      labels        = NULL,
-      page          = spec$page
+      label_fn = NULL,
+      labels = NULL,
+      page = spec$page
     )
   }
 
@@ -418,9 +458,14 @@ finalize_columns <- function(spec) {
     col <- spec$columns[[nm]]
     if (is.null(col$width) || identical(col$width, "auto")) {
       label <- col$label
-      if (!nzchar(label)) label <- nm
+      if (!nzchar(label)) {
+        label <- nm
+      }
       spec$columns[[nm]]$width <- estimate_col_width(
-        spec$data, nm, label, spec$page
+        spec$data,
+        nm,
+        label,
+        spec$page
       )
     }
   }
@@ -506,7 +551,9 @@ generate_group_spans <- function(spec) {
       }
     }
   }
-  if (length(groups) == 0L) return(spec)
+  if (length(groups) == 0L) {
+    return(spec)
+  }
 
   # Get existing span labels to check for overrides
   existing_spans <- spec$header$spans %||% list()
@@ -514,7 +561,9 @@ generate_group_spans <- function(spec) {
 
   for (grp in groups) {
     # Skip if an explicit fr_spans() exists at this label
-    if (grp %in% existing_labels) next
+    if (grp %in% existing_labels) {
+      next
+    }
     spec$header$spans <- c(
       spec$header$spans,
       list(new_fr_span(label = grp, columns = group_cols[[grp]], level = 1L))
@@ -539,7 +588,9 @@ finalize_labels <- function(spec) {
       col <- spec$columns[[nm]]
       if (!is.null(col$n)) {
         base_label <- col$label %||% nm
-        if (!nzchar(base_label)) base_label <- nm
+        if (!nzchar(base_label)) {
+          base_label <- nm
+        }
         row_data <- list(label = base_label, n = col$n)
         spec$columns[[nm]]$label <- tryCatch(
           as.character(glue::glue_data(row_data, fmt)),
@@ -550,11 +601,17 @@ finalize_labels <- function(spec) {
     }
   } else {
     # Check if any columns have n set without format → warn
-    has_any_n <- any(vapply(spec$columns, function(c) !is.null(c$n), logical(1)))
+    has_any_n <- any(vapply(
+      spec$columns,
+      function(c) !is.null(c$n),
+      logical(1)
+    ))
     if (has_any_n) {
       cli_warn(
-        c("Column{?s} have {.arg n} set but no {.arg .n_format} is defined.",
-          "i" = "Set {.arg .n_format} in {.fn fr_cols} or config YAML to display N-counts.")
+        c(
+          "Column{?s} have {.arg n} set but no {.arg .n_format} is defined.",
+          "i" = "Set {.arg .n_format} in {.fn fr_cols} or config YAML to display N-counts."
+        )
       )
     }
   }
@@ -565,13 +622,15 @@ finalize_labels <- function(spec) {
       parsed <- parse_df_n_counts(n_meta, spec)
       if (parsed$type == "global") {
         matched_col <- match_trt_to_columns(parsed$counts, spec$columns)
-        matched_span <- match_trt_to_spans(parsed$counts, spec$columns,
-                                            spec$header$spans %||% list())
+        matched_span <- match_trt_to_spans(
+          parsed$counts,
+          spec$columns,
+          spec$header$spans %||% list()
+        )
         # Remove columns that already got per-column n
         matched_col <- matched_col[!names(matched_col) %in% cols_with_n]
         spec <- apply_n_counts(spec, matched_col, fmt)
         spec <- apply_span_n_counts(spec, matched_span, fmt)
-
       } else {
         # 3-col df → store for per-group resolution in render loop
         spec$columns_meta$._df_result <- parsed
@@ -579,8 +638,11 @@ finalize_labels <- function(spec) {
     } else if (is.numeric(n_meta)) {
       # Named numeric vector — match by display label
       matched_col <- match_trt_to_columns(n_meta, spec$columns)
-      matched_span <- match_trt_to_spans(n_meta, spec$columns,
-                                          spec$header$spans %||% list())
+      matched_span <- match_trt_to_spans(
+        n_meta,
+        spec$columns,
+        spec$header$spans %||% list()
+      )
       matched_col <- matched_col[!names(matched_col) %in% cols_with_n]
       spec <- apply_n_counts(spec, matched_col, fmt)
       spec <- apply_span_n_counts(spec, matched_span, fmt)
@@ -592,10 +654,13 @@ finalize_labels <- function(spec) {
   # Warn if per-group n (list or 3-col df) is used without page_by
   has_df_pergroup <- !is.null(spec$columns_meta$._df_result) &&
     spec$columns_meta$._df_result$type == "per_group"
-  is_pergroup_list <- is.list(n_meta) && !is.numeric(n_meta) &&
+  is_pergroup_list <- is.list(n_meta) &&
+    !is.numeric(n_meta) &&
     !is.data.frame(n_meta)
-  if ((is_pergroup_list || has_df_pergroup) &&
-      length(spec$body$page_by) == 0L) {
+  if (
+    (is_pergroup_list || has_df_pergroup) &&
+      length(spec$body$page_by) == 0L
+  ) {
     cli_warn(
       "Per-group {.arg .n} requires {.fn fr_rows} with {.arg page_by}. N-counts ignored."
     )
@@ -624,7 +689,9 @@ finalize_rows <- function(spec) {
   repeat_cols <- spec$body$repeat_cols
   if (length(repeat_cols) > 0L) {
     for (col in repeat_cols) {
-      if (!col %in% names(spec$data)) next
+      if (!col %in% names(spec$data)) {
+        next
+      }
       vals <- spec$data[[col]]
       if (length(vals) > 1L) {
         is_repeat <- c(FALSE, vals[-1L] == vals[-length(vals)])
@@ -644,7 +711,8 @@ finalize_rows <- function(spec) {
   # Remap style row indices to account for inserted blank rows
   if (length(blank_result$insert_positions) > 0L) {
     spec$cell_styles <- remap_style_indices(
-      spec$cell_styles, blank_result$insert_positions
+      spec$cell_styles,
+      blank_result$insert_positions
     )
   }
 
@@ -691,7 +759,9 @@ apply_n_counts <- function(spec, n_counts, fmt) {
 #' @return Modified spec.
 #' @noRd
 apply_span_n_counts <- function(spec, span_counts, fmt) {
-  if (length(span_counts) == 0L) return(spec)
+  if (length(span_counts) == 0L) {
+    return(spec)
+  }
   spans <- spec$header$spans %||% list()
   overrides <- build_span_label_overrides(span_counts, fmt, spans)
   if (!is.null(overrides)) {
@@ -721,7 +791,9 @@ apply_span_n_counts <- function(spec, span_counts, fmt) {
 resolve_group_labels <- function(spec, group_data, group_label) {
   n_input <- spec$columns_meta$n
   fmt <- spec$columns_meta$n_format
-  if (is.null(fmt)) return(NULL)
+  if (is.null(fmt)) {
+    return(NULL)
+  }
 
   # Check for cached per-group data frame result (3-col df from finalize_labels)
   df_res <- spec$columns_meta$._df_result
@@ -744,24 +816,38 @@ resolve_group_labels <- function(spec, group_data, group_label) {
       as.character(group_df[[df_res$trt_col]])
     )
     n_counts_col <- match_trt_to_columns(n_counts, spec$columns)
-    n_counts_span <- match_trt_to_spans(n_counts, spec$columns,
-                                          spec$header$spans %||% list())
+    n_counts_span <- match_trt_to_spans(
+      n_counts,
+      spec$columns,
+      spec$header$spans %||% list()
+    )
     col_ov <- build_label_overrides(n_counts_col, fmt, spec$columns)
-    span_ov <- build_span_label_overrides(n_counts_span, fmt,
-                                            spec$header$spans %||% list())
+    span_ov <- build_span_label_overrides(
+      n_counts_span,
+      fmt,
+      spec$header$spans %||% list()
+    )
     return(list(columns = col_ov, spans = span_ov))
   }
 
   if (is.list(n_input) && !is.numeric(n_input) && !is.data.frame(n_input)) {
     # Per-group static list — match by display label
     n_counts_raw <- n_input[[group_label]]
-    if (is.null(n_counts_raw)) return(NULL)
+    if (is.null(n_counts_raw)) {
+      return(NULL)
+    }
     n_counts_col <- match_trt_to_columns(n_counts_raw, spec$columns)
-    n_counts_span <- match_trt_to_spans(n_counts_raw, spec$columns,
-                                          spec$header$spans %||% list())
+    n_counts_span <- match_trt_to_spans(
+      n_counts_raw,
+      spec$columns,
+      spec$header$spans %||% list()
+    )
     col_ov <- build_label_overrides(n_counts_col, fmt, spec$columns)
-    span_ov <- build_span_label_overrides(n_counts_span, fmt,
-                                            spec$header$spans %||% list())
+    span_ov <- build_span_label_overrides(
+      n_counts_span,
+      fmt,
+      spec$header$spans %||% list()
+    )
     return(list(columns = col_ov, spans = span_ov))
   }
 
@@ -790,10 +876,10 @@ parse_df_n_counts <- function(df, spec) {
 
   # 3-col: page_by group × treatment × count
   list(
-    type      = "per_group",
-    df        = df,
-    page_col  = 1L,
-    trt_col   = 2L,
+    type = "per_group",
+    df = df,
+    page_col = 1L,
+    trt_col = 2L,
     count_col = 3L
   )
 }
@@ -815,10 +901,14 @@ parse_df_n_counts <- function(df, spec) {
 #' @noRd
 match_trt_to_columns <- function(trt_counts, columns) {
   col_names <- names(columns)
-  col_labels <- vapply(col_names, function(nm) {
-    lbl <- columns[[nm]]$label
-    if (is.null(lbl) || !nzchar(lbl)) nm else lbl
-  }, character(1))
+  col_labels <- vapply(
+    col_names,
+    function(nm) {
+      lbl <- columns[[nm]]$label
+      if (is.null(lbl) || !nzchar(lbl)) nm else lbl
+    },
+    character(1)
+  )
   labels_lower <- tolower(col_labels)
   names_lower <- tolower(col_names)
 
@@ -827,7 +917,9 @@ match_trt_to_columns <- function(trt_counts, columns) {
     trt_lower <- tolower(trt)
     # Try label match first, then column name match
     idx <- match(trt_lower, labels_lower)
-    if (is.na(idx)) idx <- match(trt_lower, names_lower)
+    if (is.na(idx)) {
+      idx <- match(trt_lower, names_lower)
+    }
     if (!is.na(idx)) {
       result[col_names[idx]] <- as.integer(trt_counts[trt])
     }
@@ -850,18 +942,26 @@ match_trt_to_columns <- function(trt_counts, columns) {
 #' @return Named integer vector keyed by span label.
 #' @noRd
 match_trt_to_spans <- function(trt_counts, columns, spans) {
-  if (length(spans) == 0L) return(integer(0))
+  if (length(spans) == 0L) {
+    return(integer(0))
+  }
 
   # Get column labels to exclude treatments that already matched columns
-  col_labels_lower <- tolower(vapply(columns, function(c) {
-    lbl <- c$label
-    if (is.null(lbl) || !nzchar(lbl)) "" else lbl
-  }, character(1)))
+  col_labels_lower <- tolower(vapply(
+    columns,
+    function(c) {
+      lbl <- c$label
+      if (is.null(lbl) || !nzchar(lbl)) "" else lbl
+    },
+    character(1)
+  ))
 
   result <- integer(0)
   for (trt in names(trt_counts)) {
     trt_lower <- tolower(trt)
-    if (trt_lower %in% col_labels_lower) next
+    if (trt_lower %in% col_labels_lower) {
+      next
+    }
     for (span in spans) {
       if (tolower(span$label) == trt_lower) {
         result[span$label] <- as.integer(trt_counts[trt])
@@ -883,12 +983,16 @@ match_trt_to_spans <- function(trt_counts, columns, spans) {
 build_label_overrides <- function(n_counts, fmt, columns) {
   overrides <- character(0)
   for (nm in names(n_counts)) {
-    if (!nm %in% names(columns)) next
+    if (!nm %in% names(columns)) {
+      next
+    }
     base_label <- columns[[nm]]$label %||% nm
-    if (!nzchar(base_label)) base_label <- nm
+    if (!nzchar(base_label)) {
+      base_label <- nm
+    }
     row_data <- list(
       label = base_label,
-      n     = as.integer(n_counts[[nm]])
+      n = as.integer(n_counts[[nm]])
     )
     overrides[nm] <- tryCatch(
       as.character(glue::glue_data(row_data, fmt)),
@@ -911,7 +1015,7 @@ build_span_label_overrides <- function(n_counts, fmt, spans) {
   for (span_label in names(n_counts)) {
     row_data <- list(
       label = span_label,
-      n     = as.integer(n_counts[[span_label]])
+      n = as.integer(n_counts[[span_label]])
     )
     overrides[span_label] <- tryCatch(
       as.character(glue::glue_data(row_data, fmt)),
@@ -936,13 +1040,18 @@ build_span_label_overrides <- function(n_counts, fmt, spans) {
 #' @noRd
 apply_header_defaults <- function(spec) {
   h <- spec$header
-  if (is.null(h)) return(spec)
+  if (is.null(h)) {
+    return(spec)
+  }
 
   # Capture which columns have explicit fr_col(header_align=) BEFORE we
 
   # apply any defaults. These must not be overridden.
-  explicit_ha <- vapply(spec$columns, function(c) !is.null(c$header_align),
-                         logical(1))
+  explicit_ha <- vapply(
+    spec$columns,
+    function(c) !is.null(c$header_align),
+    logical(1)
+  )
 
   # Step 1: Apply scalar align as blanket default (lowest priority)
   if (!is.null(h$align)) {
@@ -957,7 +1066,9 @@ apply_header_defaults <- function(spec) {
   align_map <- h$align_map
   if (!is.null(align_map) && length(align_map) > 0L) {
     for (nm in names(align_map)) {
-      if (is.null(spec$columns[[nm]])) next
+      if (is.null(spec$columns[[nm]])) {
+        next
+      }
       if (!explicit_ha[nm]) {
         spec$columns[[nm]]$header_align <- align_map[[nm]]
       }
@@ -988,8 +1099,10 @@ prepare_pages <- function(spec) {
   missing <- setdiff(page_by, names(spec$data))
   if (length(missing) > 0L) {
     cli_abort(
-      c("{.arg page_by} column{?s} not found in data: {.val {missing}}.",
-        "i" = "Available columns: {.val {names(spec$data)}}.")
+      c(
+        "{.arg page_by} column{?s} not found in data: {.val {missing}}.",
+        "i" = "Available columns: {.val {names(spec$data)}}."
+      )
     )
   }
 
@@ -1005,8 +1118,16 @@ prepare_pages <- function(spec) {
     list(
       data = group_data,
       group_label = k,
-      label_overrides = if (is.list(group_overrides)) group_overrides$columns else group_overrides,
-      span_overrides  = if (is.list(group_overrides)) group_overrides$spans else NULL
+      label_overrides = if (is.list(group_overrides)) {
+        group_overrides$columns
+      } else {
+        group_overrides
+      },
+      span_overrides = if (is.list(group_overrides)) {
+        group_overrides$spans
+      } else {
+        NULL
+      }
     )
   })
 }
@@ -1041,7 +1162,8 @@ calculate_col_panels <- function(spec) {
   # Calculate stub width
   stub_width <- sum(vapply(
     vis_cols[intersect(stub_cols, vis_names)],
-    function(c) c$width, numeric(1)
+    function(c) c$width,
+    numeric(1)
   ))
   available <- printable - stub_width
 
@@ -1054,7 +1176,9 @@ calculate_col_panels <- function(spec) {
 
   # Check if all columns fit in one panel
   total_data_width <- sum(vapply(
-    vis_cols[data_cols], function(c) c$width, numeric(1)
+    vis_cols[data_cols],
+    function(c) c$width,
+    numeric(1)
   ))
   if (total_data_width <= available) {
     return(list(vis_names))
@@ -1112,7 +1236,9 @@ build_atomic_groups <- function(data_cols, spans) {
   groups <- list()
 
   for (col in data_cols) {
-    if (col %in% assigned) next
+    if (col %in% assigned) {
+      next
+    }
 
     # Check if this column belongs to a level-1 span
     matching_span <- NULL
@@ -1160,22 +1286,30 @@ fit_panel_widths <- function(spec, col_panels) {
   # Compute stub width (constant across panels)
   stub_width <- sum(vapply(
     spec$columns[intersect(stub_cols, names(spec$columns))],
-    function(c) c$width, numeric(1)
+    function(c) c$width,
+    numeric(1)
   ))
   available <- printable - stub_width
-  if (available <= 0) return(spec)
+  if (available <= 0) {
+    return(spec)
+  }
 
   # For each panel, find its data columns and compute the scale factor.
   # Data columns are unique per panel (non-stub), so scaling won't conflict.
   for (panel_cols in col_panels) {
     data_cols <- setdiff(panel_cols, stub_cols)
-    if (length(data_cols) == 0L) next
+    if (length(data_cols) == 0L) {
+      next
+    }
 
     panel_data_width <- sum(vapply(
       spec$columns[data_cols],
-      function(c) c$width, numeric(1)
+      function(c) c$width,
+      numeric(1)
     ))
-    if (panel_data_width <= 0) next
+    if (panel_data_width <= 0) {
+      next
+    }
 
     scale_factor <- available / panel_data_width
     for (nm in data_cols) {
@@ -1203,18 +1337,25 @@ equal_panel_widths <- function(spec, col_panels) {
 
   stub_width <- sum(vapply(
     spec$columns[intersect(stub_cols, names(spec$columns))],
-    function(c) c$width, numeric(1)
+    function(c) c$width,
+    numeric(1)
   ))
 
   for (panel_cols in col_panels) {
     data_cols <- setdiff(panel_cols, stub_cols)
-    if (length(data_cols) == 0L) next
+    if (length(data_cols) == 0L) {
+      next
+    }
 
     parts <- separate_fixed_auto_cols(spec$columns, data_cols)
-    if (length(parts$auto_names) == 0L) next
+    if (length(parts$auto_names) == 0L) {
+      next
+    }
 
     remaining <- printable - stub_width - parts$fixed_sum
-    if (remaining <= 0) next
+    if (remaining <= 0) {
+      next
+    }
     equal_w <- remaining / length(parts$auto_names)
     for (nm in parts$auto_names) {
       spec$columns[[nm]]$width <- equal_w
@@ -1243,12 +1384,20 @@ equal_panel_widths <- function(spec, col_panels) {
 #' @return Modified fr_spec with gap columns inserted.
 #' @noRd
 inject_span_gaps <- function(spec) {
-  if (!isTRUE(spec$header$span_gap)) return(spec)
+  if (!isTRUE(spec$header$span_gap)) {
+    return(spec)
+  }
   spans <- spec$header$spans
-  if (length(spans) == 0L) return(spec)
+  if (length(spans) == 0L) {
+    return(spec)
+  }
 
   col_names <- names(spec$columns)
-  vis_names <- col_names[vapply(spec$columns, function(c) !isFALSE(c$visible), logical(1))]
+  vis_names <- col_names[vapply(
+    spec$columns,
+    function(c) !isFALSE(c$visible),
+    logical(1)
+  )]
   nc <- length(vis_names)
 
   # For each level, find boundaries between adjacent spans
@@ -1259,7 +1408,9 @@ inject_span_gaps <- function(spec) {
     lvl_spans <- Filter(function(s) s$level == lvl, spans)
     for (sp in lvl_spans) {
       sp_cols <- intersect(sp$columns, vis_names)
-      if (length(sp_cols) == 0L) next
+      if (length(sp_cols) == 0L) {
+        next
+      }
       last_col <- sp_cols[length(sp_cols)]
       last_idx <- match(last_col, vis_names)
       if (last_idx < nc) {
@@ -1276,7 +1427,9 @@ inject_span_gaps <- function(spec) {
   }
 
   gap_after <- unique(gap_after)
-  if (length(gap_after) == 0L) return(spec)
+  if (length(gap_after) == 0L) {
+    return(spec)
+  }
 
   # Gap width: font_size * 0.5 / 72 inches
   fs <- spec$page$font_size %||% 9
@@ -1312,13 +1465,14 @@ inject_span_gaps <- function(spec) {
 
     # Expand higher-level spans that straddle this gap
     spec$header$spans <- expand_spans_for_gap(
-      spec$header$spans, gap_name, gap_after[i]
+      spec$header$spans,
+      gap_name,
+      gap_after[i]
     )
   }
 
   spec
 }
-
 
 
 #' Insert an empty character column into a data frame at a given position
@@ -1358,7 +1512,11 @@ expand_spans_for_gap <- function(spans, gap_name, after_col) {
     idx <- match(after_col, cols)
     if (!is.na(idx) && idx < length(cols)) {
       # This span has columns on both sides of the gap — include the gap
-      sp$columns <- c(cols[seq_len(idx)], gap_name, cols[(idx + 1L):length(cols)])
+      sp$columns <- c(
+        cols[seq_len(idx)],
+        gap_name,
+        cols[(idx + 1L):length(cols)]
+      )
     }
     sp
   })

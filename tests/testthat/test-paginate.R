@@ -106,9 +106,16 @@ test_that("deferred blank saves page break", {
   n_data <- length(grp)
   # Insert blank rows between groups
   df <- data.frame(
-    grp = c(grp[1:6],  "", grp[7:11], "", grp[12:18], "", grp[19:24]),
-    val = c(paste0("a", 1:6),  "", paste0("b", 1:5),  "",
-            paste0("c", 1:7),  "", paste0("d", 1:6)),
+    grp = c(grp[1:6], "", grp[7:11], "", grp[12:18], "", grp[19:24]),
+    val = c(
+      paste0("a", 1:6),
+      "",
+      paste0("b", 1:5),
+      "",
+      paste0("c", 1:7),
+      "",
+      paste0("d", 1:6)
+    ),
     stringsAsFactors = FALSE
   )
   heights <- rep(1L, nrow(df))
@@ -183,6 +190,102 @@ test_that("final blank after last group gets page 0 (excluded)", {
   expect_equal(pages[12], 0L)
 })
 
+test_that("large group split applies widow protection", {
+  # Single group with 22 rows, budget = 20, widow_min = 3
+  # Naive: page 1 gets 20, page 2 gets 2 (widow violation)
+  # Improved: page 1 gets 19, page 2 gets 3
+  df <- data.frame(
+    grp = rep("A", 22),
+    val = as.character(1:22),
+    stringsAsFactors = FALSE
+  )
+  heights <- rep(1L, 22)
+  pages <- paginate_rows(
+    heights,
+    20L,
+    df,
+    "grp",
+    orphan_min = 3L,
+    widow_min = 3L
+  )
+  expect_equal(max(pages), 2L)
+  # Page 2 should have at least widow_min rows
+  expect_gte(sum(pages == 2L), 3L)
+})
+
+test_that("large group split respects orphan_min floor when stealing", {
+  # Single group with 7 rows, budget = 5, orphan_min = 3, widow_min = 3
+  # Naive: page 1 gets 5, page 2 gets 2 (widow violation)
+  # Stealing 1 would give page 1 = 4 (>= orphan_min), page 2 = 3 (= widow_min)
+  df <- data.frame(
+    grp = rep("A", 7),
+    val = as.character(1:7),
+    stringsAsFactors = FALSE
+  )
+  heights <- rep(1L, 7)
+  pages <- paginate_rows(
+    heights,
+    5L,
+    df,
+    "grp",
+    orphan_min = 3L,
+    widow_min = 3L
+  )
+  expect_equal(max(pages), 2L)
+  expect_gte(sum(pages == 1L), 3L)
+  expect_gte(sum(pages == 2L), 3L)
+})
+
+test_that("large group split cannot steal below orphan_min", {
+  # Single group with 5 rows, budget = 3, orphan_min = 3, widow_min = 3
+  # Naive: page 1 gets 3, page 2 gets 2 (widow violation)
+  # Stealing 1 would give page 1 = 2 (< orphan_min) — can't steal
+  # Accept the widow: page 1 = 3, page 2 = 2
+  df <- data.frame(
+    grp = rep("A", 5),
+    val = as.character(1:5),
+    stringsAsFactors = FALSE
+  )
+  heights <- rep(1L, 5)
+  pages <- paginate_rows(
+    heights,
+    3L,
+    df,
+    "grp",
+    orphan_min = 3L,
+    widow_min = 3L
+  )
+  expect_equal(max(pages), 2L)
+  expect_equal(sum(pages == 1L), 3L)
+  expect_equal(sum(pages == 2L), 2L)
+})
+
+test_that("large group split suppresses blank rows at page boundaries", {
+  # Single group: 6 data + blank + 6 data + blank + 6 data = 20 rows total
+  # Budget = 8. Page 1 gets rows 1-7 (6 data + blank), but trailing blank trimmed.
+  # Page 2 starts: leading blank suppressed, gets data rows.
+  df <- data.frame(
+    grp = c(rep("A", 6), "", rep("A", 6), "", rep("A", 6)),
+    val = c(paste0("a", 1:6), "", paste0("b", 1:6), "", paste0("c", 1:6)),
+    stringsAsFactors = FALSE
+  )
+  heights <- rep(1L, nrow(df))
+  pages <- paginate_rows(
+    heights,
+    8L,
+    df,
+    "grp",
+    orphan_min = 2L,
+    widow_min = 2L
+  )
+
+  # Blank rows at page boundaries should be suppressed (page 0)
+  # or assigned to a page but not waste space
+  # All data rows should be assigned to a valid page
+  data_rows <- which(df$val != "")
+  expect_true(all(pages[data_rows] > 0L))
+})
+
 test_that("RTF render with group_by produces multiple sections", {
   tmp <- tempfile(fileext = ".rtf")
   on.exit(unlink(tmp), add = TRUE)
@@ -190,8 +293,8 @@ test_that("RTF render with group_by produces multiple sections", {
   # Create a table with group_by that has enough rows to page
   df <- data.frame(
     soc = c(rep("SOC A", 3), rep("SOC B", 3)),
-    pt  = paste0("PT-", 1:6),
-    n   = as.character(c(10, 20, 30, 40, 50, 60)),
+    pt = paste0("PT-", 1:6),
+    n = as.character(c(10, 20, 30, 40, 50, 60)),
     stringsAsFactors = FALSE
   )
   df |>

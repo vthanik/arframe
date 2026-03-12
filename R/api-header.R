@@ -2,7 +2,6 @@
 # api-header.R — Column header presentation verb: fr_header
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 #' Configure Column Header Presentation
 #'
 #' @description
@@ -120,9 +119,16 @@
 #'   [fr_config()] for setting header defaults via `_tlframe.yml`.
 #'
 #' @export
-fr_header <- function(spec, align = NULL, valign = NULL,
-                      bold = NULL, bg = NULL, fg = NULL,
-                      font_size = NULL, repeat_on_page = NULL) {
+fr_header <- function(
+  spec,
+  align = NULL,
+  valign = NULL,
+  bold = NULL,
+  bg = NULL,
+  fg = NULL,
+  font_size = NULL,
+  repeat_on_page = NULL
+) {
   call <- caller_env()
   check_fr_spec(spec, call = call)
 
@@ -145,8 +151,10 @@ fr_header <- function(spec, align = NULL, valign = NULL,
       bad_names <- setdiff(align_names, valid_aligns)
       if (length(bad_names) > 0L) {
         cli_abort(
-          c("{.arg align} list names must be valid alignments: {.val {valid_aligns}}.",
-            "x" = "Invalid name{?s}: {.val {bad_names}}."),
+          c(
+            "{.arg align} list names must be valid alignments: {.val {valid_aligns}}.",
+            "x" = "Invalid name{?s}: {.val {bad_names}}."
+          ),
           call = call
         )
       }
@@ -159,13 +167,17 @@ fr_header <- function(spec, align = NULL, valign = NULL,
         a <- align_names[[i]]
         sel_expr <- align_args[[i]]
         sel <- tryCatch(
-          tidyselect::eval_select(sel_expr,
-                                  data = col_proxy,
-                                  error_call = call),
+          tidyselect::eval_select(
+            sel_expr,
+            data = col_proxy,
+            error_call = call
+          ),
           error = function(e) {
             cli_abort(
-              c("Failed to resolve {.arg align} tidyselect for {.val {a}}.",
-                "x" = conditionMessage(e)),
+              c(
+                "Failed to resolve {.arg align} tidyselect for {.val {a}}.",
+                "x" = conditionMessage(e)
+              ),
               call = call
             )
           }
@@ -186,27 +198,39 @@ fr_header <- function(spec, align = NULL, valign = NULL,
     align <- NULL
   }
 
-  if (!is.null(valign)) valign <- match_arg_fr(valign, fr_env$valid_valigns, call = call)
-  if (!is.null(bold))   check_scalar_lgl(bold, arg = "bold", call = call)
-  if (!is.null(font_size)) check_positive_num(font_size, arg = "font_size", call = call)
-  if (!is.null(bg)) bg <- resolve_color(bg, call = call)
-  if (!is.null(fg)) fg <- resolve_color(fg, call = call)
-  if (!is.null(repeat_on_page)) check_scalar_lgl(repeat_on_page, arg = "repeat_on_page", call = call)
+  if (!is.null(valign)) {
+    valign <- match_arg_fr(valign, fr_env$valid_valigns, call = call)
+  }
+  if (!is.null(bold)) {
+    check_scalar_lgl(bold, arg = "bold", call = call)
+  }
+  if (!is.null(font_size)) {
+    check_positive_num(font_size, arg = "font_size", call = call)
+  }
+  if (!is.null(bg)) {
+    bg <- resolve_color(bg, call = call)
+  }
+  if (!is.null(fg)) {
+    fg <- resolve_color(fg, call = call)
+  }
+  if (!is.null(repeat_on_page)) {
+    check_scalar_lgl(repeat_on_page, arg = "repeat_on_page", call = call)
+  }
 
   # Preserve existing spans — fr_header replaces everything else
   old_spans <- spec$header$spans
 
   spec$header <- new_fr_header(
-    spans          = old_spans,
+    spans = old_spans,
     repeat_on_page = repeat_on_page %||% spec$header$repeat_on_page,
-    valign         = valign    %||% spec$header$valign,
-    align          = align     %||% spec$header$align,
-    align_map      = align_map %||% spec$header$align_map,
-    bold           = bold      %||% spec$header$bold,
-    bg             = bg        %||% spec$header$bg,
-    fg             = fg        %||% spec$header$fg,
-    font_size      = font_size %||% spec$header$font_size,
-    span_gap       = spec$header$span_gap
+    valign = valign %||% spec$header$valign,
+    align = align %||% spec$header$align,
+    align_map = align_map %||% spec$header$align_map,
+    bold = bold %||% spec$header$bold,
+    bg = bg %||% spec$header$bg,
+    fg = fg %||% spec$header$fg,
+    font_size = font_size %||% spec$header$font_size,
+    span_gap = spec$header$span_gap
   )
 
   spec

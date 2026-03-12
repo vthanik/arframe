@@ -64,7 +64,8 @@ A modified \code{fr_spec}. Row config stored in \code{spec$body}.
 }
 \description{
 Controls how data rows are grouped, paginated, indented, and spaced.
-Calling \code{fr_rows()} again \strong{replaces} the previous row configuration.
+Calling \code{fr_rows()} again \strong{merges} with the previous row configuration:
+only the arguments you explicitly supply are changed.
 
 tlframe uses a two-level greedy pagination algorithm (identical for RTF and
 PDF output):

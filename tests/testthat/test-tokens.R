@@ -2,7 +2,6 @@
 # test-tokens.R — Tests for R/tokens.R
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # get_timestamp
 # ══════════════════════════════════════════════════════════════════════════════
@@ -28,8 +27,20 @@ test_that("get_timestamp matches DDMONYYYY HH:MM:SS pharma format", {
 test_that("get_timestamp month abbreviation is valid", {
   ts <- get_timestamp()
   month <- substr(ts, 3, 5)
-  valid_months <- c("JAN", "FEB", "MAR", "APR", "MAY", "JUN",
-                    "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
+  valid_months <- c(
+    "JAN",
+    "FEB",
+    "MAR",
+    "APR",
+    "MAY",
+    "JUN",
+    "JUL",
+    "AUG",
+    "SEP",
+    "OCT",
+    "NOV",
+    "DEC"
+  )
   expect_true(month %in% valid_months)
 })
 
@@ -150,8 +161,10 @@ test_that("build_token_map returns a named list", {
 test_that("build_token_map always has the four built-in token names", {
   spec <- new_fr_spec(data.frame(x = 1))
   tm <- build_token_map(page_num = 1, total_pages = 1, spec = spec)
-  expect_true(all(c("thepage", "total_pages", "program", "datetime") %in%
-                    names(tm)))
+  expect_true(all(
+    c("thepage", "total_pages", "program", "datetime") %in%
+      names(tm)
+  ))
 })
 
 test_that("build_token_map all values are character", {
@@ -229,10 +242,12 @@ test_that("build_token_map allows user to override datetime", {
 test_that("build_token_map allows overriding both program and datetime", {
   spec <- new_fr_spec(
     data.frame(x = 1),
-    page = new_fr_page(tokens = list(
-      program = "dual_override.R",
-      datetime = "01JAN2020 00:00:00"
-    ))
+    page = new_fr_page(
+      tokens = list(
+        program = "dual_override.R",
+        datetime = "01JAN2020 00:00:00"
+      )
+    )
   )
   tm <- build_token_map(page_num = 2, total_pages = 3, spec = spec)
   expect_equal(tm$program, "dual_override.R")
@@ -249,10 +264,12 @@ test_that("build_token_map allows overriding both program and datetime", {
 test_that("build_token_map includes custom user tokens", {
   spec <- new_fr_spec(
     data.frame(x = 1),
-    page = new_fr_page(tokens = list(
-      study = "STUDY-001",
-      population = "ITT"
-    ))
+    page = new_fr_page(
+      tokens = list(
+        study = "STUDY-001",
+        population = "ITT"
+      )
+    )
   )
   tm <- build_token_map(page_num = 1, total_pages = 1, spec = spec)
   expect_equal(tm$study, "STUDY-001")
@@ -276,10 +293,12 @@ test_that("build_token_map removes overridable names from custom tokens", {
   # When user sets program + a custom token, program should appear exactly once
   spec <- new_fr_spec(
     data.frame(x = 1),
-    page = new_fr_page(tokens = list(
-      program = "override.R",
-      mytoken = "myval"
-    ))
+    page = new_fr_page(
+      tokens = list(
+        program = "override.R",
+        mytoken = "myval"
+      )
+    )
   )
   tm <- build_token_map(page_num = 1, total_pages = 1, spec = spec)
   # program appears once (in overridable slot, not duplicated in custom)
@@ -291,10 +310,12 @@ test_that("build_token_map removes overridable names from custom tokens", {
 test_that("build_token_map removes datetime from custom tokens when overridden", {
   spec <- new_fr_spec(
     data.frame(x = 1),
-    page = new_fr_page(tokens = list(
-      datetime = "custom_time",
-      extra = "extra_val"
-    ))
+    page = new_fr_page(
+      tokens = list(
+        datetime = "custom_time",
+        extra = "extra_val"
+      )
+    )
   )
   tm <- build_token_map(page_num = 1, total_pages = 1, spec = spec)
   expect_equal(sum(names(tm) == "datetime"), 1L)
@@ -312,8 +333,10 @@ test_that("build_token_map works with no user tokens at all", {
   # page$tokens should be NULL by default
   tm <- build_token_map(page_num = 1, total_pages = 1, spec = spec)
   # Should still have exactly the 4 builtins
-  expect_true(all(c("thepage", "total_pages", "program", "datetime") %in%
-                    names(tm)))
+  expect_true(all(
+    c("thepage", "total_pages", "program", "datetime") %in%
+      names(tm)
+  ))
   expect_length(tm, 4L)
 })
 
@@ -441,11 +464,13 @@ test_that("build_token_map custom token with same name as builtin still works", 
   # datetime override + custom tokens — datetime should appear once
   spec <- new_fr_spec(
     data.frame(x = 1),
-    page = new_fr_page(tokens = list(
-      datetime = "CUSTOM_TIME",
-      program  = "CUSTOM_PROG",
-      sponsor  = "ACME"
-    ))
+    page = new_fr_page(
+      tokens = list(
+        datetime = "CUSTOM_TIME",
+        program = "CUSTOM_PROG",
+        sponsor = "ACME"
+      )
+    )
   )
   tm <- build_token_map(page_num = 3, total_pages = 5, spec = spec)
   expect_equal(tm$datetime, "CUSTOM_TIME")
@@ -459,7 +484,6 @@ test_that("build_token_map custom token with same name as builtin still works", 
 })
 
 test_that("build_token_map with only program override keeps datetime auto", {
-
   spec <- new_fr_spec(
     data.frame(x = 1),
     page = new_fr_page(tokens = list(program = "my_prog.sas"))

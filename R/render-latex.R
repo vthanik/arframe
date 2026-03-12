@@ -13,7 +13,6 @@
 #   - \clearpage for page_by groups and column split panels
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 #' Render an fr_spec to LaTeX (.tex)
 #'
 #' @param spec Finalized fr_spec object.
@@ -22,11 +21,17 @@
 #' @param path Output file path (.tex).
 #' @noRd
 render_latex <- function(spec, page_groups, col_panels, path) {
-  lines <- character(0)
+  # Pre-allocate list of chunks to avoid O(n^2) string growth
+  chunks <- vector("list", 4L + 5L * length(col_panels) * length(page_groups))
+  ci <- 0L
+  add_chunk <- function(x) {
+    ci <<- ci + 1L
+    chunks[[ci]] <<- x
+  }
 
-  lines <- c(lines, latex_preamble(spec))
-  lines <- c(lines, "\\begin{document}")
-  lines <- c(lines, latex_fancyhdr_setup(spec))
+  add_chunk(latex_preamble(spec))
+  add_chunk("\\begin{document}")
+  add_chunk(latex_fancyhdr_setup(spec))
 
   total_sections <- length(col_panels) * length(page_groups)
   section_idx <- 0L
@@ -39,24 +44,36 @@ render_latex <- function(spec, page_groups, col_panels, path) {
       vis_columns <- spec$columns[intersect(panel_cols, names(spec$columns))]
       section_idx <- section_idx + 1L
 
-      if (section_idx > 1L) lines <- c(lines, "\\clearpage")
+      if (section_idx > 1L) {
+        add_chunk("\\clearpage")
+      }
 
       is_last <- (group_idx == length(page_groups) &&
-                    panel_idx == length(col_panels))
+        panel_idx == length(col_panels))
 
       # Redefine head template per section: handles group labels and
       # continuation text (panel_idx > 1 gets continuation on all pages)
-      lines <- c(lines, latex_head_template(spec, group_label = group$group_label,
-                                             panel_idx = panel_idx))
+      add_chunk(latex_head_template(
+        spec,
+        group_label = group$group_label,
+        panel_idx = panel_idx
+      ))
 
       # Redefine foot template per section: "last" footnotes only in final section
-      lines <- c(lines, latex_foot_template(spec, is_last = is_last,
-                                             vis_columns = vis_columns))
+      add_chunk(latex_foot_template(
+        spec,
+        is_last = is_last,
+        vis_columns = vis_columns
+      ))
 
       # Resolve borders
       nrow_header <- 1L + n_spanner_levels(spec$header$spans)
-      borders <- resolve_borders(spec$rules, nrow(group$data),
-                                 length(vis_columns), nrow_header)
+      borders <- resolve_borders(
+        spec$rules,
+        nrow(group$data),
+        length(vis_columns),
+        nrow_header
+      )
 
       # Per-group header label overrides (pre-computed in prepare_pages,
       # or computed here for single-group specs without page_by)
@@ -75,19 +92,30 @@ render_latex <- function(spec, page_groups, col_panels, path) {
       }
 
       # Build cell grid
-      cell_grid <- build_cell_grid(group$data, vis_columns,
-                                   spec$cell_styles, spec$page)
+      cell_grid <- build_cell_grid(
+        group$data,
+        vis_columns,
+        spec$cell_styles,
+        spec$page
+      )
 
       # Table (titles/footnotes are in longtblr head/foot templates)
-      lines <- c(lines, latex_table(spec, group$data, vis_columns,
-                                     cell_grid, borders,
-                                     label_overrides = label_overrides,
-                                     span_overrides = span_overrides))
+      add_chunk(latex_table(
+        spec,
+        group$data,
+        vis_columns,
+        cell_grid,
+        borders,
+        label_overrides = label_overrides,
+        span_overrides = span_overrides
+      ))
     }
   }
 
-  lines <- c(lines, "\\end{document}")
+  add_chunk("\\end{document}")
 
+  # Flatten all chunks and write
+  lines <- unlist(chunks[seq_len(ci)], use.names = FALSE)
   writeLines(lines, path, useBytes = FALSE)
 }
 
@@ -149,8 +177,11 @@ latex_preamble <- function(spec) {
     pf_fs <- spec$pagefoot$font_size %||% (page$font_size - 1)
     pf_line_pt <- round(pf_fs * lf, 1)
     pf_max_lines <- max_chrome_lines(spec$pagefoot)
-    footskip_str <- paste0(",footskip=",
-                           round(pf_max_lines * pf_line_pt, 1), "pt")
+    footskip_str <- paste0(
+      ",footskip=",
+      round(pf_max_lines * pf_line_pt, 1),
+      "pt"
+    )
   } else {
     footskip_str <- ",footskip=0pt"
   }
@@ -168,11 +199,21 @@ latex_preamble <- function(spec) {
   geom_opts <- paste0(
     paper_opt,
     if (nzchar(orient_opt)) paste0(",", orient_opt) else "",
-    ",left=", ml, "in",
-    ",right=", mr, "in",
-    ",top=", round(top_in, 4), "in",
-    ",bottom=", round(bot_in, 4), "in",
-    headheight_str, headsep_str, footskip_str
+    ",left=",
+    ml,
+    "in",
+    ",right=",
+    mr,
+    "in",
+    ",top=",
+    round(top_in, 4),
+    "in",
+    ",bottom=",
+    round(bot_in, 4),
+    "in",
+    headheight_str,
+    headsep_str,
+    footskip_str
   )
 
   lines <- c(
@@ -199,19 +240,22 @@ latex_preamble <- function(spec) {
   # Foot templates are declared per-section in the render loop (is_last-aware)
   lines <- c(lines, latex_head_template(spec))
 
-  lines <- c(lines,
-    "",
-    "% Colors",
-    "\\usepackage[table]{xcolor}"
-  )
+  lines <- c(lines, "", "% Colors", "\\usepackage[table]{xcolor}")
 
   # Collect ALL colors used: borders, header styling, cell styles
   all_colors <- collect_colors(spec)
   for (hex in all_colors) {
     cname <- hex_to_tblr_color(hex)
-    lines <- c(lines, paste0(
-      "\\definecolor{", cname, "}{HTML}{", toupper(sub("^#", "", hex)), "}"
-    ))
+    lines <- c(
+      lines,
+      paste0(
+        "\\definecolor{",
+        cname,
+        "}{HTML}{",
+        toupper(sub("^#", "", hex)),
+        "}"
+      )
+    )
   }
 
   # lastpage package (needed when {total_pages} token is used in pagehead/pagefoot)
@@ -223,7 +267,8 @@ latex_preamble <- function(spec) {
     }
   }
 
-  lines <- c(lines,
+  lines <- c(
+    lines,
     "",
     "% Headers and footers",
     "\\usepackage{fancyhdr}",
@@ -231,10 +276,13 @@ latex_preamble <- function(spec) {
     "\\pagestyle{fancy}",
     "",
     "% Font size",
-    paste0("\\renewcommand{\\normalsize}{\\fontsize{",
-           page$font_size, "}{",
-           round(page$font_size * lf, 1),
-           "}\\selectfont}"),
+    paste0(
+      "\\renewcommand{\\normalsize}{\\fontsize{",
+      page$font_size,
+      "}{",
+      round(page$font_size * lf, 1),
+      "}\\selectfont}"
+    ),
     "\\normalsize",
     ""
   )
@@ -277,8 +325,13 @@ latex_fancyhdr_setup <- function(spec) {
   # and sentinels (produce LaTeX commands). This ensures underscores and
   # other LaTeX specials in user text are safe, while token values and
   # sentinel output pass through unescaped.
-  latex_chrome_text <- function(raw_text, token_map, context,
-                                align_key = "l", max_lines = 1L) {
+  latex_chrome_text <- function(
+    raw_text,
+    token_map,
+    context,
+    align_key = "l",
+    max_lines = 1L
+  ) {
     # Escape literal text, preserving {token} placeholders and \n
     escaped <- latex_escape_chrome(raw_text)
     txt <- resolve_tokens(escaped, token_map, context)
@@ -304,8 +357,13 @@ latex_fancyhdr_setup <- function(spec) {
       if (n_pad > 0L) {
         parts <- c(parts, rep("\\phantom{Xg}", n_pad))
       }
-      txt <- paste0("\\shortstack[", align_key, "]{",
-                    paste0(parts, collapse = "\\\\"), "}")
+      txt <- paste0(
+        "\\shortstack[",
+        align_key,
+        "]{",
+        paste0(parts, collapse = "\\\\"),
+        "}"
+      )
     }
     txt
   }
@@ -314,30 +372,78 @@ latex_fancyhdr_setup <- function(spec) {
   if (!is.null(spec$pagehead)) {
     chrome <- spec$pagehead
     fs <- chrome$font_size %||% (spec$page$font_size - 1)
-    bold_on  <- if (isTRUE(chrome$bold)) "\\textbf{" else ""
+    bold_on <- if (isTRUE(chrome$bold)) "\\textbf{" else ""
     bold_off <- if (isTRUE(chrome$bold)) "}" else ""
     ph_ml <- max_chrome_lines(chrome)
 
     if (!is.null(chrome$left)) {
-      txt <- latex_chrome_text(chrome$left, token_map, "page header",
-                               align_key = "l", max_lines = ph_ml)
-      lines <- c(lines, paste0("\\fancyhead[L]{\\fontsize{", fs, "}{",
-                                 round(fs * fr_env$latex_leading_factor, 1), "}\\selectfont ",
-                                 bold_on, txt, bold_off, "}"))
+      txt <- latex_chrome_text(
+        chrome$left,
+        token_map,
+        "page header",
+        align_key = "l",
+        max_lines = ph_ml
+      )
+      lines <- c(
+        lines,
+        paste0(
+          "\\fancyhead[L]{\\fontsize{",
+          fs,
+          "}{",
+          round(fs * fr_env$latex_leading_factor, 1),
+          "}\\selectfont ",
+          bold_on,
+          txt,
+          bold_off,
+          "}"
+        )
+      )
     }
     if (!is.null(chrome$center)) {
-      txt <- latex_chrome_text(chrome$center, token_map, "page header",
-                               align_key = "c", max_lines = ph_ml)
-      lines <- c(lines, paste0("\\fancyhead[C]{\\fontsize{", fs, "}{",
-                                 round(fs * fr_env$latex_leading_factor, 1), "}\\selectfont ",
-                                 bold_on, txt, bold_off, "}"))
+      txt <- latex_chrome_text(
+        chrome$center,
+        token_map,
+        "page header",
+        align_key = "c",
+        max_lines = ph_ml
+      )
+      lines <- c(
+        lines,
+        paste0(
+          "\\fancyhead[C]{\\fontsize{",
+          fs,
+          "}{",
+          round(fs * fr_env$latex_leading_factor, 1),
+          "}\\selectfont ",
+          bold_on,
+          txt,
+          bold_off,
+          "}"
+        )
+      )
     }
     if (!is.null(chrome$right)) {
-      txt <- latex_chrome_text(chrome$right, token_map, "page header",
-                               align_key = "r", max_lines = ph_ml)
-      lines <- c(lines, paste0("\\fancyhead[R]{\\fontsize{", fs, "}{",
-                                 round(fs * fr_env$latex_leading_factor, 1), "}\\selectfont ",
-                                 bold_on, txt, bold_off, "}"))
+      txt <- latex_chrome_text(
+        chrome$right,
+        token_map,
+        "page header",
+        align_key = "r",
+        max_lines = ph_ml
+      )
+      lines <- c(
+        lines,
+        paste0(
+          "\\fancyhead[R]{\\fontsize{",
+          fs,
+          "}{",
+          round(fs * fr_env$latex_leading_factor, 1),
+          "}\\selectfont ",
+          bold_on,
+          txt,
+          bold_off,
+          "}"
+        )
+      )
     }
   }
 
@@ -346,30 +452,78 @@ latex_fancyhdr_setup <- function(spec) {
   if (!is.null(spec$pagefoot)) {
     chrome <- spec$pagefoot
     fs <- chrome$font_size %||% (spec$page$font_size - 1)
-    bold_on  <- if (isTRUE(chrome$bold)) "\\textbf{" else ""
+    bold_on <- if (isTRUE(chrome$bold)) "\\textbf{" else ""
     bold_off <- if (isTRUE(chrome$bold)) "}" else ""
     pf_ml <- max_chrome_lines(chrome)
 
     if (!is.null(chrome$left)) {
-      txt <- latex_chrome_text(chrome$left, token_map, "page footer",
-                               align_key = "l", max_lines = pf_ml)
-      lines <- c(lines, paste0("\\fancyfoot[L]{\\fontsize{", fs, "}{",
-                                 round(fs * fr_env$latex_leading_factor, 1), "}\\selectfont ",
-                                 bold_on, txt, bold_off, "}"))
+      txt <- latex_chrome_text(
+        chrome$left,
+        token_map,
+        "page footer",
+        align_key = "l",
+        max_lines = pf_ml
+      )
+      lines <- c(
+        lines,
+        paste0(
+          "\\fancyfoot[L]{\\fontsize{",
+          fs,
+          "}{",
+          round(fs * fr_env$latex_leading_factor, 1),
+          "}\\selectfont ",
+          bold_on,
+          txt,
+          bold_off,
+          "}"
+        )
+      )
     }
     if (!is.null(chrome$center)) {
-      txt <- latex_chrome_text(chrome$center, token_map, "page footer",
-                               align_key = "c", max_lines = pf_ml)
-      lines <- c(lines, paste0("\\fancyfoot[C]{\\fontsize{", fs, "}{",
-                                 round(fs * fr_env$latex_leading_factor, 1), "}\\selectfont ",
-                                 bold_on, txt, bold_off, "}"))
+      txt <- latex_chrome_text(
+        chrome$center,
+        token_map,
+        "page footer",
+        align_key = "c",
+        max_lines = pf_ml
+      )
+      lines <- c(
+        lines,
+        paste0(
+          "\\fancyfoot[C]{\\fontsize{",
+          fs,
+          "}{",
+          round(fs * fr_env$latex_leading_factor, 1),
+          "}\\selectfont ",
+          bold_on,
+          txt,
+          bold_off,
+          "}"
+        )
+      )
     }
     if (!is.null(chrome$right)) {
-      txt <- latex_chrome_text(chrome$right, token_map, "page footer",
-                               align_key = "r", max_lines = pf_ml)
-      lines <- c(lines, paste0("\\fancyfoot[R]{\\fontsize{", fs, "}{",
-                                 round(fs * fr_env$latex_leading_factor, 1), "}\\selectfont ",
-                                 bold_on, txt, bold_off, "}"))
+      txt <- latex_chrome_text(
+        chrome$right,
+        token_map,
+        "page footer",
+        align_key = "r",
+        max_lines = pf_ml
+      )
+      lines <- c(
+        lines,
+        paste0(
+          "\\fancyfoot[R]{\\fontsize{",
+          fs,
+          "}{",
+          round(fs * fr_env$latex_leading_factor, 1),
+          "}\\selectfont ",
+          bold_on,
+          txt,
+          bold_off,
+          "}"
+        )
+      )
     }
   }
 
@@ -384,17 +538,22 @@ latex_fancyhdr_setup <- function(spec) {
 #' @noRd
 latex_title_content <- function(spec, continuation = FALSE) {
   titles <- spec$meta$titles
-  if (length(titles) == 0L) return(character(0))
+  if (length(titles) == 0L) {
+    return(character(0))
+  }
   lf <- fr_env$latex_leading_factor
   cont_text <- spec$page$continuation
 
   lines <- character(0)
   for (idx in seq_along(titles)) {
     entry <- titles[[idx]]
-    fs <- entry$font_size %||% spec$page$font_size
-    align <- entry$align %||% "center"
-    bold_on  <- if (isTRUE(entry$bold)) "\\textbf{" else ""
-    bold_off <- if (isTRUE(entry$bold)) "}" else ""
+    fs <- entry$font_size %||%
+      spec$meta$title_font_size %||%
+      spec$page$font_size
+    align <- entry$align %||% spec$meta$title_align %||% "center"
+    entry_bold <- entry$bold %||% spec$meta$title_bold
+    bold_on <- if (isTRUE(entry_bold)) "\\textbf{" else ""
+    bold_off <- if (isTRUE(entry_bold)) "}" else ""
     content <- latex_escape_and_resolve(entry$content)
 
     # Append continuation text to first title when requested
@@ -402,23 +561,45 @@ latex_title_content <- function(spec, continuation = FALSE) {
       content <- paste0(content, " ", latex_escape(cont_text))
     }
 
-    tex_align <- switch(align,
+    tex_align <- switch(
+      align,
       center = "\\centering",
-      right  = "\\raggedleft",
+      right = "\\raggedleft",
       ""
     )
 
     if (nzchar(tex_align)) {
-      lines <- c(lines, paste0(
-        "{", tex_align, "\\fontsize{", fs, "}{",
-        round(fs * lf, 1), "}\\selectfont ",
-        bold_on, content, bold_off, "\\par}"
-      ))
+      lines <- c(
+        lines,
+        paste0(
+          "{",
+          tex_align,
+          "\\fontsize{",
+          fs,
+          "}{",
+          round(fs * lf, 1),
+          "}\\selectfont ",
+          bold_on,
+          content,
+          bold_off,
+          "\\par}"
+        )
+      )
     } else {
-      lines <- c(lines, paste0(
-        "{\\fontsize{", fs, "}{", round(fs * lf, 1), "}\\selectfont ",
-        bold_on, content, bold_off, "\\par}"
-      ))
+      lines <- c(
+        lines,
+        paste0(
+          "{\\fontsize{",
+          fs,
+          "}{",
+          round(fs * lf, 1),
+          "}\\selectfont ",
+          bold_on,
+          content,
+          bold_off,
+          "\\par}"
+        )
+      )
     }
   }
 
@@ -458,21 +639,35 @@ latex_head_template <- function(spec, group_label = NULL, panel_idx = 1L) {
   if (!is.null(group_label) && nzchar(group_label)) {
     lf <- fr_env$latex_leading_factor
     fs <- spec$page$font_size
-    pb_bold_on  <- if (isTRUE(spec$body$page_by_bold)) "\\textbf{" else ""
+    pb_bold_on <- if (isTRUE(spec$body$page_by_bold)) "\\textbf{" else ""
     pb_bold_off <- if (isTRUE(spec$body$page_by_bold)) "}" else ""
     pb_align <- spec$body$page_by_align %||% "left"
     if (pb_align == "left") {
       gl_line <- paste0(
-        "\\noindent{\\fontsize{", fs, "}{", round(fs * lf, 1),
-        "}\\selectfont ", pb_bold_on,
-        latex_escape(group_label), pb_bold_off, "}\\par"
+        "\\noindent{\\fontsize{",
+        fs,
+        "}{",
+        round(fs * lf, 1),
+        "}\\selectfont ",
+        pb_bold_on,
+        latex_escape(group_label),
+        pb_bold_off,
+        "}\\par"
       )
     } else {
       tex_align <- if (pb_align == "center") "\\centering" else "\\raggedleft"
       gl_line <- paste0(
-        "{", tex_align, "\\fontsize{", fs, "}{", round(fs * lf, 1),
-        "}\\selectfont ", pb_bold_on,
-        latex_escape(group_label), pb_bold_off, "\\par}"
+        "{",
+        tex_align,
+        "\\fontsize{",
+        fs,
+        "}{",
+        round(fs * lf, 1),
+        "}\\selectfont ",
+        pb_bold_on,
+        latex_escape(group_label),
+        pb_bold_off,
+        "\\par}"
       )
     }
     n_gl <- spec$spacing$page_by_after %||% 1L
@@ -492,7 +687,7 @@ latex_head_template <- function(spec, group_label = NULL, panel_idx = 1L) {
   }
 
   # Decide which content goes to firsthead vs middlehead/lasthead
-  rest_body  <- paste0(cont_content, collapse = "\n")
+  rest_body <- paste0(cont_content, collapse = "\n")
   first_body <- if (panel_idx == 1L) {
     paste0(base_content, collapse = "\n")
   } else {
@@ -512,7 +707,6 @@ latex_head_template <- function(spec, group_label = NULL, panel_idx = 1L) {
 }
 
 
-
 #' Build \DeclareTblrTemplate for footnote feet
 #'
 #' All footnotes are rendered as body-area content via tabularray foot templates:
@@ -527,10 +721,10 @@ latex_foot_template <- function(spec, is_last = TRUE, vis_columns = NULL) {
   footnotes <- spec$meta$footnotes %||% list()
   fn_split <- split_footnotes(footnotes)
   every_fns <- fn_split$every
-  last_fns  <- if (is_last) fn_split$last else list()
+  last_fns <- if (is_last) fn_split$last else list()
 
   has_every <- length(every_fns) > 0L
-  has_last  <- length(last_fns)  > 0L
+  has_last <- length(last_fns) > 0L
 
   lines <- character(0)
 
@@ -538,10 +732,12 @@ latex_foot_template <- function(spec, is_last = TRUE, vis_columns = NULL) {
     # "every" footnotes repeat on all pages (firstfoot, middlefoot, lastfoot)
     every_content <- paste0(
       build_fn_latex_content(every_fns, spec, vis_columns = vis_columns),
-      collapse = "\n")
+      collapse = "\n"
+    )
 
     # firstfoot and middlefoot get "every" footnotes only
-    lines <- c(lines,
+    lines <- c(
+      lines,
       paste0("\\DeclareTblrTemplate{firstfoot, middlefoot}{default}{"),
       every_content,
       "}"
@@ -550,11 +746,16 @@ latex_foot_template <- function(spec, is_last = TRUE, vis_columns = NULL) {
     if (has_last) {
       # lastfoot gets "every" + "last" footnotes combined
       last_content <- paste0(
-        build_fn_latex_content(last_fns, spec, skip_spacing = TRUE,
-                               vis_columns = vis_columns),
+        build_fn_latex_content(
+          last_fns,
+          spec,
+          skip_spacing = TRUE,
+          vis_columns = vis_columns
+        ),
         collapse = "\n"
       )
-      lines <- c(lines,
+      lines <- c(
+        lines,
         paste0("\\DeclareTblrTemplate{lastfoot}{default}{"),
         every_content,
         last_content,
@@ -562,7 +763,8 @@ latex_foot_template <- function(spec, is_last = TRUE, vis_columns = NULL) {
       )
     } else {
       # lastfoot same as firstfoot/middlefoot
-      lines <- c(lines,
+      lines <- c(
+        lines,
         paste0("\\DeclareTblrTemplate{lastfoot}{default}{"),
         every_content,
         "}"
@@ -570,21 +772,25 @@ latex_foot_template <- function(spec, is_last = TRUE, vis_columns = NULL) {
     }
   } else if (has_last) {
     # Only "last" footnotes — suppress firstfoot/middlefoot
-    lines <- c(lines,
+    lines <- c(
+      lines,
       "\\DefTblrTemplate{firstfoot}{default}{}",
       "\\DefTblrTemplate{middlefoot}{default}{}"
     )
     last_content <- paste0(
       build_fn_latex_content(last_fns, spec, vis_columns = vis_columns),
-      collapse = "\n")
-    lines <- c(lines,
+      collapse = "\n"
+    )
+    lines <- c(
+      lines,
       paste0("\\DeclareTblrTemplate{lastfoot}{default}{"),
       last_content,
       "}"
     )
   } else {
     # No footnotes — suppress all foot templates
-    lines <- c(lines,
+    lines <- c(
+      lines,
       "\\DefTblrTemplate{firstfoot}{default}{}",
       "\\DefTblrTemplate{middlefoot}{default}{}",
       "\\DefTblrTemplate{lastfoot}{default}{}"
@@ -607,9 +813,15 @@ latex_foot_template <- function(spec, is_last = TRUE, vis_columns = NULL) {
 #' @param vis_columns Named list of visible panel columns (used to calculate
 #'   the actual rendered table width). Falls back to all `spec$columns` if NULL.
 #' @noRd
-build_fn_latex_content <- function(entries, spec, skip_spacing = FALSE,
-                                   vis_columns = NULL) {
-  if (length(entries) == 0L) return(character(0))
+build_fn_latex_content <- function(
+  entries,
+  spec,
+  skip_spacing = FALSE,
+  vis_columns = NULL
+) {
+  if (length(entries) == 0L) {
+    return(character(0))
+  }
   lf <- fr_env$latex_leading_factor
 
   # Table width from visible panel columns (matches actual rendered table)
@@ -633,9 +845,14 @@ build_fn_latex_content <- function(entries, spec, skip_spacing = FALSE,
   if (!skip_spacing) {
     # Separator line matching table width
     if (isTRUE(spec$meta$footnote_separator)) {
-      fn_lines <- c(fn_lines, paste0(
-        "\\noindent\\rule{\\linewidth}{", fr_env$latex_fn_sep_width_pt, "pt}"
-      ))
+      fn_lines <- c(
+        fn_lines,
+        paste0(
+          "\\noindent\\rule{\\linewidth}{",
+          fr_env$latex_fn_sep_width_pt,
+          "pt}"
+        )
+      )
     }
   }
 
@@ -644,23 +861,41 @@ build_fn_latex_content <- function(entries, spec, skip_spacing = FALSE,
     align <- fn$align %||% "left"
     content <- latex_escape_and_resolve(fn$content)
 
-    tex_align <- switch(align,
+    tex_align <- switch(
+      align,
       center = "\\centering",
-      right  = "\\raggedleft",
+      right = "\\raggedleft",
       ""
     )
 
     if (nzchar(tex_align)) {
-      fn_lines <- c(fn_lines, paste0(
-        "{", tex_align, "\\fontsize{", fs, "}{",
-        round(fs * lf, 1), "}\\selectfont ",
-        content, "\\par}"
-      ))
+      fn_lines <- c(
+        fn_lines,
+        paste0(
+          "{",
+          tex_align,
+          "\\fontsize{",
+          fs,
+          "}{",
+          round(fs * lf, 1),
+          "}\\selectfont ",
+          content,
+          "\\par}"
+        )
+      )
     } else {
-      fn_lines <- c(fn_lines, paste0(
-        "\\noindent{\\fontsize{", fs, "}{", round(fs * lf, 1),
-        "}\\selectfont ", content, "}\\par"
-      ))
+      fn_lines <- c(
+        fn_lines,
+        paste0(
+          "\\noindent{\\fontsize{",
+          fs,
+          "}{",
+          round(fs * lf, 1),
+          "}\\selectfont ",
+          content,
+          "}\\par"
+        )
+      )
     }
   }
 
@@ -673,8 +908,15 @@ build_fn_latex_content <- function(entries, spec, skip_spacing = FALSE,
 
 #' Build the complete tabularray table
 #' @noRd
-latex_table <- function(spec, data, columns, cell_grid, borders,
-                         label_overrides = NULL, span_overrides = NULL) {
+latex_table <- function(
+  spec,
+  data,
+  columns,
+  cell_grid,
+  borders,
+  label_overrides = NULL,
+  span_overrides = NULL
+) {
   col_names <- names(columns)
   nc <- length(col_names)
   nr <- nrow(data)
@@ -685,18 +927,22 @@ latex_table <- function(spec, data, columns, cell_grid, borders,
   colsep_pt <- spec$page$col_gap / 2
   colsep_in <- 2 * colsep_pt / fr_env$points_per_inch
   gap_col_indices <- integer(0)
-  col_spec_parts <- vapply(seq_along(col_names), function(j) {
-    col <- columns[[col_names[j]]]
-    align <- fr_env$align_to_latex[col$align %||% "left"]
-    if (isTRUE(col$is_gap)) {
-      # Gap columns use exact width, no colsep subtraction (sep zeroed below)
-      gap_col_indices[length(gap_col_indices) + 1L] <<- j
-      width_in <- col$width
-    } else {
-      width_in <- max(0.1, col$width - colsep_in)
-    }
-    paste0("Q[", tolower(align), ",wd=", round(width_in, 4), "in]")
-  }, character(1))
+  col_spec_parts <- vapply(
+    seq_along(col_names),
+    function(j) {
+      col <- columns[[col_names[j]]]
+      align <- fr_env$align_to_latex[col$align %||% "left"]
+      if (isTRUE(col$is_gap)) {
+        # Gap columns use exact width, no colsep subtraction (sep zeroed below)
+        gap_col_indices[length(gap_col_indices) + 1L] <<- j
+        width_in <- col$width
+      } else {
+        width_in <- max(0.1, col$width - colsep_in)
+      }
+      paste0("Q[", tolower(align), ",wd=", round(width_in, 4), "in]")
+    },
+    character(1)
+  )
   colspec_str <- paste0(col_spec_parts, collapse = "")
 
   # Number of header rows (spanners + column header)
@@ -710,11 +956,11 @@ latex_table <- function(spec, data, columns, cell_grid, borders,
 
   # Zero out colsep for gap columns so only the narrow width remains
   for (gi in gap_col_indices) {
-    inner_keys <- c(inner_keys,
+    inner_keys <- c(
+      inner_keys,
       paste0("column{", gi, "}={leftsep=0pt,rightsep=0pt}")
     )
   }
-
 
   # Column widths already in colspec; add row-level styles
   row_heights <- build_row_heights(nr, spec$cell_styles)
@@ -723,18 +969,31 @@ latex_table <- function(spec, data, columns, cell_grid, borders,
   inner_keys <- c(inner_keys, latex_border_specs(borders, nr, nc, nrow_header))
 
   # Cell-level styles (bold, italic, bg, fg) from cell_grid
-  inner_keys <- c(inner_keys, latex_cell_style_specs(cell_grid, nr, nc,
-                                                      nrow_header))
+  inner_keys <- c(
+    inner_keys,
+    latex_cell_style_specs(cell_grid, nr, nc, nrow_header)
+  )
 
   # Header cell styles
   header_valign <- spec$header$valign %||% "bottom"
-  hgrid <- build_header_cell_grid(columns, spec$cell_styles, spec$page,
-                                   nrow_header,
-                                   default_valign = header_valign,
-                                   header_cfg = spec$header)
-  inner_keys <- c(inner_keys, latex_header_style_specs(hgrid, nrow_header, nc,
-                                                       columns = columns,
-                                                       header_default_align = spec$header$align))
+  hgrid <- build_header_cell_grid(
+    columns,
+    spec$cell_styles,
+    spec$page,
+    nrow_header,
+    default_valign = header_valign,
+    header_cfg = spec$header
+  )
+  inner_keys <- c(
+    inner_keys,
+    latex_header_style_specs(
+      hgrid,
+      nrow_header,
+      nc,
+      columns = columns,
+      header_default_align = spec$header$align
+    )
+  )
 
   # Build table option string
   inner_str <- paste0(inner_keys, collapse = ",\n  ")
@@ -742,44 +1001,76 @@ latex_table <- function(spec, data, columns, cell_grid, borders,
   lines <- character(0)
   # Header row vertical alignment (bottom = match RTF multiline header style)
   header_valign_key <- paste0(
-    "row{1-", nrow_header, "}={valign=b}"
+    "row{1-",
+    nrow_header,
+    "}={valign=b}"
   )
 
   # Spanner rows (compute early to get hline keys for inner spec)
-  spanner_result <- latex_spanner_rows(spec, columns, span_overrides = span_overrides)
+  spanner_result <- latex_spanner_rows(
+    spec,
+    columns,
+    span_overrides = span_overrides
+  )
   if (length(spanner_result$hlines) > 0L) {
     inner_keys <- c(inner_keys, spanner_result$hlines)
     inner_str <- paste0(inner_keys, collapse = ",\n  ")
   }
 
-  lines <- c(lines, paste0(
-    "\\begin{longtblr}[presep=0pt, postsep=0pt]{",
-    "\n  colspec={", colspec_str, "},",
-    "\n  row{1-Z}={abovesep=", fr_env$latex_rowsep, ",belowsep=", fr_env$latex_rowsep, "},",
-    "\n  column{1-Z}={leftsep=", colsep_pt, "pt,rightsep=", colsep_pt, "pt},",
-    "\n  ", header_valign_key, ",",
-    "\n  ", inner_str,
-    "\n}"
-  ))
+  lines <- c(
+    lines,
+    paste0(
+      "\\begin{longtblr}[presep=0pt, postsep=0pt]{",
+      "\n  colspec={",
+      colspec_str,
+      "},",
+      "\n  row{1-Z}={abovesep=",
+      fr_env$latex_rowsep,
+      ",belowsep=",
+      fr_env$latex_rowsep,
+      "},",
+      "\n  column{1-Z}={leftsep=",
+      colsep_pt,
+      "pt,rightsep=",
+      colsep_pt,
+      "pt},",
+      "\n  ",
+      header_valign_key,
+      ",",
+      "\n  ",
+      inner_str,
+      "\n}"
+    )
+  )
 
   # Spanner rows
   lines <- c(lines, spanner_result$rows)
 
   # Column header row
-  lines <- c(lines, latex_col_header_row(spec, columns,
-                                          label_overrides = label_overrides))
+  lines <- c(
+    lines,
+    latex_col_header_row(spec, columns, label_overrides = label_overrides)
+  )
 
   # Keep-together mask for orphan/widow control
   keep_mask <- build_keep_mask(
-    data, spec$body$group_by,
+    data,
+    spec$body$group_by,
     orphan_min = spec$page$orphan_min %||% fr_env$default_orphan_min,
-    widow_min  = spec$page$widow_min  %||% fr_env$default_widow_min
+    widow_min = spec$page$widow_min %||% fr_env$default_widow_min
   )
 
   # Body rows (uses pre-computed decimal geometry from spec)
-  lines <- c(lines, latex_body_rows(data, columns, cell_grid,
-                                     dec_geom = spec$decimal_geometry,
-                                     keep_mask = keep_mask))
+  lines <- c(
+    lines,
+    latex_body_rows(
+      data,
+      columns,
+      cell_grid,
+      dec_geom = spec$decimal_geometry,
+      keep_mask = keep_mask
+    )
+  )
 
   lines <- c(lines, "\\end{longtblr}")
 
@@ -808,18 +1099,38 @@ latex_border_specs <- function(borders, nr, nc, nrow_header) {
         ls <- fr_env$linestyle_latex[bs$linestyle] %||% "solid"
         cname <- hex_to_tblr_color(bs$fg)
         wd <- if (!is.null(bs$width)) paste0("wd=", bs$width, "pt, ") else ""
-        specs <- c(specs, paste0(
-          "hline{1} = {", wd, "dash=", ls, ", fg=", cname, "}"
-        ))
+        specs <- c(
+          specs,
+          paste0(
+            "hline{1} = {",
+            wd,
+            "dash=",
+            ls,
+            ", fg=",
+            cname,
+            "}"
+          )
+        )
       }
       bs <- h$bottom[i, j][[1L]]
       if (!is.null(bs) && i == nrow_header && j == 1L) {
         ls <- fr_env$linestyle_latex[bs$linestyle] %||% "solid"
         cname <- hex_to_tblr_color(bs$fg)
         wd <- if (!is.null(bs$width)) paste0("wd=", bs$width, "pt, ") else ""
-        specs <- c(specs, paste0(
-          "hline{", nrow_header + 1L, "} = {", wd, "dash=", ls, ", fg=", cname, "}"
-        ))
+        specs <- c(
+          specs,
+          paste0(
+            "hline{",
+            nrow_header + 1L,
+            "} = {",
+            wd,
+            "dash=",
+            ls,
+            ", fg=",
+            cname,
+            "}"
+          )
+        )
       }
     }
   }
@@ -835,9 +1146,20 @@ latex_border_specs <- function(borders, nr, nc, nrow_header) {
         cname <- hex_to_tblr_color(bs$fg)
         wd <- if (!is.null(bs$width)) paste0("wd=", bs$width, "pt, ") else ""
         tblr_row <- nrow_header + i + 1L
-        specs <- c(specs, paste0(
-          "hline{", tblr_row, "} = {", wd, "dash=", ls, ", fg=", cname, "}"
-        ))
+        specs <- c(
+          specs,
+          paste0(
+            "hline{",
+            tblr_row,
+            "} = {",
+            wd,
+            "dash=",
+            ls,
+            ", fg=",
+            cname,
+            "}"
+          )
+        )
       }
       # Top border on first body row
       if (i == 1L) {
@@ -845,13 +1167,29 @@ latex_border_specs <- function(borders, nr, nc, nrow_header) {
         if (!is.null(bs_top)) {
           ls <- fr_env$linestyle_latex[bs_top$linestyle] %||% "solid"
           cname <- hex_to_tblr_color(bs_top$fg)
-          wd <- if (!is.null(bs_top$width)) paste0("wd=", bs_top$width, "pt, ") else ""
+          wd <- if (!is.null(bs_top$width)) {
+            paste0("wd=", bs_top$width, "pt, ")
+          } else {
+            ""
+          }
           tblr_row <- nrow_header + 1L
           # Only add if not already covered by header bottom
-          if (!any(grepl(paste0("hline\\{", tblr_row, "\\}"), specs)))
-            specs <- c(specs, paste0(
-              "hline{", tblr_row, "} = {", wd, "dash=", ls, ", fg=", cname, "}"
-            ))
+          if (!any(grepl(paste0("hline\\{", tblr_row, "\\}"), specs))) {
+            specs <- c(
+              specs,
+              paste0(
+                "hline{",
+                tblr_row,
+                "} = {",
+                wd,
+                "dash=",
+                ls,
+                ", fg=",
+                cname,
+                "}"
+              )
+            )
+          }
         }
       }
     }
@@ -882,15 +1220,21 @@ latex_border_specs <- function(borders, nr, nc, nrow_header) {
 #' Generate tabularray cell style specs from cell_grid
 #' @noRd
 latex_cell_style_specs <- function(cell_grid, nr, nc, nrow_header) {
-  if (nrow(cell_grid) == 0L) return(character(0))
+  if (nrow(cell_grid) == 0L) {
+    return(character(0))
+  }
   specs <- character(0)
 
   for (idx in seq_len(nrow(cell_grid))) {
     g <- cell_grid[idx, ]
     parts <- character(0)
 
-    if (isTRUE(g$bold)) parts <- c(parts, "font=\\bfseries")
-    if (isTRUE(g$italic)) parts <- c(parts, "font=\\itshape")
+    if (isTRUE(g$bold)) {
+      parts <- c(parts, "font=\\bfseries")
+    }
+    if (isTRUE(g$italic)) {
+      parts <- c(parts, "font=\\itshape")
+    }
     if (!is.na(g$bg) && nzchar(g$bg)) {
       parts <- c(parts, paste0("bg=", hex_to_tblr_color(g$bg)))
     }
@@ -903,10 +1247,18 @@ latex_cell_style_specs <- function(cell_grid, nr, nc, nrow_header) {
     if (length(parts) > 0L) {
       # tabularray row index: header rows + body row index
       tblr_row <- nrow_header + g$row_idx
-      specs <- c(specs, paste0(
-        "cell{", tblr_row, "}{", g$col_idx, "} = {",
-        paste0(parts, collapse = ", "), "}"
-      ))
+      specs <- c(
+        specs,
+        paste0(
+          "cell{",
+          tblr_row,
+          "}{",
+          g$col_idx,
+          "} = {",
+          paste0(parts, collapse = ", "),
+          "}"
+        )
+      )
     }
   }
 
@@ -916,17 +1268,25 @@ latex_cell_style_specs <- function(cell_grid, nr, nc, nrow_header) {
 
 #' Generate tabularray cell style specs for header grid
 #' @noRd
-latex_header_style_specs <- function(hgrid, header_row_idx, nc,
-                                     columns = NULL,
-                                     header_default_align = NULL) {
+latex_header_style_specs <- function(
+  hgrid,
+  header_row_idx,
+  nc,
+  columns = NULL,
+  header_default_align = NULL
+) {
   specs <- character(0)
 
   for (j in seq_len(nc)) {
     g <- hgrid[j, ]
     parts <- character(0)
 
-    if (isTRUE(g$bold)) parts <- c(parts, "font=\\bfseries")
-    if (isTRUE(g$italic)) parts <- c(parts, "font=\\itshape")
+    if (isTRUE(g$bold)) {
+      parts <- c(parts, "font=\\bfseries")
+    }
+    if (isTRUE(g$italic)) {
+      parts <- c(parts, "font=\\itshape")
+    }
     if (!is.na(g$bg) && nzchar(g$bg)) {
       parts <- c(parts, paste0("bg=", hex_to_tblr_color(g$bg)))
     }
@@ -944,10 +1304,18 @@ latex_header_style_specs <- function(hgrid, header_row_idx, nc,
     }
 
     if (length(parts) > 0L) {
-      specs <- c(specs, paste0(
-        "cell{", header_row_idx, "}{", j, "} = {",
-        paste0(parts, collapse = ", "), "}"
-      ))
+      specs <- c(
+        specs,
+        paste0(
+          "cell{",
+          header_row_idx,
+          "}{",
+          j,
+          "} = {",
+          paste0(parts, collapse = ", "),
+          "}"
+        )
+      )
     }
   }
 
@@ -959,7 +1327,9 @@ latex_header_style_specs <- function(hgrid, header_row_idx, nc,
 #' @noRd
 latex_spanner_rows <- function(spec, columns, span_overrides = NULL) {
   spans <- spec$header$spans
-  if (length(spans) == 0L) return(list(rows = character(0), hlines = character(0)))
+  if (length(spans) == 0L) {
+    return(list(rows = character(0), hlines = character(0)))
+  }
 
   col_names <- names(columns)
   nc <- length(col_names)
@@ -995,9 +1365,15 @@ latex_spanner_rows <- function(spec, columns, span_overrides = NULL) {
           if (!is.na(ov)) span_label <- ov
         }
         content <- latex_escape_and_resolve(span_label)
-        cells <- c(cells, paste0(
-          "\\SetCell[c=", span_width, "]{c} ", content
-        ))
+        cells <- c(
+          cells,
+          paste0(
+            "\\SetCell[c=",
+            span_width,
+            "]{c} ",
+            content
+          )
+        )
         # Empty cells for the rest of the span
         if (span_width > 1L) {
           cells <- c(cells, rep("", span_width - 1L))
@@ -1006,11 +1382,18 @@ latex_spanner_rows <- function(spec, columns, span_overrides = NULL) {
         if (isTRUE(matching_span$hline)) {
           col_start <- j
           col_end <- j + span_width - 1L
-          span_hlines <- c(span_hlines, paste0(
-            "hline{", lvl_row + 1L, "}={",
-            col_start, "-", col_end,
-            "}{wd=0.5pt, dash=solid, fg=tblr000000}"
-          ))
+          span_hlines <- c(
+            span_hlines,
+            paste0(
+              "hline{",
+              lvl_row + 1L,
+              "}={",
+              col_start,
+              "-",
+              col_end,
+              "}{wd=0.5pt, dash=solid, fg=tblr000000}"
+            )
+          )
         }
         j <- j + span_width
       } else {
@@ -1056,17 +1439,22 @@ latex_col_header_row <- function(spec, columns, label_overrides = NULL) {
     has_newline <- grepl("\n", content, fixed = TRUE)
 
     if (has_newline) {
-      tex_align <- switch(effective_align,
+      tex_align <- switch(
+        effective_align,
         center = "\\centering",
-        right  = "\\raggedleft",
-        left   = "\\raggedright",
+        right = "\\raggedleft",
+        left = "\\raggedright",
         "\\raggedright"
       )
       inner <- newline_to_latex_break(content)
       content <- paste0("\\parbox[b]{\\hsize}{", tex_align, " ", inner, "}")
     }
 
-    cells[j] <- if (nzchar(content)) paste0("\\hspace{0pt}", content) else content
+    cells[j] <- if (nzchar(content)) {
+      paste0("\\hspace{0pt}", content)
+    } else {
+      content
+    }
   }
 
   paste0(paste0(cells, collapse = " & "), " \\\\")
@@ -1078,11 +1466,17 @@ latex_col_header_row <- function(spec, columns, label_overrides = NULL) {
 #' @param keep_mask Logical vector of length nrow(data). TRUE = keep with next
 #'   row (emit `\\\\*` instead of `\\\\`).
 #' @noRd
-latex_body_rows <- function(data, columns, cell_grid,
-                            dec_geom = NULL,
-                            keep_mask = NULL) {
+latex_body_rows <- function(
+  data,
+  columns,
+  cell_grid,
+  dec_geom = NULL,
+  keep_mask = NULL
+) {
   nr <- nrow(data)
-  if (nr == 0L) return(character(0))
+  if (nr == 0L) {
+    return(character(0))
+  }
 
   col_names <- names(columns)
   nc <- length(col_names)
@@ -1090,19 +1484,34 @@ latex_body_rows <- function(data, columns, cell_grid,
   # Pre-compute which columns are decimal-aligned
   is_decimal <- col_names %in% names(dec_geom %||% list())
 
+  # Pre-extract cell_grid columns as vectors for O(1) indexed access.
+  # Grid is column-major (build_cell_grid): cell (i, j) → index (j-1)*nr + i.
+  # LaTeX per-cell bold/italic is applied via tabularray cell specs (see
+  # latex_tblr_spec_str), not inline here — only content, indent, and align
+  # are needed.
+  cg_content <- cell_grid$content
+  cg_indent <- cell_grid$indent
+  cg_align <- cell_grid$align
+
+  # Pre-extract column-level properties as vectors (same pattern as build_cell_grid)
+  col_spaces_vec <- vapply(
+    col_names,
+    function(nm) {
+      columns[[nm]]$spaces %||% "indent"
+    },
+    character(1)
+  )
+
   lines <- character(nr)
   for (i in seq_len(nr)) {
     cells <- character(nc)
     for (j in seq_len(nc)) {
-      grid_row <- which(cell_grid$row_idx == i & cell_grid$col_idx == j)
-      if (length(grid_row) == 0L) {
-        cells[j] <- ""
-        next
-      }
-      content <- cell_grid$content[grid_row]
+      # O(1) cell lookup
+      idx <- (j - 1L) * nr + i
+      content <- cg_content[idx]
 
       # Apply indent from cell_grid (font-metric-based, set by apply_indent_by)
-      cell_indent <- cell_grid$indent[grid_row]
+      cell_indent <- cg_indent[idx]
 
       if (is_decimal[j]) {
         # Decimal alignment via pre-formatted string with centering offset
@@ -1119,14 +1528,20 @@ latex_body_rows <- function(data, columns, cell_grid,
         cells[j] <- paste0("\\hspace{", offset_pt, "pt}", formatted_esc)
       } else {
         # Standard cell handling
-        col_spaces <- columns[[col_names[j]]]$spaces %||% "indent"
-        if (col_spaces == "preserve") {
+        if (col_spaces_vec[j] == "preserve") {
           # Preserve mode: convert leading spaces to \hspace (first-line visual spacing)
           n_lead <- nchar(content) - nchar(sub("^ +", "", content))
-          if (n_lead > 0L) content <- sub("^ +", "", content)
+          if (n_lead > 0L) {
+            content <- sub("^ +", "", content)
+          }
           content <- latex_escape_and_resolve(content)
           if (n_lead > 0L) {
-            content <- paste0("\\hspace{", round(n_lead * fr_env$latex_space_width_em, 2), "em}", content)
+            content <- paste0(
+              "\\hspace{",
+              round(n_lead * fr_env$latex_space_width_em, 2),
+              "em}",
+              content
+            )
           }
         } else {
           # Indent mode: spaces already stripped upstream, \leftskip handles indent
@@ -1134,15 +1549,20 @@ latex_body_rows <- function(data, columns, cell_grid,
         }
         # Apply paragraph-level indent (all lines, including wrapped)
         if (cell_indent > 0) {
-          content <- paste0("\\leftskip=", round(cell_indent, 4), "in\\relax ", content)
+          content <- paste0(
+            "\\leftskip=",
+            round(cell_indent, 4),
+            "in\\relax ",
+            content
+          )
         }
-        # Handle multiline content: wrap in \parbox with column alignment
+        # Handle multiline content: wrap in \parbox with per-cell alignment
         if (grepl("\n", content, fixed = TRUE)) {
-          col_align <- columns[[col_names[j]]]$align %||% "left"
-          tex_align <- switch(col_align,
+          tex_align <- switch(
+            cg_align[idx],
             center = "\\centering",
-            right  = "\\raggedleft",
-            left   = "\\raggedright",
+            right = "\\raggedleft",
+            left = "\\raggedright",
             "\\raggedright"
           )
           inner <- newline_to_latex_break(content)
@@ -1156,7 +1576,11 @@ latex_body_rows <- function(data, columns, cell_grid,
     cells[mask] <- paste0("\\hspace{0pt}", cells[mask])
 
     # Row terminator: \\* = keep with next row (no page break after)
-    row_end <- if (!is.null(keep_mask) && isTRUE(keep_mask[i])) " \\\\*" else " \\\\"
+    row_end <- if (!is.null(keep_mask) && isTRUE(keep_mask[i])) {
+      " \\\\*"
+    } else {
+      " \\\\"
+    }
     lines[i] <- paste0(paste0(cells, collapse = " & "), row_end)
   }
 
@@ -1176,11 +1600,17 @@ latex_body_rows <- function(data, columns, cell_grid,
 #' @return Integer: maximum line count across all zones (minimum 1).
 #' @noRd
 max_chrome_lines <- function(chrome) {
-  if (is.null(chrome)) return(1L)
+  if (is.null(chrome)) {
+    return(1L)
+  }
   zones <- c(chrome$left %||% "", chrome$center %||% "", chrome$right %||% "")
-  max(vapply(zones, function(z) {
-    length(strsplit(z, "\n", fixed = TRUE)[[1L]])
-  }, integer(1)))
+  max(vapply(
+    zones,
+    function(z) {
+      length(strsplit(z, "\n", fixed = TRUE)[[1L]])
+    },
+    integer(1)
+  ))
 }
 
 
@@ -1192,7 +1622,9 @@ max_chrome_lines <- function(chrome) {
 #' @return LaTeX-safe string with tokens intact.
 #' @noRd
 latex_escape_chrome <- function(text) {
-  if (is.null(text) || !nzchar(text)) return(text)
+  if (is.null(text) || !nzchar(text)) {
+    return(text)
+  }
   # Temporarily protect \n from escaping
   text <- gsub("\n", "\x01NL\x02", text, fixed = TRUE)
   # Find all {token} placeholders

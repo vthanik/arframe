@@ -25,6 +25,9 @@ BACKEND.md
 # Presentation materials (local only)
 presentation/
 
+# Stale XeLaTeX log files from test/verification runs
+*.log
+
 # Build artifacts
 *.tar.gz
 *.Rcheck/
@@ -36,3 +39,4 @@ docs/
 vignettes/*.html
 vignettes/*.R
 deploy-site.sh
+audit-findings.md
