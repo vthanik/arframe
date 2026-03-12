@@ -179,6 +179,8 @@ reference:
       - fr_render
       - fr_backends
       - fr_register_backend
+      - fr_latex_deps
+      - fr_install_latex_deps
 
   - title: "Validation and Inspection"
     desc: >
