@@ -61,8 +61,10 @@ reference:
     desc: >
       Every tlframe pipeline starts here. `fr_table()` creates a spec object
       from a data frame. `fr_listing()` and `fr_figure()` create specs for
-      patient listings and embedded figures. All three return an `fr_spec`
-      that flows through the same pipeline verbs.
+      patient listings and embedded figures. `fr_figure()` accepts a single
+      plot or a list of plots for multi-page figures, with optional per-page
+      metadata tokens. All three return an `fr_spec` that flows through the
+      same pipeline verbs.
     contents:
       - fr_table
       - fr_listing
