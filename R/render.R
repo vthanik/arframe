@@ -329,6 +329,35 @@ fr_register_backend <- function(
 }
 
 
+#' Remove a Custom Render Backend
+#'
+#' Removes a previously registered backend by format name. Built-in backends
+#' (rtf, latex, pdf) can also be removed if needed.
+#'
+#' @param format Character scalar. The format name to remove (e.g., `"csv"`).
+#' @return `NULL` (invisible). Called for side effect.
+#'
+#' @examples
+#' fr_register_backend("csv", "csv",
+#'   render_fn = function(spec, page_groups, col_panels, path) {
+#'     utils::write.csv(spec$data, path, row.names = FALSE)
+#'   })
+#' "csv" %in% fr_backends()$format
+#' fr_unregister_backend("csv")
+#' "csv" %in% fr_backends()$format
+#'
+#' @seealso [fr_register_backend()], [fr_backends()]
+#' @export
+fr_unregister_backend <- function(format) {
+  call <- caller_env()
+  check_scalar_chr(format, arg = "format", call = call)
+  fr_env$backends[[format]] <- NULL
+  fr_env$extension_map_cache <- NULL
+  fr_env$extension_map_cache_keys <- NULL
+  invisible(NULL)
+}
+
+
 #' List Registered Render Backends
 #'
 #' @description
@@ -343,8 +372,7 @@ fr_register_backend <- function(
 #' # List built-in backends
 #' fr_backends()
 #'
-#' # After registering a custom backend, it appears in the list
-#' old_backends <- fr_backends()
+#' # Register a custom backend, then view updated list
 #' fr_register_backend(
 #'   format = "csv",
 #'   extensions = "csv",
@@ -354,10 +382,7 @@ fr_register_backend <- function(
 #'   description = "CSV export (data only)"
 #' )
 #' fr_backends()
-#' # Clean up
-#' tlframe:::fr_env$backends <- tlframe:::fr_env$backends[
-#'   names(tlframe:::fr_env$backends) != "csv"
-#' ]
+#' fr_unregister_backend("csv")
 #'
 #' @seealso [fr_register_backend()], [fr_render()]
 #' @export
@@ -699,6 +724,24 @@ finalize_rows <- function(spec) {
         is_repeat[is.na(is_repeat)] <- FALSE
         spec$data[[col]][is_repeat] <- ""
       }
+    }
+  }
+
+  # Inject group header rows when group_label is set.
+  # Must happen BEFORE blank_after (so headers are part of the group) and
+  # BEFORE style remapping (so user styles apply to correct positions).
+  group_label_col <- spec$body$group_label
+  group_cols <- spec$body$group_by
+  if (!is.null(group_label_col) && length(group_cols) > 0L) {
+    gl_result <- inject_group_headers(spec$data, group_cols, group_label_col)
+    spec$data <- gl_result$data
+
+    # Remap existing style indices to account for injected header rows
+    if (length(gl_result$header_rows) > 0L) {
+      spec$cell_styles <- remap_style_indices_for_injected(
+        spec$cell_styles,
+        gl_result$header_rows
+      )
     }
   }
 

@@ -1121,13 +1121,18 @@ fr_env$valign_to_latex <- c(
 #' tabularray border linestyle names
 #' @noRd
 # ── LaTeX spacing constants ──────────────────────────────────────────────
-fr_env$latex_leading_factor <- 1.15
-fr_env$latex_rowsep <- "0pt"
+# Must match RTF row height: row_height = array_stretch * (extra_row_height + baseline_ratio * fs)
+# At 9pt: 1.0 * (1.0 + 1.2*9) = 11.8pt. LaTeX: baselineskip 10.8pt + rowsep 0.5pt*2 = 11.8pt.
+fr_env$latex_leading_factor <- 1.2
+fr_env$latex_rowsep <- "0.5pt"
 
 # ── Group key separator ─────────────────────────────────────────────────
 # Used to build composite group keys when page_by/group_by has multiple columns.
 # Unit separator (U+001F) is safe because it never appears in data content.
 fr_env$group_sep <- "\x1f"
+
+# Display separator for multi-column group_label values (human-readable)
+fr_env$group_label_sep <- " / "
 
 # ── Baseline ratio (from LaTeX Companion / Word default) ──────────────────
 # Single spacing = 1.2 * font_size. Used by row_height_twips() in units.R.

@@ -376,6 +376,127 @@ build_row_heights <- function(nr, cell_styles) {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# 1d. Group Header Row Injection
+#
+# When group_label is set, inserts a header row at each group boundary.
+# The group value appears in the target column; all other columns are empty.
+# Returns updated data + row indices of injected headers (for auto-bold).
+# ══════════════════════════════════════════════════════════════════════════════
+
+#' Inject group header rows into the data frame
+#'
+#' For each unique group (defined by `group_cols`), inserts a new row at the
+#' start of the group where the `label_col` receives the group value and all
+#' other columns are empty. Returns the expanded data and the row indices of
+#' the injected header rows (1-based in the new data frame).
+#'
+#' @param data Data frame.
+#' @param group_cols Character vector of column names (from `group_by`).
+#' @param label_col Character scalar — column to receive the group value.
+#' @return List with `data` (expanded) and `header_rows` (integer vector).
+#' @noRd
+inject_group_headers <- function(data, group_cols, label_col) {
+  nr <- nrow(data)
+  if (nr == 0L || length(group_cols) == 0L || is.null(label_col)) {
+    return(list(data = data, header_rows = integer(0)))
+  }
+
+  keys <- build_group_keys(data, group_cols)
+  # Find first row of each group
+  boundaries <- which(c(TRUE, keys[-length(keys)] != keys[-1L]))
+
+  if (length(boundaries) == 0L) {
+    return(list(data = data, header_rows = integer(0)))
+  }
+
+  # Build empty header row template (matches insert_blank_after pattern)
+  hdr_template <- vctrs::vec_init(data, 1L)
+  hdr_template[1L, ] <- ""
+
+  sep <- fr_env$group_label_sep
+
+  # Chunk-based interleaving: header row before each group, then the group data
+  n_boundaries <- length(boundaries)
+  ends <- c(boundaries[-1L] - 1L, nr)
+  result <- vector("list", 2L * n_boundaries)
+  header_positions <- integer(n_boundaries)
+  cumulative_rows <- 0L
+
+  for (k in seq_len(n_boundaries)) {
+    # Build header row with group label
+    hdr <- hdr_template
+    row_idx <- boundaries[k]
+    if (length(group_cols) == 1L) {
+      hdr[[label_col]] <- as.character(data[[group_cols]][row_idx])
+    } else {
+      hdr[[label_col]] <- paste(
+        vapply(
+          group_cols,
+          function(gc) as.character(data[[gc]][row_idx]),
+          character(1)
+        ),
+        collapse = sep
+      )
+    }
+    # Preserve group_cols values so blank_after/keepn still work
+    for (gc in group_cols) {
+      hdr[[gc]] <- as.character(data[[gc]][row_idx])
+    }
+
+    result[[2L * k - 1L]] <- hdr
+    cumulative_rows <- cumulative_rows + 1L
+    header_positions[k] <- cumulative_rows
+
+    chunk <- vctrs::vec_slice(data, boundaries[k]:ends[k])
+    result[[2L * k]] <- chunk
+    cumulative_rows <- cumulative_rows + nrow(chunk)
+  }
+
+  list(
+    data = vctrs::vec_rbind(!!!result),
+    header_rows = header_positions
+  )
+}
+
+
+#' Remap style row indices after group header injection
+#'
+#' When `inject_group_headers()` inserts header rows, existing numeric row
+#' indices in `cell_styles` become stale. Each original row i shifts down by
+#' the number of header rows injected at or before position i.
+#'
+#' @param cell_styles List of fr_cell_style objects.
+#' @param header_rows Integer vector — row positions of injected headers
+#'   in the NEW data frame.
+#' @param new_nrow Integer — total rows in the new data frame.
+#' @return Modified list of fr_cell_style objects with shifted row indices.
+#' @noRd
+remap_style_indices_for_injected <- function(cell_styles, header_rows) {
+  n_headers <- length(header_rows)
+  if (n_headers == 0L) {
+    return(cell_styles)
+  }
+
+  sorted_headers <- sort(header_rows)
+  # The j-th header is at new position sorted_headers[j], so the original
+  # boundary it was inserted before = sorted_headers[j] - j + 1
+  orig_boundaries <- sorted_headers - seq_along(sorted_headers) + 1L
+
+  for (i in seq_along(cell_styles)) {
+    rows <- cell_styles[[i]]$rows
+    if (is.null(rows) || identical(rows, "all") || !is.numeric(rows)) {
+      next
+    }
+    # Original row k -> k + number of headers whose boundary <= k
+    cell_styles[[i]]$rows <- as.integer(
+      rows + findInterval(rows, orig_boundaries)
+    )
+  }
+  cell_styles
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # 1e. Blank-After Row Insertion
 #
 # Inserts empty rows into the data frame at group boundaries defined by
@@ -458,7 +579,7 @@ remap_style_indices <- function(cell_styles, insert_positions) {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 1e. Indent-By Style Injection
+# 1f. Indent-By Style Injection
 #
 # Translates fr_rows(indent_by = ..., group_by = ...) into cell_styles
 # so that detail rows get a left indent in the rendered output.
@@ -476,14 +597,8 @@ remap_style_indices <- function(cell_styles, insert_positions) {
 #' @return Modified fr_spec with additional cell_styles.
 #' @noRd
 apply_indent_by <- function(spec) {
-  indent_cols <- spec$body$indent_by
-  if (length(indent_cols) == 0L) {
-    return(spec)
-  }
-
-  # Only apply to columns that exist in data
-  indent_cols <- intersect(indent_cols, names(spec$data))
-  if (length(indent_cols) == 0L) {
+  indent_spec <- spec$body$indent_by
+  if (length(indent_spec) == 0L) {
     return(spec)
   }
 
@@ -492,13 +607,24 @@ apply_indent_by <- function(spec) {
     return(spec)
   }
 
-  # Calculate indent: 2 space-character widths in the current page font
+  # Calculate base indent: 2 space-character widths in the current page font
   indent_twips <- measure_text_width_twips(
     "  ",
     spec$page$font_family,
     spec$page$font_size
   )
-  indent_inches <- twips_to_inches(indent_twips)
+  base_indent <- twips_to_inches(indent_twips)
+
+  # Multi-level form: list(key = "row_type", col = "term", levels = c(...))
+  if (is.list(indent_spec)) {
+    return(apply_indent_by_levels(spec, indent_spec, base_indent))
+  }
+
+  # Simple form: character vector of column names
+  indent_cols <- intersect(indent_spec, names(spec$data))
+  if (length(indent_cols) == 0L) {
+    return(spec)
+  }
 
   group_cols <- spec$body$group_by
   if (length(group_cols) > 0L) {
@@ -523,7 +649,7 @@ apply_indent_by <- function(spec) {
           type = "col",
           rows = detail_rows,
           cols = indent_cols,
-          indent = indent_inches
+          indent = base_indent
         )
         spec$cell_styles <- c(spec$cell_styles, list(indent_style))
       }
@@ -535,9 +661,54 @@ apply_indent_by <- function(spec) {
       type = "col",
       rows = "all",
       cols = indent_cols,
-      indent = indent_inches
+      indent = base_indent
     )
     spec$cell_styles <- c(spec$cell_styles, list(indent_style))
+  }
+
+  spec
+}
+
+
+#' Apply multi-level indent from a named list spec
+#'
+#' Each unique indent level (from `indent_spec$levels`) creates one cell_style
+#' targeting the rows whose key column matches that level's name.
+#'
+#' @param spec An fr_spec object.
+#' @param indent_spec List with `key`, `col`, `levels`.
+#' @param base_indent Numeric. One indent unit in inches.
+#' @return Modified fr_spec.
+#' @noRd
+apply_indent_by_levels <- function(spec, indent_spec, base_indent) {
+  key_col <- indent_spec$key
+  target_cols <- intersect(indent_spec$col, names(spec$data))
+  levels_map <- indent_spec$levels
+
+  if (length(target_cols) == 0L || !key_col %in% names(spec$data)) {
+    return(spec)
+  }
+
+  key_values <- as.character(spec$data[[key_col]])
+  is_blank <- detect_blank_rows(spec$data)
+
+  # Group rows by indent level, create one cell_style per level
+  for (level_name in names(levels_map)) {
+    level_mult <- levels_map[[level_name]]
+    if (level_mult == 0) {
+      next # No indent for level 0
+    }
+    matched_rows <- which(key_values == level_name & !is_blank)
+    if (length(matched_rows) > 0L) {
+      indent_style <- new_fr_cell_style(
+        region = "body",
+        type = "col",
+        rows = matched_rows,
+        cols = target_cols,
+        indent = base_indent * level_mult
+      )
+      spec$cell_styles <- c(spec$cell_styles, list(indent_style))
+    }
   }
 
   spec
@@ -632,7 +803,7 @@ apply_leading_indent <- function(spec) {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 1c. Keep-Together Mask
+# 1h. Keep-Together Mask
 #
 # Builds a logical vector driving RTF-native \keepn + \trkeep pagination.
 # Rows marked TRUE emit \keepn (paragraph-level) + \trkeep (row-level), which

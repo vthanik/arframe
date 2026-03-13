@@ -632,6 +632,7 @@ new_fr_body <- function(
   page_by_bold = FALSE,
   page_by_align = "left",
   page_by_visible = TRUE,
+  group_label = NULL,
   group_keep = TRUE,
   sort_by = character(0),
   repeat_cols = character(0),
@@ -641,11 +642,16 @@ new_fr_body <- function(
     list(
       page_by = vec_cast(page_by, character()),
       group_by = vec_cast(group_by, character()),
-      indent_by = vec_cast(indent_by, character()),
+      indent_by = if (is.list(indent_by)) {
+        indent_by
+      } else {
+        vec_cast(indent_by, character())
+      },
       blank_after = vec_cast(blank_after, character()),
       page_by_bold = page_by_bold,
       page_by_align = page_by_align,
       page_by_visible = page_by_visible,
+      group_label = group_label,
       group_keep = group_keep,
       sort_by = vec_cast(sort_by, character()),
       repeat_cols = vec_cast(repeat_cols, character()),

@@ -33,9 +33,21 @@
 #'   value are visually grouped (indented detail rows, blank-after spacing)
 #'   **and** kept together on the same page when possible. When a group spans
 #'   pages, a "(continued)" header row repeats at the top of the next page.
-#' @param indent_by Character vector of column name(s). Rows are indented
-#'   relative to their parent group level, creating a hierarchy. Typically
-#'   used for PT rows under SOC.
+#' @param indent_by Row indentation specification. Accepts two forms:
+#'
+#'   **Simple (single level)**: A character vector of column name(s). All
+#'   detail rows (non-header, non-blank) in these columns receive one indent
+#'   level. Typically used with `group_by` for SOC/PT tables:
+#'   `indent_by = "pt"`.
+#'
+#'   **Multi-level (SAS-style)**: A named list with three elements:
+#'   * `key` — column name containing row type markers (e.g., `"row_type"`)
+#'   * `col` — column name(s) to apply indent to (e.g., `"term"`)
+#'   * `levels` — named numeric vector mapping key values to indent
+#'     multipliers (e.g., `c(soc = 0, hlt = 1, pt = 2)`)
+#'
+#'   Each indent level = 2 space-character widths (~0.17 in at 9pt).
+#'   Rows whose key value is not in `levels` receive no indent.
 #' @param blank_after Character vector of column name(s). A blank row is
 #'   inserted after each group boundary in these columns.
 #' @param page_by_bold Logical. Whether the page-by label is rendered in
@@ -47,6 +59,12 @@
 #'   displayed above the column headers. Default `TRUE`. Set `FALSE` to get
 #'   page breaks at group boundaries without a visible label — useful when
 #'   the grouping column already appears in the table body.
+#' @param group_label Character scalar. Column name into which group header
+#'   values are injected. When `group_by` and `group_label` are both set,
+#'   a header row is inserted at the start of each group: the group value
+#'   appears in the `group_label` column, all other columns are empty, and
+#'   detail rows are indented underneath. Style the header rows via
+#'   [fr_styles()] (e.g., bold). Requires `group_by`.
 #' @param group_keep Logical. Whether `group_by` groups are kept together
 #'   on the same page via RTF `\keepn` / LaTeX keep-with-next. Default
 #'   `TRUE`. Set `FALSE` for visual-only grouping (blank_after, indent)
@@ -133,6 +151,47 @@
 #'     indent_by = "pt"
 #'   )
 #'
+#' ## ── Multi-level indent (SOC / HLT / PT hierarchy) ─────────────────────
+#' ## Uses a named list: key column determines indent level per row
+#'
+#' # Given data with columns: soc, term, row_type, placebo, ...
+#' # where row_type is "soc", "hlt", or "pt"
+#' spec <- data.frame(
+#'   soc = c("GI disorders", "GI disorders", "GI disorders"),
+#'   term = c("GI disorders", "GI signs", "Nausea"),
+#'   row_type = c("soc", "hlt", "pt"),
+#'   result = c("72 (53.3)", "54 (40.0)", "24 (17.8)"),
+#'   stringsAsFactors = FALSE
+#' ) |>
+#'   fr_table() |>
+#'   fr_cols(soc = fr_col(visible = FALSE),
+#'           row_type = fr_col(visible = FALSE)) |>
+#'   fr_rows(
+#'     group_by  = "soc",
+#'     indent_by = list(
+#'       key    = "row_type",
+#'       col    = "term",
+#'       levels = c(soc = 0, hlt = 1, pt = 2)
+#'     )
+#'   )
+#'
+#' ## ── group_label: auto-inject group headers into display column ──────
+#' ## When group and display data are in separate columns
+#'
+#' data.frame(
+#'   group = c("Sex", "Sex", "Age", "Age", "Age"),
+#'   stat  = c("Female", "Male", "Mean (SD)", "Median", "Min, Max"),
+#'   value = c("27 (60.0)", "18 (40.0)", "75.0 (6.8)", "74.0", "65, 88"),
+#'   stringsAsFactors = FALSE
+#' ) |>
+#'   fr_table() |>
+#'   fr_cols(group = fr_col(visible = FALSE)) |>
+#'   fr_rows(
+#'     group_by    = "group",
+#'     group_label = "stat",
+#'     indent_by   = "stat"
+#'   )
+#'
 #' ## ── sort_by: order a listing by subject and start date ────────────────
 #'
 #' adae[1:20, c("USUBJID", "AEBODSYS", "AEDECOD", "ASTDT", "AESEV")] |>
@@ -189,6 +248,7 @@ fr_rows <- function(
   page_by_bold = FALSE,
   page_by_align = "left",
   page_by_visible = TRUE,
+  group_label = NULL,
   group_keep = TRUE,
   sort_by = NULL,
   repeat_cols = NULL,
@@ -211,6 +271,79 @@ fr_rows <- function(
       )
     }
     validate_cols_exist(x, names(spec$data), arg = arg, call = call)
+  }
+
+  validate_indent_by <- function(x) {
+    if (is.null(x)) {
+      return(NULL)
+    }
+    # Simple form: character vector of column names
+    if (is.character(x)) {
+      return(validate_cols(x, "indent_by"))
+    }
+    # Multi-level form: named list with key, col, levels
+    if (is.list(x)) {
+      required <- c("key", "col", "levels")
+      missing_elem <- setdiff(required, names(x))
+      if (length(missing_elem) > 0L) {
+        cli_abort(
+          c(
+            "{.arg indent_by} list must contain: {.val {required}}.",
+            "x" = "Missing: {.val {missing_elem}}.",
+            "i" = paste0(
+              "Example: {.code indent_by = list(key = \"row_type\", ",
+              "col = \"term\", levels = c(soc = 0, hlt = 1, pt = 2))}"
+            )
+          ),
+          call = call
+        )
+      }
+      validate_cols_exist(
+        x$key,
+        names(spec$data),
+        arg = "indent_by$key",
+        call = call
+      )
+      validate_cols_exist(
+        x$col,
+        names(spec$data),
+        arg = "indent_by$col",
+        call = call
+      )
+      if (!is.numeric(x$levels) || is.null(names(x$levels))) {
+        cli_abort(
+          c(
+            "{.arg indent_by$levels} must be a named numeric vector.",
+            "x" = "You supplied {.obj_type_friendly {x$levels}}.",
+            "i" = "Example: {.code c(soc = 0, hlt = 1, pt = 2)}"
+          ),
+          call = call
+        )
+      }
+      return(x)
+    }
+    cli_abort(
+      c(
+        "{.arg indent_by} must be a character vector or a named list.",
+        "x" = "You supplied {.obj_type_friendly {x}}.",
+        "i" = paste0(
+          "Simple: {.code indent_by = \"pt\"}. ",
+          "Multi-level: {.code indent_by = list(key = \"row_type\", ",
+          "col = \"term\", levels = c(hlt = 1, pt = 2))}"
+        )
+      ),
+      call = call
+    )
+  }
+
+  if (!missing(group_label) && !is.null(group_label)) {
+    check_scalar_chr(group_label, arg = "group_label", call = call)
+    validate_cols_exist(
+      group_label,
+      names(spec$data),
+      arg = "group_label",
+      call = call
+    )
   }
 
   if (!missing(page_by_bold)) {
@@ -238,7 +371,7 @@ fr_rows <- function(
   spec$body <- new_fr_body(
     page_by = validate_cols(page_by, "page_by") %||% old$page_by,
     group_by = validate_cols(group_by, "group_by") %||% old$group_by,
-    indent_by = validate_cols(indent_by, "indent_by") %||% old$indent_by,
+    indent_by = validate_indent_by(indent_by) %||% old$indent_by,
     blank_after = validate_cols(blank_after, "blank_after") %||%
       old$blank_after,
     page_by_bold = if (!missing(page_by_bold)) {
@@ -255,6 +388,11 @@ fr_rows <- function(
       page_by_visible
     } else {
       old$page_by_visible
+    },
+    group_label = if (!missing(group_label)) {
+      group_label
+    } else {
+      old$group_label
     },
     group_keep = if (!missing(group_keep)) {
       group_keep

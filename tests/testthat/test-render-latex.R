@@ -428,7 +428,7 @@ test_that("longtblr has presep=0pt and tight cell spacing", {
   txt <- paste(readLines(tmp, warn = FALSE), collapse = "\n")
   expect_true(grepl("presep=0pt", txt, fixed = TRUE))
   expect_true(grepl("postsep=0pt", txt, fixed = TRUE))
-  expect_true(grepl("abovesep=0pt", txt, fixed = TRUE))
+  expect_true(grepl("abovesep=0.5pt", txt, fixed = TRUE))
   expect_true(grepl("leftsep=2pt", txt, fixed = TRUE))
 })
 
@@ -540,8 +540,8 @@ test_that("LaTeX leading factor uses 1.2 (matches RTF row_height_twips)", {
     fr_render(tmp)
 
   txt <- paste(readLines(tmp, warn = FALSE), collapse = "\n")
-  # 9 * 1.15 = 10.35, rounded to 10.3 — matches latex_leading_factor
-  expect_true(grepl("10.3", txt, fixed = TRUE))
+  # 9 * 1.2 = 10.8 — matches latex_leading_factor (aligned with RTF row height)
+  expect_true(grepl("10.8", txt, fixed = TRUE))
 })
 
 

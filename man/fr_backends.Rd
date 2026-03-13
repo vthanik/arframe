@@ -18,8 +18,7 @@ built-in (RTF, LaTeX, PDF) and any custom backends added via
 # List built-in backends
 fr_backends()
 
-# After registering a custom backend, it appears in the list
-old_backends <- fr_backends()
+# Register a custom backend, then view updated list
 fr_register_backend(
   format = "csv",
   extensions = "csv",
@@ -29,10 +28,7 @@ fr_register_backend(
   description = "CSV export (data only)"
 )
 fr_backends()
-# Clean up
-tlframe:::fr_env$backends <- tlframe:::fr_env$backends[
-  names(tlframe:::fr_env$backends) != "csv"
-]
+fr_unregister_backend("csv")
 
 }
 \seealso{

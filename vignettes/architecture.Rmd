@@ -74,8 +74,9 @@ finalize_spec()            <- Resolve all deferred computations
   |  - Build default columns for unmentioned columns
   |  - Distribute widths (auto/fit/equal/percent)
   |  - Resolve N-count header labels
+  |  - Inject group_label header rows (if set)
   |  - Insert blank_after rows
-  |  - Apply indent_by offsets
+  |  - Apply indent_by offsets (single or multi-level)
   |  - Compute decimal geometry
   v
 prepare_pages()            <- Split data into page groups
@@ -100,7 +101,12 @@ Key operations:
   If total exceeds printable area, columns scale proportionally.
 - **N-count labels**: `.n` + `.n_format` on `fr_cols()` resolve into final
   column labels.
+- **Group label injection**: `group_label` inserts header rows at group
+  boundaries, placing the group value in the target column. Style indices
+  are remapped to account for injected rows.
 - **Blank rows**: `blank_after` inserts empty rows at group boundaries.
+- **Indent**: `indent_by` applies indentation — either single-level
+  (character vector) or multi-level (named list with key/col/levels).
 - **Decimal geometry**: 15-type stat display engine analyses cell values,
   computes space-padded alignment offsets.
 

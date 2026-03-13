@@ -153,7 +153,7 @@ data |>
 | Configure columns, widths, decimal alignment | [Columns & Headers](columns-and-headers.html) |
 | Add N-counts to column headers | [Columns & Headers](columns-and-headers.html) |
 | Write titles, footnotes, superscripts | [Titles & Footnotes](titles-and-footnotes.html) |
-| Group rows, paginate, indent SOC/PT | [Rows & Page Layout](rows-and-pages.html) |
+| Group rows, paginate, indent, group_label | [Rows & Page Layout](rows-and-pages.html) |
 | Add borders, spanning headers, cell colors | [Rules, Spans & Styles](styling.html) |
 | Copy a complete table recipe | [Table Cookbook](table-cookbook.html) |
 | Create listings or embed figures | [Listings & Figures](listings-and-figures.html) |

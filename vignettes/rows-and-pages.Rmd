@@ -74,7 +74,98 @@ knitr::include_graphics("figures/preview_indent.png")
 `indent_by` indents the named column's values by 2 characters beneath the
 group header. SOC terms appear flush-left; PTs are indented.
 
-> **SAS:** `DEFINE pt / DISPLAY INDENT=2;` with `ORDER=INTERNAL` on SOC.
+### Multi-level indent
+
+For deeper hierarchies (SOC / HLT / PT), pass a named list with a key
+column that determines indent level per row:
+
+```{r indent-multi}
+ae_hierarchy <- data.frame(
+  soc      = rep("Gastrointestinal disorders", 5),
+  term     = c("Gastrointestinal disorders", "GI signs and symptoms",
+               "Nausea", "Vomiting", "Diarrhoea"),
+  row_type = c("soc", "hlt", "pt", "pt", "pt"),
+  total    = c("72 (53.3)", "54 (40.0)", "24 (17.8)", "18 (13.3)", "12 (8.9)"),
+  stringsAsFactors = FALSE
+)
+
+spec <- ae_hierarchy |>
+  fr_table() |>
+  fr_cols(
+    soc      = fr_col(visible = FALSE),
+    row_type = fr_col(visible = FALSE),
+    term     = fr_col("SOC / HLT / Preferred Term", width = 3.5),
+    total    = fr_col("Total\nn (%)")
+  ) |>
+  fr_rows(
+    group_by  = "soc",
+    indent_by = list(
+      key    = "row_type",
+      col    = "term",
+      levels = c(soc = 0, hlt = 1, pt = 2)
+    )
+  )
+```
+
+Each level adds 2 space-character widths (~0.17 in at 9pt). SOC rows get
+0 indent, HLT rows get 1 level, PT rows get 2 levels.
+
+## `group_label`: auto-inject group headers
+
+When group names and display values live in **separate columns** (e.g.,
+demographics where `"Sex"` is the group and `"Male"` / `"Female"` are the
+statistics), `group_label` auto-injects the group value as a header row
+in the target display column:
+
+```{r group-label}
+demog_long <- data.frame(
+  variable = c("Sex", "Sex", "Age (years)", "Age (years)", "Age (years)"),
+  stat     = c("Female", "Male", "Mean (SD)", "Median", "Min, Max"),
+  value    = c("27 (60.0)", "18 (40.0)", "75.0 (6.8)", "74.0", "65, 88"),
+  stringsAsFactors = FALSE
+)
+
+spec <- demog_long |>
+  fr_table() |>
+  fr_cols(variable = fr_col(visible = FALSE)) |>
+  fr_rows(
+    group_by    = "variable",
+    group_label = "stat",
+    indent_by   = "stat"
+  )
+```
+
+This inserts `"Sex"` and `"Age (years)"` as header rows in the `stat`
+column at each group boundary. Detail rows (`"Female"`, `"Male"`, etc.)
+are indented underneath. Style the injected headers via `fr_styles()`
+if you want bold or background color.
+
+## `group_keep`: visual-only grouping
+
+By default, `group_by` keeps groups together on the same page. Set
+`group_keep = FALSE` for visual-only grouping (blank-after spacing,
+indent) without page-keeping — useful for long groups where you want the
+renderer to break freely:
+
+```{r group-keep}
+spec <- tbl_demog |>
+  fr_table() |>
+  fr_cols(group = fr_col(visible = FALSE)) |>
+  fr_rows(group_by = "group", group_keep = FALSE)
+```
+
+## `page_by_visible`: hidden page breaks
+
+Set `page_by_visible = FALSE` to get page breaks at group boundaries
+without a visible label above the headers:
+
+```{r pageby-hidden}
+spec <- tbl_ae_soc |>
+  fr_table() |>
+  fr_cols(soc = fr_col(visible = FALSE),
+          row_type = fr_col(visible = FALSE)) |>
+  fr_rows(page_by = "soc", page_by_visible = FALSE)
+```
 
 ## Combining row features
 

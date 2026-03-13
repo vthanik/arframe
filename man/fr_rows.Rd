@@ -13,6 +13,7 @@ fr_rows(
   page_by_bold = FALSE,
   page_by_align = "left",
   page_by_visible = TRUE,
+  group_label = NULL,
   group_keep = TRUE,
   sort_by = NULL,
   repeat_cols = NULL,
@@ -33,9 +34,23 @@ value are visually grouped (indented detail rows, blank-after spacing)
 \strong{and} kept together on the same page when possible. When a group spans
 pages, a "(continued)" header row repeats at the top of the next page.}
 
-\item{indent_by}{Character vector of column name(s). Rows are indented
-relative to their parent group level, creating a hierarchy. Typically
-used for PT rows under SOC.}
+\item{indent_by}{Row indentation specification. Accepts two forms:
+
+\strong{Simple (single level)}: A character vector of column name(s). All
+detail rows (non-header, non-blank) in these columns receive one indent
+level. Typically used with \code{group_by} for SOC/PT tables:
+\code{indent_by = "pt"}.
+
+\strong{Multi-level (SAS-style)}: A named list with three elements:
+\itemize{
+\item \code{key} — column name containing row type markers (e.g., \code{"row_type"})
+\item \code{col} — column name(s) to apply indent to (e.g., \code{"term"})
+\item \code{levels} — named numeric vector mapping key values to indent
+multipliers (e.g., \code{c(soc = 0, hlt = 1, pt = 2)})
+}
+
+Each indent level = 2 space-character widths (~0.17 in at 9pt).
+Rows whose key value is not in \code{levels} receive no indent.}
 
 \item{blank_after}{Character vector of column name(s). A blank row is
 inserted after each group boundary in these columns.}
@@ -51,6 +66,13 @@ the column headers.}
 displayed above the column headers. Default \code{TRUE}. Set \code{FALSE} to get
 page breaks at group boundaries without a visible label — useful when
 the grouping column already appears in the table body.}
+
+\item{group_label}{Character scalar. Column name into which group header
+values are injected. When \code{group_by} and \code{group_label} are both set,
+a header row is inserted at the start of each group: the group value
+appears in the \code{group_label} column, all other columns are empty, and
+detail rows are indented underneath. Style the header rows via
+\code{\link[=fr_styles]{fr_styles()}} (e.g., bold). Requires \code{group_by}.}
 
 \item{group_keep}{Logical. Whether \code{group_by} groups are kept together
 on the same page via RTF \verb{\\keepn} / LaTeX keep-with-next. Default
@@ -179,6 +201,47 @@ tbl_ae_soc |>
     page_by   = "soc",
     group_by  = "soc",
     indent_by = "pt"
+  )
+
+## ── Multi-level indent (SOC / HLT / PT hierarchy) ─────────────────────
+## Uses a named list: key column determines indent level per row
+
+# Given data with columns: soc, term, row_type, placebo, ...
+# where row_type is "soc", "hlt", or "pt"
+spec <- data.frame(
+  soc = c("GI disorders", "GI disorders", "GI disorders"),
+  term = c("GI disorders", "GI signs", "Nausea"),
+  row_type = c("soc", "hlt", "pt"),
+  result = c("72 (53.3)", "54 (40.0)", "24 (17.8)"),
+  stringsAsFactors = FALSE
+) |>
+  fr_table() |>
+  fr_cols(soc = fr_col(visible = FALSE),
+          row_type = fr_col(visible = FALSE)) |>
+  fr_rows(
+    group_by  = "soc",
+    indent_by = list(
+      key    = "row_type",
+      col    = "term",
+      levels = c(soc = 0, hlt = 1, pt = 2)
+    )
+  )
+
+## ── group_label: auto-inject group headers into display column ──────
+## When group and display data are in separate columns
+
+data.frame(
+  group = c("Sex", "Sex", "Age", "Age", "Age"),
+  stat  = c("Female", "Male", "Mean (SD)", "Median", "Min, Max"),
+  value = c("27 (60.0)", "18 (40.0)", "75.0 (6.8)", "74.0", "65, 88"),
+  stringsAsFactors = FALSE
+) |>
+  fr_table() |>
+  fr_cols(group = fr_col(visible = FALSE)) |>
+  fr_rows(
+    group_by    = "group",
+    group_label = "stat",
+    indent_by   = "stat"
   )
 
 ## ── sort_by: order a listing by subject and start date ────────────────
