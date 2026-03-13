@@ -87,7 +87,6 @@ render_rtf <- function(spec, page_groups, col_panels, path) {
 
   rtf_write(con, rtf_preamble(spec, color_info))
 
-  total_sections <- length(col_panels) * length(page_groups)
   section_idx <- 0L
 
   for (group_idx in seq_along(page_groups)) {
@@ -110,9 +109,35 @@ render_rtf <- function(spec, page_groups, col_panels, path) {
       is_last <- (group_idx == length(page_groups) &&
         panel_idx == length(col_panels))
 
-      # Single-page estimation: when content fits on one page, render
-      # footnotes as body rows instead of in {\footer} group
-      is_single_page <- estimate_single_page(spec, group$data)
+      # Pre-compute pagination when group_by is active so we know the
+      # actual sub-page count BEFORE emitting {\footer}. This prevents
+      # blank trailing pages: if everything fits on 1 sub-page, footnotes
+      # go in body rows (not {\footer}) and no empty page is created.
+      has_group_by <- length(spec$body$group_by) > 0L
+      page_assignments <- NULL
+      n_subpages <- 0L
+
+      if (has_group_by && nrow(group$data) > 0L) {
+        heights <- calculate_row_heights(group$data, vis_columns, spec$page)
+        budget <- calculate_page_budget(spec)
+        page_assignments <- paginate_rows(
+          heights,
+          budget,
+          group$data,
+          spec$body$group_by,
+          orphan_min = spec$page$orphan_min %||% fr_env$default_orphan_min,
+          widow_min = spec$page$widow_min %||% fr_env$default_widow_min
+        )
+        n_subpages <- if (length(page_assignments) > 0L) {
+          max(page_assignments)
+        } else {
+          0L
+        }
+        # If pagination shows everything fits on 1 page, use body footnotes
+        is_single_page <- (n_subpages <= 1L)
+      } else {
+        is_single_page <- estimate_single_page(spec, group$data)
+      }
 
       rtf_write(
         con,
@@ -248,228 +273,96 @@ render_rtf <- function(spec, page_groups, col_panels, path) {
         )
       )
 
-      # Body rows — conditional R-side pagination
-      has_group_by <- length(spec$body$group_by) > 0L
+      # Body rows — unified single-pass emission with \trpagebb
+      # Both paginated (group_by) and non-paginated paths use the same code.
+      # R-side page breaks are communicated via \trpagebb on boundary rows,
+      # keeping the table continuous so \trhdr rows repeat automatically.
+      cell_grid <- build_cell_grid(
+        group$data,
+        vis_columns,
+        spec$cell_styles,
+        spec$page
+      )
 
-      if (has_group_by && nrow(group$data) > 0L) {
-        # R-side pagination: split body into sub-pages
-        heights <- calculate_row_heights(group$data, vis_columns, spec$page)
-        budget <- calculate_page_budget(spec)
-        page_assignments <- paginate_rows(
-          heights,
-          budget,
-          group$data,
-          spec$body$group_by,
-          orphan_min = spec$page$orphan_min %||% fr_env$default_orphan_min,
-          widow_min = spec$page$widow_min %||% fr_env$default_widow_min
+      # Compute page break points and skip rows for \trpagebb
+      page_breaks <- integer(0)
+      skip_rows <- integer(0)
+      if (!is.null(page_assignments) && n_subpages > 1L) {
+        vis_col_names <- names(vis_columns)
+        gdata_subset <- group$data[vis_col_names]
+        is_blank_row <- rowSums(gdata_subset != "") == 0L
+
+        # Pre-compute row indices per page in one O(n) pass
+        page_row_lists <- split(
+          seq_along(page_assignments),
+          page_assignments
         )
 
-        n_subpages <- max(page_assignments)
-        for (sub_page in seq_len(n_subpages)) {
-          sub_rows <- which(page_assignments == sub_page)
-          if (length(sub_rows) == 0L) {
+        # Page 0 rows are suppressed by the paginator (leading blanks)
+        skip_set <- page_row_lists[["0"]] %||% integer(0)
+
+        for (p in 2L:n_subpages) {
+          p_key <- as.character(p)
+          p_rows <- page_row_lists[[p_key]]
+          if (is.null(p_rows) || length(p_rows) == 0L) {
             next
           }
 
-          if (sub_page > 1L) {
-            # New section for each R-computed page after the first
-            rtf_write(con, "\\pard\\par\n\\sect\n")
-            section_idx <- section_idx + 1L
-
-            is_last <- (group_idx == length(page_groups) &&
-              panel_idx == length(col_panels) &&
-              sub_page == n_subpages)
-
-            rtf_write(
-              con,
-              rtf_section_def(spec, is_last, body_footnotes = FALSE)
-            )
-            rtf_write(
-              con,
-              rtf_resolve_page_fields(
-                rtf_page_header(spec, token_map)
-              )
-            )
-            rtf_write(
-              con,
-              rtf_resolve_page_fields(
-                rtf_footer_group(
-                  spec,
-                  token_map,
-                  is_last,
-                  vis_columns,
-                  skip_footnotes = FALSE
-                )
-              )
-            )
-
-            if (!is.null(spec$pagehead)) {
-              n_ph <- spec$spacing$pagehead_after %||% 1L
-              if (n_ph > 0L) {
-                ph_fs <- pt_to_half_pt(spec$page$font_size)
-                rtf_write(
-                  con,
-                  strrep(
-                    paste0("\\pard\\plain\\fs", ph_fs, "\\par\n"),
-                    n_ph
-                  )
-                )
-              }
-            }
-
-            # Titles, spanners, column header repeat on each sub-page
-            rtf_write(
-              con,
-              rtf_title_rows(
-                spec,
-                vis_columns,
-                color_info,
-                panel_idx = panel_idx
-              )
-            )
-            if (!is.null(group$group_label) && nzchar(group$group_label)) {
-              rtf_write(
-                con,
-                rtf_page_by_rows(spec, vis_columns, group$group_label)
-              )
-            }
-            rtf_write(
-              con,
-              rtf_spanner_rows(
-                spec,
-                vis_columns,
-                borders,
-                color_info,
-                span_overrides = span_overrides
-              )
-            )
-            rtf_write(
-              con,
-              rtf_col_header_row(
-                spec,
-                vis_columns,
-                borders,
-                color_info,
-                label_overrides = label_overrides
-              )
-            )
+          # Trim leading blanks from new page (so no empty row appears
+          # right after repeated \trhdr headers)
+          while (length(p_rows) > 0L && is_blank_row[p_rows[1L]]) {
+            skip_set <- c(skip_set, p_rows[1L])
+            p_rows <- p_rows[-1L]
           }
-
-          # Emit body rows for this sub-page
-          sub_data <- group$data[sub_rows, , drop = FALSE]
-          sub_styles <- remap_styles_for_subpage(spec$cell_styles, sub_rows)
-          sub_grid <- build_cell_grid(
-            sub_data,
-            vis_columns,
-            sub_styles,
-            spec$page
-          )
-          # Resolve borders for sub-page row count
-          sub_borders <- resolve_borders(
-            spec$rules,
-            nrow(sub_data),
-            length(vis_columns),
-            nrow_header
-          )
-
-          # Suppress bottom border on non-final sub-pages (table continues)
-          if (sub_page < n_subpages) {
-            sub_nr <- nrow(sub_data)
-            if (sub_nr > 0L) {
-              for (j in seq_along(vis_columns)) {
-                sub_borders$body$bottom[sub_nr, j] <- list(NULL)
-              }
-            }
+          if (length(p_rows) > 0L) {
+            page_breaks <- c(page_breaks, p_rows[1L])
           }
-
-          # Slice decimal geometry for sub-page rows
-          sub_spec <- spec
-          if (!is.null(spec$decimal_geometry)) {
-            sub_dec <- list()
-            for (nm in names(spec$decimal_geometry)) {
-              geom <- spec$decimal_geometry[[nm]]
-              sub_dec[[nm]] <- list(
-                formatted = geom$formatted[sub_rows],
-                center_offset = geom$center_offset[sub_rows],
-                max_width = geom$max_width
-              )
-            }
-            sub_spec$decimal_geometry <- sub_dec
-          }
-
-          rtf_write(
-            con,
-            rtf_body_rows(
-              sub_spec,
-              sub_data,
-              vis_columns,
-              sub_grid,
-              sub_borders,
-              color_info
-            )
-          )
+          # Trailing blanks on the previous page are NOT trimmed.
+          # With \trpagebb they are harmless whitespace at the page bottom,
+          # and removing them destroys group separator blank rows.
         }
+        skip_rows <- unique(skip_set)
+      }
 
-        # Body footnotes after the last sub-page
-        if (is_single_page) {
-          rtf_write(
-            con,
-            rtf_body_footnotes(spec, vis_columns, is_last, borders, color_info)
-          )
-        } else if (is_last && length(last_footnotes) > 0L) {
-          rtf_write(
-            con,
-            rtf_body_footnotes_last(
-              spec,
-              vis_columns,
-              last_footnotes,
-              borders,
-              color_info
-            )
-          )
-        }
-      } else {
-        # No group_by: emit all body rows, let RTF viewer paginate
-        cell_grid <- build_cell_grid(
+      rtf_write(
+        con,
+        rtf_body_rows(
+          spec,
           group$data,
           vis_columns,
-          spec$cell_styles,
-          spec$page
+          cell_grid,
+          borders,
+          color_info,
+          page_breaks = page_breaks,
+          skip_rows = skip_rows
         )
+      )
+
+      # Body footnotes: single-page mode or "last" placement on final section
+      if (is_single_page) {
         rtf_write(
           con,
-          rtf_body_rows(
+          rtf_body_footnotes(spec, vis_columns, is_last, borders, color_info)
+        )
+      } else if (is_last && length(last_footnotes) > 0L) {
+        rtf_write(
+          con,
+          rtf_body_footnotes_last(
             spec,
-            group$data,
             vis_columns,
-            cell_grid,
+            last_footnotes,
             borders,
             color_info
           )
         )
-
-        # Body footnotes: single-page mode OR "last" placement footnotes
-        if (is_single_page) {
-          rtf_write(
-            con,
-            rtf_body_footnotes(spec, vis_columns, is_last, borders, color_info)
-          )
-        } else if (is_last && length(last_footnotes) > 0L) {
-          rtf_write(
-            con,
-            rtf_body_footnotes_last(
-              spec,
-              vis_columns,
-              last_footnotes,
-              borders,
-              color_info
-            )
-          )
-        }
       }
     }
   }
 
+  # Exit table context with a minimal paragraph before closing.
+  # Without this, Word adds an implicit default-sized paragraph after the
+  # last \row which can create a blank trailing page.
+  rtf_write(con, "\\pard\\plain\\fs2\\sl-1\\par\n")
   rtf_write(con, "}")
 }
 
@@ -1396,8 +1289,22 @@ rtf_col_header_row <- function(
 
 
 #' RTF body rows
+#'
+#' @param page_breaks Integer vector of row indices where `\trpagebb` should
+#'   be emitted (forces a page break before the row). Used by R-side pagination.
+#' @param skip_rows Integer vector of row indices to skip entirely (blank rows
+#'   at page boundaries trimmed by the pagination logic).
 #' @noRd
-rtf_body_rows <- function(spec, data, columns, cell_grid, borders, color_info) {
+rtf_body_rows <- function(
+  spec,
+  data,
+  columns,
+  cell_grid,
+  borders,
+  color_info,
+  page_breaks = integer(0),
+  skip_rows = integer(0)
+) {
   if (nrow(data) == 0L) {
     return("")
   }
@@ -1421,13 +1328,29 @@ rtf_body_rows <- function(spec, data, columns, cell_grid, borders, color_info) {
 
   empty_cell <- "\\pard\\intbl\\cell"
 
-  # Precompute keep-together mask from group_by with orphan/widow awareness
-  keep_mask <- build_keep_mask(
-    data,
-    spec$body$group_by,
-    orphan_min = spec$page$orphan_min %||% fr_env$default_orphan_min,
-    widow_min = spec$page$widow_min %||% fr_env$default_widow_min
-  )
+  # When R-side pagination provides explicit page breaks, skip \trkeep
+  # (page boundaries are already determined by the algorithm)
+  has_page_breaks <- length(page_breaks) > 0L
+  if (has_page_breaks) {
+    keep_mask <- rep(FALSE, nr)
+  } else {
+    keep_mask <- build_keep_mask(
+      data,
+      unique(c(spec$body$group_by, spec$body$indent_by)),
+      orphan_min = spec$page$orphan_min %||% fr_env$default_orphan_min,
+      widow_min = spec$page$widow_min %||% fr_env$default_widow_min
+    )
+  }
+
+  # Build skip/pagebb masks for O(1) lookup in the hot loop
+  is_skip <- logical(nr)
+  if (length(skip_rows) > 0L) {
+    is_skip[skip_rows] <- TRUE
+  }
+  is_pagebb <- logical(nr)
+  if (has_page_breaks) {
+    is_pagebb[page_breaks] <- TRUE
+  }
 
   # Precompute row heights from fr_row_style objects
   row_heights <- build_row_heights(nr, spec$cell_styles)
@@ -1455,7 +1378,14 @@ rtf_body_rows <- function(spec, data, columns, cell_grid, borders, color_info) {
 
   lines <- vector("list", nr)
   for (i in seq_len(nr)) {
+    # Skip rows trimmed at page boundaries
+    if (is_skip[i]) {
+      lines[[i]] <- ""
+      next
+    }
+
     # Row properties
+    pagebb_str <- if (is_pagebb[i]) "\\trpagebb" else ""
     keep_str <- if (isTRUE(keep_mask[i])) "\\trkeep" else ""
     if (!is.na(row_heights[i])) {
       height_str <- paste0(
@@ -1466,7 +1396,7 @@ rtf_body_rows <- function(spec, data, columns, cell_grid, borders, color_info) {
     } else {
       height_str <- rh_str
     }
-    row_def <- paste0("\\trowd\\trqc", keep_str, height_str)
+    row_def <- paste0("\\trowd\\trqc", pagebb_str, keep_str, height_str)
 
     # Single merged loop: cell definitions + cell contents in one pass
     cell_defs <- vector("list", ncol)
@@ -1618,7 +1548,18 @@ estimate_single_page <- function(spec, group_data) {
   if (!is.null(spec$body$page_by)) {
     n_rows <- n_rows + 2L
   }
-  n_rows <- n_rows + n_spanner_levels(spec$header$spans) + 1L # spanners + col header
+  # Column header may be multi-line (e.g., "Label\n(N=45)")
+  max_header_lines <- max(
+    1L,
+    vapply(
+      spec$columns,
+      function(col) {
+        length(strsplit(col$label %||% "", "\n", fixed = TRUE)[[1L]])
+      },
+      integer(1)
+    )
+  )
+  n_rows <- n_rows + n_spanner_levels(spec$header$spans) + max_header_lines
   n_rows <- n_rows + nrow(group_data)
 
   # Also count footnote rows if they'd go in body

@@ -128,37 +128,70 @@ calculate_page_budget <- function(spec) {
   # Row height for one line at current font size
   one_row_twips <- row_height_twips(spec$page$font_size)
 
-  # Chrome rows: titles + column header + spanners + spacing
-
-  n_titles <- length(spec$meta$titles %||% list())
+  # Column header rows: scan labels for embedded newlines
+  col_labels <- vapply(
+    spec$columns,
+    function(col) col$label %||% "",
+    character(1)
+  )
+  label_line_counts <- vapply(
+    col_labels,
+    function(lbl) length(strsplit(lbl, "\n", fixed = TRUE)[[1L]]),
+    integer(1)
+  )
+  max_header_lines <- max(1L, max(label_line_counts))
   n_spanners <- n_spanner_levels(spec$header$spans)
-  n_header_rows <- 1L + n_spanners
+  n_header_rows <- max_header_lines + n_spanners
+
+  # Titles and spacing
+  n_titles <- length(spec$meta$titles %||% list())
   titles_after <- spec$spacing$titles_after %||% 1L
   footnotes_before <- spec$spacing$footnotes_before %||% 1L
 
-  # Footnotes (repeat on every page in RTF)
-  n_footnotes <- sum(vapply(
-    spec$meta$footnotes %||% list(),
+  # Separate footnotes by placement
+  all_footnotes <- spec$meta$footnotes %||% list()
+  n_footnotes_last <- sum(vapply(
+    all_footnotes,
+    function(fn) fn$placement == "last",
+    logical(1)
+  ))
+  n_footnotes_every <- sum(vapply(
+    all_footnotes,
     function(fn) fn$placement == "every",
     logical(1)
   ))
 
-  # Page header/footer chrome (approximate as 2 rows each if present)
-  n_pagehead <- if (!is.null(spec$pagehead)) 2L else 0L
-  n_pagefoot <- if (!is.null(spec$pagefoot)) 2L else 0L
-
-  # Available height for body
+  # Chrome rows: titles + header + last-placement footnotes (in body area)
   chrome_rows <- n_titles +
     titles_after +
     n_header_rows +
-    footnotes_before +
-    n_footnotes +
-    n_pagehead +
-    n_pagefoot
+    n_footnotes_last +
+    if (n_footnotes_last > 0L) footnotes_before else 0L
+
+  # Footer overflow: every-placement footnotes + pagefoot live in margin area
+  footer_lines <- n_footnotes_every +
+    (if (n_footnotes_every > 0L) footnotes_before else 0L) +
+    (if (!is.null(spec$pagefoot)) max_chrome_lines(spec$pagefoot) else 0L)
+  footer_twips <- footer_lines * one_row_twips
+  footer_overflow <- max(0L, footer_twips - margin_bottom)
+
+  # Header overflow: pagehead lives in margin area
+
+  header_lines <- if (!is.null(spec$pagehead)) {
+    max_chrome_lines(spec$pagehead)
+  } else {
+    0L
+  }
+  header_twips <- header_lines * one_row_twips
+  header_overflow <- max(0L, header_twips - margin_top)
+
+  # Available height for body
   available_twips <- page_height -
     margin_top -
     margin_bottom -
-    chrome_rows * one_row_twips
+    chrome_rows * one_row_twips -
+    footer_overflow -
+    header_overflow
 
   # Budget in line-equivalents
   budget <- as.integer(available_twips / one_row_twips)

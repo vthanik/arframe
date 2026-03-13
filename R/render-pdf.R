@@ -148,7 +148,11 @@ compile_xelatex_doc <- function(tex_path) {
 
   if (requireNamespace("tinytex", quietly = TRUE)) {
     # tinytex::xelatex() handles two-pass compilation and auto-installs
-    # missing packages via parse_install()
+    # missing packages via parse_install().
+    # Set working directory to tempdir to prevent .log file leakage into
+    # the user's working directory when tinytex retains logs on warnings.
+    old_wd <- setwd(tex_dir)
+    on.exit(setwd(old_wd), add = TRUE)
     tryCatch(
       tinytex::xelatex(tex_path),
       error = function(e) {

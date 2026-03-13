@@ -1234,12 +1234,18 @@ test_that("latex_preamble includes footskip for pagefoot", {
   expect_false(grepl("footskip=0pt", geom_line, fixed = TRUE))
 })
 
-test_that("latex_preamble sets footskip=0pt when no pagefoot", {
+test_that("latex_preamble sets minimum footskip when no pagefoot", {
   df <- data.frame(x = 1)
   spec <- df |> fr_table()
   fspec <- finalize_spec(spec)
   preamble <- paste(latex_preamble(fspec), collapse = "\n")
-  expect_match(preamble, "footskip=0pt", fixed = TRUE)
+  # Should have a non-zero footskip (at least one baseline) to avoid
+
+  # fancyhdr "footskip is too small" warnings
+  expect_match(preamble, "footskip=", fixed = TRUE)
+  preamble_lines <- strsplit(preamble, "\n")[[1]]
+  geom_line <- preamble_lines[grep("geometry", preamble_lines)]
+  expect_false(grepl("footskip=0pt", geom_line, fixed = TRUE))
 })
 
 test_that("latex_preamble includes lastpage when total_pages token used", {

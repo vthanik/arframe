@@ -55,6 +55,86 @@ test_that("calculate_page_budget returns positive integer", {
   expect_true(budget >= 5L)
 })
 
+test_that("calculate_page_budget does not subtract pagehead/pagefoot/every footnotes", {
+  # Budget should be the same with or without pagehead/pagefoot/every footnotes
+  # because those live in RTF margin areas, not the body area.
+  spec_base <- data.frame(a = "x", stringsAsFactors = FALSE) |>
+    fr_table() |>
+    fr_titles("Title 1")
+  spec_base <- finalize_spec(spec_base)
+  budget_base <- calculate_page_budget(spec_base)
+
+  spec_chrome <- data.frame(a = "x", stringsAsFactors = FALSE) |>
+    fr_table() |>
+    fr_titles("Title 1") |>
+    fr_pagehead(left = "Page {thepage}") |>
+    fr_pagefoot(left = "Footer") |>
+    fr_footnotes("Note 1", .placement = "every")
+  spec_chrome <- finalize_spec(spec_chrome)
+  budget_chrome <- calculate_page_budget(spec_chrome)
+
+  # Budget should be identical — margin chrome does not reduce body area
+  expect_equal(budget_chrome, budget_base)
+})
+
+test_that("calculate_page_budget reserves space for last footnotes", {
+  spec_no_fn <- data.frame(a = "x", stringsAsFactors = FALSE) |>
+    fr_table() |>
+    fr_titles("Title 1")
+  spec_no_fn <- finalize_spec(spec_no_fn)
+
+  spec_last_fn <- data.frame(a = "x", stringsAsFactors = FALSE) |>
+    fr_table() |>
+    fr_titles("Title 1") |>
+    fr_footnotes("Note 1", "Note 2", .placement = "last")
+  spec_last_fn <- finalize_spec(spec_last_fn)
+
+  budget_no_fn <- calculate_page_budget(spec_no_fn)
+  budget_last_fn <- calculate_page_budget(spec_last_fn)
+
+  # 2 last footnotes + 1 footnotes_before spacing = 3 fewer rows
+  expect_equal(budget_no_fn - budget_last_fn, 3L)
+})
+
+test_that("calculate_page_budget accounts for large footer overflow", {
+  # With tiny margins (0.25in = 360 twips) and many "every" footnotes,
+
+  # the footer content overflows the margin and eats into body area.
+  # At 9pt, one_row = 236 twips. 8 every footnotes + 1 spacing = 9 lines
+  # = 9 * 236 = 2124 twips, but margin is only 360 twips.
+  # Overflow = 2124 - 360 = 1764 twips = ~7 rows lost.
+  spec_small_margin <- data.frame(a = "x", stringsAsFactors = FALSE) |>
+    fr_table() |>
+    fr_titles("Title 1") |>
+    fr_page(margins = 0.25) |>
+    fr_footnotes(
+      "fn1",
+      "fn2",
+      "fn3",
+      "fn4",
+      "fn5",
+      "fn6",
+      "fn7",
+      "fn8",
+      .placement = "every"
+    )
+  spec_small_margin <- finalize_spec(spec_small_margin)
+
+  spec_no_fn <- data.frame(a = "x", stringsAsFactors = FALSE) |>
+    fr_table() |>
+    fr_titles("Title 1") |>
+    fr_page(margins = 0.25)
+  spec_no_fn <- finalize_spec(spec_no_fn)
+
+  budget_no_fn <- calculate_page_budget(spec_no_fn)
+  budget_overflow <- calculate_page_budget(spec_small_margin)
+
+  # The large footer should reduce the budget
+  expect_lt(budget_overflow, budget_no_fn)
+  # With ~7 rows of overflow, budget should drop significantly
+  expect_gte(budget_no_fn - budget_overflow, 5L)
+})
+
 test_that("paginate_rows assigns all to page 1 when content fits", {
   heights <- rep(1L, 10)
   df <- data.frame(
@@ -286,11 +366,11 @@ test_that("large group split suppresses blank rows at page boundaries", {
   expect_true(all(pages[data_rows] > 0L))
 })
 
-test_that("RTF render with group_by produces multiple sections", {
+test_that("RTF render with group_by produces valid RTF", {
   tmp <- tempfile(fileext = ".rtf")
   on.exit(unlink(tmp), add = TRUE)
 
-  # Create a table with group_by that has enough rows to page
+  # Create a table with group_by
   df <- data.frame(
     soc = c(rep("SOC A", 3), rep("SOC B", 3)),
     pt = paste0("PT-", 1:6),
@@ -323,4 +403,98 @@ test_that("RTF render without group_by uses RTF-native pagination", {
 
   txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
   expect_true(grepl("\\\\rtf1", txt, fixed = FALSE))
+  # Without group_by, no \trpagebb should appear
+  expect_false(grepl("trpagebb", txt, fixed = TRUE))
+})
+
+test_that("RTF render with group_by uses trpagebb for page breaks", {
+  tmp <- tempfile(fileext = ".rtf")
+  on.exit(unlink(tmp), add = TRUE)
+
+  # Create enough data to require multiple pages (budget ~52 in portrait)
+  # Two large groups that together exceed page budget
+  n_per_group <- 40
+  df <- data.frame(
+    soc = c(rep("SOC A", n_per_group), rep("SOC B", n_per_group)),
+    pt = paste0("PT-", seq_len(2 * n_per_group)),
+    n = as.character(seq_len(2 * n_per_group)),
+    stringsAsFactors = FALSE
+  )
+  df |>
+    fr_table() |>
+    fr_cols(.width = "equal") |>
+    fr_rows(group_by = "soc") |>
+    fr_page(orientation = "portrait") |>
+    fr_render(tmp)
+
+  txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
+  # Should use \trpagebb for page breaks, not \sect for sub-pages
+  expect_true(grepl("trpagebb", txt, fixed = TRUE))
+  # Table should be continuous (no \sect within the single section)
+  sect_count <- lengths(regmatches(txt, gregexpr("\\\\sect", txt)))
+  expect_lte(sect_count, 1L)
+})
+
+test_that("RTF render with group_by has no \\trkeep (R-side pagination)", {
+  tmp <- tempfile(fileext = ".rtf")
+  on.exit(unlink(tmp), add = TRUE)
+
+  # Enough data to trigger multi-page pagination (budget ~52 in portrait)
+  n_per_group <- 40
+  df <- data.frame(
+    soc = c(rep("SOC A", n_per_group), rep("SOC B", n_per_group)),
+    pt = paste0("PT-", seq_len(2 * n_per_group)),
+    n = as.character(seq_len(2 * n_per_group)),
+    stringsAsFactors = FALSE
+  )
+  df |>
+    fr_table() |>
+    fr_cols(.width = "equal") |>
+    fr_rows(group_by = "soc") |>
+    fr_page(orientation = "portrait") |>
+    fr_render(tmp)
+
+  txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
+  # When R-side pagination is active, \trkeep should not appear
+  # (page breaks are explicitly controlled by \trpagebb)
+  expect_false(grepl("trkeep", txt, fixed = TRUE))
+})
+
+test_that("group_by + indent_by uses only group_by for pagination keys", {
+  # When both group_by and indent_by are set, pagination should group by
+
+  # the group_by column only. Using indent_by as a group key makes each
+  # row its own group (since SOC+PT is unique), defeating pagination.
+  heights <- rep(1L, 12)
+  df <- data.frame(
+    soc = c(
+      rep("Eye disorders", 4),
+      "",
+      rep("Cardiac disorders", 4),
+      "",
+      rep("Skin disorders", 2)
+    ),
+    pt = c(
+      "Eye disorders",
+      "Cataract",
+      "Glaucoma",
+      "Dry eye",
+      "",
+      "Cardiac disorders",
+      "Tachycardia",
+      "Bradycardia",
+      "Palpitations",
+      "",
+      "Skin disorders",
+      "Rash"
+    ),
+    n = as.character(1:12),
+    stringsAsFactors = FALSE
+  )
+  # Budget of 6: Eye disorders (4 rows) + blank fits; Cardiac on page 2
+  pages <- paginate_rows(heights, 6L, df, "soc")
+  # Eye disorders group should be kept together on page 1
+  expect_true(all(pages[1:4] == 1L))
+  # Cardiac disorders should be kept together on page 2
+  expect_true(all(pages[6:9] == 2L))
 })

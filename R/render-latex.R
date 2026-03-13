@@ -173,17 +173,21 @@ latex_preamble <- function(spec) {
     headsep_str <- ",headsep=0pt"
   }
 
+  # fancyhdr requires footskip > content height (strict inequality).
+  # LaTeX default is 30pt. We compute based on pagefoot content with a
+  # 1pt buffer to avoid "footskip is too small" warnings from fancyhdr.
+  min_footskip_pt <- round(page$font_size * lf + 1, 1)
   if (!is.null(spec$pagefoot)) {
     pf_fs <- spec$pagefoot$font_size %||% (page$font_size - 1)
     pf_line_pt <- round(pf_fs * lf, 1)
     pf_max_lines <- max_chrome_lines(spec$pagefoot)
-    footskip_str <- paste0(
-      ",footskip=",
-      round(pf_max_lines * pf_line_pt, 1),
-      "pt"
+    footskip_val <- max(
+      round(pf_max_lines * pf_line_pt + 1, 1),
+      min_footskip_pt
     )
+    footskip_str <- paste0(",footskip=", footskip_val, "pt")
   } else {
-    footskip_str <- ",footskip=0pt"
+    footskip_str <- paste0(",footskip=", min_footskip_pt, "pt")
   }
 
   # Expand top margin by headsep so the body (titles) starts just below
@@ -191,9 +195,9 @@ latex_preamble <- function(spec) {
   # Expand bottom margin by footskip so the pagefoot sits at the margin edge.
   top_in <- mt + headsep_pt / fr_env$points_per_inch
   bot_in <- if (!is.null(spec$pagefoot)) {
-    mb + round(pf_max_lines * pf_line_pt, 1) / fr_env$points_per_inch
+    mb + footskip_val / fr_env$points_per_inch
   } else {
-    mb
+    mb + min_footskip_pt / fr_env$points_per_inch
   }
 
   geom_opts <- paste0(
