@@ -41,7 +41,7 @@ to keep a column for logic (grouping, indentation) without rendering it.
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `label` | Column name | Display header text |
+| `label` | `""` (falls back to column name) | Display header text |
 | `width` | `NULL` | Inches, `"auto"`, `"25%"`, or `NULL` (inherits `.width`) |
 | `align` | `NULL` | `"left"`, `"right"`, `"center"`, `"decimal"`, or `NULL` (auto-detect) |
 | `header_align` | `NULL` | Header cell alignment override (inherits `align`) |
@@ -49,7 +49,7 @@ to keep a column for logic (grouping, indentation) without rendering it.
 | `stub` | `FALSE` | Repeats in every col_split panel |
 | `n` | `NULL` | Per-column N-count (overrides `.n`) |
 | `spaces` | `NULL` | `"indent"` or `"preserve"` for leading spaces |
-| `group` | `NULL` | Spanning header group name |
+| `group` | `NULL` | Spanning header group name (auto-creates a span via `fr_spans()`) |
 
 > **SAS:** `DEFINE col / DISPLAY "Label" STYLE(column)=[width=2.5in just=right];`
 
@@ -101,6 +101,30 @@ knitr::include_graphics("figures/preview_decimal.png")
 The engine recognises counts, floats, n (%), n/N (%), estimates with spreads,
 CIs, range pairs, p-values, and missing values.
 
+## Tidyselect formula syntax
+
+Instead of naming every column individually, you can use a formula
+`selector ~ fr_col(...)` to apply the same spec to multiple columns at once.
+The left-hand side is any tidyselect expression; the right-hand side is the
+`fr_col()` to apply:
+
+```{r cols-formula}
+spec <- tbl_demog |>
+  fr_table() |>
+  fr_cols(
+    characteristic = fr_col("Characteristic", width = 2.5),
+    starts_with("zom") ~ fr_col(width = 1.5, align = "right"),
+    placebo = fr_col("Placebo", width = 1.5, align = "right"),
+    total   = fr_col("Total",   width = 1.5, align = "right"),
+    group   = fr_col(visible = FALSE)
+  )
+names(fr_get_columns(spec))
+```
+
+Formulas and named arguments can be mixed freely in the same call. Named
+arguments take precedence over formulas when the same column is matched by
+both.
+
 ## Hidden columns and label functions
 
 ```{r label-fn}
@@ -112,6 +136,51 @@ spec <- tbl_demog |>
   )
 fr_get_columns(spec)$characteristic$label
 ```
+
+## `fr_col(group=)` — auto-span shorthand
+
+Setting `group = "label"` on an `fr_col()` is a compact alternative to
+calling `fr_spans()` separately. Columns that share the same `group` string
+are automatically grouped under a spanning header with that label:
+
+```{r cols-group}
+spec <- tbl_demog |>
+  fr_table() |>
+  fr_cols(
+    characteristic = fr_col("Characteristic", width = 2.5),
+    zom_50mg       = fr_col("50 mg",  width = 1.5, align = "right", group = "Zomerane"),
+    zom_100mg      = fr_col("100 mg", width = 1.5, align = "right", group = "Zomerane"),
+    placebo        = fr_col("Placebo", width = 1.5, align = "right"),
+    total          = fr_col("Total",   width = 1.5, align = "right"),
+    group          = fr_col(visible = FALSE)
+  )
+```
+
+This is equivalent to adding `fr_spans("Zomerane" = c("zom_50mg", "zom_100mg"))`
+after `fr_cols()`. You can still supply `.n` and `.n_format` at the same time
+--- `group` names are matched by the N-count auto-routing logic, so the N
+appears on the span:
+
+```{r cols-group-n}
+spec <- tbl_demog |>
+  fr_table() |>
+  fr_cols(
+    characteristic = fr_col("Characteristic", width = 2.5),
+    zom_50mg       = fr_col("50 mg",  width = 1.5, align = "right", group = "Zomerane"),
+    zom_100mg      = fr_col("100 mg", width = 1.5, align = "right", group = "Zomerane"),
+    placebo        = fr_col("Placebo", width = 1.5, align = "right"),
+    total          = fr_col("Total",   width = 1.5, align = "right"),
+    group          = fr_col(visible = FALSE),
+    .n = c(Zomerane = 90, placebo = 45, total = 135),
+    .n_format = "{label}\n(N={n})"
+  ) |>
+  fr_header(bold = TRUE, align = "center")
+```
+
+> Use `group=` when you are already naming every column in `fr_cols()` and
+> want to avoid a separate `fr_spans()` call. Use `fr_spans()` directly when
+> you prefer tidyselect column selection, multi-level spans, or fine-grained
+> control over `.hline` and `.gap`.
 
 ## Header styling
 
@@ -133,7 +202,8 @@ spec <- tbl_demog |>
 ```
 
 `fr_header()` parameters: `align`, `valign` (`"top"` / `"middle"` /
-`"bottom"`), `bold`, `bg`, `fg`, `font_size`.
+`"bottom"`), `bold`, `bg`, `fg`, `font_size`, `repeat_on_page` (default
+`TRUE` --- set `FALSE` to print the header only on the first page).
 
 ### Tidyselect alignment
 
@@ -255,6 +325,150 @@ spec <- tbl_demog |>
 > **SAS:** This replaces `PROC FREQ` + `PROC TRANSPOSE` to build N headers,
 > then manual `COMPUTE` blocks to attach them. tlframe does it in one
 > `fr_cols()` call.
+
+## Spanning headers with `fr_spans()`
+
+Spanning headers are additional header rows that sit above the regular column
+labels, grouping related columns under a shared label. They are the standard
+way to show treatment arms, dose groups, or timepoint periods in regulatory
+tables.
+
+`fr_spans()` **appends** spans to the spec (unlike most verbs which replace).
+Call it multiple times to build up multi-level structures.
+
+### Basic single-level span
+
+```{r spans-basic}
+spec <- tbl_demog |>
+  fr_table() |>
+  fr_cols(
+    characteristic = fr_col("Characteristic", width = 2.5),
+    zom_50mg       = fr_col("50 mg",  width = 1.5, align = "right"),
+    zom_100mg      = fr_col("100 mg", width = 1.5, align = "right"),
+    placebo        = fr_col("Placebo", width = 1.5, align = "right"),
+    total          = fr_col("Total",   width = 1.5, align = "right"),
+    group          = fr_col(visible = FALSE),
+    .n = c(zom_50mg = 45, zom_100mg = 45, placebo = 45, total = 135),
+    .n_format = "{label}\n(N={n})"
+  ) |>
+  fr_header(bold = TRUE, align = "center") |>
+  fr_spans("Zomerane" = c("zom_50mg", "zom_100mg"))
+```
+
+```{r spans-basic-preview, echo = FALSE, out.width = "100%", fig.cap = "Single-level spanning header grouping two dose arms under 'Zomerane'"}
+knitr::include_graphics("figures/preview_spans.png")
+```
+
+The span label ("Zomerane") sits above the two Zomerane columns. Columns not
+covered by any span (`placebo`, `total`) display an empty cell in the span row.
+
+### Multi-level spans (`.level`)
+
+Build from inner to outer. Level 1 sits directly above the column labels;
+level 2 sits above level 1:
+
+```{r spans-multilevel}
+dose_data <- data.frame(
+  param    = "Weight",
+  low_n    = "43", low_pct  = "31.9%",
+  high_n   = "47", high_pct = "34.8%",
+  stringsAsFactors = FALSE
+)
+spec <- dose_data |>
+  fr_table() |>
+  fr_cols(
+    param    = fr_col(visible = FALSE),
+    low_n    = fr_col("n",   width = 1.0, align = "right"),
+    low_pct  = fr_col("%",   width = 1.0, align = "right"),
+    high_n   = fr_col("n",   width = 1.0, align = "right"),
+    high_pct = fr_col("%",   width = 1.0, align = "right")
+  ) |>
+  fr_spans("10 mg"    = c("low_n",  "low_pct"),  .level = 1L) |>
+  fr_spans("25 mg"    = c("high_n", "high_pct"), .level = 1L) |>
+  fr_spans("Zomerane" = c("low_n", "low_pct", "high_n", "high_pct"), .level = 2L)
+```
+
+Each `fr_spans()` call at `.level = 1L` places "10 mg" and "25 mg" above
+their respective column pairs. The second-level call places "Zomerane" above
+both level-1 spans.
+
+### `.hline` --- span underline
+
+By default a thin horizontal line is drawn under each span to visually
+separate it from the column labels below. Set `.hline = FALSE` to suppress
+it:
+
+```{r spans-hline}
+spec <- tbl_demog |>
+  fr_table() |>
+  fr_cols(
+    characteristic = fr_col("Characteristic", width = 2.5),
+    zom_50mg       = fr_col("50 mg",  width = 1.5, align = "right"),
+    zom_100mg      = fr_col("100 mg", width = 1.5, align = "right"),
+    placebo        = fr_col("Placebo", width = 1.5, align = "right"),
+    total          = fr_col("Total",   width = 1.5, align = "right"),
+    group          = fr_col(visible = FALSE)
+  ) |>
+  fr_spans("Zomerane" = c("zom_50mg", "zom_100mg"), .hline = FALSE)
+```
+
+### `.gap` --- gap columns between adjacent spans
+
+When two or more spans sit side by side at the same level, `fr_spans()`
+inserts a narrow invisible gap column between them by default (`.gap = TRUE`).
+This creates a clean visual break without relying on border trimming. Set
+`.gap = FALSE` to remove the gap and produce a continuous span hline:
+
+```{r spans-gap}
+spec <- tbl_demog |>
+  fr_table() |>
+  fr_cols(
+    characteristic = fr_col("Characteristic", width = 2.5),
+    zom_50mg       = fr_col("50 mg",  width = 1.5, align = "right"),
+    zom_100mg      = fr_col("100 mg", width = 1.5, align = "right"),
+    placebo        = fr_col("Placebo", width = 1.5, align = "right"),
+    total          = fr_col("Total",   width = 1.5, align = "right"),
+    group          = fr_col(visible = FALSE)
+  ) |>
+  fr_spans(
+    "Zomerane"  = c("zom_50mg", "zom_100mg"),
+    "Reference" = "placebo",
+    .gap = FALSE
+  )
+```
+
+### Tidyselect in span column selection
+
+The column list on the right-hand side of each named argument accepts
+tidyselect expressions as well as character vectors:
+
+```{r spans-tidyselect}
+spec <- tbl_demog |>
+  fr_table() |>
+  fr_cols(
+    characteristic = fr_col("Characteristic", width = 2.5),
+    zom_50mg       = fr_col("50 mg",  width = 1.5, align = "right"),
+    zom_100mg      = fr_col("100 mg", width = 1.5, align = "right"),
+    placebo        = fr_col("Placebo", width = 1.5, align = "right"),
+    total          = fr_col("Total",   width = 1.5, align = "right"),
+    group          = fr_col(visible = FALSE)
+  ) |>
+  fr_spans("Zomerane" = starts_with("zom_"))
+```
+
+Supported helpers include `starts_with()`, `ends_with()`, `contains()`,
+`matches()`, and any other tidyselect expression.
+
+### Choosing between `fr_col(group=)` and `fr_spans()`
+
+| Approach | When to use |
+|----------|-------------|
+| `fr_col(group = "label")` | Inline shorthand; you are already naming every column in `fr_cols()` |
+| `fr_spans("label" = ...)` | Multi-level spans, tidyselect selection, or fine-grained `.hline`/`.gap` control |
+
+> **SAS:** Spanning headers require a `COMPUTE` block in PROC REPORT with
+> `STYLE(SPANNING)`. tlframe handles all positioning automatically from a
+> single `fr_spans()` call.
 
 ## Column splitting
 

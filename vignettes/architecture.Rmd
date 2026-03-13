@@ -20,7 +20,7 @@ contribute.
 
 ```
 +----------------------------------------------------------------------+
-| API Layer (10 files)                                                 |
+| API Layer (13 files)                                                 |
 | fr_table -> fr_cols -> fr_header -> fr_titles -> ... -> fr_render    |
 | Each verb: validate -> modify fr_spec -> return fr_spec              |
 +----------------------------------------------------------------------+
@@ -35,12 +35,15 @@ contribute.
 | units.R       Twips, half-points, row height calculation             |
 | validate.R    Type-safe validation helpers                           |
 +----------------------------------------------------------------------+
-| Render Layer (5 files)                                               |
+| Render Layer (8 files)                                               |
 | render.R          Dispatch: finalize -> prepare_pages -> backend     |
 | render-common.R   Shared: cell grid, borders, escaping, colors       |
 | render-rtf.R      RTF 1.9.1 backend                                  |
 | render-latex.R    tabularray/XeLaTeX backend                         |
 | render-pdf.R      PDF wrapper (generates .tex, compiles twice)       |
+| render-figure.R   Figure rendering (single + multi-page)             |
+| decimal.R         Stat-display decimal alignment engine              |
+| paginate.R        R-side pagination (group-aware page breaks)        |
 +----------------------------------------------------------------------+
 ```
 
@@ -63,6 +66,9 @@ Every verb reads and writes a single S3 object:
 | `$pagehead` | list | `fr_pagehead()` |
 | `$pagefoot` | list | `fr_pagefoot()` |
 | `$spacing` | list | `fr_spacing()` |
+| `$decimal_geometry` | list or NULL | `finalize_spec()` |
+| `$plots` | list or NULL | `fr_figure()` (multi-page) |
+| `$figure_meta` | data.frame or NULL | `fr_figure()` (per-page tokens) |
 
 ## The render pipeline
 

@@ -1,5 +1,61 @@
 # tlframe 0.1.0.9000 (development version)
 
+## New features
+
+### Multi-page figures
+
+* `fr_figure()` now accepts a list of plot objects and an optional `meta`
+  data frame. Each column of `meta` becomes a `{token}` resolved in titles
+  and footnotes dynamically per page, enabling figure programmes that loop
+  over parameters (e.g. one page per biomarker or visit).
+
+### Group label injection
+
+* `fr_rows(group_label = )` auto-injects a header row at each group boundary
+  using values from a specified column. This is the standard demographics
+  pattern where the group variable label appears as a bold row above indented
+  summary statistics, without requiring pre-formatted data.
+
+### Multi-level indent_by
+
+* `fr_rows(indent_by = )` now accepts a named list specifying `key`, `col`,
+  and `levels` for SOC/HLT/PT three-level hierarchies. Each row is indented
+  to its natural depth, replacing the previous single-column form that only
+  handled two levels.
+
+### Pagination controls
+
+* `fr_rows(group_keep = FALSE)` disables RTF `\keepn` for visual-only
+  grouping (blank rows and indentation without page-keep constraints).
+  Useful when groups are short and the default keep behaviour wastes space.
+* `fr_rows(page_by_visible = FALSE)` inserts page breaks at `page_by`
+  boundaries while hiding the label row itself.
+* `fr_page(orphan_min = , widow_min = )` sets minimum body-row counts at
+  the bottom and top of a page respectively, preventing isolated rows at
+  page breaks.
+
+### Wrap parameter
+
+* `fr_rows(wrap = )` controls whether long cell content wraps within its
+  column or is truncated, complementing the existing `repeat_cols` behaviour.
+
+## Bug fixes
+
+* `measure_text_width_twips()`: multi-byte UTF-8 characters (em dashes,
+  arrows, etc.) now measured correctly via `utf8ToInt()` instead of
+  misindexing the raw-byte lookup table.
+* `resolve_borders()`: early return when the table body is empty prevents
+  index-out-of-bounds crashes on zero-row tables.
+* `escape_and_resolve()`: guard against malformed sentinel tokens with
+  fewer than three capture groups (was a subscript-out-of-bounds crash).
+* `fr_rows()`: error when `group_label` is set without `group_by`.
+* `fr_rows()`: warning when `page_by` and `group_by` share the same column.
+* LaTeX hline dedup regex anchored with `^` to prevent row 10 matching row 100.
+* Decimal alignment: `round()` replaces `as.integer()` for center-offset
+  calculation, removing a systematic 1-twip leftward bias.
+* `paginate_rows()`: all consecutive trailing blank rows captured, not just
+  the first.
+
 ## Pipeline API
 
 * `fr_table()`, `fr_listing()`, `fr_figure()` entry points for tables,

@@ -74,10 +74,10 @@
 #'   displayed. `NULL` leaves unchanged. See [fr_rows()] for details.
 #' @param group_keep Logical. Whether `group_by` groups are kept together
 #'   on the same page. `NULL` leaves unchanged. See [fr_rows()] for details.
-#' @param header Named list of header defaults. Currently supports:
-#'   * `span_gap` — Logical. Insert gap columns between adjacent spans
-#'     (default `TRUE`). See [fr_header()] for details.
-#'   `NULL` leaves unchanged.
+#' @param header Named list of header defaults. Supports all [fr_header()]
+#'   parameters: `bold`, `align`, `valign`, `bg`, `fg`, `font_size`,
+#'   `repeat_on_page`, plus `span_gap` (logical, insert gap columns between
+#'   adjacent spans, default `TRUE`). `NULL` leaves unchanged.
 #' @param footnote_separator Logical. Whether to draw a separator above the
 #'   footnote block. `NULL` leaves unchanged.
 #'

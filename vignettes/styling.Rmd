@@ -157,9 +157,13 @@ knitr::include_graphics("figures/preview_styles_basic.png")
 
 | Constructor | Scope | Key args |
 |------------|-------|----------|
-| `fr_row_style()` | Entire row(s) | `rows`, `bold`, `bg`, `fg`, ... |
-| `fr_col_style()` | Entire column(s) | `cols`, `bold`, `bg`, `fg`, ... |
-| `fr_style()` | Row-column intersection | `rows`, `cols`, all style props |
+| `fr_row_style()` | Entire row(s) | `rows`, `bold`, `bg`, `fg`, `align`, `valign`, `height`, ... |
+| `fr_col_style()` | Entire column(s) | `cols`, `bold`, `bg`, `fg`, `align`, `valign`, ... |
+| `fr_style()` | Row-column intersection | `region`, `rows`, `cols`, `bold`, `bg`, `fg`, `align`, `valign`, `colspan`, ... |
+| `fr_style_if()` | Data-driven (conditional) | `condition`, `cols`, `apply_to`, `bold`, `bg`, `fg`, `align`, ... |
+
+`fr_style()` targets a specific `region`: `"body"` (default), `"header"`, or `"stub"`.
+`valign` controls vertical placement within the cell: `"top"`, `"middle"`, or `"bottom"`.
 
 Like `fr_spans()`, `fr_styles()` **appends** on repeated calls.
 
@@ -235,6 +239,109 @@ spec <- tbl_disp |>
 ```{r zebra-preview, echo = FALSE, out.width = "100%", fig.cap = "Alternating row backgrounds (zebra striping)"}
 knitr::include_graphics("figures/preview_zebra.png")
 ```
+
+### Conditional styling with `fr_style_if()`
+
+`fr_style_if()` applies styles based on cell values rather than row numbers.
+The condition is a one-sided formula using `.x` as the pronoun, or a plain
+function. It is evaluated at render time against the actual data, so it works
+correctly even when row positions are unknown in advance.
+
+**Bold "Total" rows** — match exact text in a column:
+
+```{r style-if-total}
+spec <- tbl_demog |>
+  fr_table() |>
+  fr_hlines("header") |>
+  fr_styles(
+    fr_style_if(
+      cols = "characteristic",
+      condition = ~ .x == "Total",
+      apply_to = "row",
+      bold = TRUE, bg = "#E8E8E8"
+    )
+  )
+```
+
+**Zebra striping without hard-coded indices** — when `cols = NULL`, `.x`
+receives row indices:
+
+```{r style-if-zebra}
+spec <- tbl_disp |>
+  fr_table() |>
+  fr_hlines("header") |>
+  fr_styles(
+    fr_style_if(
+      condition = ~ (.x %% 2) == 0,
+      apply_to = "row",
+      bg = "#F5F5F5"
+    )
+  )
+```
+
+**Highlight significant p-values** — numeric comparison on a character column:
+
+```{r style-if-pvalue}
+pval_data <- data.frame(
+  characteristic = c("Age", "Sex", "Weight"),
+  treatment = c("50 (23.5)", "30 (14.1)", "45 (21.1)"),
+  placebo   = c("55 (25.8)", "28 (13.1)", "52 (24.4)"),
+  pvalue    = c("0.042", "0.310", "0.003"),
+  stringsAsFactors = FALSE
+)
+
+spec <- pval_data |>
+  fr_table() |>
+  fr_hlines("header") |>
+  fr_styles(
+    fr_style_if(
+      cols = "pvalue",
+      condition = ~ as.numeric(.x) < 0.05,
+      apply_to = "row",
+      bold = TRUE, fg = "#CC0000"
+    )
+  )
+```
+
+**Colour only the matching cells** — use `apply_to = "cell"` (the default)
+instead of `"row"`:
+
+```{r style-if-cell}
+spec <- tbl_ae_soc |>
+  fr_table() |>
+  fr_hlines("header") |>
+  fr_styles(
+    fr_style_if(
+      cols = "soc",
+      condition = ~ grepl("SKIN|GASTROINTESTINAL", .x, ignore.case = TRUE),
+      apply_to = "row",
+      bg = "#FFF3CD"
+    )
+  )
+```
+
+The `condition` argument also accepts a plain function instead of a formula:
+
+```{r style-if-fn, eval = FALSE}
+is_total <- function(x) x == "Total"
+
+tbl_demog |>
+  fr_table() |>
+  fr_styles(
+    fr_style_if(
+      cols = "characteristic",
+      condition = is_total,
+      apply_to = "row",
+      bold = TRUE, bg = "#E8E8E8"
+    )
+  )
+```
+
+> **SAS:** `COMPUTE characteristic; IF characteristic = "Total" THEN CALL DEFINE(_ROW_, "STYLE", "STYLE=[FONT_WEIGHT=BOLD BACKGROUND=GRAY]"); ENDCOMP;`
+
+`fr_style_if()` objects are passed to `fr_styles()` alongside `fr_row_style()`,
+`fr_col_style()`, and `fr_style()`. All four constructor types can be mixed in
+a single `fr_styles()` call.
 
 ### Style precedence
 

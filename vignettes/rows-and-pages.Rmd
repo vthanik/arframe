@@ -154,6 +154,31 @@ spec <- tbl_demog |>
   fr_rows(group_by = "group", group_keep = FALSE)
 ```
 
+## `wrap`: text wrapping in body cells
+
+For listings with long text fields, set `wrap = TRUE` to enable text
+wrapping in body cells. Without wrapping, long values overflow the cell
+boundary; with it, the cell grows vertically to fit:
+
+```{r wrap, eval = FALSE}
+adae[1:10, c("USUBJID", "AEBODSYS", "AEDECOD", "AEOUT")] |>
+  fr_table() |>
+  fr_rows(wrap = TRUE)
+```
+
+`wrap` pairs naturally with `repeat_cols` on listings where the first
+column (e.g., subject ID) should appear only once per block:
+
+```{r wrap-repeat, eval = FALSE}
+adae[1:30, c("USUBJID", "AEBODSYS", "AEDECOD", "AESEV", "ASTDT")] |>
+  fr_table() |>
+  fr_rows(
+    sort_by     = c("USUBJID", "AEBODSYS", "AEDECOD"),
+    repeat_cols = c("USUBJID", "AEBODSYS"),
+    wrap        = TRUE
+  )
+```
+
 ## `page_by_visible`: hidden page breaks
 
 Set `page_by_visible = FALSE` to get page breaks at group boundaries
@@ -216,6 +241,25 @@ pg$orientation
 ```
 
 These are the package defaults --- you only need `fr_page()` when overriding.
+
+### Orphan and widow control
+
+`orphan_min` and `widow_min` prevent isolated rows at page boundaries.
+`orphan_min` (default `3L`) is the minimum number of body rows that must
+remain at the bottom of a page before a group; if fewer would remain,
+the entire group moves to the next page. `widow_min` (default `3L`) is
+the minimum number of rows that must carry over to the top of the next
+page:
+
+```{r orphan-widow}
+spec <- tbl_ae_soc |>
+  fr_table() |>
+  fr_rows(group_by = "soc") |>
+  fr_page(orphan_min = 2L, widow_min = 2L)
+```
+
+Set either to `1L` to disable the corresponding control. These settings
+only take effect when `group_by` is active.
 
 > **Custom fonts for PDF:** Set `TLFRAME_FONT_DIR` to a directory of `.ttf`/`.otf`
 > files and XeLaTeX discovers them by name --- no system-wide installation needed.

@@ -139,12 +139,12 @@ Every verb takes an `fr_spec`, returns a modified `fr_spec`. Verb order doesn't 
 
 | Verb | Purpose |
 |---|---|
-| `fr_table()` / `fr_listing()` / `fr_figure()` | Entry points — create spec from data or plot |
+| `fr_table()` / `fr_listing()` / `fr_figure()` | Entry points — create spec from data or plot (figures support a list of plots with per-page metadata tokens) |
 | `fr_cols()` + `fr_col()` | Column labels, widths, alignment, visibility, N-counts |
 | `fr_header()` | Header styling (bold, align, valign, colors) |
 | `fr_titles()` | Table titles (1-4 lines, with inline markup) |
 | `fr_footnotes()` | Footnotes with placement control (`"every"` or `"last"`) |
-| `fr_rows()` | `group_by`, `page_by`, `indent_by`, `blank_after`, `sort_by`, `repeat_cols` |
+| `fr_rows()` | `group_by`, `group_label`, `group_keep`, `page_by`, `indent_by` (multi-level), `blank_after`, `sort_by`, `repeat_cols`, `wrap` |
 | `fr_page()` | Paper size, orientation, margins, font, continuation text |
 | `fr_pagehead()` / `fr_pagefoot()` | Running headers/footers with token substitution |
 | `fr_hlines()` / `fr_vlines()` / `fr_grid()` | Horizontal/vertical rules (8 presets) |

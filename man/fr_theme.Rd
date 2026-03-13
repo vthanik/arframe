@@ -101,12 +101,10 @@ displayed. \code{NULL} leaves unchanged. See \code{\link[=fr_rows]{fr_rows()}} f
 \item{group_keep}{Logical. Whether \code{group_by} groups are kept together
 on the same page. \code{NULL} leaves unchanged. See \code{\link[=fr_rows]{fr_rows()}} for details.}
 
-\item{header}{Named list of header defaults. Currently supports:
-\itemize{
-\item \code{span_gap} — Logical. Insert gap columns between adjacent spans
-(default \code{TRUE}). See \code{\link[=fr_header]{fr_header()}} for details.
-\code{NULL} leaves unchanged.
-}}
+\item{header}{Named list of header defaults. Supports all \code{\link[=fr_header]{fr_header()}}
+parameters: \code{bold}, \code{align}, \code{valign}, \code{bg}, \code{fg}, \code{font_size},
+\code{repeat_on_page}, plus \code{span_gap} (logical, insert gap columns between
+adjacent spans, default \code{TRUE}). \code{NULL} leaves unchanged.}
 
 \item{footnote_separator}{Logical. Whether to draw a separator above the
 footnote block. \code{NULL} leaves unchanged.}
