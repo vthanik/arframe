@@ -652,23 +652,27 @@ apply_leading_indent <- function(spec) {
 # ══════════════════════════════════════════════════════════════════════════════
 # 1c. Keep-Together Mask
 #
-# Builds a logical vector indicating which rows need \trkeep (RTF) or
-# equivalent keep-with-next property. All rows in a group_by group
-# get TRUE so Word/renderer keeps them on the same page.
+# Builds a logical vector driving RTF-native \keepn + \trkeep pagination.
+# Rows marked TRUE emit \keepn (paragraph-level) + \trkeep (row-level), which
+# tells Word to keep each such row on the same page as the next row.
+# Groups that fit on one page get a full keepn chain; only groups larger than
+# the page use orphan/widow edge protection for the top and bottom rows.
+# Disabled entirely when group_keep = FALSE (visual-only grouping).
 # ══════════════════════════════════════════════════════════════════════════════
 
 #' Build keep-together mask for body rows
 #'
 #' Marks rows that should stay with the next row (keep-with-next) to prevent
-#' page breaks within `group_by` groups. Uses orphan/widow minimums for
-#' intelligent splitting of large groups.
+#' page breaks within `group_by` groups. The mask drives RTF `\keepn` +
+#' `\trkeep` control words — Word keeps rows with `\keepn` on the same page
+#' as the next row, so the entire chain of TRUE rows travels together.
 #'
 #' **Behavior**:
-#' - Small groups (`<= orphan_min + widow_min` non-blank rows): all rows glued
-#'   together — no page split within the group.
-#' - Large groups: header + first `orphan_min - 1` rows glued (prevents
-#'   orphaned header at page bottom); last `widow_min` rows glued (prevents
-#'   widowed tail on next page). The middle is free to split.
+#' - Groups that fit on one page (`group_size <= page_rows`): all rows glued
+#'   together via full keepn chain — no page split within the group.
+#' - Groups larger than one page: header + first `orphan_min - 1` rows glued
+#'   (prevents orphaned header at page bottom); last `widow_min` rows glued
+#'   (prevents widowed tail on next page). The middle rows are free to split.
 #'
 #' @param data Data frame (body data for this section, post-blank-insertion).
 #' @param keep_cols Character vector of column names from spec$body$group_by.
@@ -676,6 +680,11 @@ apply_leading_indent <- function(spec) {
 #'   when a group must split. Default 3.
 #' @param widow_min Integer. Minimum rows to carry to the next page when a
 #'   group must split. Default 3.
+#' @param page_rows Integer (or Inf). Estimated number of body rows that fit
+#'   on one page, computed from `calculate_page_budget()` / `row_height_twips()`.
+#'   Groups with `group_size <= page_rows` get a full keepn chain; only
+#'   oversized groups use orphan/widow edge protection. Default `Inf` (always
+#'   full keepn, i.e. pre-`page_rows` behavior).
 #' @return Logical vector of length nrow(data), TRUE = keep with next row.
 #' @noRd
 build_keep_mask <- function(

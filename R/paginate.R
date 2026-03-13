@@ -1,8 +1,10 @@
 # ──────────────────────────────────────────────────────────────────────────────
-# paginate.R — R-side row height calculation and pagination
+# paginate.R — R-side row height calculation
 #
-# Used for deterministic page assignment when group_by is set.
-# Without group_by, RTF-native page breaks are preferred.
+# Computes per-row heights (in twips) for the page budget calculation used by
+# build_keep_mask() in render-common.R. The actual keep-together logic is
+# handled by RTF-native \keepn + \trkeep (render-rtf.R), not by R-side page
+# break insertion.
 #
 # Architecture: Two-pass columnar scanner
 #   Pass 1 (vectorized): Fast scan to identify multi-line candidates
@@ -206,14 +208,16 @@ calculate_page_budget <- function(spec) {
 }
 
 
-#' Compute \trpagebb break positions and skip rows
+#' Compute page break positions and skip rows for oversized groups
 #'
-#' Twips-based group-aware pagination. Returns `\trpagebb` row indices
-#' and suppressed row indices directly — no intermediate page assignment.
+#' Twips-based group-aware pagination for groups that exceed the page budget.
+#' Returns page break row indices and suppressed blank row indices.
+#' This function is only called for oversized groups; normal groups are kept
+#' together via RTF-native `\keepn` + `\trkeep` (see `build_keep_mask()`).
 #'
-#' Groups smaller than the page budget are **never split** across pages.
-#' They move to the next page as a whole via `\trpagebb`. Groups larger
-#' than one page are split with orphan/widow protection.
+#' Groups smaller than the page budget are **never split** across pages —
+#' they are handled entirely by `build_keep_mask()`. Groups larger than one
+#' page are split here with orphan/widow protection.
 #'
 #' Blank suppression: trailing blanks at page bottom and leading blanks
 #' at page top are added to `skip_rows` (not rendered).
@@ -225,8 +229,9 @@ calculate_page_budget <- function(spec) {
 #' @param orphan_min Integer. Min rows to keep at bottom of page.
 #' @param widow_min Integer. Min rows to carry to next page.
 #' @return List with:
-#'   - `page_breaks`: integer vector of row indices for `\trpagebb`
-#'   - `skip_rows`: integer vector of row indices to suppress
+#'   - `page_breaks`: integer vector of row indices where page breaks occur
+#'   - `skip_rows`: integer vector of row indices to suppress (blank rows at
+#'     page boundaries)
 #'   - `n_pages`: total page count (1 + length(page_breaks))
 #' @noRd
 paginate_rows <- function(
@@ -295,7 +300,6 @@ paginate_rows <- function(
       used <- used + group_height
     } else if (group_height <= budget) {
       # Branch 3: group doesn't fit current page — move to next page
-      # Place \trpagebb on first row of group
       page_breaks <- c(page_breaks, g_start)
       used <- group_height
     } else {
@@ -370,7 +374,7 @@ paginate_rows <- function(
 
         # Next page starts after trimmed_end
         gi <- trimmed_end + 1L
-        # Skip leading blanks on next page and find \trpagebb target
+        # Skip leading blanks at the top of the next page (suppress them)
         while (gi <= n_group && is_blank[group_rows[gi]]) {
           skip_rows <- c(skip_rows, group_rows[gi])
           gi <- gi + 1L

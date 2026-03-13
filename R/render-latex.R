@@ -1342,6 +1342,10 @@ latex_header_style_specs <- function(
 
 
 #' LaTeX spanner (spanning header) rows
+#'
+#' Renders spanning column header rows (fr_span objects) as tabularray
+#' `\SetCell[c=N]{c}` cells. Newlines (`\n`) in spanner labels are converted
+#' to `\shortstack{...}` so multi-line spanner labels render correctly.
 #' @noRd
 latex_spanner_rows <- function(spec, columns, span_overrides = NULL) {
   spans <- spec$header$spans

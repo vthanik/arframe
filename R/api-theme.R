@@ -388,6 +388,10 @@ fr_theme_set <- fr_theme
 #'   * `col_gap` — integer (points)
 #'   * `split` — logical (`TRUE`/`FALSE`) column splitting
 #'   * `stub` — character vector (stub column names)
+#'   * `page_by_bold` — logical; whether page-by labels are bold
+#'   * `page_by_align` — character; alignment of page-by labels
+#'   * `page_by_visible` — logical; whether page-by labels are displayed
+#'   * `group_keep` — logical; whether group_by groups are kept together
 #'   * `footnote_separator` — logical
 #'
 #' @examples

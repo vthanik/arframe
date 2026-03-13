@@ -26,6 +26,10 @@ blank lines)
 \item \code{col_gap} — integer (points)
 \item \code{split} — logical (\code{TRUE}/\code{FALSE}) column splitting
 \item \code{stub} — character vector (stub column names)
+\item \code{page_by_bold} — logical; whether page-by labels are bold
+\item \code{page_by_align} — character; alignment of page-by labels
+\item \code{page_by_visible} — logical; whether page-by labels are displayed
+\item \code{group_keep} — logical; whether group_by groups are kept together
 \item \code{footnote_separator} — logical
 }
 }
