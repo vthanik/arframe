@@ -64,10 +64,14 @@ measure_cell_height <- function(text, char_width) {
 #' Pass 1: Vectorized detection of multi-line candidates (newlines or wide text).
 #' Pass 2: Expensive `stri_wrap()` only on candidate cells.
 #'
+#' Returns heights in **twips** (not line counts). Each row's height is
+#' `max(lines_across_columns) * row_height_twips(font_size)`, giving exact
+#' vertical space consumed — matching tabularray's approach.
+#'
 #' @param data Data frame (body data for one page group).
 #' @param columns Named list of fr_col objects (visible only).
 #' @param page fr_page object.
-#' @return Integer vector of length `nrow(data)` — height in lines per row.
+#' @return Integer vector of length `nrow(data)` — height in twips per row.
 #' @noRd
 calculate_row_heights <- function(data, columns, page) {
   nr <- nrow(data)
@@ -75,7 +79,7 @@ calculate_row_heights <- function(data, columns, page) {
     return(integer(0))
   }
 
-  heights <- rep(1L, nr)
+  line_counts <- rep(1L, nr)
   col_chars <- compute_column_char_widths(columns, page)
 
   for (j in seq_along(columns)) {
@@ -99,21 +103,25 @@ calculate_row_heights <- function(data, columns, page) {
     # Pass 2: Expensive wrap only for candidates
     for (i in candidates) {
       h <- measure_cell_height(content[i], col_chars[j])
-      heights[i] <- max(heights[i], h)
+      line_counts[i] <- max(line_counts[i], h)
     }
   }
 
-  heights
+  # Convert line counts to twips
+  one_row <- row_height_twips(page$font_size)
+  as.integer(line_counts * one_row)
 }
 
 
-#' Calculate page budget in line-equivalents
+#' Calculate page budget in twips
 #'
-#' Estimates how many single-height body rows fit on one page, accounting
+#' Returns the available vertical space for body rows in twips, accounting
 #' for titles, column headers, spanning headers, footnotes, page chrome.
+#' This is the tabularray-style approach: track exact twips remaining
+#' rather than approximate line counts.
 #'
 #' @param spec A finalized fr_spec object.
-#' @return Integer. Number of single-line rows per page.
+#' @return Integer. Available body height in twips.
 #' @noRd
 calculate_page_budget <- function(spec) {
   # Page height in twips
@@ -176,7 +184,6 @@ calculate_page_budget <- function(spec) {
   footer_overflow <- max(0L, footer_twips - margin_bottom)
 
   # Header overflow: pagehead lives in margin area
-
   header_lines <- if (!is.null(spec$pagehead)) {
     max_chrome_lines(spec$pagehead)
   } else {
@@ -185,7 +192,7 @@ calculate_page_budget <- function(spec) {
   header_twips <- header_lines * one_row_twips
   header_overflow <- max(0L, header_twips - margin_top)
 
-  # Available height for body
+  # Available height for body in twips
   available_twips <- page_height -
     margin_top -
     margin_bottom -
@@ -193,15 +200,18 @@ calculate_page_budget <- function(spec) {
     footer_overflow -
     header_overflow
 
-  # Budget in line-equivalents
-  budget <- as.integer(available_twips / one_row_twips)
-  max(5L, budget) # minimum 5 rows per page
+  # Minimum 5 rows worth of space
+  min_twips <- 5L * one_row_twips
+  as.integer(max(min_twips, available_twips))
 }
 
 
 #' Assign rows to pages with group-aware orphan/widow control
 #'
-#' Greedy page-filling algorithm that respects group boundaries.
+#' Twips-based page-filling algorithm (tabularray-style). Tracks remaining
+#' vertical space in twips, subtracting each row's exact measured height.
+#' This handles multi-line wrapped rows precisely.
+#'
 #' Groups smaller than `orphan_min + widow_min` are kept together.
 #' Larger groups may split with two safeguards:
 #'
@@ -214,8 +224,8 @@ calculate_page_budget <- function(spec) {
 #'   are suppressed (assigned page 0, not rendered). This prevents wasted
 #'   vertical space at page boundaries within a split group.
 #'
-#' @param row_heights Integer vector — height in lines per body row.
-#' @param budget Integer — lines available per page.
+#' @param row_heights Integer vector — height in twips per body row.
+#' @param budget Integer — available body height in twips per page.
 #' @param data Data frame (for group key computation).
 #' @param group_by Character vector of grouping column names.
 #' @param orphan_min Integer. Min rows to keep at bottom of page.
@@ -277,22 +287,26 @@ paginate_rows <- function(
     group_rows <- g_start:g_end
     group_height <- sum(row_heights[group_rows])
 
-    # Assign pending blank to current page (belongs to previous group)
-    if (!is.null(pending_blank_idx)) {
-      pages[pending_blank_idx] <- current_page
-    }
-
     # Deferred blank logic: 4 branches
     if (used + pending_blank_height + group_height <= budget) {
       # Branch 1: pending blank + group both fit on current page
+      if (!is.null(pending_blank_idx)) {
+        pages[pending_blank_idx] <- current_page
+      }
       pages[group_rows] <- current_page
       used <- used + pending_blank_height + group_height
     } else if (used + group_height <= budget) {
-      # Branch 2: group fits without blank — blank already assigned above
+      # Branch 2: group fits without blank — blank suppressed at boundary
+      if (!is.null(pending_blank_idx)) {
+        pages[pending_blank_idx] <- 0L
+      }
       pages[group_rows] <- current_page
       used <- used + group_height
     } else if (group_height <= budget) {
-      # Branch 3: new page needed, group starts fresh
+      # Branch 3: new page needed — blank stays on previous page
+      if (!is.null(pending_blank_idx)) {
+        pages[pending_blank_idx] <- current_page
+      }
       current_page <- current_page + 1L
       pages[group_rows] <- current_page
       used <- group_height
@@ -302,6 +316,9 @@ paginate_rows <- function(
       #
       # Strategy: greedy page-fill, then adjust for widow/orphan violations.
       # Blank rows at page boundaries are suppressed (page 0 = not rendered).
+      if (!is.null(pending_blank_idx)) {
+        pages[pending_blank_idx] <- current_page
+      }
       if (used > 0L) {
         current_page <- current_page + 1L
         used <- 0L
