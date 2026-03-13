@@ -678,7 +678,13 @@ apply_leading_indent <- function(spec) {
 #'   group must split. Default 3.
 #' @return Logical vector of length nrow(data), TRUE = keep with next row.
 #' @noRd
-build_keep_mask <- function(data, keep_cols, orphan_min = 3L, widow_min = 3L) {
+build_keep_mask <- function(
+  data,
+  keep_cols,
+  orphan_min = 3L,
+  widow_min = 3L,
+  page_rows = Inf
+) {
   nr <- nrow(data)
   if (nr <= 1L || length(keep_cols) == 0L) {
     return(rep(FALSE, nr))
@@ -723,11 +729,11 @@ build_keep_mask <- function(data, keep_cols, orphan_min = 3L, widow_min = 3L) {
       next
     }
 
-    if (group_size <= orphan_min + widow_min) {
-      # Small group: keep entirely together (mark all but last for keep-with-next)
+    if (group_size <= page_rows) {
+      # Group fits on one page: keep entirely together
       mask[non_blank[-length(non_blank)]] <- TRUE
     } else {
-      # Large group: enforce orphan_min at top, widow_min at bottom
+      # Group larger than one page: orphan/widow edge protection only
       # Top: header + first (orphan_min - 1) children stay together
       top_keep <- non_blank[seq_len(orphan_min - 1L)]
       mask[top_keep] <- TRUE

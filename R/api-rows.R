@@ -43,6 +43,15 @@
 #'   the column headers.
 #' @param page_by_align Horizontal alignment for the page-by label. One of
 #'   `"left"` (default), `"center"`, `"right"`, or `"decimal"`.
+#' @param page_by_visible Logical. Whether the page-by group label is
+#'   displayed above the column headers. Default `TRUE`. Set `FALSE` to get
+#'   page breaks at group boundaries without a visible label — useful when
+#'   the grouping column already appears in the table body.
+#' @param group_keep Logical. Whether `group_by` groups are kept together
+#'   on the same page via RTF `\keepn` / LaTeX keep-with-next. Default
+#'   `TRUE`. Set `FALSE` for visual-only grouping (blank_after, indent)
+#'   without page-keeping — useful for long groups where you want the
+#'   renderer to break freely.
 #'
 #' @return A modified `fr_spec`. Row config stored in `spec$body`.
 #'
@@ -179,6 +188,8 @@ fr_rows <- function(
   blank_after = NULL,
   page_by_bold = FALSE,
   page_by_align = "left",
+  page_by_visible = TRUE,
+  group_keep = TRUE,
   sort_by = NULL,
   repeat_cols = NULL,
   wrap = FALSE
@@ -204,6 +215,12 @@ fr_rows <- function(
 
   if (!missing(page_by_bold)) {
     check_scalar_lgl(page_by_bold, arg = "page_by_bold", call = call)
+  }
+  if (!missing(page_by_visible)) {
+    check_scalar_lgl(page_by_visible, arg = "page_by_visible", call = call)
+  }
+  if (!missing(group_keep)) {
+    check_scalar_lgl(group_keep, arg = "group_keep", call = call)
   }
   if (!missing(wrap)) {
     check_scalar_lgl(wrap, arg = "wrap", call = call)
@@ -233,6 +250,16 @@ fr_rows <- function(
       page_by_align
     } else {
       old$page_by_align
+    },
+    page_by_visible = if (!missing(page_by_visible)) {
+      page_by_visible
+    } else {
+      old$page_by_visible
+    },
+    group_keep = if (!missing(group_keep)) {
+      group_keep
+    } else {
+      old$group_keep
     },
     sort_by = validate_cols(sort_by, "sort_by") %||% old$sort_by,
     repeat_cols = validate_cols(repeat_cols, "repeat_cols") %||%

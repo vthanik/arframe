@@ -25,6 +25,8 @@ fr_theme(
   continuation = NULL,
   page_by_bold = NULL,
   page_by_align = NULL,
+  page_by_visible = NULL,
+  group_keep = NULL,
   header = NULL,
   footnote_separator = NULL
 )
@@ -92,6 +94,12 @@ See \code{\link[=fr_page]{fr_page()}} for details.}
 \item{page_by_align}{Alignment for \code{page_by} group labels. One of
 \code{"left"}, \code{"center"}, \code{"right"}, or \code{"decimal"}. \code{NULL} leaves unchanged.
 See \code{\link[=fr_rows]{fr_rows()}} for details.}
+
+\item{page_by_visible}{Logical. Whether \code{page_by} group labels are
+displayed. \code{NULL} leaves unchanged. See \code{\link[=fr_rows]{fr_rows()}} for details.}
+
+\item{group_keep}{Logical. Whether \code{group_by} groups are kept together
+on the same page. \code{NULL} leaves unchanged. See \code{\link[=fr_rows]{fr_rows()}} for details.}
 
 \item{header}{Named list of header defaults. Currently supports:
 \itemize{

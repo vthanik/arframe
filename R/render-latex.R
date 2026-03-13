@@ -640,7 +640,11 @@ latex_head_template <- function(spec, group_label = NULL, panel_idx = 1L) {
 
   # Append page_by group label to both variants
   gl_line <- NULL
-  if (!is.null(group_label) && nzchar(group_label)) {
+  if (
+    !is.null(group_label) &&
+      nzchar(group_label) &&
+      isTRUE(spec$body$page_by_visible %||% TRUE)
+  ) {
     lf <- fr_env$latex_leading_factor
     fs <- spec$page$font_size
     pb_bold_on <- if (isTRUE(spec$body$page_by_bold)) "\\textbf{" else ""
@@ -1057,12 +1061,22 @@ latex_table <- function(
   )
 
   # Keep-together mask for orphan/widow control
-  keep_mask <- build_keep_mask(
-    data,
-    spec$body$group_by,
-    orphan_min = spec$page$orphan_min %||% fr_env$default_orphan_min,
-    widow_min = spec$page$widow_min %||% fr_env$default_widow_min
-  )
+  # Groups that fit on one page are kept entirely together
+  # Disabled when group_keep = FALSE (visual-only grouping).
+  if (isTRUE(spec$body$group_keep %||% TRUE)) {
+    one_row <- row_height_twips(spec$page$font_size)
+    page_budget <- calculate_page_budget(spec)
+    page_rows <- as.integer(page_budget / one_row)
+    keep_mask <- build_keep_mask(
+      data,
+      spec$body$group_by,
+      orphan_min = spec$page$orphan_min %||% fr_env$default_orphan_min,
+      widow_min = spec$page$widow_min %||% fr_env$default_widow_min,
+      page_rows = page_rows
+    )
+  } else {
+    keep_mask <- rep(FALSE, nrow(data))
+  }
 
   # Body rows (uses pre-computed decimal geometry from spec)
   lines <- c(
@@ -1369,6 +1383,10 @@ latex_spanner_rows <- function(spec, columns, span_overrides = NULL) {
           if (!is.na(ov)) span_label <- ov
         }
         content <- latex_escape_and_resolve(span_label)
+        if (grepl("\n", content, fixed = TRUE)) {
+          inner <- newline_to_latex_break(content)
+          content <- paste0("\\shortstack{", inner, "}")
+        }
         cells <- c(
           cells,
           paste0(

@@ -113,31 +113,9 @@ render_rtf <- function(spec, page_groups, col_panels, path) {
       # actual sub-page count BEFORE emitting {\footer}. This prevents
       # blank trailing pages: if everything fits on 1 sub-page, footnotes
       # go in body rows (not {\footer}) and no empty page is created.
-      has_group_by <- length(spec$body$group_by) > 0L
-      page_assignments <- NULL
-      n_subpages <- 0L
-
-      if (has_group_by && nrow(group$data) > 0L) {
-        heights <- calculate_row_heights(group$data, vis_columns, spec$page)
-        budget <- calculate_page_budget(spec)
-        page_assignments <- paginate_rows(
-          heights,
-          budget,
-          group$data,
-          spec$body$group_by,
-          orphan_min = spec$page$orphan_min %||% fr_env$default_orphan_min,
-          widow_min = spec$page$widow_min %||% fr_env$default_widow_min
-        )
-        n_subpages <- if (length(page_assignments) > 0L) {
-          max(page_assignments)
-        } else {
-          0L
-        }
-        # If pagination shows everything fits on 1 page, use body footnotes
-        is_single_page <- (n_subpages <= 1L)
-      } else {
-        is_single_page <- estimate_single_page(spec, group$data)
-      }
+      # Group pagination uses RTF-native \keepn + \trkeep (build_keep_mask)
+      # instead of R-side page break calculation. Word handles layout natively.
+      is_single_page <- estimate_single_page(spec, group$data)
 
       rtf_write(
         con,
@@ -229,7 +207,11 @@ render_rtf <- function(spec, page_groups, col_panels, path) {
       )
 
       # Group label (page_by value) — \trhdr row to stay within the table
-      if (!is.null(group$group_label) && nzchar(group$group_label)) {
+      if (
+        !is.null(group$group_label) &&
+          nzchar(group$group_label) &&
+          isTRUE(spec$body$page_by_visible %||% TRUE)
+      ) {
         rtf_write(con, rtf_page_by_rows(spec, vis_columns, group$group_label))
       }
 
@@ -273,56 +255,13 @@ render_rtf <- function(spec, page_groups, col_panels, path) {
         )
       )
 
-      # Body rows — unified single-pass emission with \trpagebb
-      # Both paginated (group_by) and non-paginated paths use the same code.
-      # R-side page breaks are communicated via \trpagebb on boundary rows,
-      # keeping the table continuous so \trhdr rows repeat automatically.
+      # Body rows — \trkeep + \keepn for group-aware pagination
       cell_grid <- build_cell_grid(
         group$data,
         vis_columns,
         spec$cell_styles,
         spec$page
       )
-
-      # Compute page break points and skip rows for \trpagebb
-      page_breaks <- integer(0)
-      skip_rows <- integer(0)
-      if (!is.null(page_assignments) && n_subpages > 1L) {
-        vis_col_names <- names(vis_columns)
-        gdata_subset <- group$data[vis_col_names]
-        is_blank_row <- rowSums(gdata_subset != "") == 0L
-
-        # Pre-compute row indices per page in one O(n) pass
-        page_row_lists <- split(
-          seq_along(page_assignments),
-          page_assignments
-        )
-
-        # Page 0 rows are suppressed by the paginator (leading blanks)
-        skip_set <- page_row_lists[["0"]] %||% integer(0)
-
-        for (p in 2L:n_subpages) {
-          p_key <- as.character(p)
-          p_rows <- page_row_lists[[p_key]]
-          if (is.null(p_rows) || length(p_rows) == 0L) {
-            next
-          }
-
-          # Trim leading blanks from new page (so no empty row appears
-          # right after repeated \trhdr headers)
-          while (length(p_rows) > 0L && is_blank_row[p_rows[1L]]) {
-            skip_set <- c(skip_set, p_rows[1L])
-            p_rows <- p_rows[-1L]
-          }
-          if (length(p_rows) > 0L) {
-            page_breaks <- c(page_breaks, p_rows[1L])
-          }
-          # Trailing blanks on the previous page are NOT trimmed.
-          # With \trpagebb they are harmless whitespace at the page bottom,
-          # and removing them destroys group separator blank rows.
-        }
-        skip_rows <- unique(skip_set)
-      }
 
       rtf_write(
         con,
@@ -332,9 +271,7 @@ render_rtf <- function(spec, page_groups, col_panels, path) {
           vis_columns,
           cell_grid,
           borders,
-          color_info,
-          page_breaks = page_breaks,
-          skip_rows = skip_rows
+          color_info
         )
       )
 
@@ -1290,10 +1227,9 @@ rtf_col_header_row <- function(
 
 #' RTF body rows
 #'
-#' @param page_breaks Integer vector of row indices where `\trpagebb` should
-#'   be emitted (forces a page break before the row). Used by R-side pagination.
-#' @param skip_rows Integer vector of row indices to skip entirely (blank rows
-#'   at page boundaries trimmed by the pagination logic).
+#' Uses RTF-native `\trkeep` + `\keepn` for group-aware pagination.
+#' Word keeps rows with `\keepn` on the same page as the next row,
+#' automatically pushing groups to the next page when they don't fit.
 #' @noRd
 rtf_body_rows <- function(
   spec,
@@ -1301,9 +1237,7 @@ rtf_body_rows <- function(
   columns,
   cell_grid,
   borders,
-  color_info,
-  page_breaks = integer(0),
-  skip_rows = integer(0)
+  color_info
 ) {
   if (nrow(data) == 0L) {
     return("")
@@ -1328,28 +1262,25 @@ rtf_body_rows <- function(
 
   empty_cell <- "\\pard\\intbl\\cell"
 
-  # When R-side pagination provides explicit page breaks, skip \trkeep
-  # (page boundaries are already determined by the algorithm)
-  has_page_breaks <- length(page_breaks) > 0L
-  if (has_page_breaks) {
-    keep_mask <- rep(FALSE, nr)
-  } else {
+  # RTF-native group pagination: \trkeep (row-level) + \keepn (paragraph-level)
+  # Word keeps rows with \keepn on the same page as the next row,
+  # automatically pushing groups to the next page when they don't fit.
+  # Groups that fit on one page are kept entirely together; only groups
+  # larger than the page use orphan/widow edge protection.
+  # Disabled when group_keep = FALSE (visual-only grouping).
+  if (isTRUE(spec$body$group_keep %||% TRUE)) {
+    one_row <- row_height_twips(spec$page$font_size)
+    page_budget <- calculate_page_budget(spec)
+    page_rows <- as.integer(page_budget / one_row)
     keep_mask <- build_keep_mask(
       data,
-      unique(c(spec$body$group_by, spec$body$indent_by)),
+      spec$body$group_by,
       orphan_min = spec$page$orphan_min %||% fr_env$default_orphan_min,
-      widow_min = spec$page$widow_min %||% fr_env$default_widow_min
+      widow_min = spec$page$widow_min %||% fr_env$default_widow_min,
+      page_rows = page_rows
     )
-  }
-
-  # Build skip/pagebb masks for O(1) lookup in the hot loop
-  is_skip <- logical(nr)
-  if (length(skip_rows) > 0L) {
-    is_skip[skip_rows] <- TRUE
-  }
-  is_pagebb <- logical(nr)
-  if (has_page_breaks) {
-    is_pagebb[page_breaks] <- TRUE
+  } else {
+    keep_mask <- rep(FALSE, nr)
   }
 
   # Precompute row heights from fr_row_style objects
@@ -1378,15 +1309,9 @@ rtf_body_rows <- function(
 
   lines <- vector("list", nr)
   for (i in seq_len(nr)) {
-    # Skip rows trimmed at page boundaries
-    if (is_skip[i]) {
-      lines[[i]] <- ""
-      next
-    }
-
-    # Row properties
-    pagebb_str <- if (is_pagebb[i]) "\\trpagebb" else ""
+    # Row properties: \trkeep + \keepn for group-aware pagination
     keep_str <- if (isTRUE(keep_mask[i])) "\\trkeep" else ""
+    keepn_str <- if (isTRUE(keep_mask[i])) "\\keepn" else ""
     if (!is.na(row_heights[i])) {
       height_str <- paste0(
         "\\trrh",
@@ -1396,7 +1321,7 @@ rtf_body_rows <- function(
     } else {
       height_str <- rh_str
     }
-    row_def <- paste0("\\trowd\\trqc", pagebb_str, keep_str, height_str)
+    row_def <- paste0("\\trowd\\trqc", keep_str, height_str)
 
     # Single merged loop: cell definitions + cell contents in one pass
     cell_defs <- vector("list", ncol)
@@ -1470,7 +1395,9 @@ rtf_body_rows <- function(
           formatted_esc <- newline_to_rtf_line(formatted_esc)
           dec_indent <- paste0("\\li", geom$center_offset[i])
           cell_contents[[j]] <- paste0(
-            "\\pard\\plain\\intbl\\ql",
+            "\\pard\\plain\\intbl",
+            keepn_str,
+            "\\ql",
             sp_str,
             dec_indent,
             "\\fs",
@@ -1483,13 +1410,18 @@ rtf_body_rows <- function(
             "\\cell"
           )
         } else {
-          cell_contents[[j]] <- empty_cell
+          cell_contents[[j]] <- if (nzchar(keepn_str)) {
+            paste0("\\pard\\intbl", keepn_str, "\\cell")
+          } else {
+            empty_cell
+          }
         }
       } else {
         content <- rtf_escape_and_resolve(cg_content[idx])
         content <- newline_to_rtf_line(content)
         cell_contents[[j]] <- paste0(
           "\\pard\\plain\\intbl",
+          keepn_str,
           align_map[[g_align]],
           sp_str,
           indent_str,

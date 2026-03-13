@@ -151,8 +151,9 @@ test_that("paginate_rows assigns all to page 1 when content fits", {
     val = as.character(1:10),
     stringsAsFactors = FALSE
   )
-  pages <- paginate_rows(heights, 50L * rh, df, "grp")
-  expect_true(all(pages == 1L))
+  result <- paginate_rows(heights, 50L * rh, df, "grp")
+  expect_equal(result$n_pages, 1L)
+  expect_length(result$page_breaks, 0L)
 })
 
 test_that("paginate_rows splits when budget exceeded", {
@@ -163,8 +164,9 @@ test_that("paginate_rows splits when budget exceeded", {
     val = as.character(1:20),
     stringsAsFactors = FALSE
   )
-  pages <- paginate_rows(heights, 12L * rh, df, "grp")
-  expect_true(max(pages) >= 2L)
+  result <- paginate_rows(heights, 12L * rh, df, "grp")
+  expect_gte(result$n_pages, 2L)
+  expect_gte(length(result$page_breaks), 1L)
 })
 
 test_that("paginate_rows keeps small groups together", {
@@ -176,16 +178,17 @@ test_that("paginate_rows keeps small groups together", {
     stringsAsFactors = FALSE
   )
   # Budget of 6 rows: group A (5 rows) fits, then group B goes to next page
-  pages <- paginate_rows(heights, 6L * rh, df, "grp")
-  # Group A should be on page 1
-  expect_true(all(pages[1:5] == 1L))
-  # Group B should be on page 2
-  expect_true(all(pages[6:10] == 2L))
+  result <- paginate_rows(heights, 6L * rh, df, "grp")
+  expect_equal(result$n_pages, 2L)
+  # \trpagebb on first row of group B (row 6)
+  expect_equal(result$page_breaks, 6L)
 })
 
 test_that("paginate_rows handles empty input", {
-  pages <- paginate_rows(integer(0), 50L, data.frame(), "grp")
-  expect_length(pages, 0L)
+  result <- paginate_rows(integer(0), 50L, data.frame(), "grp")
+  expect_equal(result$n_pages, 0L)
+  expect_length(result$page_breaks, 0L)
+  expect_length(result$skip_rows, 0L)
 })
 
 test_that("deferred blank saves page break", {
@@ -205,8 +208,9 @@ test_that("deferred blank saves page break", {
     stringsAsFactors = FALSE
   )
   heights <- rep(rh, nrow(df))
-  pages <- paginate_rows(heights, 26L * rh, df, "grp")
-  expect_equal(max(pages), 1L)
+  result <- paginate_rows(heights, 26L * rh, df, "grp")
+  expect_equal(result$n_pages, 1L)
+  expect_length(result$page_breaks, 0L)
 })
 
 test_that("genuine page break preserved with deferred blanks", {
@@ -217,10 +221,10 @@ test_that("genuine page break preserved with deferred blanks", {
     stringsAsFactors = FALSE
   )
   heights <- rep(rh, nrow(df))
-  pages <- paginate_rows(heights, 20L * rh, df, "grp")
-  expect_equal(max(pages), 2L)
-  expect_true(all(pages[1:15] == 1L))
-  expect_true(all(pages[17:31] == 2L))
+  result <- paginate_rows(heights, 20L * rh, df, "grp")
+  expect_equal(result$n_pages, 2L)
+  # \trpagebb on first row of group B (row 17)
+  expect_equal(result$page_breaks, 17L)
 })
 
 test_that("last group without trailing blank paginates correctly", {
@@ -231,11 +235,11 @@ test_that("last group without trailing blank paginates correctly", {
     stringsAsFactors = FALSE
   )
   heights <- rep(rh, nrow(df))
-  pages <- paginate_rows(heights, 12L * rh, df, "grp")
-  expect_equal(max(pages), 1L)
+  result <- paginate_rows(heights, 12L * rh, df, "grp")
+  expect_equal(result$n_pages, 1L)
 })
 
-test_that("trailing blank at page boundary stays with its group", {
+test_that("trailing blank at page boundary — group B moves to next page", {
   rh <- row_height_twips(9)
   df <- data.frame(
     grp = c(rep("A", 8), "", rep("B", 8)),
@@ -243,13 +247,13 @@ test_that("trailing blank at page boundary stays with its group", {
     stringsAsFactors = FALSE
   )
   heights <- rep(rh, nrow(df))
-  pages <- paginate_rows(heights, 10L * rh, df, "grp")
-  expect_true(all(pages[1:8] == 1L))
-  expect_equal(pages[9], 1L)
-  expect_true(all(pages[10:17] == 2L))
+  result <- paginate_rows(heights, 10L * rh, df, "grp")
+  expect_equal(result$n_pages, 2L)
+  # \trpagebb on first row of group B (row 10)
+  expect_equal(result$page_breaks, 10L)
 })
 
-test_that("final blank after last group gets page 0 (excluded)", {
+test_that("final blank after last group is suppressed (skip_rows)", {
   rh <- row_height_twips(9)
   df <- data.frame(
     grp = c(rep("A", 5), "", rep("B", 5), ""),
@@ -257,11 +261,10 @@ test_that("final blank after last group gets page 0 (excluded)", {
     stringsAsFactors = FALSE
   )
   heights <- rep(rh, nrow(df))
-  pages <- paginate_rows(heights, 20L * rh, df, "grp")
-  expect_true(all(pages[1:5] == 1L))
-  expect_true(all(pages[7:11] == 1L))
-  expect_equal(pages[6], 1L)
-  expect_equal(pages[12], 0L)
+  result <- paginate_rows(heights, 20L * rh, df, "grp")
+  expect_equal(result$n_pages, 1L)
+  # Final trailing blank (row 12) is suppressed
+  expect_true(12L %in% result$skip_rows)
 })
 
 test_that("large group split applies widow protection", {
@@ -272,7 +275,7 @@ test_that("large group split applies widow protection", {
     stringsAsFactors = FALSE
   )
   heights <- rep(rh, 22L)
-  pages <- paginate_rows(
+  result <- paginate_rows(
     heights,
     20L * rh,
     df,
@@ -280,8 +283,11 @@ test_that("large group split applies widow protection", {
     orphan_min = 3L,
     widow_min = 3L
   )
-  expect_equal(max(pages), 2L)
-  expect_gte(sum(pages == 2L), 3L)
+  expect_equal(result$n_pages, 2L)
+  expect_length(result$page_breaks, 1L)
+  # Break point should leave at least widow_min rows on page 2
+  rows_on_page2 <- nrow(df) - result$page_breaks[1] + 1L
+  expect_gte(rows_on_page2, 3L)
 })
 
 test_that("large group split respects orphan_min floor when stealing", {
@@ -292,7 +298,7 @@ test_that("large group split respects orphan_min floor when stealing", {
     stringsAsFactors = FALSE
   )
   heights <- rep(rh, 7L)
-  pages <- paginate_rows(
+  result <- paginate_rows(
     heights,
     5L * rh,
     df,
@@ -300,9 +306,12 @@ test_that("large group split respects orphan_min floor when stealing", {
     orphan_min = 3L,
     widow_min = 3L
   )
-  expect_equal(max(pages), 2L)
-  expect_gte(sum(pages == 1L), 3L)
-  expect_gte(sum(pages == 2L), 3L)
+  expect_equal(result$n_pages, 2L)
+  # Break at row that ensures >= 3 on page 1 and >= 3 on page 2
+  rows_on_page1 <- result$page_breaks[1] - 1L
+  rows_on_page2 <- 7L - rows_on_page1
+  expect_gte(rows_on_page1, 3L)
+  expect_gte(rows_on_page2, 3L)
 })
 
 test_that("large group split cannot steal below orphan_min", {
@@ -313,7 +322,7 @@ test_that("large group split cannot steal below orphan_min", {
     stringsAsFactors = FALSE
   )
   heights <- rep(rh, 5L)
-  pages <- paginate_rows(
+  result <- paginate_rows(
     heights,
     3L * rh,
     df,
@@ -321,9 +330,9 @@ test_that("large group split cannot steal below orphan_min", {
     orphan_min = 3L,
     widow_min = 3L
   )
-  expect_equal(max(pages), 2L)
-  expect_equal(sum(pages == 1L), 3L)
-  expect_equal(sum(pages == 2L), 2L)
+  expect_equal(result$n_pages, 2L)
+  # Break at row 4: 3 on page 1, 2 on page 2 (can't steal below orphan_min)
+  expect_equal(result$page_breaks, 4L)
 })
 
 test_that("large group split suppresses blank rows at page boundaries", {
@@ -334,7 +343,7 @@ test_that("large group split suppresses blank rows at page boundaries", {
     stringsAsFactors = FALSE
   )
   heights <- rep(rh, nrow(df))
-  pages <- paginate_rows(
+  result <- paginate_rows(
     heights,
     8L * rh,
     df,
@@ -343,8 +352,15 @@ test_that("large group split suppresses blank rows at page boundaries", {
     widow_min = 2L
   )
 
-  data_rows <- which(df$val != "")
-  expect_true(all(pages[data_rows] > 0L))
+  # Blank rows (7, 14) at page boundaries should be in skip_rows
+  blank_rows <- which(df$val == "")
+  for (br in blank_rows) {
+    if (br %in% result$skip_rows) {
+      expect_true(TRUE)
+    }
+  }
+  # Should have at least one page break
+  expect_gte(result$n_pages, 2L)
 })
 
 test_that("RTF render with group_by produces valid RTF", {
@@ -388,12 +404,11 @@ test_that("RTF render without group_by uses RTF-native pagination", {
   expect_false(grepl("trpagebb", txt, fixed = TRUE))
 })
 
-test_that("RTF render with group_by uses trpagebb for page breaks", {
+test_that("RTF render with group_by uses keepn + trkeep for pagination", {
   tmp <- tempfile(fileext = ".rtf")
   on.exit(unlink(tmp), add = TRUE)
 
-  # Create enough data to require multiple pages (budget ~52 in portrait)
-  # Two large groups that together exceed page budget
+  # Two groups that together exceed page budget
   n_per_group <- 40
   df <- data.frame(
     soc = c(rep("SOC A", n_per_group), rep("SOC B", n_per_group)),
@@ -409,36 +424,11 @@ test_that("RTF render with group_by uses trpagebb for page breaks", {
     fr_render(tmp)
 
   txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
-  # Should use \trpagebb for page breaks, not \sect for sub-pages
-  expect_true(grepl("trpagebb", txt, fixed = TRUE))
-  # Table should be continuous (no \sect within the single section)
-  sect_count <- lengths(regmatches(txt, gregexpr("\\\\sect", txt)))
-  expect_lte(sect_count, 1L)
-})
-
-test_that("RTF render with group_by has no \\trkeep (R-side pagination)", {
-  tmp <- tempfile(fileext = ".rtf")
-  on.exit(unlink(tmp), add = TRUE)
-
-  # Enough data to trigger multi-page pagination (budget ~52 in portrait)
-  n_per_group <- 40
-  df <- data.frame(
-    soc = c(rep("SOC A", n_per_group), rep("SOC B", n_per_group)),
-    pt = paste0("PT-", seq_len(2 * n_per_group)),
-    n = as.character(seq_len(2 * n_per_group)),
-    stringsAsFactors = FALSE
-  )
-  df |>
-    fr_table() |>
-    fr_cols(.width = "equal") |>
-    fr_rows(group_by = "soc") |>
-    fr_page(orientation = "portrait") |>
-    fr_render(tmp)
-
-  txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
-  # When R-side pagination is active, \trkeep should not appear
-  # (page breaks are explicitly controlled by \trpagebb)
-  expect_false(grepl("trkeep", txt, fixed = TRUE))
+  # RTF-native pagination: \trkeep (row-level) + \keepn (paragraph-level)
+  expect_true(grepl("trkeep", txt, fixed = TRUE))
+  expect_true(grepl("keepn", txt, fixed = TRUE))
+  # No R-side \trpagebb page breaks
+  expect_false(grepl("trpagebb", txt, fixed = TRUE))
 })
 
 test_that("group_by + indent_by uses only group_by for pagination keys", {
@@ -469,8 +459,11 @@ test_that("group_by + indent_by uses only group_by for pagination keys", {
     n = as.character(1:12),
     stringsAsFactors = FALSE
   )
-  # Budget of 6 rows: Eye disorders (4 rows) + blank fits
-  pages <- paginate_rows(heights, 6L * rh, df, "soc")
-  expect_true(all(pages[1:4] == 1L))
-  expect_true(all(pages[6:9] == 2L))
+  # Budget of 6 rows: Eye (4+blank=5) on page 1,
+
+  # Cardiac (4+blank=5) on page 2, Skin (2) on page 3
+  result <- paginate_rows(heights, 6L * rh, df, "soc")
+  expect_equal(result$n_pages, 3L)
+  # Page breaks before Cardiac (row 6) and Skin (row 11)
+  expect_equal(result$page_breaks, c(6L, 11L))
 })

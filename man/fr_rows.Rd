@@ -12,6 +12,8 @@ fr_rows(
   blank_after = NULL,
   page_by_bold = FALSE,
   page_by_align = "left",
+  page_by_visible = TRUE,
+  group_keep = TRUE,
   sort_by = NULL,
   repeat_cols = NULL,
   wrap = FALSE
@@ -44,6 +46,17 @@ the column headers.}
 
 \item{page_by_align}{Horizontal alignment for the page-by label. One of
 \code{"left"} (default), \code{"center"}, \code{"right"}, or \code{"decimal"}.}
+
+\item{page_by_visible}{Logical. Whether the page-by group label is
+displayed above the column headers. Default \code{TRUE}. Set \code{FALSE} to get
+page breaks at group boundaries without a visible label — useful when
+the grouping column already appears in the table body.}
+
+\item{group_keep}{Logical. Whether \code{group_by} groups are kept together
+on the same page via RTF \verb{\\keepn} / LaTeX keep-with-next. Default
+\code{TRUE}. Set \code{FALSE} for visual-only grouping (blank_after, indent)
+without page-keeping — useful for long groups where you want the
+renderer to break freely.}
 
 \item{sort_by}{Character vector of column name(s). Sorts the data by these
 columns before rendering. For listings, this controls the display order

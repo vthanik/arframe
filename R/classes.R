@@ -631,6 +631,8 @@ new_fr_body <- function(
   blank_after = character(0),
   page_by_bold = FALSE,
   page_by_align = "left",
+  page_by_visible = TRUE,
+  group_keep = TRUE,
   sort_by = character(0),
   repeat_cols = character(0),
   wrap = FALSE
@@ -643,6 +645,8 @@ new_fr_body <- function(
       blank_after = vec_cast(blank_after, character()),
       page_by_bold = page_by_bold,
       page_by_align = page_by_align,
+      page_by_visible = page_by_visible,
+      group_keep = group_keep,
       sort_by = vec_cast(sort_by, character()),
       repeat_cols = vec_cast(repeat_cols, character()),
       wrap = wrap

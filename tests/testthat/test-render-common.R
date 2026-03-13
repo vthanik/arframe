@@ -1259,14 +1259,33 @@ test_that("build_keep_mask returns FALSE for non-existent columns", {
   expect_equal(build_keep_mask(data, "nonexistent"), c(FALSE, FALSE))
 })
 
-test_that("build_keep_mask large group uses orphan/widow minimums", {
-  # Group with 10 rows, orphan_min = 3, widow_min = 3
+test_that("build_keep_mask keeps entire group when it fits on page", {
+  # Group with 10 rows, default page_rows = Inf → all fit
   data <- data.frame(
     grp = rep("A", 10L),
     val = as.character(seq_len(10L)),
     stringsAsFactors = FALSE
   )
   mask <- build_keep_mask(data, "grp", orphan_min = 3L, widow_min = 3L)
+  # All rows except last get keepn (full chain)
+  expect_true(all(mask[1:9]))
+  expect_false(mask[10]) # Last row: no next row to keep with
+})
+
+test_that("build_keep_mask uses orphan/widow when group exceeds page", {
+  # Group with 10 rows, page_rows = 5 → group doesn't fit
+  data <- data.frame(
+    grp = rep("A", 10L),
+    val = as.character(seq_len(10L)),
+    stringsAsFactors = FALSE
+  )
+  mask <- build_keep_mask(
+    data,
+    "grp",
+    orphan_min = 3L,
+    widow_min = 3L,
+    page_rows = 5L
+  )
   # Top: rows 1-2 keep-with-next (orphan_min - 1 = 2 rows)
   expect_true(mask[1])
   expect_true(mask[2])
@@ -1278,13 +1297,19 @@ test_that("build_keep_mask large group uses orphan/widow minimums", {
   expect_false(mask[10]) # Last row: no next row to keep with
 })
 
-test_that("build_keep_mask respects custom orphan_min/widow_min", {
+test_that("build_keep_mask respects custom orphan_min/widow_min on oversized group", {
   data <- data.frame(
     grp = rep("A", 12L),
     val = as.character(seq_len(12L)),
     stringsAsFactors = FALSE
   )
-  mask <- build_keep_mask(data, "grp", orphan_min = 4L, widow_min = 2L)
+  mask <- build_keep_mask(
+    data,
+    "grp",
+    orphan_min = 4L,
+    widow_min = 2L,
+    page_rows = 8L
+  )
   # Top: rows 1-3 keep-with-next (orphan_min - 1 = 3)
   expect_true(all(mask[1:3]))
   expect_false(mask[4])

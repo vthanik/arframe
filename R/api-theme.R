@@ -70,6 +70,10 @@
 #' @param page_by_align Alignment for `page_by` group labels. One of
 #'   `"left"`, `"center"`, `"right"`, or `"decimal"`. `NULL` leaves unchanged.
 #'   See [fr_rows()] for details.
+#' @param page_by_visible Logical. Whether `page_by` group labels are
+#'   displayed. `NULL` leaves unchanged. See [fr_rows()] for details.
+#' @param group_keep Logical. Whether `group_by` groups are kept together
+#'   on the same page. `NULL` leaves unchanged. See [fr_rows()] for details.
 #' @param header Named list of header defaults. Currently supports:
 #'   * `span_gap` — Logical. Insert gap columns between adjacent spans
 #'     (default `TRUE`). See [fr_header()] for details.
@@ -195,6 +199,8 @@ fr_theme <- function(
   continuation = NULL,
   page_by_bold = NULL,
   page_by_align = NULL,
+  page_by_visible = NULL,
+  group_keep = NULL,
   header = NULL,
   footnote_separator = NULL
 ) {
@@ -259,6 +265,12 @@ fr_theme <- function(
       fr_env$valid_aligns,
       call = call
     )
+  }
+  if (!is.null(page_by_visible)) {
+    check_scalar_lgl(page_by_visible, arg = "page_by_visible", call = call)
+  }
+  if (!is.null(group_keep)) {
+    check_scalar_lgl(group_keep, arg = "group_keep", call = call)
   }
   if (!is.null(hlines)) {
     hlines <- match_arg_fr(hlines, names(fr_env$hline_presets), call = call)
@@ -332,6 +344,12 @@ fr_theme <- function(
   }
   if (!is.null(page_by_align)) {
     theme[["page_by_align"]] <- page_by_align
+  }
+  if (!is.null(page_by_visible)) {
+    theme[["page_by_visible"]] <- page_by_visible
+  }
+  if (!is.null(group_keep)) {
+    theme[["group_keep"]] <- group_keep
   }
   if (!is.null(footnote_separator)) {
     theme[["footnote_separator"]] <- footnote_separator

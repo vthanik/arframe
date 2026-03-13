@@ -206,23 +206,17 @@ calculate_page_budget <- function(spec) {
 }
 
 
-#' Assign rows to pages with group-aware orphan/widow control
+#' Compute \trpagebb break positions and skip rows
 #'
-#' Twips-based page-filling algorithm (tabularray-style). Tracks remaining
-#' vertical space in twips, subtracting each row's exact measured height.
-#' This handles multi-line wrapped rows precisely.
+#' Twips-based group-aware pagination. Returns `\trpagebb` row indices
+#' and suppressed row indices directly — no intermediate page assignment.
 #'
-#' Groups smaller than `orphan_min + widow_min` are kept together.
-#' Larger groups may split with two safeguards:
+#' Groups smaller than the page budget are **never split** across pages.
+#' They move to the next page as a whole via `\trpagebb`. Groups larger
+#' than one page are split with orphan/widow protection.
 #'
-#' - **Orphan/widow protection**: ensures at least `orphan_min` non-blank
-#'   rows at the bottom of a page and `widow_min` at the top of the next.
-#'   When a widow violation is detected (too few rows on the next page),
-#'   rows are stolen from the current page (but never below `orphan_min`).
-#' - **Blank suppression at page breaks**: trailing blank rows at the
-#'   bottom of a page and leading blank rows at the top of the next page
-#'   are suppressed (assigned page 0, not rendered). This prevents wasted
-#'   vertical space at page boundaries within a split group.
+#' Blank suppression: trailing blanks at page bottom and leading blanks
+#' at page top are added to `skip_rows` (not rendered).
 #'
 #' @param row_heights Integer vector — height in twips per body row.
 #' @param budget Integer — available body height in twips per page.
@@ -230,8 +224,10 @@ calculate_page_budget <- function(spec) {
 #' @param group_by Character vector of grouping column names.
 #' @param orphan_min Integer. Min rows to keep at bottom of page.
 #' @param widow_min Integer. Min rows to carry to next page.
-#' @return Integer vector — page number (1-based) for each row, or
-#'   0 for excluded trailing blank rows (not rendered).
+#' @return List with:
+#'   - `page_breaks`: integer vector of row indices for `\trpagebb`
+#'   - `skip_rows`: integer vector of row indices to suppress
+#'   - `n_pages`: total page count (1 + length(page_breaks))
 #' @noRd
 paginate_rows <- function(
   row_heights,
@@ -243,11 +239,11 @@ paginate_rows <- function(
 ) {
   nr <- length(row_heights)
   if (nr == 0L) {
-    return(integer(0))
+    return(list(page_breaks = integer(0), skip_rows = integer(0), n_pages = 0L))
   }
 
-  pages <- rep(0L, nr)
-  current_page <- 1L
+  page_breaks <- integer(0)
+  skip_rows <- integer(0)
   used <- 0L
 
   # Deferred blank accounting: trailing blanks between groups are not counted
@@ -290,37 +286,24 @@ paginate_rows <- function(
     # Deferred blank logic: 4 branches
     if (used + pending_blank_height + group_height <= budget) {
       # Branch 1: pending blank + group both fit on current page
-      if (!is.null(pending_blank_idx)) {
-        pages[pending_blank_idx] <- current_page
-      }
-      pages[group_rows] <- current_page
       used <- used + pending_blank_height + group_height
     } else if (used + group_height <= budget) {
-      # Branch 2: group fits without blank — blank suppressed at boundary
+      # Branch 2: group fits without blank — suppress blank at boundary
       if (!is.null(pending_blank_idx)) {
-        pages[pending_blank_idx] <- 0L
+        skip_rows <- c(skip_rows, pending_blank_idx)
       }
-      pages[group_rows] <- current_page
       used <- used + group_height
     } else if (group_height <= budget) {
-      # Branch 3: new page needed — blank stays on previous page
-      if (!is.null(pending_blank_idx)) {
-        pages[pending_blank_idx] <- current_page
-      }
-      current_page <- current_page + 1L
-      pages[group_rows] <- current_page
+      # Branch 3: group doesn't fit current page — move to next page
+      # Place \trpagebb on first row of group
+      page_breaks <- c(page_breaks, g_start)
       used <- group_height
     } else {
       # Branch 4: group larger than one page — split with orphan/widow
       # control and blank suppression at page boundaries.
-      #
-      # Strategy: greedy page-fill, then adjust for widow/orphan violations.
-      # Blank rows at page boundaries are suppressed (page 0 = not rendered).
-      if (!is.null(pending_blank_idx)) {
-        pages[pending_blank_idx] <- current_page
-      }
       if (used > 0L) {
-        current_page <- current_page + 1L
+        # Start group on a fresh page
+        page_breaks <- c(page_breaks, g_start)
         used <- 0L
       }
 
@@ -330,7 +313,7 @@ paginate_rows <- function(
       while (gi <= n_group) {
         # --- Skip leading blank rows at page start (suppress) ---
         while (gi <= n_group && is_blank[group_rows[gi]] && used == 0L) {
-          # Blank at page start: leave at page 0 (not rendered)
+          skip_rows <- c(skip_rows, group_rows[gi])
           gi <- gi + 1L
         }
         if (gi > n_group) {
@@ -350,33 +333,25 @@ paginate_rows <- function(
         }
         # [gi, scan_end - 1] fit on this page
 
-        # If everything remaining fits, assign all and exit
+        # If everything remaining fits, done with this group
         if (scan_end > n_group) {
-          for (idx in gi:n_group) {
-            pages[group_rows[idx]] <- current_page
-          }
           used <- scan_used
           break
         }
 
         # --- Trim trailing blank rows from this page's slice ---
-        # Helper: walk backward past blanks (reused after widow steal)
         trimmed_end <- scan_end - 1L
         while (trimmed_end > gi && is_blank[group_rows[trimmed_end]]) {
           trimmed_end <- trimmed_end - 1L
         }
 
         # --- Widow/orphan check ---
-        # Note: trimmed_end < n_group is guaranteed here because the
-        # "everything fits" guard above catches scan_end > n_group.
         n_data_remaining <- sum(
           !is_blank[group_rows[(trimmed_end + 1L):n_group]]
         )
         n_data_on_page <- sum(!is_blank[group_rows[gi:trimmed_end]])
 
         if (n_data_remaining > 0L && n_data_remaining < widow_min) {
-          # Widow violation: too few rows would land on the next page.
-          # Steal rows from this page to give the next page enough.
           steal <- widow_min - n_data_remaining
           if (n_data_on_page - steal >= orphan_min) {
             stolen <- 0L
@@ -393,13 +368,16 @@ paginate_rows <- function(
           }
         }
 
-        # --- Assign rows [gi, trimmed_end] to current page ---
-        for (idx in gi:trimmed_end) {
-          pages[group_rows[idx]] <- current_page
-        }
-
+        # Next page starts after trimmed_end
         gi <- trimmed_end + 1L
-        current_page <- current_page + 1L
+        # Skip leading blanks on next page and find \trpagebb target
+        while (gi <= n_group && is_blank[group_rows[gi]]) {
+          skip_rows <- c(skip_rows, group_rows[gi])
+          gi <- gi + 1L
+        }
+        if (gi <= n_group) {
+          page_breaks <- c(page_breaks, group_rows[gi])
+        }
         used <- 0L
       }
     }
@@ -414,6 +392,15 @@ paginate_rows <- function(
     }
   }
 
-  # Final pending blank stays at page 0 — excluded from rendering
-  pages
+  # Final pending blank — suppress (no group follows)
+  if (!is.null(pending_blank_idx)) {
+    skip_rows <- c(skip_rows, pending_blank_idx)
+  }
+
+  n_pages <- length(page_breaks) + 1L
+  list(
+    page_breaks = page_breaks,
+    skip_rows = unique(skip_rows),
+    n_pages = n_pages
+  )
 }
