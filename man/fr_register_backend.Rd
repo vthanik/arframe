@@ -23,7 +23,7 @@ Invisibly returns \code{NULL}.
 \description{
 Registers a new output format backend so that \code{\link[=fr_render]{fr_render()}} can produce
 output in that format. Third-party packages can use this to add HTML,
-DOCX, or other formats without modifying tlframe source.
+DOCX, or other formats without modifying arframe source.
 }
 \examples{
 # Register a stub HTML backend

@@ -9,28 +9,28 @@ vignette: >
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
-library(tlframe)
+library(arframe)
 ```
 
 *"I can make one table. How do I make 50?"*
 
 ## Four-tier defaults
 
-tlframe resolves settings from four tiers, lowest to highest priority:
+arframe resolves settings from four tiers, lowest to highest priority:
 
 ```
 +----------------------------------------------------------------------+
 | 4. Per-table verbs         fr_page(font_size = 10)          <- wins  |
 | 3. Session theme           fr_theme(font_size = 9)                   |
-| 2. Project config          _tlframe.yml                              |
-| 1. Package defaults        inst/defaults/_tlframe.yml       <- lowest|
+| 2. Project config          _arframe.yml                              |
+| 1. Package defaults        inst/defaults/_arframe.yml       <- lowest|
 +----------------------------------------------------------------------+
 ```
 
 | Tier | Scope | Set by | Survives restart |
 |------|-------|--------|-----------------|
 | Package defaults | All users | Package author | Always |
-| `_tlframe.yml` | Project/study | Lead programmer | Yes (file) |
+| `_arframe.yml` | Project/study | Lead programmer | Yes (file) |
 | `fr_theme()` | R session | Programmer | No |
 | Per-table verbs | One table | Programmer | No |
 
@@ -39,7 +39,7 @@ tlframe resolves settings from four tiers, lowest to highest priority:
 
 ## YAML configuration
 
-Place `_tlframe.yml` at your project root. Every table inherits these
+Place `_arframe.yml` at your project root. Every table inherits these
 settings:
 
 ```yaml
@@ -256,16 +256,16 @@ for (i in seq_len(nrow(metadata))) {
 rendering automatically falls back to Latin Modern fonts (built into
 tinytex/texlive). No extra font installation needed.
 
-**Custom font directory:** Set the `TLFRAME_FONT_DIR` environment variable
-to a directory containing `.ttf` or `.otf` files. tlframe passes this to
+**Custom font directory:** Set the `ARFRAME_FONT_DIR` environment variable
+to a directory containing `.ttf` or `.otf` files. arframe passes this to
 XeLaTeX via `OSFONTDIR`, making fonts discoverable by family name ---
 no system-wide installation required. This is ideal for Docker containers,
 CI pipelines, or project-local font directories:
 
 ```{r font-dir, eval = FALSE}
-# Shell: export TLFRAME_FONT_DIR=/path/to/project/fonts
+# Shell: export ARFRAME_FONT_DIR=/path/to/project/fonts
 # R:
-Sys.setenv(TLFRAME_FONT_DIR = "/path/to/project/fonts")
+Sys.setenv(ARFRAME_FONT_DIR = "/path/to/project/fonts")
 spec |> fr_page(font_family = "Courier New") |> fr_render("output.pdf")
 ```
 
@@ -323,8 +323,8 @@ spec2 <- tbl_demog |> fr_table() |>
 
 ```{r ci-batch, eval = FALSE}
 # render_all.R
-library(tlframe)
-fr_config("_tlframe.yml")
+library(arframe)
+fr_config("_arframe.yml")
 metadata <- read.csv("metadata.csv", stringsAsFactors = FALSE)
 for (i in seq_len(nrow(metadata))) {
   row <- metadata[i, ]
@@ -347,5 +347,5 @@ RUN R -e "install.packages('tinytex'); tinytex::install_tinytex()"
 
 # Optional: bundle project-specific fonts (e.g., Courier New)
 COPY fonts/ /opt/fonts/
-ENV TLFRAME_FONT_DIR=/opt/fonts
+ENV ARFRAME_FONT_DIR=/opt/fonts
 ```

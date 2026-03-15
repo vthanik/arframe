@@ -19,7 +19,7 @@ determines the format unless \code{format} is specified:
 \strong{tinytex}). First-time setup: call \code{\link[=fr_install_latex_deps]{fr_install_latex_deps()}} to
 install required LaTeX packages (notably \strong{tabularray}). For
 custom fonts without system-wide installation, set the
-\code{TLFRAME_FONT_DIR} environment variable (see \code{\link[=fr_page]{fr_page()}}).
+\code{ARFRAME_FONT_DIR} environment variable (see \code{\link[=fr_page]{fr_page()}}).
 }}
 
 \item{format}{Character scalar or \code{NULL}. Output format: \code{"rtf"}, \code{"latex"},
@@ -31,7 +31,7 @@ or \code{"pdf"}. If \code{NULL} (default), detected from the file extension of \
 Invisibly returns \code{path} (the output file path).
 }
 \description{
-The terminal verb in every \strong{tlframe} pipeline. Takes a fully configured
+The terminal verb in every \strong{arframe} pipeline. Takes a fully configured
 \code{fr_spec} object and writes the rendered table to a file. Supports RTF,
 LaTeX, and PDF output.
 

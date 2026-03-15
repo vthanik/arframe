@@ -2,25 +2,25 @@
 % Please edit documentation in R/api.R
 \name{fr_table}
 \alias{fr_table}
-\title{Start a tlframe Table Pipeline}
+\title{Start a arframe Table Pipeline}
 \usage{
 fr_table(data)
 }
 \arguments{
 \item{data}{A data frame (or tibble). Must already be presentation-ready:
 each row maps to one table row, each column to one table column. No
-summarisation is performed by tlframe.}
+summarisation is performed by arframe.}
 }
 \value{
 An \code{fr_spec} object. Pass it to any \verb{fr_*()} verb via \verb{|>}.
 }
 \description{
-\code{fr_table()} is the entry point for every \strong{tlframe} pipeline. It wraps a
+\code{fr_table()} is the entry point for every \strong{arframe} pipeline. It wraps a
 presentation-ready data frame in an \code{fr_spec} object, which you then
 configure with the \verb{fr_*()} verbs and finally render with \code{fr_render()}.
 
 The data frame should already contain the rows and columns you want to
-display — tlframe does not summarise or reshape data. Use packages such as
+display — arframe does not summarise or reshape data. Use packages such as
 \strong{gt}, \strong{Tplyr}, \strong{rtables}, \strong{tidytlg}, or \strong{tfrmt} to summarise your
 data, then hand the summary data frame off to \code{fr_table()}.
 }

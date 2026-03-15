@@ -28,7 +28,7 @@
 #' @param font_family Font family name. Defaults to the OS monospace font
 #'   (`"Courier New"` on Windows/macOS, `"Latin Modern Mono"` on Linux).
 #'   Regulatory submissions typically use Courier New 9pt.
-#'   Set the `TLFRAME_FONT_DIR` environment variable to a directory
+#'   Set the `ARFRAME_FONT_DIR` environment variable to a directory
 #'   containing `.ttf`/`.otf` files to make custom fonts available for
 #'   PDF rendering without system-wide installation. Ideal for Docker,
 #'   CI, or project-local fonts. See `vignette("automation")` for examples.
@@ -139,11 +139,11 @@
 #'   fr_table() |>
 #'   fr_page(paper = "legal", orientation = "landscape", margins = 1)
 #'
-#' ## ── Custom fonts via TLFRAME_FONT_DIR (Docker/CI) ────────────────────
+#' ## ── Custom fonts via ARFRAME_FONT_DIR (Docker/CI) ────────────────────
 #'
-#' # Set TLFRAME_FONT_DIR to a directory of .ttf/.otf files;
+#' # Set ARFRAME_FONT_DIR to a directory of .ttf/.otf files;
 #' # XeLaTeX discovers them by name --- no system install needed.
-#' # Sys.setenv(TLFRAME_FONT_DIR = "/path/to/fonts")
+#' # Sys.setenv(ARFRAME_FONT_DIR = "/path/to/fonts")
 #'
 #' @seealso [fr_pagehead()], [fr_pagefoot()] for running headers/footers,
 #'   [fr_rows()] for `page_by` / `group_by` row pagination,
@@ -314,7 +314,7 @@ fr_page <- function(
 #' spec |> fr_spacing(pagehead_after = 1L)   # one blank line
 #' spec |> fr_spacing(pagehead_after = 2L)   # two blank lines
 #' ```
-#' This can also be set in `_tlframe.yml`:
+#' This can also be set in `_arframe.yml`:
 #' ```yaml
 #' spacing:
 #'   pagehead_after: 1
@@ -585,7 +585,7 @@ collapse_chrome_text <- function(x, arg = caller_arg(x), call = caller_env()) {
 #' * `page_by_after = 1L` — one blank line after page-by label
 #'
 #' @section YAML configuration:
-#' All five spacing values can be set in `_tlframe.yml`:
+#' All five spacing values can be set in `_arframe.yml`:
 #' ```yaml
 #' spacing:
 #'   titles_after: 1

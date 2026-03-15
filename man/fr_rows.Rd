@@ -102,7 +102,7 @@ Controls how data rows are grouped, paginated, indented, and spaced.
 Calling \code{fr_rows()} again \strong{merges} with the previous row configuration:
 only the arguments you explicitly supply are changed.
 
-tlframe uses a two-level greedy pagination algorithm (identical for RTF and
+arframe uses a two-level greedy pagination algorithm (identical for RTF and
 PDF output):
 \itemize{
 \item \strong{\code{page_by}} forces a page break whenever the named column(s) change

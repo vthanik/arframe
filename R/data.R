@@ -536,7 +536,7 @@
 #' for Baseline, Value, and Change from Baseline. Multiple timepoints
 #' (Baseline, Week 12, Week 24) per parameter.
 #'
-#' Designed to demonstrate advanced tlframe features: `page_by` for
+#' Designed to demonstrate advanced arframe features: `page_by` for
 #' per-parameter pages, [fr_spans()] for two-level spanning headers,
 #' [fr_cols()] with `.n` data frame for per-group N-counts, and
 #' `fr_cols(.split = TRUE)` for wide layouts.

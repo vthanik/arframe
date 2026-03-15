@@ -6,20 +6,20 @@
 # Error conditions
 # ══════════════════════════════════════════════════════════════════════════════
 
-test_that("tlframe_error raises error with tlframe_error class", {
+test_that("arframe_error raises error with arframe_error class", {
   expect_error(
-    tlframe_error("test error"),
-    class = "tlframe_error"
+    arframe_error("test error"),
+    class = "arframe_error"
   )
 })
 
 
-test_that("tlframe_error supports cli interpolation via ...", {
+test_that("arframe_error supports cli interpolation via ...", {
   # cli_abort evaluates glue expressions in caller_env(), which is
-  # tlframe_error's frame -- not the test's frame. So {col_name} from
+  # arframe_error's frame -- not the test's frame. So {col_name} from
   # a local variable here is not visible. Use a literal .val instead.
   expect_error(
-    tlframe_error("Column {.val age} not found"),
+    arframe_error("Column {.val age} not found"),
     "age"
   )
 })

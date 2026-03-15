@@ -2,7 +2,7 @@
 % Please edit documentation in R/api.R
 \name{fr_figure}
 \alias{fr_figure}
-\title{Start a tlframe Figure Pipeline}
+\title{Start a arframe Figure Pipeline}
 \usage{
 fr_figure(plot, width = NULL, height = NULL, meta = NULL)
 }

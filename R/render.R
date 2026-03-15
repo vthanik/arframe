@@ -12,7 +12,7 @@
 #'
 #' @description
 #'
-#' The terminal verb in every **tlframe** pipeline. Takes a fully configured
+#' The terminal verb in every **arframe** pipeline. Takes a fully configured
 #' `fr_spec` object and writes the rendered table to a file. Supports RTF,
 #' LaTeX, and PDF output.
 #'
@@ -33,7 +33,7 @@
 #'     **tinytex**). First-time setup: call [fr_install_latex_deps()] to
 #'     install required LaTeX packages (notably **tabularray**). For
 #'     custom fonts without system-wide installation, set the
-#'     `TLFRAME_FONT_DIR` environment variable (see [fr_page()]).
+#'     `ARFRAME_FONT_DIR` environment variable (see [fr_page()]).
 #' @param format Character scalar or `NULL`. Output format: `"rtf"`, `"latex"`,
 #'   or `"pdf"`. If `NULL` (default), detected from the file extension of `path`.
 #' @param ... Reserved for future backend-specific options.
@@ -256,7 +256,7 @@ get_backend <- function(format, call = caller_env()) {
 #'
 #' Registers a new output format backend so that [fr_render()] can produce
 #' output in that format. Third-party packages can use this to add HTML,
-#' DOCX, or other formats without modifying tlframe source.
+#' DOCX, or other formats without modifying arframe source.
 #'
 #' @param format Character scalar. Format identifier (e.g., `"html"`).
 #' @param extensions Character vector. File extensions that map to this

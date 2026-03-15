@@ -1,4 +1,4 @@
-#' tlframe: Clinical Tables, Figures, and Listings for Regulatory Submission
+#' arframe: Clinical Tables, Figures, and Listings for Regulatory Submission
 #'
 #' @description
 #' Produces regulatory-grade clinical trial tables, listings, and figures
@@ -12,7 +12,7 @@
 #' ## Core Pipeline
 #'
 #' ```r
-#' # Study setup (once per program, or use _tlframe.yml)
+#' # Study setup (once per program, or use _arframe.yml)
 #' fr_theme(
 #'   font_size = 9, orientation = "landscape",
 #'   hlines = "header", header = list(bold = TRUE),

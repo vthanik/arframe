@@ -9,10 +9,10 @@ vignette: >
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
-library(tlframe)
+library(arframe)
 ```
 
-This article covers tlframe's internal architecture for developers who
+This article covers arframe's internal architecture for developers who
 want to understand the render pipeline, write custom backends, or
 contribute.
 

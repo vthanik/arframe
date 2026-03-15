@@ -85,7 +85,7 @@ By default, \strong{no gap} is inserted after the page header. Add one with
 spec |> fr_spacing(pagehead_after = 2L)   # two blank lines
 }\if{html}{\out{</div>}}
 
-This can also be set in \verb{_tlframe.yml}:
+This can also be set in \verb{_arframe.yml}:
 
 \if{html}{\out{<div class="sourceCode yaml">}}\preformatted{spacing:
   pagehead_after: 1

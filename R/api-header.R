@@ -116,7 +116,7 @@
 #' @seealso [fr_cols()] for column structure and N-counts, [fr_spans()] for
 #'   spanning headers, [fr_col()] for per-column `header_align` overrides,
 #'   [fr_style()] with `region = "header"` for cell-level overrides,
-#'   [fr_config()] for setting header defaults via `_tlframe.yml`.
+#'   [fr_config()] for setting header defaults via `_arframe.yml`.
 #'
 #' @export
 fr_header <- function(

@@ -1,12 +1,12 @@
 # ──────────────────────────────────────────────────────────────────────────────
 # config.R — YAML config loading, discovery, and merging
 #
-# tlframe is the first pharma TFL package with file-driven theming.
-# A single _tlframe.yml at the project root controls all table appearance.
+# arframe is the first pharma TFL package with file-driven theming.
+# A single _arframe.yml at the project root controls all table appearance.
 #
 # Three-tier precedence (lowest → highest):
-#   1. Package defaults   inst/defaults/_tlframe.yml
-#   2. Project config     _tlframe.yml (auto-discovered)
+#   1. Package defaults   inst/defaults/_arframe.yml
+#   2. Project config     _arframe.yml (auto-discovered)
 #   3. Session theme      fr_theme() / fr_theme_set()
 #   4. Per-table verbs    fr_page(), fr_header(), etc.
 # ──────────────────────────────────────────────────────────────────────────────
@@ -15,17 +15,17 @@
 # Config Discovery
 # ══════════════════════════════════════════════════════════════════════════════
 
-#' Find _tlframe.yml by searching up the directory tree
+#' Find _arframe.yml by searching up the directory tree
 #'
 #' Starts from `dir` and walks up parent directories looking for
-#' `_tlframe.yml`. Falls back to the package-bundled defaults.
+#' `_arframe.yml`. Falls back to the package-bundled defaults.
 #'
 #' @param dir Character scalar. Starting directory (default: working dir).
 #' @return Character scalar. Path to the config file found.
 #' @noRd
 find_config <- function(dir = getwd()) {
   repeat {
-    candidate <- file.path(dir, "_tlframe.yml")
+    candidate <- file.path(dir, "_arframe.yml")
     if (file.exists(candidate)) {
       return(normalizePath(candidate, mustWork = FALSE))
     }
@@ -36,7 +36,7 @@ find_config <- function(dir = getwd()) {
     dir <- parent
   }
   # Fallback: package-bundled defaults
-  system.file("defaults", "_tlframe.yml", package = "tlframe", mustWork = TRUE)
+  system.file("defaults", "_arframe.yml", package = "arframe", mustWork = TRUE)
 }
 
 
@@ -48,8 +48,8 @@ find_config <- function(dir = getwd()) {
 #'
 #' @description
 #'
-#' Loads study-level configuration from a `_tlframe.yml` file. If no file
-#' path is given, auto-discovers the nearest `_tlframe.yml` by searching
+#' Loads study-level configuration from a `_arframe.yml` file. If no file
+#' path is given, auto-discovers the nearest `_arframe.yml` by searching
 #' up the directory tree from the current working directory.
 #'
 #' The loaded config is stored internally and automatically applied to
@@ -57,30 +57,30 @@ find_config <- function(dir = getwd()) {
 #' priority** — they are overridden by [fr_theme()] (session-level) and
 #' per-table verbs like [fr_page()] or [fr_header()].
 #'
-#' **tlframe is the first pharma TFL package with file-driven theming.**
-#' Place a single `_tlframe.yml` at your project root and every table in
+#' **arframe is the first pharma TFL package with file-driven theming.**
+#' Place a single `_arframe.yml` at your project root and every table in
 #' the study inherits the same fonts, margins, headers, footers, and rules
 #' without any R code.
 #'
-#' @param file Character scalar or `NULL`. Path to a `_tlframe.yml` file.
+#' @param file Character scalar or `NULL`. Path to a `_arframe.yml` file.
 #'   `NULL` (default) triggers auto-discovery: searches up the directory
-#'   tree from `getwd()` until a `_tlframe.yml` is found, falling back to
-#'   the package-bundled defaults (`inst/defaults/_tlframe.yml`).
+#'   tree from `getwd()` until a `_arframe.yml` is found, falling back to
+#'   the package-bundled defaults (`inst/defaults/_arframe.yml`).
 #'
 #' @return Invisibly returns the parsed config as a named list.
 #'
 #' @section Four-tier precedence:
 #' Settings are resolved from lowest to highest priority:
 #' ```
-#' Package defaults  < _tlframe.yml  < fr_theme()  < per-table verbs
+#' Package defaults  < _arframe.yml  < fr_theme()  < per-table verbs
 #' ```
-#' Config from `_tlframe.yml` overrides package defaults. [fr_theme()]
+#' Config from `_arframe.yml` overrides package defaults. [fr_theme()]
 #' overrides config. Per-table verbs (e.g. `fr_page(font_size = 10)`)
 #' override everything.
 #'
 #' @section YAML file structure:
 #' ```yaml
-#' # _tlframe.yml — place at project root
+#' # _arframe.yml — place at project root
 #' page:
 #'   paper: letter
 #'   orientation: landscape
@@ -130,13 +130,13 @@ find_config <- function(dir = getwd()) {
 #' ```
 #'
 #' @section Auto-discovery:
-#' When `file = NULL`, `fr_config()` searches for `_tlframe.yml` starting
+#' When `file = NULL`, `fr_config()` searches for `_arframe.yml` starting
 #' from the current working directory and walking up parent directories.
 #' This mirrors the behaviour of `.Rprofile`, `_quarto.yml`, and
 #' `_pkgdown.yml`. A typical project layout:
 #' ```
 #' study-root/
-#'   _tlframe.yml         <-- found here
+#'   _arframe.yml         <-- found here
 #'   R/
 #'     t_demog.R
 #'   output/
@@ -145,14 +145,14 @@ find_config <- function(dir = getwd()) {
 #'
 #' @examples
 #' # Load the built-in package defaults config
-#' default_cfg <- system.file("defaults/_tlframe.yml", package = "tlframe")
+#' default_cfg <- system.file("defaults/_arframe.yml", package = "arframe")
 #' fr_config(default_cfg)
 #'
 #' # Inspect what was loaded
 #' fr_config_get()
 #'
 #' # Create a temporary custom config and load it
-#' yml <- file.path(tempdir(), "_tlframe.yml")
+#' yml <- file.path(tempdir(), "_arframe.yml")
 #' writeLines(c(
 #'   "page:",
 #'   "  orientation: landscape",
@@ -186,7 +186,7 @@ fr_config <- function(file = NULL) {
     cli_abort(
       c(
         "Config file not found: {.path {file}}.",
-        "i" = "Create a {.file _tlframe.yml} at your project root or pass an explicit path."
+        "i" = "Create a {.file _arframe.yml} at your project root or pass an explicit path."
       ),
       call = caller_env()
     )
@@ -208,19 +208,19 @@ fr_config <- function(file = NULL) {
 #' @description
 #'
 #' Returns the current config as a named list. If no config has been loaded
-#' yet, auto-discovers and loads the nearest `_tlframe.yml`.
+#' yet, auto-discovers and loads the nearest `_arframe.yml`.
 #'
 #' @return A named list of config settings. Top-level keys mirror the YAML
 #'   structure: `page`, `header`, `pagehead`, `pagefoot`, `rules`,
 #'   `footnotes`, `spacing`, `tokens`. Returns an empty list if no config
-#'   is loaded and no `_tlframe.yml` is found.
+#'   is loaded and no `_arframe.yml` is found.
 #'
 #' @examples
 #' # Start clean — no config loaded
 #' fr_config_reset()
 #'
 #' # Load config and inspect top-level keys
-#' default_cfg <- system.file("defaults/_tlframe.yml", package = "tlframe")
+#' default_cfg <- system.file("defaults/_arframe.yml", package = "arframe")
 #' fr_config(default_cfg)
 #' cfg <- fr_config_get()
 #' names(cfg)                    # page, header, pagehead, etc.
@@ -234,7 +234,7 @@ fr_config <- function(file = NULL) {
 #' fr_config_reset()
 #'
 #' # Load a custom config with specific tokens
-#' yml <- file.path(tempdir(), "_tlframe.yml")
+#' yml <- file.path(tempdir(), "_arframe.yml")
 #' writeLines(c(
 #'   "tokens:",
 #'   "  study_id: 'DEMO-001'"
@@ -270,7 +270,7 @@ fr_config_get <- function() {
 #'
 #' @examples
 #' # Load a config
-#' default_cfg <- system.file("defaults/_tlframe.yml", package = "tlframe")
+#' default_cfg <- system.file("defaults/_arframe.yml", package = "arframe")
 #' fr_config(default_cfg)
 #' fr_config_get()$page$orientation   # has a value
 #'

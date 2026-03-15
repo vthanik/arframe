@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # data-raw/create_adam_datasets.R
 #
-# Generates five synthetic CDISC ADaM datasets for use in tlframe examples
+# Generates five synthetic CDISC ADaM datasets for use in arframe examples
 # and documentation. All datasets share the same subjects and are internally
 # consistent.
 #

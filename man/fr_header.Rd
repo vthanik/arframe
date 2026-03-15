@@ -144,5 +144,5 @@ tbl_demog |>
 \code{\link[=fr_cols]{fr_cols()}} for column structure and N-counts, \code{\link[=fr_spans]{fr_spans()}} for
 spanning headers, \code{\link[=fr_col]{fr_col()}} for per-column \code{header_align} overrides,
 \code{\link[=fr_style]{fr_style()}} with \code{region = "header"} for cell-level overrides,
-\code{\link[=fr_config]{fr_config()}} for setting header defaults via \verb{_tlframe.yml}.
+\code{\link[=fr_config]{fr_config()}} for setting header defaults via \verb{_arframe.yml}.
 }

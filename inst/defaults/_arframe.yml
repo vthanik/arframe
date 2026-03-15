@@ -1,12 +1,12 @@
-# _tlframe.yml — Package default configuration (ICH E3 compliant)
+# _arframe.yml — Package default configuration (ICH E3 compliant)
 #
 # This file ships with the package and serves as the lowest-priority
-# fallback. Users override settings by placing their own _tlframe.yml
+# fallback. Users override settings by placing their own _arframe.yml
 # at the project root, using fr_theme(), or per-table verb calls.
 #
 # Precedence (lowest → highest):
 #   1. This file (package defaults)
-#   2. Project _tlframe.yml (auto-discovered)
+#   2. Project _arframe.yml (auto-discovered)
 #   3. fr_theme() / fr_theme_set() (session-level)
 #   4. Per-table verb overrides (fr_page(), fr_header(), etc.)
 

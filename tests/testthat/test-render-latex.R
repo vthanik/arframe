@@ -336,7 +336,7 @@ test_that("latex_sentinel_resolver handles all markup types", {
 test_that("latex_escape_and_resolve resolves sentinels within escaped text", {
   # Create a string with sentinel markers
   marked <- paste0("before\x01SUPER:1\x02after")
-  result <- tlframe:::latex_escape_and_resolve(marked)
+  result <- arframe:::latex_escape_and_resolve(marked)
   expect_true(grepl("before", result, fixed = TRUE))
   expect_true(grepl("textsuperscript", result, fixed = TRUE))
   expect_true(grepl("after", result, fixed = TRUE))

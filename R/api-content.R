@@ -117,7 +117,7 @@ normalize_content_entry <- function(
 #' spec |> fr_spacing(titles_after = 0L)   # no gap
 #' spec |> fr_spacing(titles_after = 2L)   # two blank lines
 #' ```
-#' This can also be set in `_tlframe.yml`:
+#' This can also be set in `_arframe.yml`:
 #' ```yaml
 #' spacing:
 #'   titles_after: 1
@@ -294,7 +294,7 @@ fr_titles <- function(
 #' spec |> fr_spacing(footnotes_before = 0L)   # no gap
 #' spec |> fr_spacing(footnotes_before = 2L)   # two blank lines
 #' ```
-#' This can also be set in `_tlframe.yml`:
+#' This can also be set in `_arframe.yml`:
 #' ```yaml
 #' spacing:
 #'   footnotes_before: 1

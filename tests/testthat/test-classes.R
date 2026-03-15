@@ -1409,10 +1409,10 @@ test_that("new_fr_rule with fg = NULL defaults to black", {
 })
 
 test_that("fr_pct and is_fr_pct work correctly", {
-  p <- tlframe:::fr_pct(0.5)
-  expect_true(tlframe:::is_fr_pct(p))
-  expect_false(tlframe:::is_fr_pct(0.5))
-  expect_false(tlframe:::is_fr_pct("50%"))
+  p <- arframe:::fr_pct(0.5)
+  expect_true(arframe:::is_fr_pct(p))
+  expect_false(arframe:::is_fr_pct(0.5))
+  expect_false(arframe:::is_fr_pct("50%"))
   expect_equal(unclass(p), 0.5)
 })
 

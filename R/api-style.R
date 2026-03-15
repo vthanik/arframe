@@ -207,7 +207,7 @@ fr_rows_matches <- function(
 #' @return An `fr_cell_style` object for use in [fr_styles()].
 #'
 #' @section Alignment model:
-#' tlframe separates alignment into two orthogonal axes, following the
+#' arframe separates alignment into two orthogonal axes, following the
 #' same model as RTF and LaTeX/tabularray:
 #'
 #' | Parameter | Axis       | Controls                          | Values                               |

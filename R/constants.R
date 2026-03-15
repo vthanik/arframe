@@ -24,7 +24,7 @@
 # Private environment — like ggplot2's ggplot_global
 # ══════════════════════════════════════════════════════════════════════════════
 
-#' Private environment for tlframe internal constants and state.
+#' Private environment for arframe internal constants and state.
 #' Not exported. Other packages should not manipulate this directly.
 #' @noRd
 fr_env <- new.env(parent = emptyenv())
@@ -120,7 +120,7 @@ fr_env$required_latex_pkgs <- c(
 
 #' Get custom font directory from environment variable
 #'
-#' Reads `TLFRAME_FONT_DIR` and returns the normalized path if the directory
+#' Reads `ARFRAME_FONT_DIR` and returns the normalized path if the directory
 #' exists and contains `.ttf` or `.otf` files. Returns `NULL` otherwise.
 #' No caching — `Sys.getenv()` + `dir.exists()` are trivially fast, and
 #' avoids stale cache if the user changes the env var mid-session.
@@ -128,7 +128,7 @@ fr_env$required_latex_pkgs <- c(
 #' @return Character scalar (normalized path) or `NULL`.
 #' @noRd
 get_font_dir <- function() {
-  dir <- Sys.getenv("TLFRAME_FONT_DIR", unset = "")
+  dir <- Sys.getenv("ARFRAME_FONT_DIR", unset = "")
   if (!nzchar(dir) || !dir.exists(dir)) {
     return(NULL)
   }
@@ -143,7 +143,7 @@ get_font_dir <- function() {
 #' Check if a system font is available for XeLaTeX
 #'
 #' Latin Modern fonts always return `TRUE` (built into tinytex/texlive).
-#' If `TLFRAME_FONT_DIR` is set and contains font files, returns `TRUE`
+#' If `ARFRAME_FONT_DIR` is set and contains font files, returns `TRUE`
 #' (trust the user — XeLaTeX resolves names via `OSFONTDIR`).
 #' On Windows, standard fonts are always present. On Linux/macOS, checks
 #' via `fc-list`.
@@ -412,7 +412,7 @@ paper_dims_twips <- function(paper = "letter", orientation = "landscape") {
 
 #' RTF border linestyle control words
 #'
-#' Maps tlframe linestyle names to RTF border style control words.
+#' Maps arframe linestyle names to RTF border style control words.
 #' Ref: Word 2007 RTF Specification §2.6.6.3.
 #' @noRd
 fr_env$linestyle_rtf <- list(

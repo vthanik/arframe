@@ -95,7 +95,7 @@ formatting.
 }
 \section{Alignment model}{
 
-tlframe separates alignment into two orthogonal axes, following the
+arframe separates alignment into two orthogonal axes, following the
 same model as RTF and LaTeX/tabularray:\tabular{llll}{
    Parameter \tab Axis \tab Controls \tab Values \cr
    \code{align} \tab Horizontal \tab Left-to-right text positioning \tab \code{"left"}, \code{"center"}, \code{"right"}, \code{"decimal"} \cr

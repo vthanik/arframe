@@ -7,6 +7,6 @@
 # * https://testthat.r-lib.org/articles/special-files.html
 
 library(testthat)
-library(tlframe)
+library(arframe)
 
-test_check("tlframe")
+test_check("arframe")

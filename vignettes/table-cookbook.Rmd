@@ -9,7 +9,7 @@ vignette: >
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
-library(tlframe)
+library(arframe)
 ```
 
 Production table programs for study TFRM-2024-001 using built-in datasets.
@@ -19,7 +19,7 @@ Every table follows ICH E3 numbering.
 
 Real programs don't repeat settings in every table. Define shared
 formatting **once** at the top of your study program (or in
-`_tlframe.yml`):
+`_arframe.yml`):
 
 ```{r study-setup}
 # ── Study-wide theme (set once, inherited by all tables) ──
@@ -447,11 +447,11 @@ fr_theme_reset()
 
 | Setting | Where it belongs | Why |
 |---------|-----------------|-----|
-| Font, orientation, margins | `fr_theme()` or `_tlframe.yml` | Same for every table |
-| Header bold/center, `.n_format` | `fr_theme()` or `_tlframe.yml` | Same for every table |
-| `fr_hlines("header")` | `fr_theme()` or `_tlframe.yml` | Same for every table |
-| Page headers/footers | `fr_theme()` or `_tlframe.yml` | Same for every table |
-| `footnote_separator = FALSE` | `fr_theme()` or `_tlframe.yml` | Same for every table |
+| Font, orientation, margins | `fr_theme()` or `_arframe.yml` | Same for every table |
+| Header bold/center, `.n_format` | `fr_theme()` or `_arframe.yml` | Same for every table |
+| `fr_hlines("header")` | `fr_theme()` or `_arframe.yml` | Same for every table |
+| Page headers/footers | `fr_theme()` or `_arframe.yml` | Same for every table |
+| `footnote_separator = FALSE` | `fr_theme()` or `_arframe.yml` | Same for every table |
 | N-count vectors | Named variables (`n_itt`, `n_safety`) | Reused across tables |
 | Titles, footnotes | Per-table | Unique to each table |
 | Column definitions | Per-table | Unique to each table |

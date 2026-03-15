@@ -3,13 +3,13 @@
 # ──────────────────────────────────────────────────────────────────────────────
 
 test_that("find_xelatex returns character or NULL", {
-  result <- tlframe:::find_xelatex()
+  result <- arframe:::find_xelatex()
   expect_true(is.null(result) || is.character(result))
 })
 
 test_that("find_xelatex returns a path when xelatex is on PATH", {
   skip_if(!nzchar(Sys.which("xelatex")), "XeLaTeX not available")
-  result <- tlframe:::find_xelatex()
+  result <- arframe:::find_xelatex()
   expect_type(result, "character")
   expect_true(nzchar(result))
 })
@@ -52,7 +52,7 @@ test_that("render_pdf cleans up temp files", {
 })
 
 test_that("compile_xelatex_doc errors when XeLaTeX not found (mocked)", {
-  local_mocked_bindings(find_xelatex = function() NULL, .package = "tlframe")
+  local_mocked_bindings(find_xelatex = function() NULL, .package = "arframe")
   # Also mock tinytex as unavailable
   local_mocked_bindings(
     requireNamespace = function(pkg, ...) {
@@ -70,7 +70,7 @@ test_that("compile_xelatex_doc errors when XeLaTeX not found (mocked)", {
     tmp_tex
   )
   expect_error(
-    tlframe:::compile_xelatex_doc(tmp_tex),
+    arframe:::compile_xelatex_doc(tmp_tex),
     "XeLaTeX not found"
   )
 })
@@ -119,7 +119,7 @@ test_that("report_latex_failure detects missing packages from log", {
   )
 
   expect_error(
-    tlframe:::report_latex_failure(log_file, "test.tex"),
+    arframe:::report_latex_failure(log_file, "test.tex"),
     "tabularray"
   )
 })
@@ -137,14 +137,14 @@ test_that("report_latex_failure shows log tail for non-package errors", {
   )
 
   expect_error(
-    tlframe:::report_latex_failure(log_file, "test.tex"),
+    arframe:::report_latex_failure(log_file, "test.tex"),
     "compilation failed"
   )
 })
 
 test_that("report_latex_failure handles missing log file", {
   expect_error(
-    tlframe:::report_latex_failure("/nonexistent/file.log", "test.tex"),
+    arframe:::report_latex_failure("/nonexistent/file.log", "test.tex"),
     "No log file found"
   )
 })
@@ -152,13 +152,13 @@ test_that("report_latex_failure handles missing log file", {
 
 # ── OSFONTDIR management in compile_xelatex_doc ──────────────────────────
 
-test_that("compile_xelatex_doc sets OSFONTDIR when TLFRAME_FONT_DIR is set", {
+test_that("compile_xelatex_doc sets OSFONTDIR when ARFRAME_FONT_DIR is set", {
   tmp <- tempfile("fontdir")
   dir.create(tmp)
   file.create(file.path(tmp, "test.ttf"))
   on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
 
-  withr::local_envvar(TLFRAME_FONT_DIR = tmp, OSFONTDIR = NA)
+  withr::local_envvar(ARFRAME_FONT_DIR = tmp, OSFONTDIR = NA)
 
   # Mock compilation to capture OSFONTDIR during execution
   captured_osfontdir <- NULL
@@ -172,7 +172,7 @@ test_that("compile_xelatex_doc sets OSFONTDIR when TLFRAME_FONT_DIR is set", {
     },
     .package = "base"
   )
-  local_mocked_bindings(find_xelatex = function() NULL, .package = "tlframe")
+  local_mocked_bindings(find_xelatex = function() NULL, .package = "arframe")
 
   tmp_tex <- tempfile(fileext = ".tex")
   on.exit(unlink(tmp_tex), add = TRUE)
@@ -180,7 +180,7 @@ test_that("compile_xelatex_doc sets OSFONTDIR when TLFRAME_FONT_DIR is set", {
     "\\documentclass{article}\\begin{document}hi\\end{document}",
     tmp_tex
   )
-  try(tlframe:::compile_xelatex_doc(tmp_tex), silent = TRUE)
+  try(arframe:::compile_xelatex_doc(tmp_tex), silent = TRUE)
 
   # OSFONTDIR should have been set during execution
   expect_true(!is.na(captured_osfontdir))
@@ -196,7 +196,7 @@ test_that("compile_xelatex_doc appends to existing OSFONTDIR", {
   file.create(file.path(tmp, "test.ttf"))
   on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
 
-  withr::local_envvar(TLFRAME_FONT_DIR = tmp, OSFONTDIR = "/existing/path")
+  withr::local_envvar(ARFRAME_FONT_DIR = tmp, OSFONTDIR = "/existing/path")
 
   captured_osfontdir <- NULL
   local_mocked_bindings(
@@ -209,7 +209,7 @@ test_that("compile_xelatex_doc appends to existing OSFONTDIR", {
     },
     .package = "base"
   )
-  local_mocked_bindings(find_xelatex = function() NULL, .package = "tlframe")
+  local_mocked_bindings(find_xelatex = function() NULL, .package = "arframe")
 
   tmp_tex <- tempfile(fileext = ".tex")
   on.exit(unlink(tmp_tex), add = TRUE)
@@ -217,7 +217,7 @@ test_that("compile_xelatex_doc appends to existing OSFONTDIR", {
     "\\documentclass{article}\\begin{document}hi\\end{document}",
     tmp_tex
   )
-  try(tlframe:::compile_xelatex_doc(tmp_tex), silent = TRUE)
+  try(arframe:::compile_xelatex_doc(tmp_tex), silent = TRUE)
 
   # Should contain both the font dir and existing path
   expect_true(grepl(normalizePath(tmp), captured_osfontdir, fixed = TRUE))

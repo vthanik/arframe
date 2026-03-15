@@ -19,22 +19,22 @@
 # fr_table — Pipeline entry point
 # ══════════════════════════════════════════════════════════════════════════════
 
-#' Start a tlframe Table Pipeline
+#' Start a arframe Table Pipeline
 #'
 #' @description
 #'
-#' `fr_table()` is the entry point for every **tlframe** pipeline. It wraps a
+#' `fr_table()` is the entry point for every **arframe** pipeline. It wraps a
 #' presentation-ready data frame in an `fr_spec` object, which you then
 #' configure with the `fr_*()` verbs and finally render with `fr_render()`.
 #'
 #' The data frame should already contain the rows and columns you want to
-#' display — tlframe does not summarise or reshape data. Use packages such as
+#' display — arframe does not summarise or reshape data. Use packages such as
 #' **gt**, **Tplyr**, **rtables**, **tidytlg**, or **tfrmt** to summarise your
 #' data, then hand the summary data frame off to `fr_table()`.
 #'
 #' @param data A data frame (or tibble). Must already be presentation-ready:
 #'   each row maps to one table row, each column to one table column. No
-#'   summarisation is performed by tlframe.
+#'   summarisation is performed by arframe.
 #'
 #' @return An `fr_spec` object. Pass it to any `fr_*()` verb via `|>`.
 #'
@@ -194,7 +194,7 @@ fr_table <- function(data) {
 }
 
 
-#' Start a tlframe Listing Pipeline
+#' Start a arframe Listing Pipeline
 #'
 #' @description
 #'
@@ -338,7 +338,7 @@ fr_listing <- function(data) {
 }
 
 
-#' Start a tlframe Figure Pipeline
+#' Start a arframe Figure Pipeline
 #'
 #' @description
 #'

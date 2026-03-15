@@ -193,7 +193,7 @@ test_that("config applies rules", {
 test_that("merge_config deep merges lists", {
   base <- list(a = 1, b = list(x = 10, y = 20), c = 3)
   over <- list(b = list(x = 99, z = 30), d = 4)
-  result <- tlframe:::merge_config(base, over)
+  result <- arframe:::merge_config(base, over)
 
   expect_equal(result$a, 1)
   expect_equal(result$b$x, 99)
@@ -203,17 +203,17 @@ test_that("merge_config deep merges lists", {
   expect_equal(result$d, 4)
 })
 
-test_that("find_config finds _tlframe.yml in parent directories", {
-  tmp_dir <- tempfile("tlframe_test_")
+test_that("find_config finds _arframe.yml in parent directories", {
+  tmp_dir <- tempfile("arframe_test_")
   dir.create(tmp_dir)
   sub_dir <- file.path(tmp_dir, "sub", "sub2")
   dir.create(sub_dir, recursive = TRUE)
   on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
 
   # Place config in parent
-  writeLines("page:\n  font_size: 7", file.path(tmp_dir, "_tlframe.yml"))
+  writeLines("page:\n  font_size: 7", file.path(tmp_dir, "_arframe.yml"))
 
-  found <- tlframe:::find_config(sub_dir)
+  found <- arframe:::find_config(sub_dir)
   expect_true(file.exists(found))
   cfg <- yaml::read_yaml(found)
   expect_equal(cfg$page$font_size, 7)
@@ -308,57 +308,57 @@ test_that("apply_config warns on invalid hlines preset", {
 
 # ── find_config ──────────────────────────────────────────────────────────────
 
-test_that("find_config falls back to package defaults when no _tlframe.yml exists", {
-  # Use a temp dir with no _tlframe.yml anywhere
+test_that("find_config falls back to package defaults when no _arframe.yml exists", {
+  # Use a temp dir with no _arframe.yml anywhere
 
-  tmp_dir <- tempfile("tlframe_empty_")
+  tmp_dir <- tempfile("arframe_empty_")
   dir.create(tmp_dir)
   on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
 
-  found <- tlframe:::find_config(tmp_dir)
+  found <- arframe:::find_config(tmp_dir)
   # Should resolve to the bundled package default
 
   expect_true(file.exists(found))
-  expect_true(grepl("defaults.*_tlframe\\.yml$", found))
+  expect_true(grepl("defaults.*_arframe\\.yml$", found))
 })
 
-test_that("find_config finds _tlframe.yml in the starting dir itself", {
-  tmp_dir <- tempfile("tlframe_here_")
+test_that("find_config finds _arframe.yml in the starting dir itself", {
+  tmp_dir <- tempfile("arframe_here_")
   dir.create(tmp_dir)
   on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
 
-  writeLines("page:\n  font_size: 6", file.path(tmp_dir, "_tlframe.yml"))
+  writeLines("page:\n  font_size: 6", file.path(tmp_dir, "_arframe.yml"))
 
-  found <- tlframe:::find_config(tmp_dir)
+  found <- arframe:::find_config(tmp_dir)
   expect_true(file.exists(found))
   cfg <- yaml::read_yaml(found)
   expect_equal(cfg$page$font_size, 6)
 })
 
 test_that("find_config walks up multiple directory levels", {
-  tmp_dir <- tempfile("tlframe_walk_")
+  tmp_dir <- tempfile("arframe_walk_")
   deep_dir <- file.path(tmp_dir, "a", "b", "c", "d")
   dir.create(deep_dir, recursive = TRUE)
   on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
 
-  writeLines("page:\n  font_size: 5", file.path(tmp_dir, "_tlframe.yml"))
+  writeLines("page:\n  font_size: 5", file.path(tmp_dir, "_arframe.yml"))
 
-  found <- tlframe:::find_config(deep_dir)
+  found <- arframe:::find_config(deep_dir)
   expect_true(file.exists(found))
   cfg <- yaml::read_yaml(found)
   expect_equal(cfg$page$font_size, 5)
 })
 
-test_that("find_config picks the closest _tlframe.yml", {
-  tmp_dir <- tempfile("tlframe_closest_")
+test_that("find_config picks the closest _arframe.yml", {
+  tmp_dir <- tempfile("arframe_closest_")
   sub_dir <- file.path(tmp_dir, "sub")
   dir.create(sub_dir, recursive = TRUE)
   on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
 
-  writeLines("page:\n  font_size: 99", file.path(tmp_dir, "_tlframe.yml"))
-  writeLines("page:\n  font_size: 42", file.path(sub_dir, "_tlframe.yml"))
+  writeLines("page:\n  font_size: 99", file.path(tmp_dir, "_arframe.yml"))
+  writeLines("page:\n  font_size: 42", file.path(sub_dir, "_arframe.yml"))
 
-  found <- tlframe:::find_config(sub_dir)
+  found <- arframe:::find_config(sub_dir)
   cfg <- yaml::read_yaml(found)
   expect_equal(cfg$page$font_size, 42)
 })
@@ -368,18 +368,18 @@ test_that("find_config picks the closest _tlframe.yml", {
 
 test_that("merge_config returns base when override is NULL", {
   base <- list(a = 1, b = 2)
-  expect_equal(tlframe:::merge_config(base, NULL), base)
+  expect_equal(arframe:::merge_config(base, NULL), base)
 })
 
 test_that("merge_config returns override when base is NULL", {
   over <- list(x = 10)
-  expect_equal(tlframe:::merge_config(NULL, over), over)
+  expect_equal(arframe:::merge_config(NULL, over), over)
 })
 
 test_that("merge_config scalar override replaces base scalar", {
   base <- list(a = 1, b = 2)
   over <- list(a = 99)
-  result <- tlframe:::merge_config(base, over)
+  result <- arframe:::merge_config(base, over)
   expect_equal(result$a, 99)
   expect_equal(result$b, 2)
 })
@@ -387,28 +387,28 @@ test_that("merge_config scalar override replaces base scalar", {
 test_that("merge_config override replaces list with scalar", {
   base <- list(a = list(x = 1, y = 2))
   over <- list(a = "flat")
-  result <- tlframe:::merge_config(base, over)
+  result <- arframe:::merge_config(base, over)
   expect_equal(result$a, "flat")
 })
 
 test_that("merge_config override replaces scalar with list", {
   base <- list(a = "flat")
   over <- list(a = list(x = 1))
-  result <- tlframe:::merge_config(base, over)
+  result <- arframe:::merge_config(base, over)
   expect_equal(result$a, list(x = 1))
 })
 
 test_that("merge_config deeply nested three levels", {
   base <- list(l1 = list(l2 = list(l3 = "base_val", keep = TRUE)))
   over <- list(l1 = list(l2 = list(l3 = "over_val", new = 42)))
-  result <- tlframe:::merge_config(base, over)
+  result <- arframe:::merge_config(base, over)
   expect_equal(result$l1$l2$l3, "over_val")
   expect_true(result$l1$l2$keep)
   expect_equal(result$l1$l2$new, 42)
 })
 
 test_that("merge_config with both NULL returns NULL", {
-  expect_null(tlframe:::merge_config(NULL, NULL))
+  expect_null(arframe:::merge_config(NULL, NULL))
 })
 
 
@@ -420,7 +420,7 @@ test_that("fr_config errors on non-character file argument", {
 
 test_that("fr_config errors on non-existent path with helpful message", {
   expect_error(
-    fr_config("/nonexistent/path/_tlframe.yml"),
+    fr_config("/nonexistent/path/_arframe.yml"),
     "not found"
   )
 })

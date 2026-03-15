@@ -9,7 +9,7 @@ vignette: >
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
-library(tlframe)
+library(arframe)
 ```
 
 `fr_cols()` defines what columns look like. `fr_header()` styles the header
@@ -323,7 +323,7 @@ spec <- tbl_demog |>
 | `fr_col(n = ...)` | Override one column |
 
 > **SAS:** This replaces `PROC FREQ` + `PROC TRANSPOSE` to build N headers,
-> then manual `COMPUTE` blocks to attach them. tlframe does it in one
+> then manual `COMPUTE` blocks to attach them. arframe does it in one
 > `fr_cols()` call.
 
 ## Spanning headers with `fr_spans()`
@@ -467,7 +467,7 @@ Supported helpers include `starts_with()`, `ends_with()`, `contains()`,
 | `fr_spans("label" = ...)` | Multi-level spans, tidyselect selection, or fine-grained `.hline`/`.gap` control |
 
 > **SAS:** Spanning headers require a `COMPUTE` block in PROC REPORT with
-> `STYLE(SPANNING)`. tlframe handles all positioning automatically from a
+> `STYLE(SPANNING)`. arframe handles all positioning automatically from a
 > single `fr_spans()` call.
 
 ## Column splitting

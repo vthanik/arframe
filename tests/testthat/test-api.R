@@ -350,7 +350,7 @@ test_that("fr_rows errors on column not in data", {
 test_that("page_by columns are auto-hidden when visible is NULL", {
   spec <- fr_table(df_ae) |>
     fr_rows(page_by = "AEBODSYS")
-  fspec <- tlframe:::finalize_spec(spec)
+  fspec <- arframe:::finalize_spec(spec)
   expect_false(fspec$columns[["AEBODSYS"]]$visible)
 })
 
@@ -358,7 +358,7 @@ test_that("explicit visible = TRUE on page_by column is respected", {
   spec <- fr_table(df_ae) |>
     fr_cols(AEBODSYS = fr_col(visible = TRUE)) |>
     fr_rows(page_by = "AEBODSYS")
-  fspec <- tlframe:::finalize_spec(spec)
+  fspec <- arframe:::finalize_spec(spec)
   expect_true(fspec$columns[["AEBODSYS"]]$visible)
 })
 

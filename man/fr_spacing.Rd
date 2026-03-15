@@ -80,7 +80,7 @@ minimal layout:
 
 \section{YAML configuration}{
 
-All five spacing values can be set in \verb{_tlframe.yml}:
+All five spacing values can be set in \verb{_arframe.yml}:
 
 \if{html}{\out{<div class="sourceCode yaml">}}\preformatted{spacing:
   titles_after: 1

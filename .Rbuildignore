@@ -17,3 +17,5 @@
 ^\.github$
 ^deploy-site\.sh$
 ^audit-findings\.md$
+^ARFRAME-PLAN\.txt$
+^ARBUILDER-PLAN\.md$

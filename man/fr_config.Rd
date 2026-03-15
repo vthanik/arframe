@@ -7,17 +7,17 @@
 fr_config(file = NULL)
 }
 \arguments{
-\item{file}{Character scalar or \code{NULL}. Path to a \verb{_tlframe.yml} file.
+\item{file}{Character scalar or \code{NULL}. Path to a \verb{_arframe.yml} file.
 \code{NULL} (default) triggers auto-discovery: searches up the directory
-tree from \code{getwd()} until a \verb{_tlframe.yml} is found, falling back to
-the package-bundled defaults (\verb{inst/defaults/_tlframe.yml}).}
+tree from \code{getwd()} until a \verb{_arframe.yml} is found, falling back to
+the package-bundled defaults (\verb{inst/defaults/_arframe.yml}).}
 }
 \value{
 Invisibly returns the parsed config as a named list.
 }
 \description{
-Loads study-level configuration from a \verb{_tlframe.yml} file. If no file
-path is given, auto-discovers the nearest \verb{_tlframe.yml} by searching
+Loads study-level configuration from a \verb{_arframe.yml} file. If no file
+path is given, auto-discovers the nearest \verb{_arframe.yml} by searching
 up the directory tree from the current working directory.
 
 The loaded config is stored internally and automatically applied to
@@ -25,8 +25,8 @@ every subsequent \code{\link[=fr_table]{fr_table()}} call. Config values are the
 priority} — they are overridden by \code{\link[=fr_theme]{fr_theme()}} (session-level) and
 per-table verbs like \code{\link[=fr_page]{fr_page()}} or \code{\link[=fr_header]{fr_header()}}.
 
-\strong{tlframe is the first pharma TFL package with file-driven theming.}
-Place a single \verb{_tlframe.yml} at your project root and every table in
+\strong{arframe is the first pharma TFL package with file-driven theming.}
+Place a single \verb{_arframe.yml} at your project root and every table in
 the study inherits the same fonts, margins, headers, footers, and rules
 without any R code.
 }
@@ -34,10 +34,10 @@ without any R code.
 
 Settings are resolved from lowest to highest priority:
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{Package defaults  < _tlframe.yml  < fr_theme()  < per-table verbs
+\if{html}{\out{<div class="sourceCode">}}\preformatted{Package defaults  < _arframe.yml  < fr_theme()  < per-table verbs
 }\if{html}{\out{</div>}}
 
-Config from \verb{_tlframe.yml} overrides package defaults. \code{\link[=fr_theme]{fr_theme()}}
+Config from \verb{_arframe.yml} overrides package defaults. \code{\link[=fr_theme]{fr_theme()}}
 overrides config. Per-table verbs (e.g. \code{fr_page(font_size = 10)})
 override everything.
 }
@@ -45,7 +45,7 @@ override everything.
 \section{YAML file structure}{
 
 
-\if{html}{\out{<div class="sourceCode yaml">}}\preformatted{# _tlframe.yml — place at project root
+\if{html}{\out{<div class="sourceCode yaml">}}\preformatted{# _arframe.yml — place at project root
 page:
   paper: letter
   orientation: landscape
@@ -97,13 +97,13 @@ tokens:                  # custom token values for pagehead/pagefoot
 
 \section{Auto-discovery}{
 
-When \code{file = NULL}, \code{fr_config()} searches for \verb{_tlframe.yml} starting
+When \code{file = NULL}, \code{fr_config()} searches for \verb{_arframe.yml} starting
 from the current working directory and walking up parent directories.
 This mirrors the behaviour of \code{.Rprofile}, \verb{_quarto.yml}, and
 \verb{_pkgdown.yml}. A typical project layout:
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{study-root/
-  _tlframe.yml         <-- found here
+  _arframe.yml         <-- found here
   R/
     t_demog.R
   output/
@@ -113,14 +113,14 @@ This mirrors the behaviour of \code{.Rprofile}, \verb{_quarto.yml}, and
 
 \examples{
 # Load the built-in package defaults config
-default_cfg <- system.file("defaults/_tlframe.yml", package = "tlframe")
+default_cfg <- system.file("defaults/_arframe.yml", package = "arframe")
 fr_config(default_cfg)
 
 # Inspect what was loaded
 fr_config_get()
 
 # Create a temporary custom config and load it
-yml <- file.path(tempdir(), "_tlframe.yml")
+yml <- file.path(tempdir(), "_arframe.yml")
 writeLines(c(
   "page:",
   "  orientation: landscape",

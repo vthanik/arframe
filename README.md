@@ -1,14 +1,14 @@
 
-# tlframe <img src="man/figures/logo.png" align="right" height="139" alt="" />
+# arframe <img src="man/figures/logo.png" align="right" height="139" alt="" />
 
 > Regulatory-grade clinical tables, listings, and figures in RTF and PDF from a single specification.
 
 <!-- badges: start -->
-[![R-CMD-check](https://img.shields.io/badge/R--CMD--check-passing-brightgreen)](https://github.com/vthanik/tlframe)
+[![R-CMD-check](https://img.shields.io/badge/R--CMD--check-passing-brightgreen)](https://github.com/vthanik/arframe)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 <!-- badges: end -->
 
-**tlframe** is an R package for pharmaceutical submissions. You describe the output once; tlframe renders both RTF and PDF — change the file extension, the output adapts.
+**arframe** is an R package for pharmaceutical submissions. You describe the output once; arframe renders both RTF and PDF — change the file extension, the output adapts.
 
 ```r
 tbl_demog |>
@@ -27,11 +27,11 @@ tbl_demog |>
   fr_render("Table_14_1_1.rtf")  # Change to .pdf — same output, different format
 ```
 
-## Why tlframe?
+## Why arframe?
 
-The pharmaverse has excellent tools for data derivation (admiral), analysis (Tplyr, rtables, tern), and table decoration (docorator, r2rtf). **tlframe occupies a different position**: it is a native rendering engine that writes RTF control words directly (from the RTF 1.9.1 spec) and generates LaTeX/tabularray natively, so both formats are first-class outputs.
+The pharmaverse has excellent tools for data derivation (admiral), analysis (Tplyr, rtables, tern), and table decoration (docorator, r2rtf). **arframe occupies a different position**: it is a native rendering engine that writes RTF control words directly (from the RTF 1.9.1 spec) and generates LaTeX/tabularray natively, so both formats are first-class outputs.
 
-| Capability | tlframe |
+| Capability | arframe |
 |---|---|
 | Native RTF rendering | Direct RTF 1.9.1 — no intermediate HTML or gt layer |
 | Native PDF rendering | Direct tabularray/XeLaTeX — no RMarkdown/Quarto pipeline |
@@ -47,17 +47,17 @@ The pharmaverse has excellent tools for data derivation (admiral), analysis (Tpl
 ```r
 # Install from GitHub
 # install.packages("pak")
-pak::pak("vthanik/tlframe")
+pak::pak("vthanik/arframe")
 ```
 
 ## Quick start
 
-tlframe ships with synthetic CDISC ADaM datasets so every example runs out of the box.
+arframe ships with synthetic CDISC ADaM datasets so every example runs out of the box.
 
 ### A table in 3 lines
 
 ```r
-library(tlframe)
+library(arframe)
 
 tbl_demog |> fr_table() |> fr_render(tempfile(fileext = ".rtf"))
 ```
@@ -135,7 +135,7 @@ tbl_ae_soc |>
 
 ## Pipeline verbs
 
-Every verb takes an `fr_spec`, returns a modified `fr_spec`. Verb order doesn't matter — tlframe resolves everything at render time.
+Every verb takes an `fr_spec`, returns a modified `fr_spec`. Verb order doesn't matter — arframe resolves everything at render time.
 
 | Verb | Purpose |
 |---|---|
@@ -194,8 +194,8 @@ spec |> fr_footnotes("{fr_super('a')} Post-hoc analysis")
 +----------------------------------------------------------------------+
 | 4. Per-table verbs         fr_page(font_size = 10)          <- wins  |
 | 3. Session theme           fr_theme(font_size = 9)                   |
-| 2. Project config          _tlframe.yml                              |
-| 1. Package defaults        inst/defaults/_tlframe.yml       <- lowest|
+| 2. Project config          _arframe.yml                              |
+| 1. Package defaults        inst/defaults/_arframe.yml       <- lowest|
 +----------------------------------------------------------------------+
 ```
 
@@ -235,7 +235,7 @@ fr_style_explain(spec, row = 1, col = "total")  # Debug style cascade
 
 ## Architecture
 
-tlframe writes output directly — no intermediate HTML, gt, or huxtable layer:
+arframe writes output directly — no intermediate HTML, gt, or huxtable layer:
 
 ```
 fr_spec → finalize_spec() → RTF backend → .rtf file
@@ -243,27 +243,27 @@ fr_spec → finalize_spec() → RTF backend → .rtf file
 ```
 
 - **RTF**: Writes RTF 1.9.1 control words directly. Cell-level formatting, decimal alignment, `\trkeep` group protection, R-side pagination.
-- **PDF**: Generates tabularray LaTeX, compiles with XeLaTeX. Falls back to Latin Modern fonts (built into tinytex) on Linux/Docker without Microsoft fonts. Set `TLFRAME_FONT_DIR` to a directory of `.ttf`/`.otf` files for project-local fonts without system-wide installation.
+- **PDF**: Generates tabularray LaTeX, compiles with XeLaTeX. Falls back to Latin Modern fonts (built into tinytex) on Linux/Docker without Microsoft fonts. Set `ARFRAME_FONT_DIR` to a directory of `.ttf`/`.otf` files for project-local fonts without system-wide installation.
 - **Font metrics**: Real Adobe Font Metrics (AFM) for 12 font variants — accurate column width estimation without rendering.
 
 ## Documentation
 
-- **[Get Started](https://vthanik.github.io/tlframe/articles/tlframe.html)** — Your first table to production-ready output
-- **[Columns & Headers](https://vthanik.github.io/tlframe/articles/columns-and-headers.html)** — Widths, alignment, N-counts, decimal alignment
-- **[Titles & Footnotes](https://vthanik.github.io/tlframe/articles/titles-and-footnotes.html)** — Titles, footnotes, inline markup
-- **[Rows & Page Layout](https://vthanik.github.io/tlframe/articles/rows-and-pages.html)** — Grouping, pagination, page chrome
-- **[Rules, Spans & Styles](https://vthanik.github.io/tlframe/articles/styling.html)** — Borders, spanning headers, conditional formatting
-- **[Table Cookbook](https://vthanik.github.io/tlframe/articles/table-cookbook.html)** — 8 complete ICH E3 table programs
-- **[Listings & Figures](https://vthanik.github.io/tlframe/articles/listings-and-figures.html)** — Patient listings and embedded figures
-- **[Automation & Batch](https://vthanik.github.io/tlframe/articles/automation.html)** — Themes, recipes, YAML config, batch rendering
-- **[Architecture](https://vthanik.github.io/tlframe/articles/architecture.html)** — Internal design and backend interface
+- **[Get Started](https://vthanik.github.io/arframe/articles/arframe.html)** — Your first table to production-ready output
+- **[Columns & Headers](https://vthanik.github.io/arframe/articles/columns-and-headers.html)** — Widths, alignment, N-counts, decimal alignment
+- **[Titles & Footnotes](https://vthanik.github.io/arframe/articles/titles-and-footnotes.html)** — Titles, footnotes, inline markup
+- **[Rows & Page Layout](https://vthanik.github.io/arframe/articles/rows-and-pages.html)** — Grouping, pagination, page chrome
+- **[Rules, Spans & Styles](https://vthanik.github.io/arframe/articles/styling.html)** — Borders, spanning headers, conditional formatting
+- **[Table Cookbook](https://vthanik.github.io/arframe/articles/table-cookbook.html)** — 8 complete ICH E3 table programs
+- **[Listings & Figures](https://vthanik.github.io/arframe/articles/listings-and-figures.html)** — Patient listings and embedded figures
+- **[Automation & Batch](https://vthanik.github.io/arframe/articles/automation.html)** — Themes, recipes, YAML config, batch rendering
+- **[Architecture](https://vthanik.github.io/arframe/articles/architecture.html)** — Internal design and backend interface
 
 ## Related packages
 
-tlframe is designed to complement the pharmaverse ecosystem:
+arframe is designed to complement the pharmaverse ecosystem:
 
 - **[admiral](https://pharmaverse.github.io/admiral/)** — ADaM dataset creation
-- **[Tplyr](https://atorus-research.github.io/Tplyr/)** / **[rtables](https://insightsengineering.github.io/rtables/)** — Analysis table summarization (upstream of tlframe)
+- **[Tplyr](https://atorus-research.github.io/Tplyr/)** / **[rtables](https://insightsengineering.github.io/rtables/)** — Analysis table summarization (upstream of arframe)
 - **[r2rtf](https://merck.github.io/r2rtf/)** — RTF-focused table rendering
 - **[docorator](https://gsk-biostatistics.github.io/docorator/)** — gt-based document decoration
 

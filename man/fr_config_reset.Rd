@@ -16,7 +16,7 @@ Call \code{\link[=fr_config]{fr_config()}} again to reload.
 }
 \examples{
 # Load a config
-default_cfg <- system.file("defaults/_tlframe.yml", package = "tlframe")
+default_cfg <- system.file("defaults/_arframe.yml", package = "arframe")
 fr_config(default_cfg)
 fr_config_get()$page$orientation   # has a value
 

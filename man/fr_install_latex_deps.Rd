@@ -10,7 +10,7 @@ fr_install_latex_deps()
 Invisible \code{NULL}. Called for its side effect of installing packages.
 }
 \description{
-Proactively installs all LaTeX packages needed by tlframe's PDF backend
+Proactively installs all LaTeX packages needed by arframe's PDF backend
 via \code{\link[tinytex:tlmgr]{tinytex::tlmgr_install()}}. Call this once after
 \code{tinytex::install_tinytex()} to ensure \code{\link[=fr_render]{fr_render()}} can produce PDFs
 without interruption.

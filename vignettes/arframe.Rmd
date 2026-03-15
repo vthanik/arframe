@@ -1,19 +1,19 @@
 ---
-title: "Get Started with tlframe"
+title: "Get Started with arframe"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Get Started with tlframe}
+  %\VignetteIndexEntry{Get Started with arframe}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
-library(tlframe)
+library(arframe)
 ```
 
-tlframe produces regulatory-grade clinical tables in RTF and PDF from a
-single pipeline. You describe *what* the table looks like; tlframe handles
+arframe produces regulatory-grade clinical tables in RTF and PDF from a
+single pipeline. You describe *what* the table looks like; arframe handles
 the rendering. No dplyr, no gt, no RMarkdown --- just data in, document out.
 
 ## Your first table
@@ -42,7 +42,7 @@ Start by setting shared formatting **once** with `fr_theme()` --- every table
 in the session inherits it:
 
 ```{r theme-setup}
-# ── Set once per study program (or use _tlframe.yml) ──
+# ── Set once per study program (or use _arframe.yml) ──
 fr_theme(
   font_size   = 9,
   font_family = "Courier New",
@@ -100,7 +100,7 @@ all of it. This is how production study programs work. See
 ## Table anatomy
 
 Every pharma table has the same structural regions. Here's how they map to
-tlframe verbs:
+arframe verbs:
 
 ```
 +------------------------------------------------------------------------+
@@ -131,7 +131,7 @@ tlframe verbs:
 ## The pipeline
 
 Every verb takes a spec, returns a spec. Verb order doesn't matter ---
-tlframe resolves everything (widths, N-count labels, page breaks) at
+arframe resolves everything (widths, N-count labels, page breaks) at
 render time.
 
 ```r

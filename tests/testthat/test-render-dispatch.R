@@ -11,25 +11,25 @@
 # ══════════════════════════════════════════════════════════════════════════════
 
 test_that("detect_format returns correct format for known extensions", {
-  expect_equal(tlframe:::detect_format("output.rtf"), "rtf")
-  expect_equal(tlframe:::detect_format("output.tex"), "latex")
-  expect_equal(tlframe:::detect_format("output.pdf"), "pdf")
+  expect_equal(arframe:::detect_format("output.rtf"), "rtf")
+  expect_equal(arframe:::detect_format("output.tex"), "latex")
+  expect_equal(arframe:::detect_format("output.pdf"), "pdf")
   # Case insensitive
 
-  expect_equal(tlframe:::detect_format("output.RTF"), "rtf")
-  expect_equal(tlframe:::detect_format("output.TEX"), "latex")
+  expect_equal(arframe:::detect_format("output.RTF"), "rtf")
+  expect_equal(arframe:::detect_format("output.TEX"), "latex")
 })
 
 test_that("detect_format errors on missing extension", {
   expect_error(
-    tlframe:::detect_format("output"),
+    arframe:::detect_format("output"),
     "Cannot detect format"
   )
 })
 
 test_that("detect_format errors on unsupported extension", {
   expect_error(
-    tlframe:::detect_format("output.docx"),
+    arframe:::detect_format("output.docx"),
     "Unsupported file extension"
   )
 })
@@ -40,13 +40,13 @@ test_that("detect_format errors on unsupported extension", {
 # ══════════════════════════════════════════════════════════════════════════════
 
 test_that("get_backend returns a backend for known formats", {
-  be <- tlframe:::get_backend("rtf")
+  be <- arframe:::get_backend("rtf")
   expect_true(is.function(be$render))
 })
 
 test_that("get_backend errors on unknown format", {
   expect_error(
-    tlframe:::get_backend("html_custom_xyz"),
+    arframe:::get_backend("html_custom_xyz"),
     "No backend available"
   )
 })
@@ -58,7 +58,7 @@ test_that("get_backend errors on unknown format", {
 
 test_that("fr_register_backend registers and fr_backends lists it", {
   # Save original and restore on exit
-  fe <- tlframe:::fr_env
+  fe <- arframe:::fr_env
   orig <- fe$backends
   on.exit(fe$backends <- orig, add = TRUE)
 
@@ -85,7 +85,7 @@ test_that("fr_register_backend validates inputs", {
 })
 
 test_that("registered backend is usable via fr_render", {
-  fe <- tlframe:::fr_env
+  fe <- arframe:::fr_env
   orig <- fe$backends
   on.exit(
     {
@@ -154,7 +154,7 @@ test_that("fr_render returns path invisibly on success", {
 
 test_that("finalize_spec auto-generates columns from data when none specified", {
   spec <- data.frame(a = 1:3, b = c("x", "y", "z")) |> fr_table()
-  result <- tlframe:::finalize_spec(spec)
+  result <- arframe:::finalize_spec(spec)
   # Should have columns for both 'a' and 'b'
   col_names <- names(result$columns)
   expect_true("a" %in% col_names)
@@ -168,7 +168,7 @@ test_that("finalize_spec generates columns for uncovered data columns", {
     fr_table() |>
     fr_cols(a = fr_col("Col A", width = 2))
 
-  result <- tlframe:::finalize_spec(spec)
+  result <- arframe:::finalize_spec(spec)
   expect_true("b" %in% names(result$columns))
   expect_true("c" %in% names(result$columns))
   # Original configured column should still be present
@@ -183,7 +183,7 @@ test_that("finalize_spec generates columns for uncovered data columns", {
 
 test_that("finalize_spec resolves all column widths to numeric values", {
   spec <- data.frame(x = 1:5, y = letters[1:5]) |> fr_table()
-  result <- tlframe:::finalize_spec(spec)
+  result <- arframe:::finalize_spec(spec)
   for (col in result$columns) {
     expect_true(is.numeric(col$width), info = paste("column", col$id))
     expect_true(col$width > 0, info = paste("column", col$id))
@@ -196,7 +196,7 @@ test_that("finalize_spec skips width distribution when col_split is enabled", {
     fr_table() |>
     fr_cols(a = fr_col(stub = TRUE), .split = TRUE)
 
-  result <- tlframe:::finalize_spec(spec)
+  result <- arframe:::finalize_spec(spec)
   # Widths should be individual estimates, not distributed
   total_width <- sum(vapply(
     Filter(function(c) !isFALSE(c$visible), result$columns),
@@ -224,7 +224,7 @@ test_that("finalize_spec sorts data by sort_by columns", {
     fr_table() |>
     fr_rows(sort_by = "id")
 
-  result <- tlframe:::finalize_spec(spec)
+  result <- arframe:::finalize_spec(spec)
   expect_equal(result$data$id, c("A", "B", "C"))
   expect_equal(result$data$val, c(1, 2, 3))
 })
@@ -238,7 +238,7 @@ test_that("finalize_spec sorts by multiple sort_by columns", {
     fr_table() |>
     fr_rows(sort_by = c("grp", "val"))
 
-  result <- tlframe:::finalize_spec(spec)
+  result <- arframe:::finalize_spec(spec)
   expect_equal(result$data$grp, c("A", "A", "B", "B"))
   expect_equal(result$data$val, c(1, 2, 1, 2))
 })
@@ -257,7 +257,7 @@ test_that("finalize_spec suppresses repeated values in repeat_cols", {
     fr_table() |>
     fr_rows(repeat_cols = "subj")
 
-  result <- tlframe:::finalize_spec(spec)
+  result <- arframe:::finalize_spec(spec)
   expect_equal(result$data$subj, c("S01", "", "S02", ""))
 })
 
@@ -270,7 +270,7 @@ test_that("repeat_cols handles NAs without error", {
     fr_table() |>
     fr_rows(repeat_cols = "subj")
 
-  result <- tlframe:::finalize_spec(spec)
+  result <- arframe:::finalize_spec(spec)
   # Should not error; NAs handled
   expect_equal(nrow(result$data), 4L)
 })
@@ -289,7 +289,7 @@ test_that("finalize_spec inserts blank rows at blank_after boundaries", {
     fr_table() |>
     fr_rows(blank_after = "grp")
 
-  result <- tlframe:::finalize_spec(spec)
+  result <- arframe:::finalize_spec(spec)
   # Should have inserted a blank row between A and B groups
   expect_true(nrow(result$data) > 4L)
   # Check that one blank row exists (all empty)
@@ -306,7 +306,7 @@ test_that("group_by auto-implies blank_after", {
     fr_table() |>
     fr_rows(group_by = "cat")
 
-  result <- tlframe:::finalize_spec(spec)
+  result <- arframe:::finalize_spec(spec)
   # group_by unions with blank_after -> blank rows inserted
   expect_true(nrow(result$data) > 4L)
 })
@@ -325,7 +325,7 @@ test_that("page_by columns are auto-hidden (visible = FALSE)", {
     fr_table() |>
     fr_rows(page_by = "param")
 
-  result <- tlframe:::finalize_spec(spec)
+  result <- arframe:::finalize_spec(spec)
   expect_false(result$columns$param$visible)
   expect_true(result$columns$val$visible)
 })
@@ -349,7 +349,7 @@ test_that("finalize_spec resolves global numeric N-counts in header labels", {
       .n_format = "{label}\n(N={n})"
     )
 
-  result <- tlframe:::finalize_spec(spec)
+  result <- arframe:::finalize_spec(spec)
   expect_equal(result$columns$trt1$label, "Treatment A\n(N=50)")
   expect_equal(result$columns$trt2$label, "Treatment B\n(N=48)")
 })
@@ -364,7 +364,7 @@ test_that("fr_header(align) propagates to columns without per-column override", 
     fr_table() |>
     fr_header(align = "center")
 
-  result <- tlframe:::finalize_spec(spec)
+  result <- arframe:::finalize_spec(spec)
   expect_equal(result$columns$a$header_align, "center")
   expect_equal(result$columns$b$header_align, "center")
 })
@@ -382,8 +382,8 @@ test_that("finalize_spec resolves percentage widths to inches", {
       b = fr_col("B", width = fr_pct(0.50))
     )
 
-  result <- tlframe:::finalize_spec(spec)
-  printable_w <- tlframe:::printable_area_inches(spec$page)[["width"]]
+  result <- arframe:::finalize_spec(spec)
+  printable_w <- arframe:::printable_area_inches(spec$page)[["width"]]
   expect_equal(result$columns$a$width, 0.5 * printable_w, tolerance = 0.01)
   expect_equal(result$columns$b$width, 0.5 * printable_w, tolerance = 0.01)
 })
@@ -395,8 +395,8 @@ test_that("finalize_spec resolves percentage widths to inches", {
 
 test_that("prepare_pages returns single group when no page_by", {
   spec <- data.frame(x = 1:3) |> fr_table()
-  spec <- tlframe:::finalize_spec(spec)
-  pages <- tlframe:::prepare_pages(spec)
+  spec <- arframe:::finalize_spec(spec)
+  pages <- arframe:::prepare_pages(spec)
 
   expect_length(pages, 1L)
   expect_null(pages[[1]]$group_label)
@@ -412,8 +412,8 @@ test_that("prepare_pages splits by page_by column preserving data order", {
     fr_table() |>
     fr_rows(page_by = "param")
 
-  spec <- tlframe:::finalize_spec(spec)
-  pages <- tlframe:::prepare_pages(spec)
+  spec <- arframe:::finalize_spec(spec)
+  pages <- arframe:::prepare_pages(spec)
 
   expect_length(pages, 2L)
   # Order preserved: BP first (appears first in data)
@@ -433,8 +433,8 @@ test_that("prepare_pages with multiple page_by columns creates composite keys", 
     fr_table() |>
     fr_rows(page_by = c("visit", "param"))
 
-  spec <- tlframe:::finalize_spec(spec)
-  pages <- tlframe:::prepare_pages(spec)
+  spec <- arframe:::finalize_spec(spec)
+  pages <- arframe:::prepare_pages(spec)
 
   expect_length(pages, 4L)
   expect_equal(pages[[1]]$group_label, "V1 / BP")
@@ -457,8 +457,8 @@ test_that("fr_rows errors on non-existent page_by column", {
 
 test_that("calculate_col_panels returns single panel when col_split = FALSE", {
   spec <- data.frame(a = 1, b = 2, c = 3) |> fr_table()
-  spec <- tlframe:::finalize_spec(spec)
-  panels <- tlframe:::calculate_col_panels(spec)
+  spec <- arframe:::finalize_spec(spec)
+  panels <- arframe:::calculate_col_panels(spec)
 
   expect_length(panels, 1L)
   vis <- names(Filter(function(c) !isFALSE(c$visible), spec$columns))
@@ -478,8 +478,8 @@ test_that("calculate_col_panels returns single panel when cols fit", {
       .split = TRUE
     )
 
-  spec <- tlframe:::finalize_spec(spec)
-  panels <- tlframe:::calculate_col_panels(spec)
+  spec <- arframe:::finalize_spec(spec)
+  panels <- arframe:::calculate_col_panels(spec)
 
   # Total width (1+1=2) fits in page, so single panel
   expect_length(panels, 1L)
@@ -505,8 +505,8 @@ test_that("calculate_col_panels splits into multiple panels for wide tables", {
     spec$columns[[nm]]$id <- nm
   }
 
-  spec <- tlframe:::finalize_spec(spec)
-  panels <- tlframe:::calculate_col_panels(spec)
+  spec <- arframe:::finalize_spec(spec)
+  panels <- arframe:::calculate_col_panels(spec)
 
   # With portrait page (~6.5" printable) and stub=1.5", available=5"
   # Each data col is 1.5" -> 3 per panel -> ~4 panels
@@ -527,9 +527,9 @@ test_that("calculate_col_panels errors when stub columns exceed page width", {
       .split = TRUE
     )
 
-  spec <- tlframe:::finalize_spec(spec)
+  spec <- arframe:::finalize_spec(spec)
   expect_error(
-    tlframe:::calculate_col_panels(spec),
+    arframe:::calculate_col_panels(spec),
     "Stub columns exceed"
   )
 })
@@ -552,7 +552,7 @@ test_that("fit_panel_widths scales data columns to fill printable area", {
       .split = TRUE
     )
 
-  spec <- tlframe:::finalize_spec(spec)
+  spec <- arframe:::finalize_spec(spec)
 
   # Create panels manually
   col_panels <- list(
@@ -560,9 +560,9 @@ test_that("fit_panel_widths scales data columns to fill printable area", {
     c("stub", "d3", "d4")
   )
 
-  result <- tlframe:::fit_panel_widths(spec, col_panels)
+  result <- arframe:::fit_panel_widths(spec, col_panels)
 
-  printable_w <- tlframe:::printable_area_inches(spec$page)[["width"]]
+  printable_w <- arframe:::printable_area_inches(spec$page)[["width"]]
   available <- printable_w - 1.5 # minus stub width
 
   # Stub should keep original width
@@ -588,9 +588,9 @@ test_that("fit_panel_widths preserves proportional ratios", {
       .split = TRUE
     )
 
-  spec <- tlframe:::finalize_spec(spec)
+  spec <- arframe:::finalize_spec(spec)
   col_panels <- list(c("stub", "d1", "d2"))
-  result <- tlframe:::fit_panel_widths(spec, col_panels)
+  result <- arframe:::fit_panel_widths(spec, col_panels)
 
   # d2 should still be twice as wide as d1
   ratio <- result$columns$d2$width / result$columns$d1$width
@@ -607,7 +607,7 @@ test_that("finalize_labels skips non-numeric .n (per-group list)", {
   spec$columns_meta$n <- list(grp1 = c("a" = 10), grp2 = c("a" = 20))
   spec$columns_meta$n_format <- "{label}\n(N={n})"
 
-  result <- suppressWarnings(tlframe:::finalize_spec(spec))
+  result <- suppressWarnings(arframe:::finalize_spec(spec))
   # Per-group list n is not resolved globally — labels should be unchanged
   expect_false(grepl("N=", result$columns$a$label %||% "a"))
 })
@@ -618,7 +618,7 @@ test_that("finalize_labels handles unmatched .n labels gracefully", {
   spec$columns_meta$n_format <- "{label}\n(N={n})"
 
   # Should not error, just skip the non-matching column
-  result <- tlframe:::finalize_spec(spec)
+  result <- arframe:::finalize_spec(spec)
   expect_true(inherits(result, "fr_spec"))
 })
 
@@ -629,8 +629,8 @@ test_that("finalize_labels handles unmatched .n labels gracefully", {
 
 test_that("resolve_group_labels returns NULL when no format set", {
   spec <- data.frame(a = 1) |> fr_table()
-  spec <- tlframe:::finalize_spec(spec)
-  result <- tlframe:::resolve_group_labels(spec, spec$data, NULL)
+  spec <- arframe:::finalize_spec(spec)
+  result <- arframe:::resolve_group_labels(spec, spec$data, NULL)
   expect_null(result)
 })
 
@@ -643,9 +643,9 @@ test_that("resolve_group_labels handles per-group list .n", {
       .n = list("GroupX" = c("Col A" = 30, "Col B" = 25)),
       .n_format = "{label}\n(N={n})"
     )
-  spec <- suppressWarnings(tlframe:::finalize_spec(spec))
+  spec <- suppressWarnings(arframe:::finalize_spec(spec))
 
-  result <- tlframe:::resolve_group_labels(spec, spec$data, "GroupX")
+  result <- arframe:::resolve_group_labels(spec, spec$data, "GroupX")
   # Now returns list(columns, spans)
   expect_true(is.list(result))
   expect_true("a" %in% names(result$columns))
@@ -656,9 +656,9 @@ test_that("resolve_group_labels returns NULL for unknown group in list .n", {
   spec <- data.frame(a = 1) |> fr_table()
   spec$columns_meta$n <- list("GroupA" = c("a" = 10))
   spec$columns_meta$n_format <- "{label}\n(N={n})"
-  spec <- suppressWarnings(tlframe:::finalize_spec(spec))
+  spec <- suppressWarnings(arframe:::finalize_spec(spec))
 
-  result <- tlframe:::resolve_group_labels(spec, spec$data, "UnknownGroup")
+  result <- arframe:::resolve_group_labels(spec, spec$data, "UnknownGroup")
   expect_null(result)
 })
 
@@ -673,10 +673,10 @@ test_that("resolve_group_labels handles 2-col df .n resolved globally", {
       .n_format = "{label}\n(N={n})"
     )
 
-  spec <- tlframe:::finalize_spec(spec)
+  spec <- arframe:::finalize_spec(spec)
 
   # 2-col df → already resolved globally, resolve_group_labels returns NULL
-  result <- tlframe:::resolve_group_labels(spec, spec$data, "SomeGroup")
+  result <- arframe:::resolve_group_labels(spec, spec$data, "SomeGroup")
   expect_null(result)
 
   # Labels should be resolved globally
@@ -694,7 +694,7 @@ test_that("match_trt_to_columns matches treatment labels to columns", {
     col_b = fr_col("Active")
   )
   counts <- c("Placebo" = 45L, "Active" = 44L)
-  result <- tlframe:::match_trt_to_columns(counts, columns)
+  result <- arframe:::match_trt_to_columns(counts, columns)
   expect_equal(result[["col_a"]], 45L)
   expect_equal(result[["col_b"]], 44L)
 })
@@ -702,7 +702,7 @@ test_that("match_trt_to_columns matches treatment labels to columns", {
 test_that("match_trt_to_columns is case-insensitive", {
   columns <- list(col_a = fr_col("PLACEBO"))
   counts <- c("placebo" = 45L)
-  result <- tlframe:::match_trt_to_columns(counts, columns)
+  result <- arframe:::match_trt_to_columns(counts, columns)
   expect_equal(result[["col_a"]], 45L)
 })
 
@@ -715,7 +715,7 @@ test_that("match_trt_to_columns only matches column labels (not spanners)", {
     cfb_pbo = fr_col("CFB")
   )
   counts <- c("Placebo" = 45L)
-  result <- tlframe:::match_trt_to_columns(counts, columns)
+  result <- arframe:::match_trt_to_columns(counts, columns)
   # No column label matches "Placebo" → empty result
 
   expect_length(result, 0L)
@@ -724,7 +724,7 @@ test_that("match_trt_to_columns only matches column labels (not spanners)", {
 test_that("match_trt_to_columns works for direct column label match", {
   columns <- list(col_a = fr_col("Placebo"), col_b = fr_col("Active"))
   counts <- c("Placebo" = 45L, "Active" = 44L)
-  result <- tlframe:::match_trt_to_columns(counts, columns)
+  result <- arframe:::match_trt_to_columns(counts, columns)
   expect_equal(result[["col_a"]], 45L)
   expect_equal(result[["col_b"]], 44L)
 })
@@ -746,7 +746,7 @@ test_that("match_trt_to_spans matches treatment labels to spanner labels", {
     list(label = "Active", columns = c("bl_act", "val_act"), level = 1L)
   )
   counts <- c("Placebo" = 45L, "Active" = 44L)
-  result <- tlframe:::match_trt_to_spans(counts, columns, spans)
+  result <- arframe:::match_trt_to_spans(counts, columns, spans)
   # Keyed by span label
   expect_equal(result[["Placebo"]], 45L)
   expect_equal(result[["Active"]], 44L)
@@ -761,7 +761,7 @@ test_that("match_trt_to_spans skips treatments that match column labels", {
     list(label = "Placebo", columns = c("col_b"), level = 1L)
   )
   counts <- c("Placebo" = 45L)
-  result <- tlframe:::match_trt_to_spans(counts, columns, spans)
+  result <- arframe:::match_trt_to_spans(counts, columns, spans)
   # "Placebo" matches a column label → skipped for span matching
   expect_length(result, 0L)
 })
@@ -772,14 +772,14 @@ test_that("match_trt_to_spans is case-insensitive", {
     list(label = "PLACEBO", columns = c("bl"), level = 1L)
   )
   counts <- c("placebo" = 45L)
-  result <- tlframe:::match_trt_to_spans(counts, columns, spans)
+  result <- arframe:::match_trt_to_spans(counts, columns, spans)
   expect_equal(result[["PLACEBO"]], 45L)
 })
 
 test_that("match_trt_to_spans returns empty when no spans", {
   columns <- list(col_a = fr_col("A"))
   counts <- c("Test" = 10L)
-  result <- tlframe:::match_trt_to_spans(counts, columns, list())
+  result <- arframe:::match_trt_to_spans(counts, columns, list())
   expect_length(result, 0L)
 })
 
@@ -795,8 +795,8 @@ test_that("mixed column + spanner N-count matching works together", {
   )
   counts <- c("Placebo" = 45L, "Total" = 100L)
 
-  col_result <- tlframe:::match_trt_to_columns(counts, columns)
-  span_result <- tlframe:::match_trt_to_spans(counts, columns, spans)
+  col_result <- arframe:::match_trt_to_columns(counts, columns)
+  span_result <- arframe:::match_trt_to_spans(counts, columns, spans)
 
   # "Total" matches column label directly
   expect_equal(col_result[["total"]], 100L)
@@ -817,7 +817,7 @@ test_that("insert_blank_after inserts blank rows at group boundaries", {
     val = as.character(1:5),
     stringsAsFactors = FALSE
   )
-  result <- tlframe:::insert_blank_after(data, "grp")
+  result <- arframe:::insert_blank_after(data, "grp")
 
   # 2 boundaries (A->B, B->C) -> 2 blank rows -> 7 total
   expect_equal(nrow(result$data), 7L)
@@ -826,14 +826,14 @@ test_that("insert_blank_after inserts blank rows at group boundaries", {
 
 test_that("insert_blank_after returns data unchanged with no blank_cols", {
   data <- data.frame(x = 1:3)
-  result <- tlframe:::insert_blank_after(data, character(0))
+  result <- arframe:::insert_blank_after(data, character(0))
   expect_equal(nrow(result$data), 3L)
   expect_equal(result$insert_positions, integer(0))
 })
 
 test_that("insert_blank_after handles single-row data", {
   data <- data.frame(x = 1)
-  result <- tlframe:::insert_blank_after(data, "x")
+  result <- arframe:::insert_blank_after(data, "x")
   expect_equal(nrow(result$data), 1L)
   expect_equal(result$insert_positions, integer(0))
 })
@@ -854,7 +854,7 @@ test_that("inject_span_gaps adds gap columns between adjacent spans", {
     ) |>
     fr_spans("Span1" = c("a", "b"), "Span2" = c("c", "d"))
 
-  spec <- tlframe:::finalize_spec(spec)
+  spec <- arframe:::finalize_spec(spec)
   col_names <- names(spec$columns)
 
   # Should have gap columns injected
@@ -873,7 +873,7 @@ test_that("inject_span_gaps does nothing when span_gap = FALSE", {
     ) |>
     fr_spans("S1" = c("a", "b"), "S2" = c("c", "d"), .gap = FALSE)
 
-  spec <- tlframe:::finalize_spec(spec)
+  spec <- arframe:::finalize_spec(spec)
   gap_cols <- grep("__span_gap_", names(spec$columns), value = TRUE)
   expect_length(gap_cols, 0L)
 })
@@ -885,7 +885,7 @@ test_that("inject_span_gaps does nothing when span_gap = FALSE", {
 
 test_that("insert_gap_column inserts at correct position", {
   df <- data.frame(a = 1:3, b = 4:6, c = 7:9)
-  result <- tlframe:::insert_gap_column(df, 2L, "gap1")
+  result <- arframe:::insert_gap_column(df, 2L, "gap1")
 
   expect_equal(ncol(result), 4L)
   expect_equal(names(result), c("a", "b", "gap1", "c"))
@@ -894,7 +894,7 @@ test_that("insert_gap_column inserts at correct position", {
 
 test_that("insert_gap_column works at end position", {
   df <- data.frame(a = 1:2, b = 3:4)
-  result <- tlframe:::insert_gap_column(df, 2L, "gap_end")
+  result <- arframe:::insert_gap_column(df, 2L, "gap_end")
 
   expect_equal(ncol(result), 3L)
   expect_equal(names(result), c("a", "b", "gap_end"))
@@ -909,7 +909,7 @@ test_that("expand_spans_for_gap includes gap in straddling span", {
   spans <- list(
     list(columns = c("a", "b", "c"), level = 1L, label = "Wide")
   )
-  result <- tlframe:::expand_spans_for_gap(spans, "gap1", "b")
+  result <- arframe:::expand_spans_for_gap(spans, "gap1", "b")
   expect_equal(result[[1]]$columns, c("a", "b", "gap1", "c"))
 })
 
@@ -917,7 +917,7 @@ test_that("expand_spans_for_gap ignores span that ends at after_col", {
   spans <- list(
     list(columns = c("a", "b"), level = 1L, label = "Narrow")
   )
-  result <- tlframe:::expand_spans_for_gap(spans, "gap1", "b")
+  result <- arframe:::expand_spans_for_gap(spans, "gap1", "b")
   # "b" is the last column — span does not straddle, so no change
   expect_equal(result[[1]]$columns, c("a", "b"))
 })

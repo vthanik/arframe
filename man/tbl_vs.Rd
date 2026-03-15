@@ -36,7 +36,7 @@ Pre-summarized vital signs table in wide format with per-arm sub-columns
 for Baseline, Value, and Change from Baseline. Multiple timepoints
 (Baseline, Week 12, Week 24) per parameter.
 
-Designed to demonstrate advanced tlframe features: \code{page_by} for
+Designed to demonstrate advanced arframe features: \code{page_by} for
 per-parameter pages, \code{\link[=fr_spans]{fr_spans()}} for two-level spanning headers,
 \code{\link[=fr_cols]{fr_cols()}} with \code{.n} data frame for per-group N-counts, and
 \code{fr_cols(.split = TRUE)} for wide layouts.

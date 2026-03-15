@@ -10,18 +10,18 @@ fr_config_get()
 A named list of config settings. Top-level keys mirror the YAML
 structure: \code{page}, \code{header}, \code{pagehead}, \code{pagefoot}, \code{rules},
 \code{footnotes}, \code{spacing}, \code{tokens}. Returns an empty list if no config
-is loaded and no \verb{_tlframe.yml} is found.
+is loaded and no \verb{_arframe.yml} is found.
 }
 \description{
 Returns the current config as a named list. If no config has been loaded
-yet, auto-discovers and loads the nearest \verb{_tlframe.yml}.
+yet, auto-discovers and loads the nearest \verb{_arframe.yml}.
 }
 \examples{
 # Start clean — no config loaded
 fr_config_reset()
 
 # Load config and inspect top-level keys
-default_cfg <- system.file("defaults/_tlframe.yml", package = "tlframe")
+default_cfg <- system.file("defaults/_arframe.yml", package = "arframe")
 fr_config(default_cfg)
 cfg <- fr_config_get()
 names(cfg)                    # page, header, pagehead, etc.
@@ -35,7 +35,7 @@ cfg$header$bold               # header bold setting
 fr_config_reset()
 
 # Load a custom config with specific tokens
-yml <- file.path(tempdir(), "_tlframe.yml")
+yml <- file.path(tempdir(), "_arframe.yml")
 writeLines(c(
   "tokens:",
   "  study_id: 'DEMO-001'"

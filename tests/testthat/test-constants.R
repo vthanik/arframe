@@ -602,13 +602,13 @@ test_that("is_system_font_available returns TRUE for Latin Modern fonts", {
 
 # ── get_font_dir ──────────────────────────────────────────────────────────
 
-test_that("get_font_dir returns NULL when TLFRAME_FONT_DIR is unset", {
-  withr::local_envvar(TLFRAME_FONT_DIR = NA)
+test_that("get_font_dir returns NULL when ARFRAME_FONT_DIR is unset", {
+  withr::local_envvar(ARFRAME_FONT_DIR = NA)
   expect_null(get_font_dir())
 })
 
 test_that("get_font_dir returns NULL for nonexistent directory", {
-  withr::local_envvar(TLFRAME_FONT_DIR = "/nonexistent/path/to/fonts")
+  withr::local_envvar(ARFRAME_FONT_DIR = "/nonexistent/path/to/fonts")
   expect_null(get_font_dir())
 })
 
@@ -616,7 +616,7 @@ test_that("get_font_dir returns NULL for empty directory (no font files)", {
   tmp <- tempfile("fontdir")
   dir.create(tmp)
   on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
-  withr::local_envvar(TLFRAME_FONT_DIR = tmp)
+  withr::local_envvar(ARFRAME_FONT_DIR = tmp)
   expect_null(get_font_dir())
 })
 
@@ -625,7 +625,7 @@ test_that("get_font_dir returns path when directory contains .ttf files", {
   dir.create(tmp)
   file.create(file.path(tmp, "test.ttf"))
   on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
-  withr::local_envvar(TLFRAME_FONT_DIR = tmp)
+  withr::local_envvar(ARFRAME_FONT_DIR = tmp)
   result <- get_font_dir()
   expect_type(result, "character")
   expect_equal(result, normalizePath(tmp))
@@ -636,18 +636,18 @@ test_that("get_font_dir returns path when directory contains .otf files", {
   dir.create(tmp)
   file.create(file.path(tmp, "test.otf"))
   on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
-  withr::local_envvar(TLFRAME_FONT_DIR = tmp)
+  withr::local_envvar(ARFRAME_FONT_DIR = tmp)
   result <- get_font_dir()
   expect_type(result, "character")
   expect_equal(result, normalizePath(tmp))
 })
 
-test_that("is_system_font_available returns TRUE when TLFRAME_FONT_DIR is set", {
+test_that("is_system_font_available returns TRUE when ARFRAME_FONT_DIR is set", {
   tmp <- tempfile("fontdir")
   dir.create(tmp)
   file.create(file.path(tmp, "test.ttf"))
   on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
-  withr::local_envvar(TLFRAME_FONT_DIR = tmp)
+  withr::local_envvar(ARFRAME_FONT_DIR = tmp)
   expect_true(is_system_font_available("AnyFontName"))
 })
 

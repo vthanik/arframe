@@ -96,7 +96,7 @@ the first footnote. Control this with \code{\link[=fr_spacing]{fr_spacing()}}:
 spec |> fr_spacing(footnotes_before = 2L)   # two blank lines
 }\if{html}{\out{</div>}}
 
-This can also be set in \verb{_tlframe.yml}:
+This can also be set in \verb{_arframe.yml}:
 
 \if{html}{\out{<div class="sourceCode yaml">}}\preformatted{spacing:
   footnotes_before: 1

@@ -1,4 +1,4 @@
-# tlframe 0.1.0.9000 (development version)
+# arframe 0.1.0.9000 (development version)
 
 ## New features
 
@@ -84,7 +84,7 @@
   for running headers and footers.
 * Latin Modern font fallback for PDF on Linux/Docker without Microsoft fonts
   (built into tinytex/texlive, no bundled fonts needed).
-* `TLFRAME_FONT_DIR` environment variable: point to a directory of
+* `ARFRAME_FONT_DIR` environment variable: point to a directory of
   `.ttf`/`.otf` files for project-local fonts without system-wide
   installation. Ideal for Docker/CI pipelines.
 
@@ -99,7 +99,7 @@
 
 ## Configuration
 
-* Four-tier defaults: package < `_tlframe.yml` < `fr_theme()` < per-table verbs.
+* Four-tier defaults: package < `_arframe.yml` < `fr_theme()` < per-table verbs.
 * `fr_recipe()` and `fr_apply()` for reusable pipeline fragments.
 * `c.fr_recipe()` for composing recipes (company + study + table-type layers).
 

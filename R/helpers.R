@@ -5,7 +5,7 @@
 # ══════════════════════════════════════════════════════════════════════════════
 # 1. Typed Error Conditions
 #
-# All errors inherit from "tlframe_error" and use cli_abort for pretty
+# All errors inherit from "arframe_error" and use cli_abort for pretty
 # messages. Backend-specific errors carry the format as metadata.
 #
 # NOTE on dot-prefix convention (Tidyverse Design Guide §20):
@@ -20,10 +20,10 @@
 #   passed through `...`.
 # ══════════════════════════════════════════════════════════════════════════════
 
-#' Raise a tlframe error
+#' Raise a arframe error
 #' @noRd
-tlframe_error <- function(message, ..., class = NULL, call = caller_env()) {
-  cli_abort(message, ..., class = c(class, "tlframe_error"), call = call)
+arframe_error <- function(message, ..., class = NULL, call = caller_env()) {
+  cli_abort(message, ..., class = c(class, "arframe_error"), call = call)
 }
 
 

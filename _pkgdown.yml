@@ -1,4 +1,4 @@
-url: https://vthanik.github.io/tlframe/
+url: https://vthanik.github.io/arframe/
 
 template:
   bootstrap: 5
@@ -29,10 +29,10 @@ template:
         wght: [400, 500, 600]
 
 home:
-  title: "tlframe — Regulatory-Grade Clinical Tables in R"
+  title: "arframe — Regulatory-Grade Clinical Tables in R"
   description: >
     An R package for pharmaceutical submissions. Describe a table once
-    with an immutable pipeline — tlframe renders both RTF and PDF natively.
+    with an immutable pipeline — arframe renders both RTF and PDF natively.
     No intermediate HTML, no gt dependency, no RMarkdown pipeline.
 
 navbar:
@@ -43,7 +43,7 @@ navbar:
   components:
     intro:
       text: Get Started
-      href: articles/tlframe.html
+      href: articles/arframe.html
     reference:
       text: Reference
       href: reference/index.html
@@ -59,7 +59,7 @@ footer:
 reference:
   - title: "Pipeline Entry Points"
     desc: >
-      Every tlframe pipeline starts here. `fr_table()` creates a spec object
+      Every arframe pipeline starts here. `fr_table()` creates a spec object
       from a data frame. `fr_listing()` and `fr_figure()` create specs for
       patient listings and embedded figures. `fr_figure()` accepts a single
       plot or a list of plots for multi-page figures, with optional per-page
@@ -193,7 +193,7 @@ reference:
 
   - title: "Theme and Configuration"
     desc: >
-      Four-tier defaults: package defaults < `_tlframe.yml` (auto-discovered)
+      Four-tier defaults: package defaults < `_arframe.yml` (auto-discovered)
       < `fr_theme()` (session-wide) < per-table verbs. `fr_config()` loads a
       YAML file covering page layout, fonts, column behavior, header style,
       rules, spacing, tokens, and footnote defaults. `fr_theme()` sets the
@@ -282,7 +282,7 @@ articles:
   - title: "Get started"
     navbar: ~
     contents:
-      - tlframe
+      - arframe
       - columns-and-headers
       - titles-and-footnotes
       - rows-and-pages

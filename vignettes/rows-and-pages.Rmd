@@ -9,7 +9,7 @@ vignette: >
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
-library(tlframe)
+library(arframe)
 ```
 
 `fr_rows()` controls how data flows across pages. `fr_page()`,
@@ -261,7 +261,7 @@ spec <- tbl_ae_soc |>
 Set either to `1L` to disable the corresponding control. These settings
 only take effect when `group_by` is active.
 
-> **Custom fonts for PDF:** Set `TLFRAME_FONT_DIR` to a directory of `.ttf`/`.otf`
+> **Custom fonts for PDF:** Set `ARFRAME_FONT_DIR` to a directory of `.ttf`/`.otf`
 > files and XeLaTeX discovers them by name --- no system-wide installation needed.
 > See `vignette("automation")` for Docker/CI examples.
 
@@ -317,7 +317,7 @@ spec <- tbl_demog |>
 
 ## ICH E3 compliance mapping
 
-| ICH E3 Requirement | tlframe Feature |
+| ICH E3 Requirement | arframe Feature |
 |--------------------|-----------------|
 | Study ID on every page | `fr_pagehead(left = "Study TFRM-2024-001")` |
 | Table number and title | `fr_titles("Table 14.1.1", "Demographics...")` |

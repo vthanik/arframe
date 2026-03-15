@@ -38,7 +38,7 @@ or \code{"legal"} (8.5 × 14 in).}
 \item{font_family}{Font family name. Defaults to the OS monospace font
 (\code{"Courier New"} on Windows/macOS, \code{"Latin Modern Mono"} on Linux).
 Regulatory submissions typically use Courier New 9pt.
-Set the \code{TLFRAME_FONT_DIR} environment variable to a directory
+Set the \code{ARFRAME_FONT_DIR} environment variable to a directory
 containing \code{.ttf}/\code{.otf} files to make custom fonts available for
 PDF rendering without system-wide installation. Ideal for Docker,
 CI, or project-local fonts. See \code{vignette("automation")} for examples.}
@@ -168,11 +168,11 @@ tbl_ae_soc |>
   fr_table() |>
   fr_page(paper = "legal", orientation = "landscape", margins = 1)
 
-## ── Custom fonts via TLFRAME_FONT_DIR (Docker/CI) ────────────────────
+## ── Custom fonts via ARFRAME_FONT_DIR (Docker/CI) ────────────────────
 
-# Set TLFRAME_FONT_DIR to a directory of .ttf/.otf files;
+# Set ARFRAME_FONT_DIR to a directory of .ttf/.otf files;
 # XeLaTeX discovers them by name --- no system install needed.
-# Sys.setenv(TLFRAME_FONT_DIR = "/path/to/fonts")
+# Sys.setenv(ARFRAME_FONT_DIR = "/path/to/fonts")
 
 }
 \seealso{
