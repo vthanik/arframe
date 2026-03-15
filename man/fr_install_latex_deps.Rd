@@ -22,7 +22,7 @@ The \link[tinytex:tinytex-package]{tinytex} package must be installed. If it is 
 Packages already present are silently skipped by \code{tlmgr}.
 }
 \examples{
-if (requireNamespace("tinytex", quietly = TRUE)) {
+if (requireNamespace("tinytex", quietly = TRUE) && tinytex::is_tinytex()) {
   fr_install_latex_deps()
 }
 

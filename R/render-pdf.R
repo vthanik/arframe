@@ -51,7 +51,7 @@ fr_latex_deps <- function() {
 #'   [fr_render()] for PDF output.
 #'
 #' @examples
-#' if (requireNamespace("tinytex", quietly = TRUE)) {
+#' if (requireNamespace("tinytex", quietly = TRUE) && tinytex::is_tinytex()) {
 #'   fr_install_latex_deps()
 #' }
 #'
