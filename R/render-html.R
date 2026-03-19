@@ -1,14 +1,124 @@
 # ──────────────────────────────────────────────────────────────────────────────
-# render-html.R — HTML backend for fr_render()
+# render-html.R — HTML backend for fr_render() and knit_print()
 #
-# Emits a self-contained HTML document with premium embedded CSS:
-#   - Paper simulation (centered white card on light gray background)
-#   - Typography optimised for clinical data readability
-#   - Pharma-professional color palette
-#   - Ultra-refined hairline borders
-#   - Page chrome (pagehead/pagefoot) as subtle muted flex divs
-#   - @media print produces clean regulatory-grade output
-#   - Section breaks for page_by groups and column split panels
+# ══════════════════════════════════════════════════════════════════════════════
+# THREE OUTPUT MODES
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# This file generates HTML in three different contexts:
+#
+#   1. FILE OUTPUT — fr_render(spec, "out.html")
+#      Full standalone HTML document with <!DOCTYPE>, <head>, <body>.
+#      White background, centered page with real margins.
+#      Used for: saving tables as .html files, browser viewing.
+#
+#   2. VIEWER PREVIEW — print(spec) in RStudio/Positron
+#      Same CSS as file output, but rendered via htmltools::browsable()
+#      in the IDE's Viewer pane. Fixed printable width, centered.
+#      Used for: interactive development, quick table preview.
+#
+#   3. KNITR/PKGDOWN — knit_print.fr_spec() in Rmd/pkgdown vignettes
+#      Returns an htmltools::tags$div() (NOT raw HTML string).
+#      Scoped CSS, no page simulation, fluid width.
+#      Used for: vignettes, pkgdown site, Shiny (future).
+#
+# ══════════════════════════════════════════════════════════════════════════════
+# CSS ISOLATION (THE gt PATTERN)
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# PROBLEM: pkgdown uses Bootstrap 5. Bootstrap adds class="table" to ALL
+# <table> elements during post-processing. Bootstrap's .table class sets
+# borders, padding, display:block, and CSS variables that conflict with
+# arframe's table styles.
+#
+# SOLUTION (same as gt package):
+#
+#   1. Every arframe HTML fragment is wrapped in a <div id="arframe-XXXXX">
+#      with a unique timestamp-based ID.
+#
+#   2. ALL CSS rules are scoped under that ID by scope_css():
+#        .ar-table { ... }  →  #arframe-XXXXX .ar-table { ... }
+#        body { ... }        →  #arframe-XXXXX { ... }
+#        table, th, td { }   →  #arframe-XXXXX table, #arframe-XXXXX th, ...
+#
+#   3. The scoped ID selector (#arframe-XXXXX .ar-table) has HIGHER
+#      specificity than Bootstrap's class selector (.table), so arframe
+#      styles always win. No !important needed.
+#
+#   4. Bootstrap CSS variables are explicitly zeroed on .ar-table:
+#        --bs-table-bg: transparent
+#        --bs-table-border-color: transparent
+#        --bs-table-striped-bg: transparent
+#
+# WHY htmltools::tags$div() INSTEAD OF knitr::asis_output():
+#
+#   gt uses htmltools tag objects. So does arframe. This matters because:
+#
+#   - knitr::asis_output() injects raw HTML into the markdown stream.
+#     pkgdown's pandoc + Bootstrap post-processing can modify it (adds
+#     class="table" to <table> tags, wraps in containers, etc.)
+#
+#   - htmltools::tags$div() returns a shiny.tag object. knitr has a
+#     registered knit_print.shiny.tag method that renders it cleanly
+#     without markdown post-processing interference.
+#
+#   This is why the pkgdown "On this page" sidebar was breaking: raw HTML
+#   from asis_output was disrupting Bootstrap's col-md-9/col-md-3 grid.
+#   Switching to htmltools fixed it.
+#
+# KEY FUNCTIONS:
+#
+#   html_fragment(body, spec)   — builds the htmltools::tags$div() for knitr
+#   html_embedded_css(spec)     — generates the CSS string (all three modes)
+#   scope_css(css, uid)         — prefixes all selectors with #uid
+#   html_font_stack(font_family)— builds CSS font-family fallback chain
+#   render_html(spec, ...)      — full document render for file output
+#
+# ══════════════════════════════════════════════════════════════════════════════
+# scope_css() SELECTOR HANDLING
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# scope_css() handles these CSS patterns:
+#
+#   * { ... }              → #uid * { ... }
+#   body { ... }           → #uid { ... }
+#   .ar-foo { ... }        → #uid .ar-foo { ... }
+#   .ar-a, .ar-b { ... }   → #uid .ar-a, #uid .ar-b { ... }   (comma split)
+#   table, th, td { ... }  → #uid table, #uid th, #uid td { }  (elements)
+#   @media print { ... }   → @media print { #uid .ar-foo { } } (preserved)
+#
+# If a selector doesn't match any known pattern, it passes through as-is
+# (property lines like "  margin: 0;" or closing braces "}").
+#
+# ══════════════════════════════════════════════════════════════════════════════
+# SPACING — USER CONFIGURATION
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# All five fr_spacing() settings are converted to CSS em units:
+#
+#   titles_after     → .ar-titles { margin-bottom: Nem }
+#   footnotes_before → .ar-footnotes { margin-top: Nem }
+#   pagehead_after   → .ar-chrome { padding-bottom: Nem }
+#   pagefoot_before  → .ar-chrome-foot { padding-top: Nem }
+#   page_by_after    → .ar-page-by { margin-bottom: Nem }
+#
+# Formula: N = blank_lines × line_height (1.35 for mono, 1.4 for proportional)
+#
+# col_gap is converted to cell padding: padding-left/right = col_gap / 2
+#
+# ══════════════════════════════════════════════════════════════════════════════
+# ADDING A NEW CSS RULE
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# When adding CSS to html_embedded_css():
+#
+#   1. Use .ar-* class names (they get auto-scoped by scope_css)
+#   2. For plain HTML elements (table, td, etc.), they also get scoped
+#   3. For comma-separated selectors, scope_css handles them automatically
+#   4. Never use !important — ID scoping provides sufficient specificity
+#   5. Override Bootstrap by targeting the same CSS variables it uses
+#      (--bs-table-bg, --bs-table-border-color, etc.)
+#
 # ──────────────────────────────────────────────────────────────────────────────
 
 #' Render an fr_spec to HTML
@@ -126,10 +236,25 @@ html_document <- function(body, spec, viewer = FALSE, knitr = FALSE) {
 }
 
 
-#' Build an HTML fragment for knitr embedding (no doctype/html/body)
+#' Build an htmltools tag for knitr/pkgdown embedding (gt-style)
 #'
-#' All CSS selectors are scoped under a unique container ID so multiple
-#' arframe outputs on the same page don't collide.
+#' Returns an `htmltools::tags$div()` — a proper shiny.tag object, NOT a
+#' raw HTML string. This is the key to pkgdown compatibility (see file header).
+#'
+#' Structure mirrors gt's `as.tags.gt_tbl()`:
+#'
+#' ```html
+#' <div id="arframe-XXXXX" style="overflow-x:auto; ...">
+#'   <style>/* all CSS scoped under #arframe-XXXXX */</style>
+#'   <div class="ar-page">
+#'     <!-- table sections -->
+#'   </div>
+#' </div>
+#' ```
+#'
+#' @param body Character. The rendered HTML sections (from html_section()).
+#' @param spec The finalized fr_spec.
+#' @return An htmltools `shiny.tag` object.
 #' @noRd
 html_fragment <- function(body, spec) {
   css <- html_embedded_css(spec, knitr = TRUE)
@@ -169,8 +294,18 @@ html_fragment <- function(body, spec) {
 #' Scope CSS selectors under a container ID
 #'
 #' Prefixes each CSS rule selector with `#uid` so styles don't leak
-#' into the surrounding document. Handles `body`, `.ar-*`, and
-#' `@media` blocks.
+#' into the surrounding document (pkgdown, Shiny, or any multi-widget page).
+#'
+#' Handles these patterns (see file header for full list):
+#'   - `* { }` → `#uid * { }`
+#'   - `body { }` → `#uid { }` (container becomes the "body")
+#'   - `.ar-foo { }` → `#uid .ar-foo { }`
+#'   - `table, th, td { }` → `#uid table, #uid th, #uid td { }` (comma split)
+#'   - `@media print { .ar-foo { } }` → preserved, inner rules scoped
+#'
+#' @param css Character scalar. The full CSS string to scope.
+#' @param uid Character scalar. The container element ID (e.g., "arframe-123").
+#' @return Character scalar. The scoped CSS string.
 #' @noRd
 scope_css <- function(css, uid) {
   prefix <- paste0("#", uid)

@@ -39,6 +39,7 @@ contribute.
 | render.R          Dispatch: finalize -> prepare_pages -> backend     |
 | render-common.R   Shared: cell grid, borders, escaping, colors       |
 | render-rtf.R      RTF 1.9.1 backend                                  |
+| render-html.R     HTML backend (file, viewer, knitr/pkgdown)         |
 | render-latex.R    tabularray/XeLaTeX backend                         |
 | render-pdf.R      PDF wrapper (generates .tex, compiles twice)       |
 | render-figure.R   Figure rendering (single + multi-page)             |
@@ -190,3 +191,63 @@ at 600 units. `estimate_col_width()` uses these for accurate auto-widths.
 ```{r backends}
 fr_backends()
 ```
+
+## HTML backend — CSS isolation
+
+The HTML backend (`render-html.R`) works in three modes:
+
+| Mode | Triggered by | Returns |
+|:-----|:-------------|:--------|
+| **File** | `fr_render(spec, "out.html")` | Standalone HTML document |
+| **Viewer** | `print(spec)` in IDE | `htmltools::browsable()` |
+| **Knitr** | `knit_print.fr_spec()` in Rmd/pkgdown | `htmltools::tags$div()` |
+
+### The pkgdown problem
+
+pkgdown uses Bootstrap 5. Bootstrap adds `class="table"` to **every** `<table>`
+element during post-processing. Bootstrap's `.table` class sets borders,
+padding, `display: block`, and CSS variables that conflict with arframe's
+styles. It also breaks Bootstrap's own `col-md-9` / `col-md-3` grid layout,
+pushing the "On this page" sidebar to the bottom of the page.
+
+### The gt solution
+
+arframe solves this the same way gt does:
+
+1. **Every output is wrapped in `<div id="arframe-XXXXX">`** with a unique
+   timestamp-based ID.
+
+2. **All CSS is scoped under that ID** via `scope_css()`:
+   `.ar-table { }` becomes `#arframe-XXXXX .ar-table { }`. The ID-scoped
+   selector has higher specificity than Bootstrap's class selector (`.table`),
+   so arframe styles always win without `!important`.
+
+3. **Bootstrap CSS variables are explicitly zeroed** on `.ar-table`:
+   `--bs-table-bg: transparent`, `--bs-table-border-color: transparent`, etc.
+
+4. **Knitr output returns an `htmltools::tags$div()`** — a proper htmltools
+   tag object, not a raw HTML string. knitr has native support for htmltools
+   objects via `knit_print.shiny.tag`, which avoids the post-processing
+   that breaks the Bootstrap grid. Using `knitr::asis_output()` with raw HTML
+   was the original cause of the sidebar bug.
+
+### Key functions in render-html.R
+
+| Function | Purpose |
+|:---------|:--------|
+| `html_fragment()` | Builds the `htmltools::tags$div()` for knitr |
+| `html_embedded_css()` | Generates CSS string (all three modes) |
+| `scope_css()` | Prefixes all selectors with `#uid` |
+| `html_font_stack()` | Builds CSS font-family fallback chain |
+| `render_html()` | Full document render for file output |
+| `html_section()` | Renders one page group × column panel |
+
+### Adding new CSS rules
+
+When adding CSS to `html_embedded_css()`:
+
+- Use `.ar-*` class names — they get auto-scoped by `scope_css()`
+- Plain HTML elements (`table`, `td`, etc.) also get scoped automatically
+- Comma-separated selectors are split and each part gets scoped
+- Never use `!important` — ID scoping provides sufficient specificity
+- Override Bootstrap by targeting its CSS variables (`--bs-table-*`)
