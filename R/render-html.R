@@ -143,17 +143,25 @@ html_fragment <- function(body, spec) {
   # Scope all CSS rules under the container ID
   scoped_css <- scope_css(css, uid)
 
-  paste0(
-    "<div id=\"",
-    uid,
-    "\" style=\"padding:0;overflow-x:auto;overflow-y:auto;width:auto;height:auto;\">\n",
-    "<style>\n",
-    scoped_css,
-    "</style>\n",
-    "<div class=\"ar-page\">\n",
-    body,
-    "</div>\n",
-    "</div>\n"
+  # Return an htmltools tag object (like gt does), not raw HTML
+  htmltools::tags$div(
+    id = uid,
+    style = htmltools::css(
+      `padding-left` = "0px",
+      `padding-right` = "0px",
+      `padding-top` = "10px",
+      `padding-bottom` = "10px",
+      `overflow-x` = "auto",
+      `overflow-y` = "auto",
+      width = "auto",
+      height = "auto"
+    ),
+    htmltools::tags$style(htmltools::HTML(scoped_css)),
+    htmltools::HTML(paste0(
+      "<div class=\"ar-page\">\n",
+      body,
+      "</div>\n"
+    ))
   )
 }
 
@@ -235,15 +243,7 @@ html_embedded_css <- function(spec, viewer = FALSE, knitr = FALSE) {
   font_size <- page$font_size
 
   # Build a system font stack based on the configured font
-  # Knitr/pkgdown: override to web-optimized sans-serif for screen readability
-  if (knitr) {
-    font_stack <- paste0(
-      "\"Source Sans 3\", \"Calibri\", \"Helvetica Neue\", ",
-      "Arial, sans-serif"
-    )
-  } else {
-    font_stack <- html_font_stack(font_family)
-  }
+  font_stack <- html_font_stack(font_family)
 
   # Full page dimensions (for the white card to simulate a real page)
   dims <- paper_dims_twips(page$paper, page$orientation)

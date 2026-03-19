@@ -1391,7 +1391,7 @@ summary.fr_spec <- function(object, ...) {
 #'
 #' @param x An `fr_spec` object.
 #' @param ... Ignored.
-#' @return A `knitr::asis_output()` with the HTML fragment.
+#' @return An htmltools tag object, rendered by knitr natively.
 #' @exportS3Method knitr::knit_print
 knit_print.fr_spec <- function(x, ...) {
   if (!requireNamespace("knitr", quietly = TRUE)) {
@@ -1505,8 +1505,9 @@ knit_print.fr_spec <- function(x, ...) {
   }
 
   body <- paste0(sections, collapse = "\n")
-  html <- html_fragment(body, spec)
-  knitr::asis_output(html)
+  # Returns an htmltools tag object (like gt) — knitr handles it natively
+  html_tag <- html_fragment(body, spec)
+  knitr::knit_print(html_tag)
 }
 
 

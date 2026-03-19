@@ -12,7 +12,7 @@
 \item{...}{Ignored.}
 }
 \value{
-A \code{knitr::asis_output()} with the HTML fragment.
+An htmltools tag object, rendered by knitr natively.
 }
 \description{
 Enables automatic rendering of \code{fr_spec} objects in R Markdown, Quarto,
