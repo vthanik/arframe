@@ -338,6 +338,13 @@ fr_listing <- function(data) {
 }
 
 
+#' Check if an object is a plot
+#' @noRd
+is_plot <- function(x) {
+  inherits(x, "ggplot") || inherits(x, "recordedplot")
+}
+
+
 #' Start a arframe Figure Pipeline
 #'
 #' @description
@@ -463,7 +470,6 @@ fr_figure <- function(plot, width = NULL, height = NULL, meta = NULL) {
     }
 
     # Validate each element
-    is_plot <- function(x) inherits(x, "ggplot") || inherits(x, "recordedplot")
     for (i in seq_along(plot)) {
       if (!is_plot(plot[[i]])) {
         p <- plot[[i]]
@@ -522,8 +528,6 @@ fr_figure <- function(plot, width = NULL, height = NULL, meta = NULL) {
   }
 
   # ── Single plot ────────────────────────────────────────────────────────────
-  is_plot <- function(x) inherits(x, "ggplot") || inherits(x, "recordedplot")
-
   if (!is_plot(plot)) {
     cli_abort(
       c(
@@ -547,7 +551,8 @@ fr_figure <- function(plot, width = NULL, height = NULL, meta = NULL) {
       c(
         "{.arg meta} is ignored for single-plot figures.",
         "i" = "Pass a list of plots to use per-page metadata."
-      )
+      ),
+      call = call
     )
   }
 

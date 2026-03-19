@@ -47,7 +47,7 @@ page:
   paper: letter
   orientation: landscape
   margins: [1.0, 0.75, 1.0, 0.75]
-  font_family: "Courier New"
+  font_family: "Times New Roman"
   font_size: 9
   continuation: "(continued)"
 
@@ -96,7 +96,7 @@ program:
 ```{r theme-set}
 fr_theme(
   font_size   = 9,
-  font_family = "Courier New",
+  font_family = "Times New Roman",
   orientation = "landscape",
   hlines      = "header",
   pagehead    = list(left = "TFRM-2024-001", right = "CONFIDENTIAL"),
@@ -177,7 +177,7 @@ n_itt <- c(placebo = 45, zom_50mg = 45, zom_100mg = 45, total = 135)
 
 # Layer 1: Company standard
 company <- fr_recipe(
-  fr_page(orientation = "landscape", font_family = "Courier New", font_size = 9),
+  fr_page(orientation = "landscape", font_family = "Times New Roman", font_size = 9),
   fr_pagehead(right = "CONFIDENTIAL"),
   fr_pagefoot(left = "{program}", right = "Page {thepage} of {total_pages}"),
   fr_hlines("header"),
@@ -253,8 +253,9 @@ for (i in seq_len(nrow(metadata))) {
 | Group pagination | R-side pagination | `longtblr` |
 
 **Linux font fallback:** On systems without Microsoft fonts, PDF
-rendering automatically falls back to Latin Modern fonts (built into
-tinytex/texlive). No extra font installation needed.
+rendering automatically falls back to Adobe open-source fonts — Source
+Serif 4, Source Sans 3, and Source Code Pro (SIL Open Font License).
+No extra font installation needed.
 
 **Custom font directory:** Set the `ARFRAME_FONT_DIR` environment variable
 to a directory containing `.ttf` or `.otf` files. arframe passes this to
@@ -343,9 +344,9 @@ FROM rocker/r-ver:4.3.3
 RUN apt-get update && apt-get install -y libxml2-dev libcurl4-openssl-dev
 RUN R -e "install.packages(c('cli','glue','rlang','tidyselect','vctrs','yaml','stringi'))"
 RUN R -e "install.packages('tinytex'); tinytex::install_tinytex()"
-# Latin Modern fonts are built into tinytex --- no Microsoft fonts needed
+# Adobe open-source fonts serve as fallback --- no Microsoft fonts needed
 
-# Optional: bundle project-specific fonts (e.g., Courier New)
+# Optional: bundle project-specific fonts (e.g., Times New Roman)
 COPY fonts/ /opt/fonts/
 ENV ARFRAME_FONT_DIR=/opt/fonts
 ```

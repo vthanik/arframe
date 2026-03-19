@@ -1162,7 +1162,13 @@ print.fr_spec <- function(x, ..., compact = FALSE) {
           viewer(tmp)
         }
       },
-      error = function(e) NULL
+      error = function(e) {
+        cli::cli_warn(c(
+          "!" = "HTML preview failed.",
+          "i" = conditionMessage(e)
+        ))
+        NULL
+      }
     )
     return(invisible(x))
   }
@@ -1218,7 +1224,7 @@ print.fr_spec <- function(x, ..., compact = FALSE) {
   orient <- x$page$orientation %||% "landscape"
   paper <- x$page$paper %||% "letter"
   fs <- x$page$font_size %||% 9
-  font <- x$page$font_family %||% "Courier New"
+  font <- x$page$font_family %||% "Times New Roman"
   cg <- x$page$col_gap %||% 4L
   cg_str <- if (cg != 4L) paste0(", col_gap=", cg, "pt") else ""
   cli::cli_text("Page: {orient} {paper}, {fs}pt {font}{cg_str}")

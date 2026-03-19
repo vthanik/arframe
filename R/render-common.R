@@ -1155,13 +1155,12 @@ latex_escape <- function(text) {
   }
   # Order matters: backslash first
   specials <- fr_env$latex_specials
-  for (i in seq_along(specials)) {
-    text <- stringi::stri_replace_all_fixed(
-      text,
-      names(specials)[i],
-      specials[i]
-    )
-  }
+  text <- stringi::stri_replace_all_fixed(
+    text,
+    names(specials),
+    specials,
+    vectorize_all = FALSE
+  )
 
   # Short-circuit: skip Unicode processing for all-ASCII elements
   has_non_ascii <- stringi::stri_detect_regex(text, "[^\\x00-\\x7F]")

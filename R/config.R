@@ -85,7 +85,7 @@ find_config <- function(dir = getwd()) {
 #'   paper: letter
 #'   orientation: landscape
 #'   margins: [1.0, 0.75, 1.0, 0.75]   # top, right, bottom, left
-#'   font_family: "Courier New"
+#'   font_family: "Times New Roman"
 #'   font_size: 9
 #'   col_gap: 4
 #'
@@ -157,7 +157,7 @@ find_config <- function(dir = getwd()) {
 #'   "page:",
 #'   "  orientation: landscape",
 #'   "  font_size: 8",
-#'   "  font_family: 'Courier New'",
+#'   "  font_family: 'Times New Roman'",
 #'   "header:",
 #'   "  bold: true",
 #'   "tokens:",

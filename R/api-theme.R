@@ -332,7 +332,7 @@ fr_theme_set <- fr_theme
 #'   theme has been set. Possible keys (all optional):
 #'   * `orientation` — `"landscape"` or `"portrait"`
 #'   * `paper` — `"letter"`, `"a4"`, `"legal"`
-#'   * `font_family` — e.g. `"Courier New"`
+#'   * `font_family` — e.g. `"Times New Roman"`
 #'   * `font_size` — numeric (points)
 #'   * `margins` — numeric vector (inches)
 #'   * `tokens` — named list of token values

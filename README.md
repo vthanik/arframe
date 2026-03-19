@@ -69,7 +69,7 @@ tbl_demog |> fr_table() |> fr_render(tempfile(fileext = ".rtf"))
 # Set shared formatting once — inherited by all tables
 fr_theme(
   font_size   = 9,
-  font_family = "Courier New",
+  font_family = "Times New Roman",
   orientation = "landscape",
   hlines      = "header",
   header      = list(bold = TRUE, align = "center"),
@@ -254,7 +254,7 @@ fr_spec → finalize_spec() → RTF backend  → .rtf file
 ```
 
 - **RTF**: Writes RTF 1.9.1 control words directly. Cell-level formatting, decimal alignment, `\trkeep` group protection, R-side pagination.
-- **PDF**: Generates tabularray LaTeX, compiles with XeLaTeX. Falls back to Latin Modern fonts (built into tinytex) on Linux/Docker without Microsoft fonts. Set `ARFRAME_FONT_DIR` to a directory of `.ttf`/`.otf` files for project-local fonts without system-wide installation.
+- **PDF**: Generates tabularray LaTeX, compiles with XeLaTeX. Falls back to Adobe open-source fonts (Source Serif 4, Source Sans 3, Source Code Pro — SIL OFL) on Linux/Docker without Microsoft fonts. Set `ARFRAME_FONT_DIR` to a directory of `.ttf`/`.otf` files for project-local fonts without system-wide installation.
 - **HTML**: Self-contained document with paper simulation (orientation-aware page dimensions, margins). Auto-preview in RStudio/Positron viewer via `print()`. Inline rendering in Rmd/Quarto via `knit_print()`.
 - **Font metrics**: Real Adobe Font Metrics (AFM) for 12 font variants — accurate column width estimation without rendering.
 

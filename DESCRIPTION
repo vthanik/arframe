@@ -8,7 +8,7 @@ Description: Produces regulatory-grade clinical trial tables, listings, and
     pharmaceutical industry workflows with support for paginated output,
     spanning headers, decimal alignment, programmatic page headers/footers,
     and company-specific rule presets. PDF rendering uses XeLaTeX with
-    automatic Latin Modern font fallback; set the 'ARFRAME_FONT_DIR'
+    automatic Adobe open-source font fallback; set the 'ARFRAME_FONT_DIR'
     environment variable to use project-local fonts without system-wide
     installation. Built on disciplined S3 classes with a clean, composable
     pipeline API. No 'dplyr', 'tidyr', or 'purrr' dependency — only

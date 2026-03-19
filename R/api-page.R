@@ -69,7 +69,7 @@
 #'
 #' @section Regulatory conventions:
 #' **FDA/US submissions (eCTD):** landscape Letter (8.5 × 11 in),
-#' Courier New 9 pt, 1 in margins on all sides. This is the most common
+#' Times New Roman 9 pt, 1 in margins on all sides. This is the most common
 #' regulatory RTF standard and the package default.
 #'
 #' **EMA/European submissions:** A4 paper (210 × 297 mm) is acceptable;
@@ -105,7 +105,7 @@
 #'   fr_page(
 #'     orientation = "landscape",
 #'     paper       = "letter",
-#'     font_family = "Courier New",
+#'     font_family = "Times New Roman",
 #'     font_size   = 9,
 #'     margins     = 1
 #'   )

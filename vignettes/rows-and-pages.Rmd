@@ -232,7 +232,7 @@ spec <- tbl_demog |>
   fr_page(
     orientation = "landscape",
     paper       = "letter",
-    font_family = "Courier New",
+    font_family = "Times New Roman",
     font_size   = 9,
     margins     = c(top = 1.0, right = 0.75, bottom = 1.0, left = 0.75)
   )

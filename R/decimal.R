@@ -10,7 +10,7 @@
 #   6. compute_all_decimal_geometry() — integration with finalize_spec()
 #
 # All formatted strings have the same nchar (padded). In monospace fonts
-# (Courier New — the pharma standard), space padding produces pixel-perfect
+# (the submission font), space padding produces pixel-perfect
 # alignment. Rendered as a single cell with left indent for centering.
 # ──────────────────────────────────────────────────────────────────────────────
 

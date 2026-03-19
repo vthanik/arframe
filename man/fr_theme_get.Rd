@@ -12,7 +12,7 @@ theme has been set. Possible keys (all optional):
 \itemize{
 \item \code{orientation} — \code{"landscape"} or \code{"portrait"}
 \item \code{paper} — \code{"letter"}, \code{"a4"}, \code{"legal"}
-\item \code{font_family} — e.g. \code{"Courier New"}
+\item \code{font_family} — e.g. \code{"Times New Roman"}
 \item \code{font_size} — numeric (points)
 \item \code{margins} — numeric vector (inches)
 \item \code{tokens} — named list of token values

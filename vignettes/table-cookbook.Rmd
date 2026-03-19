@@ -25,7 +25,7 @@ formatting **once** at the top of your study program (or in
 # ── Study-wide theme (set once, inherited by all tables) ──
 fr_theme(
   font_size   = 9,
-  font_family = "Courier New",
+  font_family = "Times New Roman",
   orientation = "landscape",
   hlines      = "header",
   header      = list(bold = TRUE, align = "center"),

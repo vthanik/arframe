@@ -401,10 +401,13 @@ fr_env$paper <- list(
 paper_dims_twips <- function(paper = "letter", orientation = "landscape") {
   dims <- fr_env$paper[[paper]]
   if (is.null(dims)) {
-    cli_abort(c(
-      "Unknown paper size {.val {paper}}.",
-      "i" = "Valid sizes: {.val {names(fr_env$paper)}}."
-    ))
+    cli_abort(
+      c(
+        "Unknown paper size {.val {paper}}.",
+        "i" = "Valid sizes: {.val {names(fr_env$paper)}}."
+      ),
+      call = caller_env()
+    )
   }
   if (orientation == "landscape") {
     c(width = unname(dims[["height"]]), height = unname(dims[["width"]]))
@@ -1076,11 +1079,14 @@ resolve_tokens_single <- function(text, token_map, context) {
       nm <- token_names[[i]]
       val <- token_map[[nm]]
       if (is.null(val)) {
-        cli_abort(c(
-          "Unknown token {.val {{{nm}}}} in {context}.",
-          "i" = "Available tokens: {.val {names(token_map)}}.",
-          "i" = "Example: {.code fr_pagehead(left = \"{{program}}\")}"
-        ))
+        cli_abort(
+          c(
+            "Unknown token {.val {{{nm}}}} in {context}.",
+            "i" = "Available tokens: {.val {names(token_map)}}.",
+            "i" = "Example: {.code fr_pagehead(left = \"{{program}}\")}"
+          ),
+          call = caller_env()
+        )
       }
       text <- sub(paste0("{", nm, "}"), as.character(val), text, fixed = TRUE)
     }

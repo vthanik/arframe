@@ -1,5 +1,23 @@
 # arframe 0.1.0.9000 (development version)
 
+## Font system overhaul
+
+* Default font changed from Courier New to **Times New Roman** (FDA recommended for submission documents).
+* Font resolution order: FDA-recommended → `ARFRAME_FONT_DIR` → Adobe open-source (Source Serif 4, Source Sans 3, Source Code Pro) → CSS generic.
+* Latin Modern and Liberation fonts removed from fallback chain.
+* New `vignettes("fonts")` documents the full font resolution order and FDA guidance.
+
+## HTML backend improvements
+
+* HTML output now respects all `fr_spacing()` settings: `titles_after`, `footnotes_before`, `pagehead_after`, `pagefoot_before`, `page_by_after`.
+* `col_gap` wired to HTML cell padding (matching RTF).
+* `pagehead`/`pagefoot` `font_size` applied in HTML output.
+* Knitr/pkgdown output uses web-optimized sans-serif font (Source Sans 3).
+* Bootstrap table style reset prevents pkgdown from overriding arframe table borders.
+* File output uses plain white background (matching R HTML widget preview).
+* Fixed pkgdown "On this page" sidebar displacement by adding `overflow: hidden` to outer container.
+* CSS font stack deduplication (no more repeated font names).
+
 ## New features
 
 ### HTML render backend
@@ -98,8 +116,7 @@
 * R-side pagination with group-aware page breaks.
 * Token system (`{thepage}`, `{total_pages}`, `{program}`, `{datetime}`)
   for running headers and footers.
-* Latin Modern font fallback for PDF on Linux/Docker without Microsoft fonts
-  (built into tinytex/texlive, no bundled fonts needed).
+* Adobe open-source font fallback for PDF/RTF on Linux/Docker without Microsoft fonts.
 * `ARFRAME_FONT_DIR` environment variable: point to a directory of
   `.ttf`/`.otf` files for project-local fonts without system-wide
   installation. Ideal for Docker/CI pipelines.
