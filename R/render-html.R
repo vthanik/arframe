@@ -399,10 +399,17 @@ html_embedded_css <- function(spec, viewer = FALSE, knitr = FALSE) {
     "  font-variant-numeric: tabular-nums;\n",
     "  color: #1e293b;\n",
     "}\n",
-    # Reset Bootstrap .table styles (pkgdown injects Bootstrap 5)
+    # Reset Bootstrap .table styles (pkgdown adds class="table" to all tables)
+    ".ar-table.table {\n",
+    "  display: table;\n",
+    "  margin-bottom: 0;\n",
+    "  --bs-table-bg: transparent;\n",
+    "  --bs-table-striped-bg: transparent;\n",
+    "}\n",
     ".ar-table th, .ar-table td {\n",
     "  border: none;\n",
     "  background: none;\n",
+    "  padding: inherit;\n",
     "}\n",
     ".ar-table thead th {\n",
     "  font-weight: 600;\n",
