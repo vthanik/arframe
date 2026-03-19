@@ -12,7 +12,7 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 library(arframe)
 ```
 
-arframe produces regulatory-grade clinical tables in RTF and PDF from a
+arframe produces regulatory-grade clinical tables in RTF, PDF, and HTML from a
 single pipeline. You describe *what* the table looks like; arframe handles
 the rendering. No dplyr, no gt, no RMarkdown --- just data in, document out.
 
@@ -31,9 +31,10 @@ That's a complete, renderable table. To produce a file:
 ```{r render-first, eval = FALSE}
 spec |> fr_render("Table_14_1_1.rtf")
 spec |> fr_render("Table_14_1_1.pdf")
+spec |> fr_render("Table_14_1_1.html")
 ```
 
-Same spec, both formats. The file extension controls the output.
+Same spec, any format. The file extension controls the output.
 
 ## Production-ready table
 
@@ -88,8 +89,8 @@ fr_validate(spec)
 fr_theme_reset()
 ```
 
-```{r demog-preview, echo = FALSE, out.width = "100%", fig.cap = "Demographics table rendered to PDF"}
-knitr::include_graphics("figures/preview_demog.png")
+```{r demog-preview, echo = FALSE}
+spec
 ```
 
 Notice what is **not** in the table program: header styling, hlines,

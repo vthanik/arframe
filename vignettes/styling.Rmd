@@ -83,8 +83,8 @@ spec <- tbl_demog |>
   fr_spans("Active Treatment" = c("zom_50mg", "zom_100mg"))
 ```
 
-```{r spans-preview, echo = FALSE, out.width = "100%", fig.cap = "Spanning header grouping treatment columns"}
-knitr::include_graphics("figures/preview_spans.png")
+```{r spans-preview, echo = FALSE}
+spec
 ```
 
 Unlike most verbs, `fr_spans()` **appends** on repeated calls.
@@ -149,8 +149,8 @@ spec <- tbl_demog |>
   )
 ```
 
-```{r styles-preview, echo = FALSE, out.width = "100%", fig.cap = "Row bold + column background + cell foreground color"}
-knitr::include_graphics("figures/preview_styles_basic.png")
+```{r styles-preview, echo = FALSE}
+spec
 ```
 
 ### Style constructors
@@ -194,8 +194,8 @@ spec <- tbl_ae_soc |>
   )
 ```
 
-```{r rows-matches-preview, echo = FALSE, out.width = "100%", fig.cap = "Content-based styling: SOC rows bold, total row highlighted"}
-knitr::include_graphics("figures/preview_rows_matches.png")
+```{r rows-matches-preview, echo = FALSE}
+spec
 ```
 
 Regex patterns work too:
@@ -222,8 +222,8 @@ spec <- tbl_demog |>
   )
 ```
 
-```{r header-region-preview, echo = FALSE, out.width = "100%", fig.cap = "Dark navy header with white text"}
-knitr::include_graphics("figures/preview_header_region.png")
+```{r header-region-preview, echo = FALSE}
+spec
 ```
 
 ### Zebra striping
@@ -236,8 +236,8 @@ spec <- tbl_disp |>
   )
 ```
 
-```{r zebra-preview, echo = FALSE, out.width = "100%", fig.cap = "Alternating row backgrounds (zebra striping)"}
-knitr::include_graphics("figures/preview_zebra.png")
+```{r zebra-preview, echo = FALSE}
+spec
 ```
 
 ### Conditional styling with `fr_style_if()`

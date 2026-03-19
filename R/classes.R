@@ -1146,6 +1146,27 @@ new_fr_spec <- function(
 
 #' @export
 print.fr_spec <- function(x, ..., compact = FALSE) {
+  # Auto-preview in Viewer panel (RStudio, Positron, or any IDE with viewer)
+  viewer <- getOption("viewer")
+  if (interactive() && !is.null(viewer)) {
+    tryCatch(
+      {
+        tmp <- tempfile(fileext = ".html")
+        x$.viewer <- TRUE
+        fr_render(x, tmp)
+        if (requireNamespace("htmltools", quietly = TRUE)) {
+          html_content <- paste0(readLines(tmp, warn = FALSE), collapse = "\n")
+          widget <- htmltools::browsable(htmltools::HTML(html_content))
+          print(widget)
+        } else {
+          viewer(tmp)
+        }
+      },
+      error = function(e) NULL
+    )
+    return(invisible(x))
+  }
+
   if (isTRUE(compact)) {
     nr <- nrow(x$data)
     nc <- length(x$columns)
@@ -1354,6 +1375,113 @@ print.fr_spec <- function(x, ..., compact = FALSE) {
 #' @export
 summary.fr_spec <- function(object, ...) {
   print(object, ...)
+}
+
+
+#' Render fr_spec as inline HTML in knitr documents
+#'
+#' Enables automatic rendering of `fr_spec` objects in R Markdown, Quarto,
+#' and pkgdown vignettes — just like gt tables render inline.
+#'
+#' @param x An `fr_spec` object.
+#' @param ... Ignored.
+#' @return A `knitr::asis_output()` with the HTML fragment.
+#' @exportS3Method knitr::knit_print
+knit_print.fr_spec <- function(x, ...) {
+  if (!requireNamespace("knitr", quietly = TRUE)) {
+    return(invisible(x))
+  }
+
+  # Finalize + render to HTML fragment (not a full document)
+  if (identical(x$type, "figure")) {
+    # Figures need the full render path — use temp file
+    tmp <- tempfile(fileext = ".html")
+    on.exit(unlink(tmp), add = TRUE)
+    x$.viewer <- TRUE
+    fr_render(x, tmp)
+    html <- paste0(readLines(tmp, warn = FALSE), collapse = "\n")
+    return(knitr::asis_output(html))
+  }
+
+  spec <- finalize_spec(x)
+  page_groups <- prepare_pages(spec)
+  col_panels <- calculate_col_panels(spec)
+
+  if (isTRUE(spec$columns_meta$split) && length(col_panels) > 1L) {
+    wm <- spec$columns_meta$width_mode
+    if (identical(wm, "fit")) {
+      spec <- fit_panel_widths(spec, col_panels)
+    } else if (identical(wm, "equal")) {
+      spec <- equal_panel_widths(spec, col_panels)
+    }
+  }
+
+  total_sections <- length(col_panels) * length(page_groups)
+  section_idx <- 0L
+  sections <- vector("list", total_sections)
+
+  for (group_idx in seq_along(page_groups)) {
+    group <- page_groups[[group_idx]]
+    for (panel_idx in seq_along(col_panels)) {
+      panel_cols <- col_panels[[panel_idx]]
+      vis_columns <- spec$columns[intersect(panel_cols, names(spec$columns))]
+      section_idx <- section_idx + 1L
+      is_last <- (group_idx == length(page_groups) &&
+        panel_idx == length(col_panels))
+
+      nrow_header <- 1L + n_spanner_levels(spec$header$spans)
+      borders <- resolve_borders(
+        spec$rules,
+        nrow(group$data),
+        length(vis_columns),
+        nrow_header
+      )
+
+      if (!is.null(group$label_overrides) || !is.null(group$span_overrides)) {
+        label_overrides <- group$label_overrides
+        span_overrides <- group$span_overrides
+      } else {
+        resolved <- resolve_group_labels(spec, group$data, group$group_label)
+        if (is.list(resolved)) {
+          label_overrides <- resolved$columns
+          span_overrides <- resolved$spans
+        } else {
+          label_overrides <- resolved
+          span_overrides <- NULL
+        }
+      }
+
+      cell_grid <- build_cell_grid(
+        group$data,
+        vis_columns,
+        spec$cell_styles,
+        spec$page
+      )
+
+      token_map <- build_token_map(
+        page_num = section_idx,
+        total_pages = total_sections,
+        spec = spec
+      )
+
+      sections[[section_idx]] <- html_section(
+        spec,
+        group,
+        vis_columns,
+        cell_grid,
+        borders,
+        label_overrides,
+        span_overrides,
+        token_map,
+        panel_idx,
+        is_last
+      )
+    }
+  }
+
+  body <- paste0(sections, collapse = "\n")
+  html <- html_fragment(body, spec)
+  knitr::asis_output(html)
 }
 
 

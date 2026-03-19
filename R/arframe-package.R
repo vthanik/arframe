@@ -84,6 +84,11 @@ NULL
       render = render_pdf,
       extensions = c("pdf"),
       description = "PDF via XeLaTeX"
+    ),
+    html = list(
+      render = render_html,
+      extensions = c("html", "htm"),
+      description = "HTML preview (self-contained)"
     )
   )
 }

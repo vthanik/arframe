@@ -28,14 +28,16 @@
 #' @param path Character scalar. Output file path. The file extension
 #'   determines the format unless `format` is specified:
 #'   * `.rtf` — Rich Text Format.
+#'   * `.html` / `.htm` — Self-contained HTML preview.
 #'   * `.tex` — LaTeX source (tabularray/XeLaTeX).
 #'   * `.pdf` — PDF via XeLaTeX compilation (requires XeLaTeX on PATH or
 #'     **tinytex**). First-time setup: call [fr_install_latex_deps()] to
 #'     install required LaTeX packages (notably **tabularray**). For
 #'     custom fonts without system-wide installation, set the
 #'     `ARFRAME_FONT_DIR` environment variable (see [fr_page()]).
-#' @param format Character scalar or `NULL`. Output format: `"rtf"`, `"latex"`,
-#'   or `"pdf"`. If `NULL` (default), detected from the file extension of `path`.
+#' @param format Character scalar or `NULL`. Output format: `"rtf"`, `"html"`,
+#'   `"latex"`, or `"pdf"`. If `NULL` (default), detected from the file
+#'   extension of `path`.
 #' @param ... Reserved for future backend-specific options.
 #'
 #' @return Invisibly returns `path` (the output file path).
@@ -133,12 +135,14 @@ fr_render <- function(spec, path, format = NULL, ...) {
   if (identical(spec$type, "figure")) {
     if (format == "pdf") {
       render_figure_pdf(spec, path)
-    } else if (format %in% c("rtf")) {
+    } else if (format == "rtf") {
       render_figure_rtf(spec, path)
+    } else if (format == "html") {
+      render_figure_html(spec, path)
     } else {
       cli_abort(
         c(
-          "Figure rendering is only supported for {.val pdf} and {.val rtf} output.",
+          "Figure rendering is only supported for {.val pdf}, {.val rtf}, and {.val html} output.",
           "x" = "You requested format {.val {format}}."
         ),
         call = call
@@ -268,24 +272,25 @@ get_backend <- function(format, call = caller_env()) {
 #' @return Invisibly returns `NULL`.
 #'
 #' @examples
-#' # Register a stub HTML backend
+#' # Register a custom CSV backend
 #' fr_register_backend(
-#'   format = "html",
-#'   extensions = c("html", "htm"),
+#'   format = "csv",
+#'   extensions = "csv",
 #'   render_fn = function(spec, page_groups, col_panels, path) {
-#'     writeLines("<html><body>stub table</body></html>", path)
+#'     utils::write.csv(spec$data, path, row.names = FALSE)
 #'   },
-#'   description = "Stub HTML tables"
+#'   description = "CSV export (data only)"
 #' )
 #'
 #' # Verify it appears in the backend list
 #' fr_backends()
 #'
 #' # Use the custom backend
-#' out <- file.path(tempdir(), "demo.html")
+#' out <- file.path(tempdir(), "demo.csv")
 #' tbl_demog |> fr_table() |> fr_render(out)
-#' readLines(out)
+#' readLines(out, n = 3)
 #' unlink(out)
+#' fr_unregister_backend("csv")
 #'
 #' @seealso [fr_backends()] to list registered backends, [fr_render()].
 #' @export

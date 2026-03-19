@@ -26,24 +26,25 @@ output in that format. Third-party packages can use this to add HTML,
 DOCX, or other formats without modifying arframe source.
 }
 \examples{
-# Register a stub HTML backend
+# Register a custom CSV backend
 fr_register_backend(
-  format = "html",
-  extensions = c("html", "htm"),
+  format = "csv",
+  extensions = "csv",
   render_fn = function(spec, page_groups, col_panels, path) {
-    writeLines("<html><body>stub table</body></html>", path)
+    utils::write.csv(spec$data, path, row.names = FALSE)
   },
-  description = "Stub HTML tables"
+  description = "CSV export (data only)"
 )
 
 # Verify it appears in the backend list
 fr_backends()
 
 # Use the custom backend
-out <- file.path(tempdir(), "demo.html")
+out <- file.path(tempdir(), "demo.csv")
 tbl_demog |> fr_table() |> fr_render(out)
-readLines(out)
+readLines(out, n = 3)
 unlink(out)
+fr_unregister_backend("csv")
 
 }
 \seealso{

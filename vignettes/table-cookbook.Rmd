@@ -90,8 +90,8 @@ Note what is **not** here: `fr_header()`, `fr_hlines()`, `fr_pagehead()`,
 demog_spec |> fr_render("output/Table_14_1_1.rtf")
 ```
 
-```{r demog-preview, echo = FALSE, out.width = "100%", fig.cap = "Demographics table (PDF output)"}
-knitr::include_graphics("figures/preview_demog.png")
+```{r demog-preview, echo = FALSE}
+demog_spec
 ```
 
 ## 14.1.2 Demographics with `group_label`
@@ -225,8 +225,8 @@ fr_validate(ae_soc_spec)
 Only `fr_page(continuation = "(continued)")` is added here because
 continuation text is specific to this multi-page table.
 
-```{r ae-soc-preview, echo = FALSE, out.width = "100%", fig.cap = "AE by SOC/PT table (PDF output, page 1)"}
-knitr::include_graphics("figures/preview_ae_soc.png")
+```{r ae-soc-preview, echo = FALSE}
+ae_soc_spec
 ```
 
 ## 14.3.2 AE by SOC / HLT / PT (Three-Level Hierarchy)

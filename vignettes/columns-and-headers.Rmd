@@ -94,8 +94,8 @@ spec <- decimal_data |>
   )
 ```
 
-```{r decimal-preview, echo = FALSE, out.width = "100%", fig.cap = "Decimal-aligned mixed statistics (counts, means, ranges, p-values)"}
-knitr::include_graphics("figures/preview_decimal.png")
+```{r decimal-preview, echo = FALSE}
+spec
 ```
 
 The engine recognises counts, floats, n (%), n/N (%), estimates with spreads,
@@ -355,8 +355,8 @@ spec <- tbl_demog |>
   fr_spans("Zomerane" = c("zom_50mg", "zom_100mg"))
 ```
 
-```{r spans-basic-preview, echo = FALSE, out.width = "100%", fig.cap = "Single-level spanning header grouping two dose arms under 'Zomerane'"}
-knitr::include_graphics("figures/preview_spans.png")
+```{r spans-basic-preview, echo = FALSE}
+spec
 ```
 
 The span label ("Zomerane") sits above the two Zomerane columns. Columns not
@@ -496,8 +496,8 @@ spec <- tbl_vs[tbl_vs$timepoint == "Week 24" &
   )
 ```
 
-```{r col-split-preview, echo = FALSE, out.width = "100%", fig.cap = "Column split panels with stub column repeating"}
-knitr::include_graphics("figures/preview_col_split.png")
+```{r col-split-preview, echo = FALSE}
+spec
 ```
 
 `stub = TRUE` columns repeat in every panel. `.width = "fit"` scales

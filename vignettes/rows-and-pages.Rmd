@@ -67,8 +67,8 @@ spec <- tbl_ae_soc |>
   fr_rows(group_by = "soc", indent_by = "pt")
 ```
 
-```{r indent-preview, echo = FALSE, out.width = "100%", fig.cap = "SOC/PT hierarchy with indentation"}
-knitr::include_graphics("figures/preview_indent.png")
+```{r indent-preview, echo = FALSE}
+spec
 ```
 
 `indent_by` indents the named column's values by 2 characters beneath the
@@ -290,8 +290,8 @@ spec <- tbl_demog |>
   )
 ```
 
-```{r pagehead-preview, echo = FALSE, out.width = "100%", fig.cap = "Running headers and footers with protocol ID and page numbers"}
-knitr::include_graphics("figures/preview_pagehead.png")
+```{r pagehead-preview, echo = FALSE}
+spec
 ```
 
 ### Built-in tokens

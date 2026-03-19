@@ -59,8 +59,8 @@ fr_validate(ae_listing_spec)
 ae_listing_spec |> fr_render("output/Listing_16_2_7_1.rtf")
 ```
 
-```{r ae-listing-preview, echo = FALSE, out.width = "100%", fig.cap = "AE listing (PDF output, page 1)"}
-knitr::include_graphics("figures/preview_ae_listing.png")
+```{r ae-listing-preview, echo = FALSE}
+ae_listing_spec
 ```
 
 ### Key listing features
@@ -132,8 +132,8 @@ if (requireNamespace("ggplot2", quietly = TRUE)) {
 fig_spec |> fr_render("output/Figure_14_2_1.pdf")
 ```
 
-```{r figure-preview, echo = FALSE, out.width = "100%", fig.cap = "KM figure with titles and footnotes (PDF output)"}
-knitr::include_graphics("figures/preview_figure.png")
+```{r figure-preview, echo = FALSE}
+if (exists("fig_spec")) fig_spec
 ```
 
 ### Multi-page figures

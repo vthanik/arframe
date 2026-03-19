@@ -577,3 +577,322 @@ render_figure_rtf <- function(spec, path) {
 
   rtf_write(con, "}")
 }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# HTML rendering
+# ══════════════════════════════════════════════════════════════════════════════
+
+#' Render a figure spec to HTML
+#'
+#' Saves each plot as a temporary PNG, base64-encodes it, and embeds it as a
+#' `data:image/png;base64,...` URI in a self-contained HTML document with
+#' titles, footnotes, and page chrome. Multi-page figures produce multiple
+#' `<section>` elements.
+#'
+#' @param spec Finalized fr_spec with type = "figure".
+#' @param path Output file path (.html/.htm).
+#' @noRd
+render_figure_html <- function(spec, path) {
+  requireNamespace("grDevices", quietly = TRUE)
+
+  page <- spec$page
+  printable <- printable_area_inches(page)
+  plot_w <- spec$figure_width %||% printable[["width"]]
+  plot_h <- spec$figure_height %||% (printable[["height"]] * 0.7)
+  dpi <- 300L
+
+  plot_list <- figure_plot_list(spec)
+  n_pages <- length(plot_list)
+
+  titles <- spec$meta$titles %||% list()
+  footnotes <- spec$meta$footnotes %||% list()
+
+  base_token_map <- build_token_map(
+    page_num = 1L,
+    total_pages = n_pages,
+    spec = spec
+  )
+
+  sections <- vector("list", n_pages)
+  for (pg in seq_len(n_pages)) {
+    parts <- character(0)
+
+    # Per-page token map
+    meta_toks <- meta_row_tokens(spec, pg)
+    page_token_map <- figure_page_token_map(
+      base_token_map,
+      pg,
+      n_pages,
+      meta_toks
+    )
+
+    # Pagehead
+    ph <- html_figure_chrome(spec$pagehead, spec, page_token_map, "page header")
+    if (nzchar(ph)) {
+      parts <- c(parts, ph)
+    }
+
+    # Titles
+    if (length(titles) > 0L) {
+      title_lines <- vapply(
+        titles,
+        function(t) {
+          fs <- t$font_size %||% page$font_size
+          align <- t$align %||% "center"
+          bold <- isTRUE(t$bold)
+          content <- resolve_tokens(
+            label_to_plain(t$content),
+            page_token_map,
+            "figure title"
+          )
+          content <- html_escape(content)
+
+          style_parts <- paste0("text-align:", align)
+          if (fs != page$font_size) {
+            style_parts <- c(style_parts, paste0("font-size:", fs, "pt"))
+          }
+          if (bold) {
+            style_parts <- c(style_parts, "font-weight:bold")
+          }
+          paste0(
+            "<div class=\"ar-title\" style=\"",
+            paste0(style_parts, collapse = ";"),
+            "\">",
+            content,
+            "</div>"
+          )
+        },
+        character(1)
+      )
+      parts <- c(
+        parts,
+        paste0(
+          "<div class=\"ar-titles\">\n",
+          paste0(title_lines, collapse = "\n"),
+          "\n</div>"
+        )
+      )
+    }
+
+    # Save plot to temp PNG, base64-encode, embed
+    tmp_plot <- tempfile(fileext = ".png")
+    save_plot_to_file(plot_list[[pg]], tmp_plot, plot_w, plot_h, dpi = dpi)
+    png_raw <- readBin(tmp_plot, "raw", file.info(tmp_plot)$size)
+    unlink(tmp_plot)
+    b64 <- base64_encode(png_raw)
+
+    parts <- c(
+      parts,
+      paste0(
+        "<div style=\"text-align:center;margin:0.5em 0\">\n",
+        "<img src=\"data:image/png;base64,",
+        b64,
+        "\" style=\"max-width:100%;width:",
+        plot_w,
+        "in\" alt=\"figure\">\n",
+        "</div>"
+      )
+    )
+
+    # Footnotes
+    if (length(footnotes) > 0L) {
+      fn_lines <- vapply(
+        footnotes,
+        function(fn) {
+          fs <- fn$font_size %||% page$font_size
+          align <- fn$align %||% "left"
+          content <- resolve_tokens(
+            label_to_plain(fn$content),
+            page_token_map,
+            "figure footnote"
+          )
+          content <- html_escape(content)
+
+          style_parts <- character(0)
+          if (align != "left") {
+            style_parts <- c(style_parts, paste0("text-align:", align))
+          }
+          if (fs != page$font_size) {
+            style_parts <- c(style_parts, paste0("font-size:", fs, "pt"))
+          }
+          style_str <- if (length(style_parts) > 0L) {
+            paste0(" style=\"", paste0(style_parts, collapse = ";"), "\"")
+          } else {
+            ""
+          }
+          paste0(
+            "<div class=\"ar-footnote\"",
+            style_str,
+            ">",
+            content,
+            "</div>"
+          )
+        },
+        character(1)
+      )
+
+      parts <- c(
+        parts,
+        paste0(
+          "<div class=\"ar-footnotes\">\n",
+          paste0(fn_lines, collapse = "\n"),
+          "\n</div>"
+        )
+      )
+    }
+
+    # Pagefoot (wrapped in ar-chrome-foot for bottom push)
+    pf <- html_figure_chrome(
+      spec$pagefoot,
+      spec,
+      page_token_map,
+      "page footer"
+    )
+    if (nzchar(pf)) {
+      parts <- c(
+        parts,
+        paste0("<div class=\"ar-chrome-foot\">\n", pf, "\n</div>")
+      )
+    }
+
+    sections[[pg]] <- paste0(
+      "<section class=\"ar-section\">\n",
+      paste0(parts, collapse = "\n"),
+      "\n</section>"
+    )
+  }
+
+  body <- paste0(sections, collapse = "\n")
+  doc <- html_document(body, spec, viewer = isTRUE(spec$.viewer))
+  writeLines(doc, path, useBytes = TRUE)
+}
+
+
+#' Build page chrome div for figure HTML
+#' @noRd
+html_figure_chrome <- function(chrome, spec, token_map, context) {
+  if (is.null(chrome)) {
+    return("")
+  }
+
+  has_left <- !is.null(chrome$left)
+  has_center <- !is.null(chrome$center)
+  has_right <- !is.null(chrome$right)
+  if (!has_left && !has_center && !has_right) {
+    return("")
+  }
+
+  chrome_escape <- function(txt) {
+    txt <- resolve_tokens(txt, token_map, context)
+    html_escape(txt)
+  }
+
+  bold_style <- if (isTRUE(chrome$bold)) " style=\"font-weight:bold\"" else ""
+
+  spans <- character(0)
+  if (has_left) {
+    spans <- c(
+      spans,
+      paste0(
+        "<span class=\"ar-chrome-left\"",
+        bold_style,
+        ">",
+        chrome_escape(chrome$left),
+        "</span>"
+      )
+    )
+  }
+  if (has_center) {
+    spans <- c(
+      spans,
+      paste0(
+        "<span class=\"ar-chrome-center\"",
+        bold_style,
+        ">",
+        chrome_escape(chrome$center),
+        "</span>"
+      )
+    )
+  }
+  if (has_right) {
+    spans <- c(
+      spans,
+      paste0(
+        "<span class=\"ar-chrome-right\"",
+        bold_style,
+        ">",
+        chrome_escape(chrome$right),
+        "</span>"
+      )
+    )
+  }
+
+  paste0(
+    "<div class=\"ar-chrome\">\n",
+    paste0(spans, collapse = "\n"),
+    "\n</div>"
+  )
+}
+
+
+#' Base64-encode raw bytes (pure R, no external dependency)
+#'
+#' @param raw_bytes Raw vector to encode.
+#' @return Character scalar — base64-encoded string.
+#' @noRd
+base64_encode <- function(raw_bytes) {
+  b64_chars <- c(
+    LETTERS,
+    letters,
+    as.character(0:9),
+    "+",
+    "/"
+  )
+  n <- length(raw_bytes)
+  if (n == 0L) {
+    return("")
+  }
+
+  int_vals <- as.integer(raw_bytes)
+
+  # Pad to multiple of 3
+  pad <- (3L - n %% 3L) %% 3L
+  if (pad > 0L) {
+    int_vals <- c(int_vals, rep(0L, pad))
+  }
+  n_padded <- length(int_vals)
+
+  # Process 3 bytes at a time → 4 base64 characters
+  n_groups <- n_padded %/% 3L
+  out <- character(n_groups * 4L)
+  oi <- 0L
+  for (i in seq(1L, n_padded, by = 3L)) {
+    a <- int_vals[i]
+    b <- int_vals[i + 1L]
+    cc <- int_vals[i + 2L]
+
+    oi <- oi + 1L
+    out[oi] <- b64_chars[bitwShiftR(a, 2L) + 1L]
+    oi <- oi + 1L
+    out[oi] <- b64_chars[
+      bitwOr(bitwShiftL(bitwAnd(a, 3L), 4L), bitwShiftR(b, 4L)) + 1L
+    ]
+    oi <- oi + 1L
+    out[oi] <- b64_chars[
+      bitwOr(bitwShiftL(bitwAnd(b, 15L), 2L), bitwShiftR(cc, 6L)) + 1L
+    ]
+    oi <- oi + 1L
+    out[oi] <- b64_chars[bitwAnd(cc, 63L) + 1L]
+  }
+
+  # Replace padding positions with '='
+  if (pad >= 1L) {
+    out[length(out)] <- "="
+  }
+  if (pad >= 2L) {
+    out[length(out) - 1L] <- "="
+  }
+
+  paste0(out, collapse = "")
+}

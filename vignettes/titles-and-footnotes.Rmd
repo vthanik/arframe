@@ -48,8 +48,8 @@ spec <- tbl_demog |>
 length(fr_get_titles(spec))
 ```
 
-```{r titles-styled-preview, echo = FALSE, out.width = "100%", fig.cap = "Mixed alignment with selective bold titles"}
-knitr::include_graphics("figures/preview_titles_styled.png")
+```{r titles-styled-preview, echo = FALSE}
+spec
 ```
 
 List fields: `align` (`"left"`, `"center"`, `"right"`), `bold` (logical),

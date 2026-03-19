@@ -34,6 +34,7 @@ Imports:
     yaml (>= 2.3.0)
 Suggests:
     ggplot2 (>= 3.4.0),
+    htmltools,
     knitr,
     rmarkdown,
     rstudioapi,

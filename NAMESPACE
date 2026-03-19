@@ -3,6 +3,7 @@
 S3method(as.character,fr_markup)
 S3method(c,fr_recipe)
 S3method(format,fr_markup)
+S3method(knitr::knit_print,fr_spec)
 S3method(print,fr_col)
 S3method(print,fr_footnote_entry)
 S3method(print,fr_markup)

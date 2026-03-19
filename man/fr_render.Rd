@@ -14,6 +14,7 @@ fr_render(spec, path, format = NULL, ...)
 determines the format unless \code{format} is specified:
 \itemize{
 \item \code{.rtf} — Rich Text Format.
+\item \code{.html} / \code{.htm} — Self-contained HTML preview.
 \item \code{.tex} — LaTeX source (tabularray/XeLaTeX).
 \item \code{.pdf} — PDF via XeLaTeX compilation (requires XeLaTeX on PATH or
 \strong{tinytex}). First-time setup: call \code{\link[=fr_install_latex_deps]{fr_install_latex_deps()}} to
@@ -22,8 +23,9 @@ custom fonts without system-wide installation, set the
 \code{ARFRAME_FONT_DIR} environment variable (see \code{\link[=fr_page]{fr_page()}}).
 }}
 
-\item{format}{Character scalar or \code{NULL}. Output format: \code{"rtf"}, \code{"latex"},
-or \code{"pdf"}. If \code{NULL} (default), detected from the file extension of \code{path}.}
+\item{format}{Character scalar or \code{NULL}. Output format: \code{"rtf"}, \code{"html"},
+\code{"latex"}, or \code{"pdf"}. If \code{NULL} (default), detected from the file
+extension of \code{path}.}
 
 \item{...}{Reserved for future backend-specific options.}
 }
