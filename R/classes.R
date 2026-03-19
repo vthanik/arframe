@@ -1410,7 +1410,7 @@ knit_print.fr_spec <- function(x, ...) {
     # Strip the full document wrapper — extract body content
     html <- sub(".*<body>\\s*", "", html)
     html <- sub("\\s*</body>.*", "", html)
-    # Wrap in a scoped container
+    # Wrap in htmltools tag (gt-style) for pkgdown compatibility
     uid <- paste0(
       "arframe-fig-",
       format(
@@ -1418,14 +1418,15 @@ knit_print.fr_spec <- function(x, ...) {
         scientific = FALSE
       )
     )
-    html <- paste0(
-      "<div id=\"",
-      uid,
-      "\" style=\"max-width:100%;overflow-x:auto\">\n",
-      html,
-      "\n</div>"
+    fig_tag <- htmltools::tags$div(
+      id = uid,
+      style = htmltools::css(
+        `max-width` = "100%",
+        `overflow-x` = "auto"
+      ),
+      htmltools::HTML(html)
     )
-    return(knitr::asis_output(html))
+    return(knitr::knit_print(fig_tag))
   }
 
   spec <- finalize_spec(x)
