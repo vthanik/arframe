@@ -146,7 +146,7 @@ html_fragment <- function(body, spec) {
   paste0(
     "<div id=\"",
     uid,
-    "\">\n",
+    "\" style=\"padding:0;overflow-x:auto;overflow-y:auto;width:auto;height:auto;\">\n",
     "<style>\n",
     scoped_css,
     "</style>\n",
@@ -185,11 +185,15 @@ scope_css <- function(css, uid) {
     } else if (grepl("^body\\s*\\{", line)) {
       # body { ... } → #uid { ... }
       result[i] <- sub("^body", prefix, line)
-    } else if (grepl("^\\.ar-", line)) {
-      # .ar-foo { ... } → #uid .ar-foo { ... }
-      # Handle comma-separated selectors: .ar-a, .ar-b → #uid .ar-a, #uid .ar-b
+    } else if (
+      grepl(
+        "^\\.ar-|^table|^thead|^tbody|^tfoot|^tr|^th|^td|^hr|^div|^p\\s",
+        line
+      )
+    ) {
+      # CSS selector → #uid selector
+      # Handle comma-separated selectors: a, b → #uid a, #uid b
       if (grepl(",", line, fixed = TRUE)) {
-        # Split "selector1, selector2 {" into selectors + opening brace
         brace <- ""
         sel_line <- line
         if (grepl("\\{", line)) {
@@ -276,16 +280,29 @@ html_embedded_css <- function(spec, viewer = FALSE, knitr = FALSE) {
 
   # Viewer/knitr mode: clean layout (no page simulation)
   if (viewer || knitr) {
-    body_css <- paste0(
-      "body {\n",
-      "  background: white;\n",
-      "  margin: 0;\n",
-      "  padding: 12px 16px;\n",
-      if (knitr) "  max-width: 100%;\n  overflow: hidden;\n" else "",
-      "  -webkit-font-smoothing: antialiased;\n",
-      "  -moz-osx-font-smoothing: grayscale;\n",
-      "}\n"
-    )
+    if (knitr) {
+      # Knitr/pkgdown: minimal container, no extra padding
+      # (pkgdown content area already has padding)
+      body_css <- paste0(
+        "body {\n",
+        "  padding: 0;\n",
+        "  overflow-x: auto;\n",
+        "  -webkit-font-smoothing: antialiased;\n",
+        "  -moz-osx-font-smoothing: grayscale;\n",
+        "}\n"
+      )
+    } else {
+      # Viewer: clean white with padding
+      body_css <- paste0(
+        "body {\n",
+        "  background: white;\n",
+        "  margin: 0;\n",
+        "  padding: 12px 16px;\n",
+        "  -webkit-font-smoothing: antialiased;\n",
+        "  -moz-osx-font-smoothing: grayscale;\n",
+        "}\n"
+      )
+    }
     # Knitr: fluid width to fit pkgdown/Rmd container
     # Viewer: fixed printable width centered in panel
     if (knitr) {
@@ -344,8 +361,6 @@ html_embedded_css <- function(spec, viewer = FALSE, knitr = FALSE) {
   }
 
   paste0(
-    # ── Page Canvas ──
-    "* { margin: 0; padding: 0; box-sizing: border-box; }\n",
     body_css,
     page_css,
     "  font-family: ",
@@ -391,25 +406,27 @@ html_embedded_css <- function(spec, viewer = FALSE, knitr = FALSE) {
     "  color: #0f172a;\n",
     "}\n",
 
-    # ── Table ──
+    # ── Table + Bootstrap Reset (gt-style: target specific elements) ──
+    # Reset all table-related elements to prevent Bootstrap leakage
+    "table, thead, tbody, tfoot, tr, th, td {\n",
+    "  border-style: none;\n",
+    "}\n",
     ".ar-table {\n",
+    "  display: table;\n",
     "  border-collapse: collapse;\n",
     "  table-layout: fixed;\n",
     "  width: 100%;\n",
+    "  margin-bottom: 0;\n",
     "  font-variant-numeric: tabular-nums;\n",
     "  color: #1e293b;\n",
-    "}\n",
-    # Reset Bootstrap .table styles (pkgdown adds class="table" to all tables)
-    ".ar-table.table {\n",
-    "  display: table;\n",
-    "  margin-bottom: 0;\n",
     "  --bs-table-bg: transparent;\n",
     "  --bs-table-striped-bg: transparent;\n",
+    "  --bs-table-color: inherit;\n",
+    "  --bs-table-border-color: transparent;\n",
     "}\n",
     ".ar-table th, .ar-table td {\n",
     "  border: none;\n",
-    "  background: none;\n",
-    "  padding: inherit;\n",
+    "  background: transparent;\n",
     "}\n",
     ".ar-table thead th {\n",
     "  font-weight: 600;\n",
