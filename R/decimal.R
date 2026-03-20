@@ -1727,6 +1727,21 @@ pad_pct_part <- function(pct_prefix, pct_int, pct_dec, pct_sign, widths) {
   paste0(pct, stringi::stri_pad_right(pct_sign, widths$w_pct_sign))
 }
 
+#' Build a float part with % glued to number: sign+int.dec% then pad right
+#'
+#' Unlike pad_float_part which pads the decimal right (producing "23.4 "),
+#' this keeps % adjacent to the last digit: "23.4%" then pads afterward.
+#' @noRd
+pad_float_pct_part <- function(sign, int, dec, w_si, w_dec, has_dec) {
+  padded_si <- stringi::stri_pad_left(paste0(sign, int), w_si)
+  if (isTRUE(has_dec)) {
+    inner <- paste0(padded_si, ".", dec, "%")
+    stringi::stri_pad_right(inner, w_si + 1L + w_dec + 1L)
+  } else {
+    paste0(padded_si, "%")
+  }
+}
+
 #' Pad a numeric-or-token position
 #'
 #' If token, right-justify in w_si and space-fill the decimal part.
@@ -2105,7 +2120,7 @@ rebuild_stat_aligned <- function(parsed, widths, dominant_type) {
         widths$w_est_dec,
         widths$has_est_dec
       )
-      sprd <- pad_float_part(
+      sprd <- pad_float_pct_part(
         parsed$sprd_sign,
         parsed$sprd_int,
         parsed$sprd_dec,
@@ -2113,7 +2128,7 @@ rebuild_stat_aligned <- function(parsed, widths, dominant_type) {
         widths$w_sprd_dec,
         widths$has_sprd_dec
       )
-      paste0(est, " (", sprd, "%)")
+      paste0(est, " (", sprd, ")")
     },
 
     est_ci = {
@@ -2312,7 +2327,7 @@ rebuild_stat_aligned <- function(parsed, widths, dominant_type) {
         widths$w_est_dec,
         widths$has_est_dec
       )
-      sprd <- pad_float_part(
+      sprd <- pad_float_pct_part(
         parsed$sprd_sign,
         parsed$sprd_int,
         parsed$sprd_dec,
@@ -2320,7 +2335,7 @@ rebuild_stat_aligned <- function(parsed, widths, dominant_type) {
         widths$w_sprd_dec,
         widths$has_sprd_dec
       )
-      espct_str <- paste0(est, " (", sprd, "%)")
+      espct_str <- paste0(est, " (", sprd, ")")
       # paren CI part
       ci_lo <- pad_float_part(
         parsed$ci_lo_sign,

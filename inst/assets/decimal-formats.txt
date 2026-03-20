@@ -9,7 +9,6 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
 
  1. missing
     Blank, dash, or token placeholders -> replaced by spaces
-    .
     Input                                Aligned
      ---------------------------------------------------------------------- 
     (empty)                              ""
@@ -22,7 +21,6 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
 
  2. n_only
     Plain integer count (right-aligned)
-    .
     Input                                Aligned
      ---------------------------------------------------------------------- 
     0                                    "  0"
@@ -32,7 +30,6 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
 
  3. scalar_float
     Signed decimal number (decimal-point aligned)
-    .
     Input                                Aligned
      ---------------------------------------------------------------------- 
     12.3                                 " 12.3 "
@@ -43,7 +40,6 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
 
  4. pvalue
     Prefixed p-value (<, >, = prefix)
-    .
     Input                                Aligned
      ---------------------------------------------------------------------- 
     <0.001                               "<0.001"
@@ -53,7 +49,6 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
 
  5. n_pct
     Count (percentage) with n=0 zero suppression
-    .
     Input                                Aligned
      ---------------------------------------------------------------------- 
     0                                    "  0         "
@@ -64,7 +59,6 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
 
  6. n_over_N_pct
     Fraction with percentage: n/N (pct)
-    .
     Input                                Aligned
      ---------------------------------------------------------------------- 
     3/45 (6.7)                           "  3/45  (  6.7 )"
@@ -74,7 +68,6 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
 
  7. n_over_N
     Plain fraction without percentage
-    .
     Input                                Aligned
      ---------------------------------------------------------------------- 
     0/120                                "  0/120"
@@ -84,7 +77,6 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
 
  8. n_over_float
     Events over subject-time: n/float
-    .
     Input                                Aligned
      ---------------------------------------------------------------------- 
     0/234.6                              "  0/234.6"
@@ -93,8 +85,7 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
     [all nchar = 9]
 
  9. est_spread
-    Estimate (spread) — mean (SD), median (IQR)
-    .
+    Estimate (spread)
     Input                                Aligned
      ---------------------------------------------------------------------- 
     75.0 (6.75)                          " 75.0 ( 6.75)"
@@ -104,7 +95,6 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
 
 10. est_spread_pct
     Geometric mean (CV%)
-    .
     Input                                Aligned
      ---------------------------------------------------------------------- 
     0.10 (8.7%)                          "   0.10 ( 8.7%)"
@@ -113,8 +103,7 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
     [all nchar = 15]
 
 11. est_ci
-    Estimate (lo, hi) — token-aware for NR/NE/INF/BLQ
-    .
+    Estimate (lo, hi) — token-aware
     Input                                Aligned
      ---------------------------------------------------------------------- 
     168.0 (152.4, 183.6)                 "168.0   (152.4  , 183.6)"
@@ -124,8 +113,7 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
     [all nchar = 24]
 
 12. est_ci_bracket
-    Estimate [lo, hi] — bracket delimiters, token-aware
-    .
+    Estimate [lo, hi] — bracket delimiters
     Input                                Aligned
      ---------------------------------------------------------------------- 
     0.0 [0.0, 0.0]                       "  0.0 [ 0.0,   0.0]"
@@ -134,8 +122,7 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
     [all nchar = 19]
 
 13. range_pair
-    Comma-separated range: lo, hi
-    .
+    Comma-separated range
     Input                                Aligned
      ---------------------------------------------------------------------- 
     2.0, 45.0                            " 2.0, 45.0"
@@ -144,8 +131,7 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
     [all nchar = 10]
 
 14. int_range
-    Integer range with dash separator
-    .
+    Integer range with dash
     Input                                Aligned
      ---------------------------------------------------------------------- 
     1 - 180                              " 1 - 180"
@@ -154,7 +140,6 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
 
 15. est_ci_pval
     CI + trailing p-value (compound)
-    .
     Input                                Aligned
      ---------------------------------------------------------------------- 
     -0.08 (-0.21, 0.05) 0.194            "-0.08 (-0.21,  0.05)     0.194"
@@ -163,7 +148,6 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
 
 16. n_pct_rate
     Count (%) + rate per 100 PY (compound)
-    .
     Input                                Aligned
      ---------------------------------------------------------------------- 
     0 (0.0) 0.00                         " 0                "
@@ -173,7 +157,6 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
 
 17. n_over_N_pct_ci
     n/N (%) [CI] — response rate (compound)
-    .
     Input                                Aligned
      ---------------------------------------------------------------------- 
     0/120 (0.0) [0.0, 3.0]               "  0/120 (  0.0) [ 0.0,   3.0]"
@@ -183,7 +166,6 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
 
 18. est_spread_pct_ci
     Gmean (CV%) (CI) — PK full-line (compound)
-    .
     Input                                Aligned
      ---------------------------------------------------------------------- 
     8.1 (24.2%) (7.3, 8.9)               "   8.1 (24.2%)    (   7.3,    8.9)"
@@ -195,49 +177,36 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
 Cross-type Fallback Examples
 ==============================================================================
 
-When a column mixes types, the dominant type sets the alignment grid.
 Sibling types share width computation for proper decimal alignment.
 
-est_ci + missing tokens (NR/NR/NR rows become spaces):
+est_ci + missing tokens:
   14.3 (11.2, NR)                      "14.3   (11.2  , NR)"
   0.087 (0.034, NR)                    " 0.087 ( 0.034, NR)"
   NR (NR, NR)                          "NR     (NR    , NR)"
   (empty)                              "                   "
 
-n_only in n_pct column (count family, n_pct dominates):
+n_only in n_pct column:
   45                                   "45       "
   44 (97.8)                            "44 (97.8)"
   1 (2.2)                              " 1 ( 2.2)"
   0                                    " 0       "
 
-est_spread_pct + est_spread (sibling widths shared):
-  52.43 (23.4%)                        " 52.43 (23.4 %)"
+est_spread_pct + est_spread (sibling widths, % glued):
+  52.43 (23.4%)                        " 52.43 (23.4% )"
   75.0 (6.75)                          " 75.0  ( 6.75 )"
   136.8 (17.61)                        "136.8  (17.61 )"
 
-est_ci_bracket minority in est_ci column (delimiters swap):
+est_ci_bracket in est_ci column:
   5.0 [3.0, 7.0]                       " 5.0 [ 3.0,  7.0]"
   10.0 (8.0, 12.0)                     "10.0 [ 8.0, 12.0]"
   15.0 (13.0, 17.0)                    "15.0 [13.0, 17.0]"
 
-n_over_N in n_over_N_pct column (fraction part aligns):
+n_over_N in n_over_N_pct column:
   0/120                                " 0/120       "
   3/45 (6.7)                           " 3/45  ( 6.7)"
   10/45 (22.2)                         "10/45  (22.2)"
 
-scalar_float in est_spread column (decimal aligns with est):
-  136.6                                "136.6        "
-  136.8 (17.61)                        "136.8 (17.61)"
-  75.2 (8.30)                          " 75.2 ( 8.30)"
-
 
 ==============================================================================
-Family Priority (for tie-breaking)
+Family Priority: compound(5) > estimate(4) > range(3) > count(2) > float(1)
 ==============================================================================
-
-  compound (5) > estimate (4) > range (3) > count (2) > float (1)
-
-  Within a family, the richest type dominates:
-    count:    n_over_N_pct (3) > n_pct (2) > n_over_N (2) > n_only (1)
-    estimate: est_ci (2) > est_ci_bracket (2) > est_spread (1) > est_spread_pct (1)
-    compound: est_spread_pct_ci (5) > est_ci_pval (4) > n_over_N_pct_ci (4) > n_pct_rate (3)
