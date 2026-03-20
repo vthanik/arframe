@@ -131,7 +131,7 @@
 #'   ) |>
 #'   fr_header(bold = TRUE, bg = "#D9E2F3") |>
 #'   fr_spans("Treatment Arm" = c("placebo", "zom_50mg", "zom_100mg")) |>
-#'   fr_rows(group_by = "group", indent_by = "group") |>
+#'   fr_rows(group_by = "group", blank_after = "group", indent_by = "group") |>
 #'   fr_hlines("header") |>
 #'   fr_vlines("inner") |>
 #'   fr_styles(

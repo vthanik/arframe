@@ -393,9 +393,17 @@ build_row_heights <- function(nr, cell_styles) {
 #' @param data Data frame.
 #' @param group_cols Character vector of column names (from `group_by`).
 #' @param label_col Character scalar — column to receive the group value.
+#' @param preserve_cols Character vector of additional column names whose
+#'   values should be copied from the source row to the injected header row
+#'   (e.g. `page_by` columns, so that `prepare_pages()` can split correctly).
 #' @return List with `data` (expanded) and `header_rows` (integer vector).
 #' @noRd
-inject_group_headers <- function(data, group_cols, label_col) {
+inject_group_headers <- function(
+  data,
+  group_cols,
+  label_col,
+  preserve_cols = NULL
+) {
   nr <- nrow(data)
   if (nr == 0L || length(group_cols) == 0L || is.null(label_col)) {
     return(list(data = data, header_rows = integer(0)))
@@ -414,6 +422,9 @@ inject_group_headers <- function(data, group_cols, label_col) {
   hdr_template[1L, ] <- ""
 
   sep <- fr_env$group_label_sep
+
+  # Columns to copy from source row: group_cols + preserve_cols (e.g. page_by)
+  copy_cols <- unique(c(group_cols, intersect(preserve_cols, names(data))))
 
   # Chunk-based interleaving: header row before each group, then the group data
   n_boundaries <- length(boundaries)
@@ -438,8 +449,8 @@ inject_group_headers <- function(data, group_cols, label_col) {
         collapse = sep
       )
     }
-    # Preserve group_cols values so blank_after/keepn still work
-    for (gc in group_cols) {
+    # Preserve group_cols + page_by values so blank_after/keepn/page split work
+    for (gc in copy_cols) {
       hdr[[gc]] <- as.character(data[[gc]][row_idx])
     }
 
@@ -508,11 +519,14 @@ remap_style_indices_for_injected <- function(cell_styles, header_rows) {
 #'
 #' @param data Data frame.
 #' @param blank_cols Character vector of column names from spec$body$blank_after.
+#' @param preserve_cols Character vector of additional column names whose
+#'   values should be copied from the preceding row to the blank row
+#'   (e.g. `page_by` columns, so that `prepare_pages()` can split correctly).
 #' @return A list with `data` (data frame with blanks inserted) and
 #'   `insert_positions` (integer vector of original row indices after which
 #'   blanks were inserted — i.e., the boundary rows in the ORIGINAL data).
 #' @noRd
-insert_blank_after <- function(data, blank_cols) {
+insert_blank_after <- function(data, blank_cols, preserve_cols = NULL) {
   empty <- list(data = data, insert_positions = integer(0))
   if (nrow(data) <= 1L || length(blank_cols) == 0L) {
     return(empty)
@@ -535,12 +549,19 @@ insert_blank_after <- function(data, blank_cols) {
   blank_row <- vctrs::vec_init(data, 1L)
   blank_row[1L, ] <- ""
 
+  # Columns to copy from the boundary row (e.g. page_by columns)
+  copy_cols <- intersect(preserve_cols, names(data))
+
   # Build result by interleaving data chunks and blank rows
   result <- vector("list", 2L * length(boundaries) + 1L)
   prev <- 1L
   for (k in seq_along(boundaries)) {
     result[[2L * k - 1L]] <- vctrs::vec_slice(data, prev:boundaries[k])
-    result[[2L * k]] <- blank_row
+    brow <- blank_row
+    for (gc in copy_cols) {
+      brow[[gc]] <- as.character(data[[gc]][boundaries[k]])
+    }
+    result[[2L * k]] <- brow
     prev <- boundaries[k] + 1L
   }
   result[[2L * length(boundaries) + 1L]] <- vctrs::vec_slice(

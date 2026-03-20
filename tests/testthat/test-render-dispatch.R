@@ -297,7 +297,7 @@ test_that("finalize_spec inserts blank rows at blank_after boundaries", {
   expect_true(sum(blank_mask) >= 1L)
 })
 
-test_that("group_by auto-implies blank_after", {
+test_that("group_by does not auto-imply blank_after", {
   spec <- data.frame(
     cat = c("X", "X", "Y", "Y"),
     val = c("1", "2", "3", "4"),
@@ -307,7 +307,22 @@ test_that("group_by auto-implies blank_after", {
     fr_rows(group_by = "cat")
 
   result <- arframe:::finalize_spec(spec)
-  # group_by unions with blank_after -> blank rows inserted
+  # group_by alone does not insert blank rows — use blank_after explicitly
+
+  expect_equal(nrow(result$data), 4L)
+})
+
+test_that("blank_after inserts blank rows at group boundaries", {
+  spec <- data.frame(
+    cat = c("X", "X", "Y", "Y"),
+    val = c("1", "2", "3", "4"),
+    stringsAsFactors = FALSE
+  ) |>
+    fr_table() |>
+    fr_rows(group_by = "cat", blank_after = "cat")
+
+  result <- arframe:::finalize_spec(spec)
+  # explicit blank_after inserts blank rows between groups
   expect_true(nrow(result$data) > 4L)
 })
 

@@ -749,8 +749,14 @@ finalize_rows <- function(spec) {
   # BEFORE style remapping (so user styles apply to correct positions).
   group_label_col <- spec$body$group_label
   group_cols <- spec$body$group_by
+  page_by_cols <- spec$body$page_by
   if (!is.null(group_label_col) && length(group_cols) > 0L) {
-    gl_result <- inject_group_headers(spec$data, group_cols, group_label_col)
+    gl_result <- inject_group_headers(
+      spec$data,
+      group_cols,
+      group_label_col,
+      preserve_cols = page_by_cols
+    )
     spec$data <- gl_result$data
 
     # Remap existing style indices to account for injected header rows
@@ -762,10 +768,13 @@ finalize_rows <- function(spec) {
     }
   }
 
-  # Insert blank rows at group boundaries. group_by auto-implies blank_after
-  # for visual separation between groups.
-  blank_cols <- union(spec$body$group_by, spec$body$blank_after)
-  blank_result <- insert_blank_after(spec$data, blank_cols)
+  # Insert blank rows at group boundaries (explicit blank_after only).
+  blank_cols <- spec$body$blank_after
+  blank_result <- insert_blank_after(
+    spec$data,
+    blank_cols,
+    preserve_cols = page_by_cols
+  )
   spec$data <- blank_result$data
 
   # Remap style row indices to account for inserted blank rows

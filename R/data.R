@@ -470,7 +470,7 @@
 #' \describe{
 #'   \item{section}{Section grouping key: `"Time to Study Withdrawal"`,
 #'     `"KM Estimates"`, `"Log-Rank Test"`, or `"Hazard Ratio"`. Use with
-#'     `fr_rows(group_by = "section")` for visual separation between blocks}
+#'     `fr_rows(group_by = "section", blank_after = "section")` for visual separation between blocks}
 #'   \item{statistic}{Row label with indentation (e.g.
 #'     `"  Median (95% CI) [a]"`, `"  Zom 50mg vs Placebo"`).
 #'     Section headers have no indent; detail rows are indented with two spaces}
@@ -495,7 +495,7 @@
 #'     zom_100mg = fr_col("Zomerane 100mg"),
 #'     placebo   = fr_col("Placebo")
 #'   ) |>
-#'   fr_rows(group_by = "section") |>
+#'   fr_rows(group_by = "section", blank_after = "section") |>
 #'   fr_footnotes(
 #'     "[a] Kaplan-Meier estimate.",
 #'     "[b] Two-sided log-rank test.",

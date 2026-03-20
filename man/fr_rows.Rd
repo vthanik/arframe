@@ -30,9 +30,10 @@ as a group label above the column headers, and the column is
 multi-SOC tables that break by System Organ Class.}
 
 \item{group_by}{Character vector of column name(s). Rows sharing the same
-value are visually grouped (indented detail rows, blank-after spacing)
-\strong{and} kept together on the same page when possible. When a group spans
-pages, a "(continued)" header row repeats at the top of the next page.}
+value are visually grouped (indented detail rows, kept together on the
+same page when possible). When a group spans pages, a "(continued)"
+header row repeats at the top of the next page. To add blank rows
+between groups, also set \code{blank_after} to the same column(s).}
 
 \item{indent_by}{Row indentation specification. Accepts two forms:
 

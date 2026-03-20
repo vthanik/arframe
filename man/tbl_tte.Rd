@@ -9,7 +9,7 @@ A data frame with 12 rows and 5 columns:
 \describe{
 \item{section}{Section grouping key: \code{"Time to Study Withdrawal"},
 \code{"KM Estimates"}, \code{"Log-Rank Test"}, or \code{"Hazard Ratio"}. Use with
-\code{fr_rows(group_by = "section")} for visual separation between blocks}
+\code{fr_rows(group_by = "section", blank_after = "section")} for visual separation between blocks}
 \item{statistic}{Row label with indentation (e.g.
 \code{"  Median (95\% CI) [a]"}, \code{"  Zom 50mg vs Placebo"}).
 Section headers have no indent; detail rows are indented with two spaces}
@@ -53,7 +53,7 @@ spec <- tbl_tte |>
     zom_100mg = fr_col("Zomerane 100mg"),
     placebo   = fr_col("Placebo")
   ) |>
-  fr_rows(group_by = "section") |>
+  fr_rows(group_by = "section", blank_after = "section") |>
   fr_footnotes(
     "[a] Kaplan-Meier estimate.",
     "[b] Two-sided log-rank test.",
