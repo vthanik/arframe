@@ -1358,54 +1358,41 @@ compute_stat_widths <- function(parsed_values, dominant_type) {
       )
     },
 
-    est_spread = {
-      w_est_si <- maxw_with_sign("est_int", "est_sign")
-      w_est_dec <- maxw("est_dec")
-      w_sprd_si <- maxw_with_sign("sprd_int", "sprd_sign")
-      w_sprd_dec <- maxw("sprd_dec")
-      has_est_dec <- has_field(typed, "est_dec")
-      has_sprd_dec <- has_field(typed, "sprd_dec")
-      fw <- w_est_si
-      if (has_est_dec) {
-        fw <- fw + 1L + w_est_dec
-      }
-      fw <- fw + 2L + w_sprd_si
-      if (has_sprd_dec) {
-        fw <- fw + 1L + w_sprd_dec
-      }
-      fw <- fw + 1L
-      list(
-        w_est_si = w_est_si,
-        w_est_dec = w_est_dec,
-        w_sprd_si = w_sprd_si,
-        w_sprd_dec = w_sprd_dec,
-        has_est_dec = has_est_dec,
-        has_sprd_dec = has_sprd_dec,
-        full_width = fw
-      )
-    },
-
+    est_spread = ,
     est_spread_pct = {
+      # Unified: siblings share width grid. The "dec slot" accounts for %
+      # so "4%" (2 chars) and "75" (2 chars) occupy the same slot width.
       w_est_si <- maxw_with_sign("est_int", "est_sign")
       w_est_dec <- maxw("est_dec")
       w_sprd_si <- maxw_with_sign("sprd_int", "sprd_sign")
-      w_sprd_dec <- maxw("sprd_dec")
       has_est_dec <- has_field(typed, "est_dec")
       has_sprd_dec <- has_field(typed, "sprd_dec")
+      # Dec slot: nchar(dec) + 1 for pct values, nchar(dec) for non-pct
+      w_sprd_dec_slot <- max(
+        0L,
+        vapply(
+          typed,
+          function(p) {
+            w <- nchar(p$sprd_dec)
+            if (p$type == "est_spread_pct") w + 1L else w
+          },
+          integer(1)
+        )
+      )
       fw <- w_est_si
       if (has_est_dec) {
         fw <- fw + 1L + w_est_dec
       }
       fw <- fw + 2L + w_sprd_si
       if (has_sprd_dec) {
-        fw <- fw + 1L + w_sprd_dec
+        fw <- fw + 1L + w_sprd_dec_slot
       }
-      fw <- fw + 2L # "%)"
+      fw <- fw + 1L # ")"
       list(
         w_est_si = w_est_si,
         w_est_dec = w_est_dec,
         w_sprd_si = w_sprd_si,
-        w_sprd_dec = w_sprd_dec,
+        w_sprd_dec_slot = w_sprd_dec_slot,
         has_est_dec = has_est_dec,
         has_sprd_dec = has_sprd_dec,
         full_width = fw
@@ -1608,11 +1595,11 @@ compute_stat_widths <- function(parsed_values, dominant_type) {
     },
 
     est_spread_pct_ci = {
-      # est (spread%) part
+      # est (spread%) part — always has %, so dec_slot = w_dec + 1
       w_est_si <- maxw_with_sign("est_int", "est_sign")
       w_est_dec <- maxw("est_dec")
       w_sprd_si <- maxw_with_sign("sprd_int", "sprd_sign")
-      w_sprd_dec <- maxw("sprd_dec")
+      w_sprd_dec_slot <- maxw("sprd_dec") + 1L # +1 for %
       has_est_dec <- has_field(typed, "est_dec")
       has_sprd_dec <- has_field(typed, "sprd_dec")
       espct_fw <- w_est_si
@@ -1621,9 +1608,9 @@ compute_stat_widths <- function(parsed_values, dominant_type) {
       }
       espct_fw <- espct_fw + 2L + w_sprd_si
       if (has_sprd_dec) {
-        espct_fw <- espct_fw + 1L + w_sprd_dec
+        espct_fw <- espct_fw + 1L + w_sprd_dec_slot
       }
-      espct_fw <- espct_fw + 2L # "%)"
+      espct_fw <- espct_fw + 1L # ")"
       # paren CI part
       w_ci_lo_si <- maxw_with_sign("ci_lo_int", "ci_lo_sign")
       w_ci_lo_dec <- maxw("ci_lo_dec")
@@ -1644,7 +1631,7 @@ compute_stat_widths <- function(parsed_values, dominant_type) {
         w_est_si = w_est_si,
         w_est_dec = w_est_dec,
         w_sprd_si = w_sprd_si,
-        w_sprd_dec = w_sprd_dec,
+        w_sprd_dec_slot = w_sprd_dec_slot,
         has_est_dec = has_est_dec,
         has_sprd_dec = has_sprd_dec,
         w_ci_lo_si = w_ci_lo_si,
@@ -1727,20 +1714,6 @@ pad_pct_part <- function(pct_prefix, pct_int, pct_dec, pct_sign, widths) {
   paste0(pct, stringi::stri_pad_right(pct_sign, widths$w_pct_sign))
 }
 
-#' Build a float part with % glued to number: sign+int.dec% then pad right
-#'
-#' Unlike pad_float_part which pads the decimal right (producing "23.4 "),
-#' this keeps % adjacent to the last digit: "23.4%" then pads afterward.
-#' @noRd
-pad_float_pct_part <- function(sign, int, dec, w_si, w_dec, has_dec) {
-  padded_si <- stringi::stri_pad_left(paste0(sign, int), w_si)
-  if (isTRUE(has_dec)) {
-    inner <- paste0(padded_si, ".", dec, "%")
-    stringi::stri_pad_right(inner, w_si + 1L + w_dec + 1L)
-  } else {
-    paste0(padded_si, "%")
-  }
-}
 
 #' Pad a numeric-or-token position
 #'
@@ -1961,8 +1934,13 @@ rebuild_stat_aligned <- function(parsed, widths, dominant_type) {
       return(stringi::stri_pad_right(paste0(est, " [", sprd, "]"), fw))
     }
 
-    # --- est_spread_pct <-> est_spread ---
-    if (parsed$type == "est_spread_pct" && dominant_type == "est_spread") {
+    # --- est_spread_pct <-> est_spread (shared dec-slot grid) ---
+    if (
+      parsed$type %in%
+        c("est_spread", "est_spread_pct") &&
+        dominant_type %in% c("est_spread", "est_spread_pct")
+    ) {
+      # Redirect to same-type rebuild — unified dec_slot handles both
       est <- pad_float_part(
         parsed$est_sign,
         parsed$est_int,
@@ -1971,34 +1949,29 @@ rebuild_stat_aligned <- function(parsed, widths, dominant_type) {
         widths$w_est_dec,
         widths$has_est_dec
       )
-      sprd <- pad_float_part(
-        parsed$sprd_sign,
-        parsed$sprd_int,
-        parsed$sprd_dec,
-        widths$w_sprd_si,
-        widths$w_sprd_dec,
-        widths$has_sprd_dec
+      padded_si <- stringi::stri_pad_left(
+        paste0(parsed$sprd_sign, parsed$sprd_int),
+        widths$w_sprd_si
       )
-      return(stringi::stri_pad_right(paste0(est, " (", sprd, "%)"), fw))
-    }
-    if (parsed$type == "est_spread" && dominant_type == "est_spread_pct") {
-      est <- pad_float_part(
-        parsed$est_sign,
-        parsed$est_int,
-        parsed$est_dec,
-        widths$w_est_si,
-        widths$w_est_dec,
-        widths$has_est_dec
-      )
-      sprd <- pad_float_part(
-        parsed$sprd_sign,
-        parsed$sprd_int,
-        parsed$sprd_dec,
-        widths$w_sprd_si,
-        widths$w_sprd_dec,
-        widths$has_sprd_dec
-      )
-      return(stringi::stri_pad_right(paste0(est, " (", sprd, " )"), fw))
+      if (isTRUE(widths$has_sprd_dec)) {
+        dec_str <- if (parsed$type == "est_spread_pct") {
+          paste0(parsed$sprd_dec, "%")
+        } else {
+          parsed$sprd_dec
+        }
+        sprd <- paste0(
+          padded_si,
+          ".",
+          stringi::stri_pad_right(dec_str, widths$w_sprd_dec_slot)
+        )
+      } else {
+        sprd <- if (parsed$type == "est_spread_pct") {
+          paste0(padded_si, "%")
+        } else {
+          padded_si
+        }
+      }
+      return(paste0(est, " (", sprd, ")"))
     }
 
     # --- n_over_N in n_over_N_pct dominant ---
@@ -2091,26 +2064,7 @@ rebuild_stat_aligned <- function(parsed, widths, dominant_type) {
       paste0(padded_num, "/", padded_den, " (", pct, ")")
     },
 
-    est_spread = {
-      est <- pad_float_part(
-        parsed$est_sign,
-        parsed$est_int,
-        parsed$est_dec,
-        widths$w_est_si,
-        widths$w_est_dec,
-        widths$has_est_dec
-      )
-      sprd <- pad_float_part(
-        parsed$sprd_sign,
-        parsed$sprd_int,
-        parsed$sprd_dec,
-        widths$w_sprd_si,
-        widths$w_sprd_dec,
-        widths$has_sprd_dec
-      )
-      paste0(est, " (", sprd, ")")
-    },
-
+    est_spread = ,
     est_spread_pct = {
       est <- pad_float_part(
         parsed$est_sign,
@@ -2120,14 +2074,28 @@ rebuild_stat_aligned <- function(parsed, widths, dominant_type) {
         widths$w_est_dec,
         widths$has_est_dec
       )
-      sprd <- pad_float_pct_part(
-        parsed$sprd_sign,
-        parsed$sprd_int,
-        parsed$sprd_dec,
-        widths$w_sprd_si,
-        widths$w_sprd_dec,
-        widths$has_sprd_dec
+      padded_si <- stringi::stri_pad_left(
+        paste0(parsed$sprd_sign, parsed$sprd_int),
+        widths$w_sprd_si
       )
+      if (isTRUE(widths$has_sprd_dec)) {
+        dec_str <- if (parsed$type == "est_spread_pct") {
+          paste0(parsed$sprd_dec, "%")
+        } else {
+          parsed$sprd_dec
+        }
+        sprd <- paste0(
+          padded_si,
+          ".",
+          stringi::stri_pad_right(dec_str, widths$w_sprd_dec_slot)
+        )
+      } else {
+        sprd <- if (parsed$type == "est_spread_pct") {
+          paste0(padded_si, "%")
+        } else {
+          padded_si
+        }
+      }
       paste0(est, " (", sprd, ")")
     },
 
@@ -2327,14 +2295,22 @@ rebuild_stat_aligned <- function(parsed, widths, dominant_type) {
         widths$w_est_dec,
         widths$has_est_dec
       )
-      sprd <- pad_float_pct_part(
-        parsed$sprd_sign,
-        parsed$sprd_int,
-        parsed$sprd_dec,
-        widths$w_sprd_si,
-        widths$w_sprd_dec,
-        widths$has_sprd_dec
+      padded_si <- stringi::stri_pad_left(
+        paste0(parsed$sprd_sign, parsed$sprd_int),
+        widths$w_sprd_si
       )
+      if (isTRUE(widths$has_sprd_dec)) {
+        sprd <- paste0(
+          padded_si,
+          ".",
+          stringi::stri_pad_right(
+            paste0(parsed$sprd_dec, "%"),
+            widths$w_sprd_dec_slot
+          )
+        )
+      } else {
+        sprd <- paste0(padded_si, "%")
+      }
       espct_str <- paste0(est, " (", sprd, ")")
       # paren CI part
       ci_lo <- pad_float_part(

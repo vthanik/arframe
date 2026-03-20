@@ -2,13 +2,10 @@
 arframe Decimal Alignment Engine — Format Reference with Aligned Output
 ==============================================================================
 
-18 format families recognized by align = "decimal".
-Each section shows raw input and the aligned output from
-align_decimal_column(). All outputs within a section share the same nchar.
-In monospace (submission) fonts this gives pixel-perfect alignment.
+18 format families. All outputs within a section share the same nchar.
 
  1. missing
-    Blank, dash, or token placeholders -> replaced by spaces
+    Blank/dash/token -> spaces
     Input                                Aligned
      ---------------------------------------------------------------------- 
     (empty)                              ""
@@ -20,7 +17,7 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
     [all nchar = 0]
 
  2. n_only
-    Plain integer count (right-aligned)
+    Plain integer (right-aligned)
     Input                                Aligned
      ---------------------------------------------------------------------- 
     0                                    "  0"
@@ -29,7 +26,7 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
     [all nchar = 3]
 
  3. scalar_float
-    Signed decimal number (decimal-point aligned)
+    Signed decimal (dot-aligned)
     Input                                Aligned
      ---------------------------------------------------------------------- 
     12.3                                 " 12.3 "
@@ -39,7 +36,7 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
     [all nchar = 6]
 
  4. pvalue
-    Prefixed p-value (<, >, = prefix)
+    Prefixed p-value
     Input                                Aligned
      ---------------------------------------------------------------------- 
     <0.001                               "<0.001"
@@ -48,7 +45,7 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
     [all nchar = 6]
 
  5. n_pct
-    Count (percentage) with n=0 zero suppression
+    Count (pct), n=0 suppression
     Input                                Aligned
      ---------------------------------------------------------------------- 
     0                                    "  0         "
@@ -58,7 +55,7 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
     [all nchar = 12]
 
  6. n_over_N_pct
-    Fraction with percentage: n/N (pct)
+    n/N (pct)
     Input                                Aligned
      ---------------------------------------------------------------------- 
     3/45 (6.7)                           "  3/45  (  6.7 )"
@@ -67,7 +64,7 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
     [all nchar = 16]
 
  7. n_over_N
-    Plain fraction without percentage
+    Plain fraction
     Input                                Aligned
      ---------------------------------------------------------------------- 
     0/120                                "  0/120"
@@ -76,7 +73,7 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
     [all nchar = 7]
 
  8. n_over_float
-    Events over subject-time: n/float
+    Events/subject-time
     Input                                Aligned
      ---------------------------------------------------------------------- 
     0/234.6                              "  0/234.6"
@@ -103,7 +100,7 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
     [all nchar = 15]
 
 11. est_ci
-    Estimate (lo, hi) — token-aware
+    Estimate (lo, hi) token-aware
     Input                                Aligned
      ---------------------------------------------------------------------- 
     168.0 (152.4, 183.6)                 "168.0   (152.4  , 183.6)"
@@ -113,7 +110,7 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
     [all nchar = 24]
 
 12. est_ci_bracket
-    Estimate [lo, hi] — bracket delimiters
+    Estimate [lo, hi]
     Input                                Aligned
      ---------------------------------------------------------------------- 
     0.0 [0.0, 0.0]                       "  0.0 [ 0.0,   0.0]"
@@ -122,7 +119,7 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
     [all nchar = 19]
 
 13. range_pair
-    Comma-separated range
+    Comma range
     Input                                Aligned
      ---------------------------------------------------------------------- 
     2.0, 45.0                            " 2.0, 45.0"
@@ -131,7 +128,7 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
     [all nchar = 10]
 
 14. int_range
-    Integer range with dash
+    Integer range
     Input                                Aligned
      ---------------------------------------------------------------------- 
     1 - 180                              " 1 - 180"
@@ -139,7 +136,7 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
     [all nchar = 8]
 
 15. est_ci_pval
-    CI + trailing p-value (compound)
+    CI + p-value (compound)
     Input                                Aligned
      ---------------------------------------------------------------------- 
     -0.08 (-0.21, 0.05) 0.194            "-0.08 (-0.21,  0.05)     0.194"
@@ -147,7 +144,7 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
     [all nchar = 30]
 
 16. n_pct_rate
-    Count (%) + rate per 100 PY (compound)
+    n(%) + rate (compound)
     Input                                Aligned
      ---------------------------------------------------------------------- 
     0 (0.0) 0.00                         " 0                "
@@ -156,7 +153,7 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
     [all nchar = 18]
 
 17. n_over_N_pct_ci
-    n/N (%) [CI] — response rate (compound)
+    n/N(%) [CI] (compound)
     Input                                Aligned
      ---------------------------------------------------------------------- 
     0/120 (0.0) [0.0, 3.0]               "  0/120 (  0.0) [ 0.0,   3.0]"
@@ -165,7 +162,7 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
     [all nchar = 29]
 
 18. est_spread_pct_ci
-    Gmean (CV%) (CI) — PK full-line (compound)
+    Gmean(CV%) (CI) (compound)
     Input                                Aligned
      ---------------------------------------------------------------------- 
     8.1 (24.2%) (7.3, 8.9)               "   8.1 (24.2%)    (   7.3,    8.9)"
@@ -174,10 +171,8 @@ In monospace (submission) fonts this gives pixel-perfect alignment.
 
 
 ==============================================================================
-Cross-type Fallback Examples
+Cross-type Fallbacks
 ==============================================================================
-
-Sibling types share width computation for proper decimal alignment.
 
 est_ci + missing tokens:
   14.3 (11.2, NR)                      "14.3   (11.2  , NR)"
@@ -191,10 +186,10 @@ n_only in n_pct column:
   1 (2.2)                              " 1 ( 2.2)"
   0                                    " 0       "
 
-est_spread_pct + est_spread (sibling widths, % glued):
-  52.43 (23.4%)                        " 52.43 (23.4% )"
-  75.0 (6.75)                          " 75.0  ( 6.75 )"
-  136.8 (17.61)                        "136.8  (17.61 )"
+est_spread_pct + est_spread (% tight, dec-slot shared):
+  52.43 (23.4%)                        " 52.43 (23.4%)"
+  75.0 (6.75)                          " 75.0  ( 6.75)"
+  136.8 (17.61)                        "136.8  (17.61)"
 
 est_ci_bracket in est_ci column:
   5.0 [3.0, 7.0]                       " 5.0 [ 3.0,  7.0]"
@@ -207,6 +202,4 @@ n_over_N in n_over_N_pct column:
   10/45 (22.2)                         "10/45  (22.2)"
 
 
-==============================================================================
 Family Priority: compound(5) > estimate(4) > range(3) > count(2) > float(1)
-==============================================================================
