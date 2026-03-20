@@ -1,50 +1,387 @@
 # ============================================================================
-# arframe vs tfrmt + gt + docorator — Head-to-Head Comparison
-# Table 14.3.1: Treatment-Emergent AEs by SOC/PT (the hardest CSR table)
+# arframe vs tfrmt + gt + docorator — Real-World Comparison
+# Two tables, two approaches, same data, same output
 # ============================================================================
 #
-# This script builds the same production AE table two ways:
-#   A) arframe alone (1 package, ~30 lines)
-#   B) tfrmt + gt + docorator (3 packages, ~130 lines)
+# This script produces TWO production tables from arframe's ADaM datasets:
+#   Table 1: Demographics (t_sp_dmt01 equivalent)
+#   Table 2: AE by SOC/PT (t_saf_ae01_all equivalent)
 #
-# PRIMARY OUTPUT: PDF — the standard at GSK and many sponsors.
+# For each table we show:
+#   Path A — arframe: wide summary → fr_table() pipeline → PDF
+#   Path B — pharmaverse: ARD → tfrmt → gt → docorator → PDF
 #
-# WHY this table?
-#   - SOC/PT hierarchy with indentation (MedDRA)
-#   - Multi-page with continuation headers
-#   - Sorted by descending incidence
-#   - Conditional row bolding (SOC rows, total row)
-#   - N-counts in column headers with format control
-#   - Pageheader / pagefooter with program name and page X of Y
-#   - Decimal alignment across columns
-#   - PDF output with exact font control
+# The data prep uses tidyverse (dplyr/tidyr) — same for both paths.
+# The difference is what happens AFTER you have summary statistics.
 #
-# If a package can produce this table to submission quality in PDF,
-# it can handle anything in a CSR.
+# Based on real GSK production code from study 52427_219230-INTERNAL_01:
+#   t_sp_dmt01.R    — 358 lines (pharmaverse)
+#   t_saf_ae01_all.R — 621 lines (pharmaverse)
 
 library(arframe)
-
-# Population N-counts (reusable across all safety tables)
-n_safety <- c(placebo = 45, zom_50mg = 45, zom_100mg = 45, total = 135)
+library(dplyr, warn.conflicts = FALSE)
+library(tidyr)
 
 
 # ╔══════════════════════════════════════════════════════════════════════════╗
-# ║  A. arframe — 1 package, ~30 lines, PDF + RTF + HTML from one spec    ║
+# ║  TABLE 1: Demographics and Baseline Characteristics                    ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
 
+# ── Shared data prep (same effort for both approaches) ───────────────────
+# Summarize ADSL into display-ready statistics.
+
+adsl_saf <- arframe::adsl |> filter(SAFFL == "Y")
+
+n_by_arm <- adsl_saf |> count(ARM) |> pull(n, name = ARM)
+n_total  <- nrow(adsl_saf)
+
+# Continuous: Age
+age_stats <- adsl_saf |>
+  group_by(ARM) |>
+  summarise(
+    n          = as.character(n()),
+    `Mean (SD)` = sprintf("%.1f (%.2f)", mean(AGE), sd(AGE)),
+    Median     = sprintf("%.1f", median(AGE)),
+    `Min, Max` = sprintf("%d, %d", min(AGE), max(AGE)),
+    .groups = "drop"
+  ) |>
+  pivot_longer(-ARM, names_to = "stat_label", values_to = "value") |>
+  pivot_wider(names_from = ARM, values_from = value)
+
+# Add total column
+age_total <- adsl_saf |>
+  summarise(
+    n          = as.character(n()),
+    `Mean (SD)` = sprintf("%.1f (%.2f)", mean(AGE), sd(AGE)),
+    Median     = sprintf("%.1f", median(AGE)),
+    `Min, Max` = sprintf("%d, %d", min(AGE), max(AGE))
+  ) |>
+  pivot_longer(everything(), names_to = "stat_label", values_to = "Total")
+
+age_wide <- left_join(age_stats, age_total, by = "stat_label") |>
+  mutate(variable = "Age (years)", .before = 1)
+
+# Categorical: Sex
+sex_stats <- adsl_saf |>
+  count(ARM, SEX) |>
+  group_by(ARM) |>
+  mutate(pct = sprintf("%d (%.1f)", n, n / sum(n) * 100)) |>
+  ungroup() |>
+  select(ARM, SEX, pct) |>
+  pivot_wider(names_from = ARM, values_from = pct) |>
+  rename(stat_label = SEX)
+
+sex_total <- adsl_saf |>
+  count(SEX) |>
+  mutate(Total = sprintf("%d (%.1f)", n, n / nrow(adsl_saf) * 100)) |>
+  select(stat_label = SEX, Total)
+
+sex_wide <- left_join(sex_stats, sex_total, by = "stat_label") |>
+  mutate(variable = "Sex", .before = 1)
+
+# Categorical: Race
+race_stats <- adsl_saf |>
+  count(ARM, RACE) |>
+  group_by(ARM) |>
+  mutate(pct = sprintf("%d (%.1f)", n, n / sum(n) * 100)) |>
+  ungroup() |>
+  select(ARM, RACE, pct) |>
+  pivot_wider(names_from = ARM, values_from = pct) |>
+  rename(stat_label = RACE)
+
+race_total <- adsl_saf |>
+  count(RACE) |>
+  mutate(Total = sprintf("%d (%.1f)", n, n / nrow(adsl_saf) * 100)) |>
+  select(stat_label = RACE, Total)
+
+race_wide <- left_join(race_stats, race_total, by = "stat_label") |>
+  mutate(variable = "Race", .before = 1)
+
+# Combine all demographics (fill NAs from unbalanced factor levels)
+demog_wide <- bind_rows(age_wide, sex_wide, race_wide) |>
+  mutate(stat_label = paste0("  ", stat_label)) |>
+  mutate(across(where(is.character) & !c(variable, stat_label), ~ replace_na(.x, "0")))
+
+cat("── Demographics summary (wide format) ──\n")
+print(demog_wide, n = 20)
+
+arms <- setdiff(names(demog_wide), c("variable", "stat_label", "Total"))
+n_vec <- setNames(c(n_by_arm[arms], Total = n_total), c(arms, "Total"))
+
+
+# ┌──────────────────────────────────────────────────────────────────────┐
+# │  PATH A: arframe — 20 lines from wide summary to PDF                │
+# └──────────────────────────────────────────────────────────────────────┘
+
+fr_theme_reset()
 fr_theme(
-  font_size   = 9,
-  font_family = "Courier New",
-  orientation = "landscape",
-  hlines      = "header",
-  header      = list(bold = TRUE, align = "center"),
-  n_format    = "{label}\n(N={n})",
-  footnote_separator = FALSE,
+  font_size = 9, font_family = "Courier New", orientation = "landscape",
+  hlines = "header", header = list(bold = TRUE, align = "center"),
+  n_format = "{label}\n(N={n})", footnote_separator = FALSE,
   pagehead = list(left = "TFRM-2024-001", right = "CONFIDENTIAL"),
   pagefoot = list(left = "{program}", right = "Page {thepage} of {total_pages}")
 )
 
-ae_arframe <- tbl_ae_soc |>
+demog_arframe <- demog_wide |>
+  fr_table() |>
+  fr_titles("Table 14.1.1", "Demographics and Baseline Characteristics",
+            "Safety Population") |>
+  fr_cols(
+    variable   = fr_col(visible = FALSE),
+    stat_label = fr_col("", width = 2.5, align = "left"),
+    !!!setNames(
+      lapply(arms, function(a) fr_col(a, align = "decimal")),
+      arms
+    ),
+    Total = fr_col("Total", align = "decimal"),
+    .n = n_vec
+  ) |>
+  fr_rows(group_by = "variable", group_label = "stat_label", group_bold = TRUE) |>
+  fr_footnotes("Percentages based on N per treatment group.")
+
+demog_arframe |> fr_render(file.path(tempdir(), "arframe_demog.pdf"))
+demog_arframe  # HTML preview
+
+cat("\n== PATH A: arframe demographics ==\n")
+cat("Lines after data prep: ~20\n")
+cat("Packages: arframe (1)\n")
+cat("Output: PDF written to", file.path(tempdir(), "arframe_demog.pdf"), "\n\n")
+
+
+# ┌──────────────────────────────────────────────────────────────────────┐
+# │  PATH B: tfrmt + gt + docorator — ~80 lines from ARD to PDF         │
+# └──────────────────────────────────────────────────────────────────────┘
+# We show the REAL code structure, commented out since you may not have
+# tfrmt/gt/docorator installed. The line counts are from real GSK code.
+
+cat("== PATH B: tfrmt + gt + docorator demographics ==\n\n")
+
+cat("── Step 0: Reshape wide → ARD (one row per stat) ~30 lines ──\n")
+cat('
+# The wide summary we already have CANNOT be used by tfrmt.
+# tfrmt requires ARD format: group | label | column | param | value
+# So we must reshape BACK to long format:
+
+demog_ard <- demog_wide |>
+  pivot_longer(
+    cols = c(all_of(arms), "Total"),
+    names_to  = "column",
+    values_to = "value_str"
+  ) |>
+  # tfrmt needs numeric values, so we parse n and pct separately:
+  mutate(
+    n   = as.numeric(gsub(" \\\\(.*", "", value_str)),
+    pct = as.numeric(gsub(".*\\\\(|\\\\)|%", "", value_str))
+  ) |>
+  # Now pivot to one-row-per-stat (n and pct as separate rows):
+  pivot_longer(
+    cols = c(n, pct),
+    names_to  = "param",
+    values_to = "stat"
+  ) |>
+  select(variable, stat_label, column, param, stat)
+
+# For continuous stats (Mean, SD, etc.) this is even more complex
+# because tfrmt needs frmt() patterns per stat type.
+# In the GSK codebase, this reshape is ~100 lines of mutate/filter/select.
+')
+
+cat("\n── Step 1: tfrmt format specification ~40 lines ──\n")
+cat('
+# library(tfrmt)
+# demog_tfrmt <- tfrmt(
+#   group   = variable,
+#   label   = stat_label,
+#   column  = column,
+#   param   = param,
+#   value   = stat,
+#
+#   body_plan = body_plan(
+#     # Categorical: n (pct%)
+#     frmt_structure(
+#       group_val = ".default",
+#       label_val = ".default",
+#       frmt_combine(
+#         "{n} ({pct})",
+#         n   = frmt("xxx"),
+#         pct = frmt_when(
+#           "==0"   ~ "",
+#           "==100" ~ "100%",
+#           "<1"    ~ "<1%",
+#           ">99"   ~ ">99%",
+#           TRUE    ~ frmt("xx.x%")
+#         )
+#       )
+#     ),
+#     # Continuous: Mean (SD) — different format
+#     frmt_structure(
+#       group_val = "Age (years)",
+#       label_val = "Mean (SD)",
+#       frmt("xxx.x (xx.xx)")
+#     ),
+#     # Continuous: Median
+#     frmt_structure(
+#       group_val = "Age (years)",
+#       label_val = "Median",
+#       frmt("xxx.x")
+#     )
+#   ),
+#
+#   # N-counts in headers — manual, not automatic
+#   big_n = big_n_structure(
+#     param_val = "bigN",
+#     n_frmt = frmt("\\n(N=xx)")
+#   ),
+#
+#   # Row grouping
+#   row_grp_plan = row_grp_plan(
+#     row_grp_structure(
+#       group_val = ".default",
+#       element_block(post_space = " ")
+#     ),
+#     label_loc = element_row_grp_loc(location = "indented")
+#   ),
+#
+#   # Column order
+#   col_plan = col_plan(
+#     stat_label,
+#     all_of(arms),
+#     Total
+#   )
+# )
+#
+# demog_gt <- print_to_gt(demog_tfrmt, demog_ard)
+')
+
+cat("\n── Step 2: gt post-processing ~15 lines ──\n")
+cat('
+# # tfrmt output needs manual gt fixes:
+# demog_gt <- demog_gt |>
+#   gt::tab_options(
+#     table.font.size  = gt::px(12),
+#     table.font.names = c("Courier", gt::default_fonts()),
+#     table.width      = "100%"
+#   ) |>
+#   gt::cols_align(align = "left", columns = everything()) |>
+#   # No decimal alignment possible in gt — left-align is GSK default
+#   gt::tab_style(
+#     style = gt::cell_text(v_align = "top"),
+#     locations = gt::cells_body()
+#   )
+')
+
+cat("\n── Step 3: docorator wrapping ~20 lines ──\n")
+cat('
+# library(docorator)
+# demog_gt |>
+#   as_docorator(
+#     display_name = "t_sp_dmt01",
+#     display_loc  = tempdir(),
+#     header = fancyhead(
+#       fancyrow(left = "Protocol: TFRM-2024-001", right = doc_pagenum()),
+#       fancyrow(left = "Analysis Set: Safety"),
+#       fancyrow(left = NA, center = "Table 14.1.1"),
+#       fancyrow(left = NA, center = "Demographics and Baseline Characteristics")
+#     ),
+#     footer = fancyfoot(
+#       fancyrow(left = "Percentages based on N per treatment group."),
+#       fancyrow(left = "t_sp_dmt01.pdf", right = format(Sys.Date(), "%d%b%Y"))
+#     ),
+#     tbl_stub_pct = 0.3,
+#     tbl_scale = TRUE,
+#     geometry = geom_set(landscape = TRUE)
+#   ) |>
+#   render_pdf(escape_latex = FALSE)
+')
+
+cat("\nPATH B total: ~105 lines after data prep (+ ~30 lines ARD reshape)\n")
+cat("Packages: tfrmt + gt + docorator (3) + tidyr for reshape\n")
+cat("Real GSK code (t_sp_dmt01.R): 358 lines total\n\n")
+
+
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  TABLE 2: AE by SOC and Preferred Term                                ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
+# ── Shared data prep: summarize ADAE into wide format ────────────────────
+
+adae_te <- arframe::adae |> filter(TRTEMFL == "Y")
+adsl_saf <- arframe::adsl |> filter(SAFFL == "Y")
+
+n_by_arm <- adsl_saf |> count(ARM) |> pull(n, name = ARM)
+
+# SOC-level: subjects with any AE per SOC
+soc_counts <- adae_te |>
+  distinct(USUBJID, ARM, AEBODSYS) |>
+  count(ARM, AEBODSYS, name = "n_subj") |>
+  left_join(tibble(ARM = names(n_by_arm), N = n_by_arm), by = "ARM") |>
+  mutate(stat = sprintf("%d (%.1f)", n_subj, n_subj / N * 100)) |>
+  select(ARM, AEBODSYS, stat) |>
+  pivot_wider(names_from = ARM, values_from = stat, values_fill = "0 (0.0)") |>
+  mutate(row_type = "soc", pt = AEBODSYS, soc = AEBODSYS)
+
+# PT-level: subjects per SOC/PT
+pt_counts <- adae_te |>
+  distinct(USUBJID, ARM, AEBODSYS, AEDECOD) |>
+  count(ARM, AEBODSYS, AEDECOD, name = "n_subj") |>
+  left_join(tibble(ARM = names(n_by_arm), N = n_by_arm), by = "ARM") |>
+  mutate(stat = sprintf("%d (%.1f)", n_subj, n_subj / N * 100)) |>
+  select(ARM, AEBODSYS, AEDECOD, stat) |>
+  pivot_wider(names_from = ARM, values_from = stat, values_fill = "0 (0.0)") |>
+  mutate(row_type = "pt", pt = AEDECOD, soc = AEBODSYS)
+
+# Total "Any TEAE" row
+any_ae <- adae_te |>
+  distinct(USUBJID, ARM) |>
+  count(ARM, name = "n_subj") |>
+  left_join(tibble(ARM = names(n_by_arm), N = n_by_arm), by = "ARM") |>
+  mutate(stat = sprintf("%d (%.1f)", n_subj, n_subj / N * 100)) |>
+  select(ARM, stat) |>
+  pivot_wider(names_from = ARM, values_from = stat) |>
+  mutate(row_type = "total", pt = "Any TEAE", soc = "")
+
+# Sort SOC by descending frequency (total across arms)
+soc_order <- adae_te |>
+  distinct(USUBJID, AEBODSYS) |>
+  count(AEBODSYS, name = "freq") |>
+  arrange(desc(freq)) |>
+  pull(AEBODSYS)
+
+# Sort PTs within SOC by descending frequency
+pt_order <- adae_te |>
+  distinct(USUBJID, AEBODSYS, AEDECOD) |>
+  count(AEBODSYS, AEDECOD, name = "freq") |>
+  arrange(AEBODSYS, desc(freq))
+
+# Assemble final wide table
+arms <- names(n_by_arm)
+ae_wide <- bind_rows(
+  any_ae,
+  bind_rows(
+    lapply(soc_order, function(s) {
+      soc_row <- soc_counts |> filter(soc == s)
+      pt_rows <- pt_counts |>
+        filter(soc == s) |>
+        left_join(pt_order |> filter(AEBODSYS == s), by = c("soc" = "AEBODSYS", "pt" = "AEDECOD")) |>
+        arrange(desc(freq)) |>
+        select(-freq)
+      bind_rows(soc_row, pt_rows)
+    })
+  )
+) |>
+  select(soc, pt, row_type, all_of(arms))
+
+cat("── AE SOC/PT summary (wide format) ──\n")
+print(ae_wide, n = 15)
+
+
+# ┌──────────────────────────────────────────────────────────────────────┐
+# │  PATH A: arframe — 25 lines from wide summary to PDF                │
+# └──────────────────────────────────────────────────────────────────────┘
+
+n_safety <- setNames(n_by_arm, arms)
+
+ae_arframe <- ae_wide |>
   fr_table() |>
   fr_titles(
     "Table 14.3.1",
@@ -54,13 +391,13 @@ ae_arframe <- tbl_ae_soc |>
   ) |>
   fr_page(continuation = "(continued)") |>
   fr_cols(
-    soc       = fr_col(visible = FALSE),
-    pt        = fr_col("System Organ Class\n  Preferred Term", width = 3.5),
-    row_type  = fr_col(visible = FALSE),
-    placebo   = fr_col("Placebo",          align = "decimal"),
-    zom_50mg  = fr_col("Zomerane\n50mg",   align = "decimal"),
-    zom_100mg = fr_col("Zomerane\n100mg",  align = "decimal"),
-    total     = fr_col("Total",            align = "decimal"),
+    soc      = fr_col(visible = FALSE),
+    pt       = fr_col("System Organ Class\n  Preferred Term", width = 3.5),
+    row_type = fr_col(visible = FALSE),
+    !!!setNames(
+      lapply(arms, function(a) fr_col(a, align = "decimal")),
+      arms
+    ),
     .n = n_safety
   ) |>
   fr_rows(group_by = "soc", indent_by = "pt") |>
@@ -74,511 +411,248 @@ ae_arframe <- tbl_ae_soc |>
     "Sorted by descending total incidence."
   )
 
-# One spec -> three formats
-ae_arframe |> fr_render(file.path(tempdir(), "arframe_14_3_1.pdf"))
-ae_arframe |> fr_render(file.path(tempdir(), "arframe_14_3_1.rtf"))
-ae_arframe  # HTML in viewer
+ae_arframe |> fr_render(file.path(tempdir(), "arframe_ae_soc.pdf"))
+ae_arframe  # HTML preview
 
-cat("\n== arframe ==\n")
-cat("Packages needed:   1 (arframe)\n")
-cat("Lines of code:     ~30\n")
-cat("PDF backend:       XeLaTeX + tabularray (native typesetting)\n")
-cat("Decimal alignment: YES (tabularray column type)\n")
-cat("N-counts:          Automatic from named vector\n")
-cat("Page headers:      Built-in (fancyhdr)\n")
-cat("Page X of Y:       Built-in (lastpage)\n")
-cat("Continuation:      Built-in ('(continued)' on page 2+)\n")
-cat("Theme:             Study-wide, set once, all tables inherit\n")
-cat("Output:            .pdf + .rtf + .html from SAME spec\n\n")
+cat("\n== PATH A: arframe AE SOC/PT ==\n")
+cat("Lines after data prep: ~25\n")
+cat("Packages: arframe (1)\n")
+cat("Output: PDF written to", file.path(tempdir(), "arframe_ae_soc.pdf"), "\n\n")
 
 
-# ╔══════════════════════════════════════════════════════════════════════════╗
-# ║  B. tfrmt + gt + docorator — 3 packages, ~130 lines                   ║
-# ╚══════════════════════════════════════════════════════════════════════════╝
+# ┌──────────────────────────────────────────────────────────────────────┐
+# │  PATH B: tfrmt + gt + docorator — ~130 lines from ARD to PDF        │
+# └──────────────────────────────────────────────────────────────────────┘
+
+cat("== PATH B: tfrmt + gt + docorator AE SOC/PT ==\n\n")
+
+cat("── Step 0: Reshape wide → ARD (~50 lines) ──\n")
+cat('
+# tfrmt CANNOT use this wide table. It needs ARD format.
+# The GSK code uses cards::ard_stack_hierarchical() which returns
+# one row per (subject group × SOC × PT × stat). For this study
+# with sex subgroups + 3 treatment arms + LA/ULA periods, this
+# means 6 separate ard_stack_hierarchical() calls, each ~15 lines:
+
+# ae_ard1 <- ard_stack_hierarchical(
+#   data = adae_clean,
+#   by = c(SEXBRTHG, TRTSEQA),
+#   variables = c("AEBODSYS", "AEDECOD"),
+#   id = USUBJID,
+#   denominator = adsl_clean,
+#   overall = FALSE,
+#   over_variables = FALSE
+# ) |> shuffle_ard()
 #
-# The pharmaverse TLF stack:
-#   1) tfrmt  — defines format spec (number formats, row groups, ordering)
-#   2) gt     — renders the table (HTML, limited RTF)
-#   3) docorator — wraps gt output with page headers/footers, renders PDF
+# ae_ard2 <- ard_stack_hierarchical(   # CAB LA only
+#   data = adae_la, ...
+# ) |> shuffle_ard()
 #
-# Each package handles one slice of what arframe does in a single pipeline.
-# The data must be reshaped to ARD format before tfrmt can use it.
-
-# ── Step 0: Reshape data to ARD format ──────────────────────────────────
-# tfrmt requires Analysis Results Data: one row per statistic.
-# arframe takes your summary table as-is. This reshape is extra work.
+# ae_ard3 <- ard_stack_hierarchical(   # CAB ULA only
+#   data = adae_ula, ...
+# ) |> shuffle_ard()
 #
-# tbl_ae_soc has columns: soc, pt, row_type, placebo, zom_50mg, zom_100mg, total
-# tfrmt needs:  group, label, column, param, value
+# ae_ard4, ae_ard5, ae_ard6 ...        # Same again for Overall
 #
-# In practice this reshape happens in the analysis pipeline (e.g. Tplyr/cardinal),
-# but the point is: tfrmt cannot consume the wide summary table directly.
-
-cat("== tfrmt + gt + docorator ==\n\n")
-
-cat("── Step 0: Data reshape (tfrmt requires ARD format) ──\n")
-cat("tfrmt cannot use wide summary data directly.\n")
-cat("You must reshape to: group | label | column | param | value\n")
-cat("This adds ~20 lines of tidyr::pivot_longer or reshape().\n\n")
-
-# Simulated ARD reshape (showing the concept):
-# ard <- tbl_ae_soc |>
-#   tidyr::pivot_longer(
-#     cols = c(placebo, zom_50mg, zom_100mg, total),
-#     names_to = "column",
-#     values_to = "value"
-#   ) |>
-#   dplyr::mutate(param = "n_pct")  # tfrmt needs a param column
-
-
-cat("── Step 1: tfrmt format spec (~40 lines) ──\n")
-cat(paste0(
-  '
-# library(tfrmt)
-# library(tibble)
+# ae_ard_all <- bind_rows(ae_ard1, ..., ae_ard6)
 #
-# ae_tfrmt <- tfrmt(
-#   group  = soc,
-#   label  = pt,
-#   column = column,
-#   param  = param,
-#   value  = value,
+# # Then: fix missing 0 records, create bigN rows, sort by frequency
+# ae_ard_final <- ae_ard_all |>
+#   complete(SEXBRTHG, TRTA, nesting(AEBODSYS, variable_level), stat_name,
+#            fill = list(stat = 0)) |>
+#   mutate(stat = ifelse(stat_name == "p", stat * 100, stat)) |>
+#   left_join(ordering_aebodsys) |>
+#   left_join(ordering_aeterm) |>
+#   mutate(label = variable_level, ...)
 #
-#   # Number formatting per statistic type
+# In the real GSK code (t_saf_ae01_all.R), this is lines 36–506:
+# >>> 470 LINES of data manipulation <<<
+')
+
+cat("\n── Step 1: tfrmt format specification (~45 lines) ──\n")
+cat('
+# tfrmt_ae <- tfrmt(
+#   group   = "AEBODSYS",
+#   label   = "label",
+#   column  = c("SEXBRTHG", "TRTA"),
+#   param   = "stat_name",
+#   value   = "stat",
+#   sorting_cols = c(ord1, ord2),
+#
 #   body_plan = body_plan(
 #     frmt_structure(
 #       group_val = ".default",
 #       label_val = ".default",
-#       frmt("x (xx.x)")
+#       frmt_combine(
+#         "{n} {p}",
+#         n = frmt("x"),
+#         p = frmt_when(
+#           "==0"   ~ "",
+#           "<1"    ~ "(<1%)",
+#           "<10"   ~ frmt("(x%)"),
+#           "==100" ~ frmt("(100%)"),
+#           ">99"   ~ frmt("(>99%)"),
+#           TRUE    ~ frmt("(xx%)")
+#         )
+#       )
 #     )
 #   ),
 #
-#   # Row grouping and spacing
-#   row_grp_plan = row_grp_plan(
-#     row_grp_structure(
-#       group_val = ".default",
-#       element_block(post_space = " ")
-#     )
-#   ),
-#
-#   # Column ordering
 #   col_plan = col_plan(
-#     pt,
-#     placebo, zom_50mg, zom_100mg, total
+#     "System Organ Class\\n  Preferred Term" = AEBODSYS,
+#     label, "CAB LA", "CAB ULA", "CAB (LA to ULA)",
+#     -ord1, -ord2, -context, -V, -stat_label
 #   ),
 #
-#   # Column labels with N-counts (manual)
-#   col_style_plan = col_style_plan(
-#     col_style_structure(
-#       col = placebo,   width = 120, align = "center"
-#     ),
-#     col_style_structure(
-#       col = zom_50mg,  width = 120, align = "center"
-#     ),
-#     col_style_structure(
-#       col = zom_100mg, width = 120, align = "center"
-#     ),
-#     col_style_structure(
-#       col = total,     width = 120, align = "center"
-#     )
+#   big_n = big_n_structure(param_val = "bigN", n_frmt = frmt("\\n(N=xx)")),
+#
+#   row_grp_plan = row_grp_plan(
+#     row_grp_structure(group_val = ".default", element_block(post_space = " ")),
+#     label_loc = element_row_grp_loc(location = "indented")
 #   )
 # )
 #
-# # Render to gt object
-# ae_gt <- print_to_gt(ae_tfrmt, ard_data)
-'
-))
+# tfrmt_ae_gt <- tfrmt_ae |> print_to_gt(ae_ard_final)
+')
 
-cat("\nNOTE: tfrmt has no decimal alignment — only left/center/right.\n")
-cat("NOTE: N-counts in headers require manual paste0() or col_style_plan.\n")
-cat("NOTE: SOC bold requires post-processing the gt object.\n\n")
+cat("\n── Step 2: gt post-processing (~10 lines) ──\n")
+cat('
+# tfrmt_ae_gt <- tfrmt_ae_gt |>
+#   gt::cols_align(align = "left", columns = everything()) |>
+#   gsk_styling()   # 30-line shared function for font/padding/borders
+')
 
-
-cat("── Step 2: gt post-processing (~30 lines) ──\n")
-cat(paste0(
-  '
-# # tfrmt produces a gt object, but it lacks:
-# # - SOC row bolding (tfrmt has no conditional row styling)
-# # - "Any TEAE" total row bolding
-# # - PT indentation (tfrmt groups but does not indent)
-# # You must manually add these to the gt object:
-#
-# ae_gt <- ae_gt |>
-#   gt::tab_style(
-#     style = gt::cell_text(weight = "bold"),
-#     locations = gt::cells_row_groups()
-#   ) |>
-#   gt::tab_style(
-#     style = gt::cell_text(weight = "bold"),
-#     locations = gt::cells_body(rows = row_type == "total")
-#   ) |>
-#   gt::tab_style(
-#     style = gt::cell_text(indent = gt::px(20)),
-#     locations = gt::cells_body(columns = pt, rows = row_type == "pt")
-#   ) |>
-#   gt::tab_header(
-#     title = "Table 14.3.1",
-#     subtitle = "TEAEs by SOC and Preferred Term"
-#   ) |>
-#   gt::tab_footnote("MedDRA version 26.0.") |>
-#   gt::tab_footnote("Subjects counted once per SOC and PT.") |>
-#   gt::tab_footnote("Sorted by descending total incidence.")
-'
-))
-
-cat("\nNOTE: gt has no page-level features — no headers, footers, pagination.\n")
-cat("NOTE: gt cannot do decimal alignment.\n")
-cat("NOTE: gt cannot add continuation text on page 2+.\n\n")
-
-
-cat("── Step 3: docorator wrapping (~20 lines) ──\n")
-cat(paste0(
-  '
-# library(docorator)
-#
-# # docorator adds the document shell that gt lacks:
-# ae_doc <- ae_gt |>
-#   as_docorator(
-#     orientation = "landscape",
-#     margin = list(top = 1, bottom = 1, left = 1, right = 1)
-#   ) |>
-#   fancyhead(
-#     left  = "TFRM-2024-001",
-#     right = "CONFIDENTIAL"
-#   ) |>
-#   fancyfoot(
-#     left  = "t_14_3_1.R",
-#     right = "Page \\\\thepage\\\\ of \\\\lastpage"
+cat("\n── Step 3: docorator wrapping (~20 lines) ──\n")
+cat('
+# tfrmt_ae_gt |>
+#   tfl_format(
+#     filename  = "t_saf_ae01_all.pdf",
+#     path      = output,
+#     protocol  = "219230",
+#     id        = "Table 8.3.4",
+#     title     = "Summary of AEs by SOC and Preferred Term",
+#     popfl     = "SAFFL",
+#     tbl_scale = TRUE,
+#     engine    = "as_docorator",
+#     geometry  = geom_set(landscape = TRUE, left = "0.4in", right = "0.4in")
 #   )
 #
-# # Finally render to PDF
-# render_pdf(ae_doc, file.path(tempdir(), "docorator_14_3_1.pdf"))
-'
-))
+# tfl_format() itself is a 327-line wrapper function that:
+#   - maps popfl codes to labels
+#   - builds fancyhead/fancyfoot rows
+#   - calls as_docorator() + render_pdf()
+')
 
-cat("\nNOTE: docorator PDF uses RMarkdown/Quarto + LaTeX — not direct XeLaTeX.\n")
-cat("NOTE: docorator auto-scales gt tables to fit the page.\n")
-cat("NOTE: docorator cannot add continuation text on subsequent pages.\n")
-cat("NOTE: docorator has no control over repeating column headers.\n")
-cat("NOTE: The gt table inside is still center-aligned, not decimal-aligned.\n\n")
-
-
-# ╔══════════════════════════════════════════════════════════════════════════╗
-# ║  C. Side-by-Side Summary                                              ║
-# ╚══════════════════════════════════════════════════════════════════════════╝
-
-cat("================================================================\n")
-cat("  SIDE-BY-SIDE: arframe vs tfrmt + gt + docorator\n")
-cat("================================================================\n\n")
-
-summary_lines <- c(
-  "                              arframe          tfrmt + gt + docorator",
-  "                              ───────          ──────────────────────",
-  "Packages needed               1                3 (tfrmt + gt + docorator)",
-  "Lines of code                 ~30              ~130 (+ data reshape)",
-  "Input data format             Wide summary     ARD (one row per stat)",
-  "Data reshape needed           NO               YES (pivot_longer)",
-  "PDF backend                   XeLaTeX native   RMarkdown + LaTeX (docorator)",
-  "RTF output                    Native           gt::gtsave (single-page)",
-  "HTML output                   Native           gt (native)",
-  "One spec, all formats         YES              NO (different pipelines)",
-  "",
-  "── Table Features ──",
-  "Decimal alignment             YES              NO (center only)",
-  "N-counts in headers           Automatic        Manual paste0()",
-  "SOC/PT indent_by              1 line           Manual gt::tab_style()",
-  "Three-level indent            1 line           NOT POSSIBLE",
-  "Conditional row bold          fr_row_style()   Manual gt::tab_style()",
-  "group_by keep-together        YES              NO",
-  "Spanning headers              fr_spans()       gt::tab_spanner()",
-  "",
-  "── Page Features ──",
-  "Multi-page pagination         YES              Partial (docorator)",
-  "Repeating column headers      YES              NO",
-  "Continuation text             YES              NO",
-  "Page X of Y                   YES              YES (docorator)",
-  "Pageheader / pagefooter       Built-in         docorator layer",
-  "Landscape orientation         Built-in         docorator layer",
-  "",
-  "── Workflow ──",
-  "Study-wide theme              fr_theme()       NOT POSSIBLE",
-  "YAML config (_arframe.yml)    YES              NO",
-  "Batch render 20 tables        for loop         Manual per-table docorator wrap",
-  "Column splitting (wide)       YES              NOT POSSIBLE",
-  "page_by (per-param pages)     YES              NOT POSSIBLE"
-)
-
-for (line in summary_lines) cat(line, "\n")
+cat("\nPATH B total: ~595 lines (470 data reshape + 45 tfrmt + 10 gt + 20 docorator + tfl_format helper)\n")
+cat("Real GSK code (t_saf_ae01_all.R): 621 lines\n")
+cat("Packages: cards + tfrmt + gt + docorator + tidyverse (5+)\n\n")
 
 
 # ╔══════════════════════════════════════════════════════════════════════════╗
-# ║  D. Feature Comparison as PDF (arframe eating its own dog food)        ║
+# ║  FINAL SCOREBOARD                                                      ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
 
-comparison <- data.frame(
-  Feature = c(
-    "Packages needed",
-    "Lines of code (AE SOC/PT)",
-    "Data reshape required",
-    "Native PDF (typeset)",
-    "PDF backend",
-    "Native RTF",
-    "Native HTML",
-    "One spec -> all formats",
-    "Decimal alignment",
-    "N-counts in headers (auto)",
-    "SOC/PT indent_by",
-    "Three-level indent (SOC/HLT/PT)",
-    "Conditional row bold",
-    "group_by keep-together",
-    "Spanning headers",
-    "Multi-page pagination",
-    "Repeating column headers",
-    "Continuation text",
-    "Page X of Y",
-    "Pageheader / pagefooter",
-    "Study-wide theme",
-    "YAML config",
-    "page_by (per-param pages)",
-    "Column splitting (wide tables)",
-    "Batch render (loop)",
-    "No tidyverse dependency"
+scoreboard <- data.frame(
+  Metric = c(
+    "Demographics table",
+    "  Lines (after data prep)",
+    "  Packages needed",
+    "  Data format required",
+    "  Decimal alignment",
+    "  N-counts in headers",
+    "  Group label bold",
+    "  Output formats",
+    "",
+    "AE SOC/PT table",
+    "  Lines (total with data prep)",
+    "  Lines (table formatting only)",
+    "  Packages needed",
+    "  Data format required",
+    "  SOC/PT indentation",
+    "  SOC bold + total bold",
+    "  Continuation text (page 2+)",
+    "  Repeating column headers",
+    "  Page X of Y",
+    "  Decimal alignment",
+    "  Output formats",
+    "",
+    "Shared infrastructure",
+    "  Study-wide theme",
+    "  Reusable config file",
+    "  tfl_format() helper needed",
+    "  gsk_styling() helper needed"
   ),
   arframe = c(
-    "1", "~30", "NO", "YES", "XeLaTeX", "YES", "YES", "YES",
-    "YES", "YES", "YES", "YES", "YES", "YES", "YES",
-    "YES", "YES", "YES", "YES", "YES", "YES", "YES", "YES", "YES",
-    "YES", "YES"
+    "",
+    "~20", "1", "Wide summary", "YES", "Automatic", "group_bold = TRUE",
+    "PDF + RTF + HTML",
+    "",
+    "",
+    "~80 (55 prep + 25 table)", "~25", "1 + dplyr/tidyr",
+    "Wide summary", "indent_by = 'pt'", "fr_row_style() + fr_rows_matches()",
+    "YES", "YES", "YES", "YES", "PDF + RTF + HTML",
+    "",
+    "",
+    "fr_theme() — 10 lines, all tables inherit", "YES (_arframe.yml)", "NO", "NO"
   ),
   pharmaverse = c(
-    "3", "~130", "YES", "Partial", "RMarkdown", "Single-page", "YES", "NO",
-    "NO", "Manual", "Manual", "NO", "Manual", "NO", "YES",
-    "Partial", "NO", "NO", "YES", "docorator", "NO", "NO", "NO", "NO",
-    "Manual", "NO"
+    "",
+    "~105", "3 + tidyr", "ARD (long)", "NO", "Manual big_n_structure()",
+    "Manual gt::tab_style()", "PDF only (docorator)",
+    "",
+    "",
+    "~621 (470 ARD + 45 tfrmt + gt + docorator)", "~75", "5+ (cards/tfrmt/gt/docorator/tidyverse)",
+    "ARD (one row per stat)", "row_grp_plan(location = 'indented')",
+    "Not available in tfrmt, manual gt",
+    "NO", "NO", "YES (docorator)", "NO (left-align only)",
+    "PDF only (docorator)",
+    "",
+    "",
+    "Not possible — each table wrapped individually", "NO",
+    "YES — 327 lines", "YES — 30 lines"
   ),
   stringsAsFactors = FALSE
 )
 
-comparison_spec <- comparison |>
+# Render scoreboard as arframe table
+score_spec <- scoreboard |>
   fr_table() |>
   fr_titles(
-    "arframe vs pharmaverse TLF stack",
-    list("Feature Comparison: arframe vs tfrmt + gt + docorator", bold = TRUE),
-    "PDF as Primary Output"
+    "arframe vs tfrmt + gt + docorator",
+    list("Real-World Comparison from GSK Study 52427_219230", bold = TRUE)
   ) |>
   fr_cols(
-    Feature    = fr_col("Feature", width = 3.0, align = "left"),
-    arframe    = fr_col("arframe\n(1 package)", width = 1.5, align = "center"),
-    pharmaverse = fr_col("tfrmt + gt +\ndocorator", width = 1.5, align = "center")
+    Metric     = fr_col("", width = 3.5, align = "left"),
+    arframe    = fr_col("arframe\n(1 package)", width = 2.5, align = "left"),
+    pharmaverse = fr_col("tfrmt + gt +\ndocorator (3+)", width = 2.5, align = "left")
   ) |>
   fr_header(bold = TRUE, align = "center") |>
   fr_hlines("header") |>
   fr_page(orientation = "landscape", font_family = "Courier New", font_size = 9) |>
   fr_styles(
     fr_style_if(
-      condition = ~ .x == "YES",
-      cols = c("arframe", "pharmaverse"),
+      condition = ~ grepl("^(YES|~[12])", .x),
+      cols = "arframe",
       bold = TRUE
-    ),
-    fr_style_if(
-      condition = ~ .x == "NO",
-      cols = c("arframe", "pharmaverse"),
-      fg = "red"
     )
   )
 
-comparison_spec  # HTML preview
-comparison_spec |> fr_render(file.path(tempdir(), "Package_Comparison.pdf"))
+score_spec |> fr_render(file.path(tempdir(), "Scoreboard.pdf"))
+score_spec  # HTML preview
 
-cat("\nComparison PDF written to:", file.path(tempdir(), "Package_Comparison.pdf"), "\n")
-
-
-# ╔══════════════════════════════════════════════════════════════════════════╗
-# ║  E. Full Study Program — 7 Tables, All as PDF                         ║
-# ╚══════════════════════════════════════════════════════════════════════════╝
-#
-# A real CSR has 15–30 tables. Here's the core 7, each under 20 lines,
-# all sharing one theme. With tfrmt + gt + docorator, each table needs:
-#   - ARD data reshape
-#   - tfrmt spec
-#   - gt post-processing
-#   - docorator wrapping
-# That's 4 steps x 7 tables = 28 code blocks vs 7 pipelines below.
-
-fr_theme_reset()
-fr_theme(
-  font_size   = 9,
-  font_family = "Courier New",
-  orientation = "landscape",
-  hlines      = "header",
-  header      = list(bold = TRUE, align = "center"),
-  n_format    = "{label}\n(N={n})",
-  footnote_separator = FALSE,
-  pagehead = list(left = "TFRM-2024-001", right = "CONFIDENTIAL"),
-  pagefoot = list(left = "{program}", right = "Page {thepage} of {total_pages}")
-)
-
-n_itt    <- c(placebo = 45, zom_50mg = 45, zom_100mg = 45, total = 135)
-n_safety <- c(placebo = 45, zom_50mg = 45, zom_100mg = 45, total = 135)
-
-# ── Table 14.1.1: Demographics ──
-t_14_1_1 <- tbl_demog |>
-  fr_table() |>
-  fr_titles("Table 14.1.1", "Demographics and Baseline Characteristics",
-            "Intent-to-Treat Population") |>
-  fr_cols(
-    characteristic = fr_col("", width = 2.5),
-    placebo   = fr_col("Placebo",          align = "decimal"),
-    zom_50mg  = fr_col("Zomerane 50mg",    align = "decimal"),
-    zom_100mg = fr_col("Zomerane 100mg",   align = "decimal"),
-    total     = fr_col("Total",            align = "decimal"),
-    group     = fr_col(visible = FALSE),
-    .n = n_itt
-  ) |>
-  fr_rows(group_by = "group", blank_after = "group") |>
-  fr_footnotes("Percentages based on N per treatment group.",
-               "MMSE = Mini-Mental State Examination.")
-
-# ── Table 14.1.4: Disposition ──
-t_14_1_4 <- tbl_disp |>
-  fr_table() |>
-  fr_titles("Table 14.1.4", "Subject Disposition",
-            "All Randomized Subjects") |>
-  fr_cols(
-    category  = fr_col("", width = 2.5),
-    placebo   = fr_col("Placebo",        align = "decimal"),
-    zom_50mg  = fr_col("Zomerane 50mg",  align = "decimal"),
-    zom_100mg = fr_col("Zomerane 100mg", align = "decimal"),
-    total     = fr_col("Total",          align = "decimal"),
-    .n = n_itt
-  ) |>
-  fr_footnotes("Percentages based on N randomized per arm.")
-
-# ── Table 14.2.1: Time-to-Event ──
-t_14_2_1 <- tbl_tte |>
-  fr_table() |>
-  fr_titles("Table 14.2.1",
-            list("Time to Study Withdrawal", bold = TRUE),
-            "Intent-to-Treat Population") |>
-  fr_cols(
-    section   = fr_col(visible = FALSE),
-    statistic = fr_col("", width = 3.5),
-    zom_50mg  = fr_col("Zomerane\n50mg",  align = "decimal"),
-    zom_100mg = fr_col("Zomerane\n100mg", align = "decimal"),
-    placebo   = fr_col("Placebo",          align = "decimal"),
-    .n = c(zom_50mg = 45, zom_100mg = 45, placebo = 45)
-  ) |>
-  fr_rows(group_by = "section", blank_after = "section") |>
-  fr_styles(
-    fr_row_style(rows = fr_rows_matches("statistic", pattern = "^[A-Z]"),
-                 bold = TRUE)
-  ) |>
-  fr_footnotes("[a] Kaplan-Meier estimate with Greenwood 95% CI.",
-               "[b] Two-sided log-rank test stratified by age group.",
-               "[c] Cox proportional hazards model.",
-               "NE = Not Estimable.")
-
-# ── Table 14.3.1: AE by SOC/PT (reuse from above) ──
-t_14_3_1 <- ae_arframe
-
-# ── Table 14.3.1.1: Overall AE Summary ──
-t_14_3_1_1 <- tbl_ae_summary |>
-  fr_table() |>
-  fr_titles("Table 14.3.1.1",
-            "Overall Summary of Treatment-Emergent Adverse Events",
-            "Safety Population") |>
-  fr_cols(
-    category  = fr_col("", width = 3.5),
-    zom_50mg  = fr_col("Zomerane\n50mg",  align = "decimal"),
-    zom_100mg = fr_col("Zomerane\n100mg", align = "decimal"),
-    placebo   = fr_col("Placebo",          align = "decimal"),
-    total     = fr_col("Total",            align = "decimal"),
-    .n = n_safety
-  ) |>
-  fr_footnotes("Subjects may be counted in more than one category.")
-
-# ── Table 14.4.1: Concomitant Medications ──
-t_14_4_1 <- tbl_cm |>
-  fr_table() |>
-  fr_titles("Table 14.4.1",
-            list("Concomitant Medications by Category and Agent", bold = TRUE),
-            "Safety Population") |>
-  fr_cols(
-    category   = fr_col(visible = FALSE),
-    medication = fr_col("Medication Category / Agent", width = 3.0),
-    row_type   = fr_col(visible = FALSE),
-    placebo    = fr_col("Placebo",          align = "decimal"),
-    zom_50mg   = fr_col("Zomerane\n50mg",   align = "decimal"),
-    zom_100mg  = fr_col("Zomerane\n100mg",  align = "decimal"),
-    total      = fr_col("Total",            align = "decimal"),
-    .n = n_safety
-  ) |>
-  fr_rows(group_by = "category", indent_by = "medication") |>
-  fr_styles(
-    fr_row_style(rows = fr_rows_matches("row_type", value = "total"),    bold = TRUE),
-    fr_row_style(rows = fr_rows_matches("row_type", value = "category"), bold = TRUE)
-  ) |>
-  fr_footnotes("Subjects counted once per category and medication.")
-
-# ── Table 14.3.6: Vital Signs ──
-vs_n <- aggregate(
-  USUBJID ~ PARAM + TRTA, data = advs[advs$AVISIT == "Baseline", ],
-  FUN = function(x) length(unique(x))
-)
-
-t_14_3_6 <- tbl_vs[tbl_vs$timepoint == "Week 24", ] |>
-  fr_table() |>
-  fr_titles("Table 14.3.6",
-            "Vital Signs --- Week 24 Summary",
-            "Safety Population") |>
-  fr_cols(
-    param     = fr_col(visible = FALSE),
-    timepoint = fr_col(visible = FALSE),
-    statistic         = fr_col("Statistic", width = 1.2),
-    placebo_base      = fr_col("Baseline"),
-    placebo_value     = fr_col("Value"),
-    placebo_chg       = fr_col("CFB"),
-    zom_50mg_base     = fr_col("Baseline"),
-    zom_50mg_value    = fr_col("Value"),
-    zom_50mg_chg      = fr_col("CFB"),
-    zom_100mg_base    = fr_col("Baseline"),
-    zom_100mg_value   = fr_col("Value"),
-    zom_100mg_chg     = fr_col("CFB"),
-    .n = vs_n
-  ) |>
-  fr_rows(page_by = "param") |>
-  fr_spans(
-    "Placebo"        = c("placebo_base", "placebo_value", "placebo_chg"),
-    "Zomerane 50mg"  = c("zom_50mg_base", "zom_50mg_value", "zom_50mg_chg"),
-    "Zomerane 100mg" = c("zom_100mg_base", "zom_100mg_value", "zom_100mg_chg")
-  ) |>
-  fr_footnotes("CFB = Change from Baseline.")
-
-# ── Batch render all 7 tables ──
-tables <- list(
-  "Table_14_1_1"   = t_14_1_1,
-  "Table_14_1_4"   = t_14_1_4,
-  "Table_14_2_1"   = t_14_2_1,
-  "Table_14_3_1"   = t_14_3_1,
-  "Table_14_3_1_1" = t_14_3_1_1,
-  "Table_14_4_1"   = t_14_4_1,
-  "Table_14_3_6"   = t_14_3_6
-)
-
-outdir <- file.path(tempdir(), "csr_tables")
-dir.create(outdir, showWarnings = FALSE)
-
-for (nm in names(tables)) {
-  tables[[nm]] |> fr_render(file.path(outdir, paste0(nm, ".pdf")))
-  tables[[nm]] |> fr_render(file.path(outdir, paste0(nm, ".rtf")))
-}
-
-cat("\n7 submission-quality tables written to:\n", outdir, "\n")
-cat("  -> 7 PDFs (XeLaTeX, typeset quality)\n")
-cat("  -> 7 RTFs (for eCTD if needed)\n")
-cat("\n── Bottom Line ──\n")
-cat("arframe:    ~200 lines total for 7 tables (theme + pipelines + batch render)\n")
-cat("pharmaverse: ~900+ lines (ARD reshape + tfrmt + gt fixups + docorator per table)\n")
-cat("SAS:        ~2000+ lines of PROC REPORT + ODS PDF macros\n")
+cat("\n================================================================\n")
+cat("  SCOREBOARD: PDFs written to", tempdir(), "\n")
+cat("================================================================\n")
+cat("  arframe_demog.pdf    — Demographics (arframe, ~20 lines)\n")
+cat("  arframe_ae_soc.pdf   — AE SOC/PT (arframe, ~25 lines)\n")
+cat("  Scoreboard.pdf       — Feature comparison\n")
+cat("\n  Real GSK equivalents:\n")
+cat("  t_sp_dmt01.R         — 358 lines (tfrmt + gt + docorator)\n")
+cat("  t_saf_ae01_all.R     — 621 lines (tfrmt + gt + docorator)\n")
+cat("  tfl_format.R         — 327 lines (shared docorator wrapper)\n")
+cat("  gsk_styling.R        —  30 lines (shared gt styling)\n")
+cat("  TOTAL pharmaverse:   1,336 lines for 2 tables + helpers\n")
+cat("  TOTAL arframe:          45 lines for 2 tables (+ 10 line theme)\n")
+cat("================================================================\n")
 
 fr_theme_reset()
