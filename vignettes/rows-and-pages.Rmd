@@ -44,16 +44,6 @@ spec <- tbl_demog |>
 `group_by` keeps groups together during pagination. `blank_after` inserts
 an empty row after each group.
 
-**Note:** `group_by` auto-implies `blank_after` on the same column, so
-you usually only need `group_by`:
-
-```{r groupby-auto}
-spec <- tbl_demog |>
-  fr_table() |>
-  fr_cols(group = fr_col(visible = FALSE)) |>
-  fr_rows(group_by = "group")
-```
-
 ## `indent_by`: SOC/PT hierarchies
 
 ```{r indent}
@@ -143,8 +133,8 @@ if you want bold or background color.
 ## `group_keep`: visual-only grouping
 
 By default, `group_by` keeps groups together on the same page. Set
-`group_keep = FALSE` for visual-only grouping (blank-after spacing,
-indent) without page-keeping — useful for long groups where you want the
+`group_keep = FALSE` for visual-only grouping (indent, group headers)
+without page-keeping — useful for long groups where you want the
 renderer to break freely:
 
 ```{r group-keep}

@@ -1,5 +1,13 @@
 # arframe 0.1.0.9000 (development version)
 
+## Breaking changes
+
+* `fr_rows(group_by)` no longer auto-implies `blank_after`. To get blank rows between groups, set `blank_after` explicitly: `fr_rows(group_by = "col", blank_after = "col")`.
+
+## Bug fixes
+
+* Injected group header rows and blank-after rows now inherit `page_by` column values, fixing incorrect page splits when `page_by` and `group_by`/`blank_after` are used together.
+
 ## Font system overhaul
 
 * Default font changed from Courier New to **Times New Roman** (FDA recommended for submission documents).
