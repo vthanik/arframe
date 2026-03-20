@@ -2,10 +2,13 @@
 arframe Decimal Alignment Engine — Format Reference with Aligned Output
 ==============================================================================
 
-18 format families. All outputs within a section share the same nchar.
+18 format families recognized by align = "decimal".
+Each section shows raw input and the aligned output from
+align_decimal_column(). All outputs within a section share the same nchar.
+In monospace (submission) fonts this gives pixel-perfect alignment.
 
  1. missing
-    Blank/dash/token -> spaces
+    Blank, dash, or token placeholders -> replaced by spaces
     Input                                Aligned
      ---------------------------------------------------------------------- 
     (empty)                              ""
@@ -17,7 +20,7 @@ arframe Decimal Alignment Engine — Format Reference with Aligned Output
     [all nchar = 0]
 
  2. n_only
-    Plain integer (right-aligned)
+    Plain integer count (right-aligned)
     Input                                Aligned
      ---------------------------------------------------------------------- 
     0                                    "  0"
@@ -26,7 +29,7 @@ arframe Decimal Alignment Engine — Format Reference with Aligned Output
     [all nchar = 3]
 
  3. scalar_float
-    Signed decimal (dot-aligned)
+    Signed decimal number (decimal-point aligned)
     Input                                Aligned
      ---------------------------------------------------------------------- 
     12.3                                 " 12.3 "
@@ -36,7 +39,7 @@ arframe Decimal Alignment Engine — Format Reference with Aligned Output
     [all nchar = 6]
 
  4. pvalue
-    Prefixed p-value
+    Prefixed p-value (<, >, = prefix)
     Input                                Aligned
      ---------------------------------------------------------------------- 
     <0.001                               "<0.001"
@@ -45,7 +48,7 @@ arframe Decimal Alignment Engine — Format Reference with Aligned Output
     [all nchar = 6]
 
  5. n_pct
-    Count (pct), n=0 suppression
+    Count (percentage) with n=0 zero suppression
     Input                                Aligned
      ---------------------------------------------------------------------- 
     0                                    "  0         "
@@ -55,7 +58,7 @@ arframe Decimal Alignment Engine — Format Reference with Aligned Output
     [all nchar = 12]
 
  6. n_over_N_pct
-    n/N (pct)
+    Fraction with percentage: n/N (pct)
     Input                                Aligned
      ---------------------------------------------------------------------- 
     3/45 (6.7)                           "  3/45  (  6.7 )"
@@ -64,7 +67,7 @@ arframe Decimal Alignment Engine — Format Reference with Aligned Output
     [all nchar = 16]
 
  7. n_over_N
-    Plain fraction
+    Plain fraction without percentage
     Input                                Aligned
      ---------------------------------------------------------------------- 
     0/120                                "  0/120"
@@ -73,7 +76,7 @@ arframe Decimal Alignment Engine — Format Reference with Aligned Output
     [all nchar = 7]
 
  8. n_over_float
-    Events/subject-time
+    Events over subject-time: n/float
     Input                                Aligned
      ---------------------------------------------------------------------- 
     0/234.6                              "  0/234.6"
@@ -100,7 +103,7 @@ arframe Decimal Alignment Engine — Format Reference with Aligned Output
     [all nchar = 15]
 
 11. est_ci
-    Estimate (lo, hi) token-aware
+    Estimate (lo, hi) — token-aware
     Input                                Aligned
      ---------------------------------------------------------------------- 
     168.0 (152.4, 183.6)                 "168.0   (152.4  , 183.6)"
@@ -119,7 +122,7 @@ arframe Decimal Alignment Engine — Format Reference with Aligned Output
     [all nchar = 19]
 
 13. range_pair
-    Comma range
+    Comma-separated range
     Input                                Aligned
      ---------------------------------------------------------------------- 
     2.0, 45.0                            " 2.0, 45.0"
@@ -128,7 +131,7 @@ arframe Decimal Alignment Engine — Format Reference with Aligned Output
     [all nchar = 10]
 
 14. int_range
-    Integer range
+    Integer range with dash
     Input                                Aligned
      ---------------------------------------------------------------------- 
     1 - 180                              " 1 - 180"
@@ -136,7 +139,7 @@ arframe Decimal Alignment Engine — Format Reference with Aligned Output
     [all nchar = 8]
 
 15. est_ci_pval
-    CI + p-value (compound)
+    CI + trailing p-value (compound)
     Input                                Aligned
      ---------------------------------------------------------------------- 
     -0.08 (-0.21, 0.05) 0.194            "-0.08 (-0.21,  0.05)     0.194"
@@ -144,7 +147,7 @@ arframe Decimal Alignment Engine — Format Reference with Aligned Output
     [all nchar = 30]
 
 16. n_pct_rate
-    n(%) + rate (compound)
+    Count (%) + rate per 100 PY (compound)
     Input                                Aligned
      ---------------------------------------------------------------------- 
     0 (0.0) 0.00                         " 0                "
@@ -153,7 +156,7 @@ arframe Decimal Alignment Engine — Format Reference with Aligned Output
     [all nchar = 18]
 
 17. n_over_N_pct_ci
-    n/N(%) [CI] (compound)
+    n/N (%) [CI] — response rate (compound)
     Input                                Aligned
      ---------------------------------------------------------------------- 
     0/120 (0.0) [0.0, 3.0]               "  0/120 (  0.0) [ 0.0,   3.0]"
@@ -162,7 +165,7 @@ arframe Decimal Alignment Engine — Format Reference with Aligned Output
     [all nchar = 29]
 
 18. est_spread_pct_ci
-    Gmean(CV%) (CI) (compound)
+    Gmean (CV%) (CI) — PK full-line (compound)
     Input                                Aligned
      ---------------------------------------------------------------------- 
     8.1 (24.2%) (7.3, 8.9)               "   8.1 (24.2%)    (   7.3,    8.9)"
@@ -171,8 +174,10 @@ arframe Decimal Alignment Engine — Format Reference with Aligned Output
 
 
 ==============================================================================
-Cross-type Fallbacks
+Cross-type Fallback Examples
 ==============================================================================
+
+Sibling types share width computation for proper decimal alignment.
 
 est_ci + missing tokens:
   14.3 (11.2, NR)                      "14.3   (11.2  , NR)"

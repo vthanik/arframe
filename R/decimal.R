@@ -1227,10 +1227,15 @@ maxw_si_or_tok <- function(typed, sign_key, int_key, tok_key) {
 #' @return Named list with max widths and `full_width`.
 #' @noRd
 compute_stat_widths <- function(parsed_values, dominant_type) {
-  # Include sibling types with compatible field structures so widths
-
-  # accommodate all values that share the alignment grid.
-  # Same-structure siblings (identical fields — include directly)
+  # Sibling expansion: types that share the same field structure should
+  # contribute to width computation so the alignment grid fits all values.
+  #
+  # Same-structure siblings (identical fields, differ only in formatting):
+  #   est_spread <-> est_spread_pct  (% suffix vs none)
+  #   est_ci     <-> est_ci_bracket  (() vs [] delimiters)
+  #
+  # Subset siblings (fewer fields — adapted with empty stubs):
+  #   n_over_N_pct <- n_over_N       (num/den shared, pct fields stubbed)
   same_siblings <- switch(
     dominant_type,
     est_spread_pct = "est_spread",
@@ -1589,7 +1594,7 @@ compute_stat_widths <- function(parsed_values, dominant_type) {
         w_ci_hi_dec = w_ci_hi_dec,
         has_ci_lo_dec = has_ci_lo_dec,
         has_ci_hi_dec = has_ci_hi_dec,
-        gap = 1L,
+        gap = 1L, # 1 space (not COMPOUND_GAP) — CI bracket is visually adjacent
         full_width = npct_fw + 1L + ci_fw
       )
     },

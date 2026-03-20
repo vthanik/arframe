@@ -649,6 +649,30 @@ test_that("align_decimal_column: est_spread_pct_ci compound all same nchar", {
   expect_true(all(nchars == nchars[1]))
 })
 
+# --- Token-heavy compound and edge cases ---
+
+test_that("align_decimal_column: est_ci_pval with NR tokens all same nchar", {
+  vals <- c(
+    "NR (NR, NR) -",
+    "14.3 (11.2, NR) 0.194",
+    "3.70 (1.24, 6.16) 0.003"
+  )
+  result <- align_decimal_column(vals)
+  nchars <- nchar(result)
+  expect_true(all(nchars == nchars[1]))
+})
+
+test_that("align_decimal_column: pure est_spread_pct_ci (no mixing)", {
+  vals <- c(
+    "8.1 (24.2%) (7.3, 8.9)",
+    "52.4 (18.1%) (48.2, 57.0)",
+    "1240.4 (23.4%) (1124.2, 1368.8)"
+  )
+  result <- align_decimal_column(vals)
+  nchars <- nchar(result)
+  expect_true(all(nchars == nchars[1]))
+})
+
 # --- Cross-type fallback: est_ci_bracket <-> est_ci ---
 
 test_that("est_ci_bracket aligns with est_ci dominant: delimiters swap", {
