@@ -634,6 +634,7 @@ new_fr_body <- function(
   page_by_visible = TRUE,
   group_label = NULL,
   group_keep = TRUE,
+  group_bold = FALSE,
   sort_by = character(0),
   repeat_cols = character(0),
   wrap = FALSE
@@ -653,6 +654,7 @@ new_fr_body <- function(
       page_by_visible = page_by_visible,
       group_label = group_label,
       group_keep = group_keep,
+      group_bold = group_bold,
       sort_by = vec_cast(sort_by, character()),
       repeat_cols = vec_cast(repeat_cols, character()),
       wrap = wrap

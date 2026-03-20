@@ -14,6 +14,7 @@ fr_rows(
   page_by_align = "left",
   page_by_visible = TRUE,
   group_label = NULL,
+  group_bold = FALSE,
   group_keep = TRUE,
   sort_by = NULL,
   repeat_cols = NULL,
@@ -81,8 +82,13 @@ When \code{group_label} is set and \code{indent_by} is not, \code{indent_by} is
 # indent_by = "stat" is implied — detail rows auto-indented
 }\if{html}{\out{</div>}}
 
-Style the injected header rows via \code{\link[=fr_styles]{fr_styles()}} (e.g., bold).
-Requires \code{group_by}.}
+Use \code{group_bold = TRUE} to bold the injected header rows, or
+style them further via \code{\link[=fr_styles]{fr_styles()}}. Requires \code{group_by}.}
+
+\item{group_bold}{Logical. Whether group header rows injected by
+\code{group_label} are rendered in bold. Default \code{FALSE}. Set \code{TRUE} to
+make group headers visually distinct from detail rows. Only takes
+effect when \code{group_label} is set.}
 
 \item{group_keep}{Logical. Whether \code{group_by} groups are kept together
 on the same page via RTF \verb{\\keepn} / LaTeX keep-with-next. Default

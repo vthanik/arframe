@@ -1,5 +1,9 @@
 # arframe 0.1.0.9000 (development version)
 
+## New features
+
+* `fr_rows(group_bold = TRUE)` bolds group header rows injected by `group_label`. Also available via `fr_theme(group_bold = TRUE)` for study-wide defaults.
+
 ## Breaking changes
 
 * `fr_rows(group_by)` no longer auto-implies `blank_after`. To get blank rows between groups, set `blank_after` explicitly: `fr_rows(group_by = "col", blank_after = "col")`.

@@ -72,6 +72,8 @@
 #'   See [fr_rows()] for details.
 #' @param page_by_visible Logical. Whether `page_by` group labels are
 #'   displayed. `NULL` leaves unchanged. See [fr_rows()] for details.
+#' @param group_bold Logical. Whether group header rows (from `group_label`)
+#'   are bold. `NULL` leaves unchanged. See [fr_rows()] for details.
 #' @param group_keep Logical. Whether `group_by` groups are kept together
 #'   on the same page. `NULL` leaves unchanged. See [fr_rows()] for details.
 #' @param header Named list of header defaults. Supports all [fr_header()]
@@ -200,6 +202,7 @@ fr_theme <- function(
   page_by_bold = NULL,
   page_by_align = NULL,
   page_by_visible = NULL,
+  group_bold = NULL,
   group_keep = NULL,
   header = NULL,
   footnote_separator = NULL
@@ -269,6 +272,9 @@ fr_theme <- function(
   if (!is.null(page_by_visible)) {
     check_scalar_lgl(page_by_visible, arg = "page_by_visible", call = call)
   }
+  if (!is.null(group_bold)) {
+    check_scalar_lgl(group_bold, arg = "group_bold", call = call)
+  }
   if (!is.null(group_keep)) {
     check_scalar_lgl(group_keep, arg = "group_keep", call = call)
   }
@@ -310,6 +316,7 @@ fr_theme <- function(
   set_if("page_by_bold", page_by_bold)
   set_if("page_by_align", page_by_align)
   set_if("page_by_visible", page_by_visible)
+  set_if("group_bold", group_bold)
   set_if("group_keep", group_keep)
   set_if("footnote_separator", footnote_separator)
 
@@ -349,6 +356,7 @@ fr_theme_set <- fr_theme
 #'   * `page_by_bold` — logical; whether page-by labels are bold
 #'   * `page_by_align` — character; alignment of page-by labels
 #'   * `page_by_visible` — logical; whether page-by labels are displayed
+#'   * `group_bold` — logical; whether group_label header rows are bold
 #'   * `group_keep` — logical; whether group_by groups are kept together
 #'   * `footnote_separator` — logical
 #'

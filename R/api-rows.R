@@ -73,8 +73,12 @@
 #'   # indent_by = "stat" is implied — detail rows auto-indented
 #'   ```
 #'
-#'   Style the injected header rows via [fr_styles()] (e.g., bold).
-#'   Requires `group_by`.
+#'   Use `group_bold = TRUE` to bold the injected header rows, or
+#'   style them further via [fr_styles()]. Requires `group_by`.
+#' @param group_bold Logical. Whether group header rows injected by
+#'   `group_label` are rendered in bold. Default `FALSE`. Set `TRUE` to
+#'   make group headers visually distinct from detail rows. Only takes
+#'   effect when `group_label` is set.
 #' @param group_keep Logical. Whether `group_by` groups are kept together
 #'   on the same page via RTF `\keepn` / LaTeX keep-with-next. Default
 #'   `TRUE`. Set `FALSE` for visual-only grouping (blank_after, indent)
@@ -270,6 +274,7 @@ fr_rows <- function(
   page_by_align = "left",
   page_by_visible = TRUE,
   group_label = NULL,
+  group_bold = FALSE,
   group_keep = TRUE,
   sort_by = NULL,
   repeat_cols = NULL,
@@ -402,6 +407,9 @@ fr_rows <- function(
   if (!missing(page_by_visible)) {
     check_scalar_lgl(page_by_visible, arg = "page_by_visible", call = call)
   }
+  if (!missing(group_bold)) {
+    check_scalar_lgl(group_bold, arg = "group_bold", call = call)
+  }
   if (!missing(group_keep)) {
     check_scalar_lgl(group_keep, arg = "group_keep", call = call)
   }
@@ -479,6 +487,11 @@ fr_rows <- function(
       group_label
     } else {
       old$group_label
+    },
+    group_bold = if (!missing(group_bold)) {
+      group_bold
+    } else {
+      old$group_bold
     },
     group_keep = if (!missing(group_keep)) {
       group_keep

@@ -766,6 +766,14 @@ finalize_rows <- function(spec) {
         gl_result$header_rows
       )
     }
+
+    # Apply group_bold: inject row-level bold style for header rows
+    if (isTRUE(spec$body$group_bold) && length(gl_result$header_rows) > 0L) {
+      spec$cell_styles <- c(
+        spec$cell_styles,
+        list(new_fr_row_style(rows = gl_result$header_rows, bold = TRUE))
+      )
+    }
   }
 
   # Insert blank rows at group boundaries (explicit blank_after only).

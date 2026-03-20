@@ -324,6 +324,9 @@ apply_fr_theme <- function(spec) {
   if (!is.null(setup[["page_by_visible"]])) {
     spec$body$page_by_visible <- setup[["page_by_visible"]]
   }
+  if (!is.null(setup[["group_bold"]])) {
+    spec$body$group_bold <- setup[["group_bold"]]
+  }
   if (!is.null(setup[["group_keep"]])) {
     spec$body$group_keep <- setup[["group_keep"]]
   }

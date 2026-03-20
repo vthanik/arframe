@@ -134,7 +134,7 @@ reference:
       breaks with a group label), `indent_by` (single-level string or
       multi-level named list for SOC/HLT/PT hierarchies), `group_label`
       (inject group values as header rows into a display column),
-      `blank_after`, `sort_by`, `repeat_cols`, `wrap`, and `group_keep`.
+      `blank_after`, `sort_by`, `repeat_cols`, `wrap`, `group_bold`, and `group_keep`.
       `fr_rows_matches()` creates data-driven row selectors (exact value or
       regex) for use in styling verbs.
     contents:
