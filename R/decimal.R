@@ -1227,8 +1227,38 @@ maxw_si_or_tok <- function(typed, sign_key, int_key, tok_key) {
 #' @return Named list with max widths and `full_width`.
 #' @noRd
 compute_stat_widths <- function(parsed_values, dominant_type) {
-  # Filter to values of the dominant type for width calculation
-  typed <- Filter(function(p) p$type == dominant_type, parsed_values)
+  # Include sibling types with compatible field structures so widths
+
+  # accommodate all values that share the alignment grid.
+  # Same-structure siblings (identical fields — include directly)
+  same_siblings <- switch(
+    dominant_type,
+    est_spread_pct = "est_spread",
+    est_spread = "est_spread_pct",
+    est_ci = "est_ci_bracket",
+    est_ci_bracket = "est_ci",
+    NULL
+  )
+  type_set <- c(dominant_type, same_siblings)
+  typed <- Filter(function(p) p$type %in% type_set, parsed_values)
+
+  # Subset siblings: adapt with empty fields for missing slots
+  if (dominant_type == "n_over_N_pct") {
+    sib <- Filter(function(p) p$type == "n_over_N", parsed_values)
+    if (length(sib) > 0L) {
+      typed <- c(
+        typed,
+        lapply(sib, function(p) {
+          p$pct_prefix <- ""
+          p$pct_int <- ""
+          p$pct_dec <- ""
+          p$pct_sign <- ""
+          p
+        })
+      )
+    }
+  }
+
   if (length(typed) == 0L) {
     raw_widths <- vapply(parsed_values, function(p) nchar(p$raw), integer(1))
     return(list(full_width = max(0L, raw_widths)))
