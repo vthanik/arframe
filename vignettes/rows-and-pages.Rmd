@@ -121,14 +121,15 @@ spec <- demog_long |>
   fr_rows(
     group_by    = "variable",
     group_label = "stat",
-    indent_by   = "stat"
+    group_bold  = TRUE
   )
 ```
 
 This inserts `"Sex"` and `"Age (years)"` as header rows in the `stat`
-column at each group boundary. Detail rows (`"Female"`, `"Male"`, etc.)
-are indented underneath. Style the injected headers via `fr_styles()`
-if you want bold or background color.
+column at each group boundary. Detail rows are automatically indented
+underneath (when `indent_by` is not set, it is inferred from
+`group_label`). Setting `group_bold = TRUE` renders the injected header
+rows in bold — for finer control, use `fr_styles()` instead.
 
 ## `group_keep`: visual-only grouping
 
