@@ -1378,56 +1378,6 @@ rebuild_stat_aligned <- function(parsed, widths, dominant_type) {
     }
 
     # --- n_pct fallbacks ---
-    if (
-      parsed$type == "n_pct" &&
-        dominant_type %in%
-          c("est_spread", "est_spread_pct", "est_ci", "est_ci_bracket")
-    ) {
-      # n part aligns with est integer zone (left-padded)
-      padded_n <- stringi::stri_pad_left(parsed$n, widths$w_est_si)
-      # Fill est decimal zone (n has no decimals)
-      if (isTRUE(widths$has_est_dec)) {
-        padded_n <- stringi::stri_pad_right(
-          padded_n,
-          widths$w_est_si + 1L + widths$w_est_dec
-        )
-      }
-      # pct part: pad integer + decimal to match spread/CI widths
-      pct_si_w <- if (dominant_type %in% c("est_ci", "est_ci_bracket")) {
-        widths$w_lo_si
-      } else {
-        widths$w_sprd_si
-      }
-      pct_dec_w <- if (dominant_type %in% c("est_ci", "est_ci_bracket")) {
-        widths$w_lo_dec
-      } else {
-        widths$w_sprd_dec
-      }
-      pct_has_dec <- if (dominant_type %in% c("est_ci", "est_ci_bracket")) {
-        widths$has_lo_dec
-      } else {
-        widths$has_sprd_dec
-      }
-      padded_pi <- stringi::stri_pad_left(
-        paste0(parsed$pct_prefix, parsed$pct_int),
-        pct_si_w
-      )
-      if (isTRUE(pct_has_dec) && nzchar(parsed$pct_dec)) {
-        pct_part <- paste0(
-          padded_pi,
-          ".",
-          stringi::stri_pad_right(parsed$pct_dec, pct_dec_w)
-        )
-      } else if (isTRUE(pct_has_dec)) {
-        pct_part <- stringi::stri_pad_right(
-          padded_pi,
-          pct_si_w + 1L + pct_dec_w
-        )
-      } else {
-        pct_part <- padded_pi
-      }
-      return(paste0(padded_n, " (", pct_part, ")"))
-    }
     if (parsed$type == "n_pct" && dominant_type == "n_over_N_pct") {
       padded_n <- stringi::stri_pad_left(parsed$n, widths$w_num)
       slash_den <- strrep(" ", 1L + widths$w_den)
@@ -2123,9 +2073,16 @@ compute_all_decimal_geometry <- function(spec) {
   result <- list()
 
   # Hoist invariants outside the column loop
-  # Only split by page_by — group_by rows share a page and should align together
+  # Split by page_by first, then group_by — smart fallback merges when types match
   pb <- spec$body$page_by
-  align_key <- if (length(pb) > 0L) pb else character(0)
+  gb <- spec$body$group_by
+  align_key <- if (length(pb) > 0L) {
+    pb
+  } else if (length(gb) > 0L) {
+    gb
+  } else {
+    character(0)
+  }
   space_twips <- measure_text_width_twips(
     " ",
     spec$page$font_family,
@@ -2166,7 +2123,8 @@ compute_all_decimal_geometry <- function(spec) {
           unique_groups,
           function(grp) {
             grp_types <- detect_stat_types(vals[group_labels == grp])
-            paste(sort(unique(grp_types)), collapse = ",")
+            sig_types <- setdiff(grp_types, c("n_only", "missing"))
+            paste(sort(unique(sig_types)), collapse = ",")
           },
           character(1)
         )

@@ -459,7 +459,9 @@ test_that("compute_all_decimal_geometry aligns per page_by independently", {
   expect_true(all(nchar(dbp) == nchar(dbp[1])))
 })
 
-test_that("group_by uses global alignment (groups share a page)", {
+test_that("group_by with mixed types uses per-group alignment", {
+  # Demographics-style: group A has n_pct, group B has est_ci
+  # Different type signatures → per-group alignment
   df <- data.frame(
     section = c("A", "A", "B", "B"),
     stat = c(
@@ -477,8 +479,27 @@ test_that("group_by uses global alignment (groups share a page)", {
   spec <- finalize_spec(spec)
   geom <- spec$decimal_geometry$stat
   expect_equal(length(geom$center_offset), nrow(spec$data))
-  # group_by does not split alignment — all rows share one global alignment
-  # so center_offset is uniform across all rows
+  # Mixed types → per-group alignment → different nchar per group
+  grp_a <- geom$formatted[df$section == "A"]
+  grp_b <- geom$formatted[df$section == "B"]
+  expect_equal(length(unique(nchar(grp_a))), 1L)
+  expect_equal(length(unique(nchar(grp_b))), 1L)
+})
+
+test_that("group_by with same types uses global alignment", {
+  # AE-style: all groups have only n_pct → same signature → global alignment
+  df <- data.frame(
+    soc = c("SOC1", "SOC1", "SOC2", "SOC2"),
+    stat = c("4 (8.9)", "41 (91.1)", "8 (16.0)", "42 (84.0)"),
+    stringsAsFactors = FALSE
+  )
+  spec <- df |>
+    fr_table() |>
+    fr_rows(group_by = "soc") |>
+    fr_cols(stat = fr_col("Stat", align = "decimal", width = 3))
+  spec <- finalize_spec(spec)
+  geom <- spec$decimal_geometry$stat
+  # Same type pattern → global alignment → uniform center_offset
   expect_equal(length(unique(geom$center_offset)), 1L)
 })
 
@@ -557,25 +578,21 @@ test_that("page_by with different stat types: per-page alignment", {
   expect_false(nchar(wt[1]) == nchar(pl[1]))
 })
 
-test_that("n_pct aligns internally when est_spread is dominant", {
-  # Demographics column mixing continuous stats with categorical n(pct)
+test_that("est_spread group aligns n_only and range_pair correctly", {
+  # Within a single est_spread-dominant group (e.g., AGE in demographics)
   vals <- c(
     "86",
     "75.2 (8.59)",
     "76.0",
-    "69.2, 81.8",
-    "86",
-    "72 (83.7)",
-    "8 (9.3)",
-    "78 (90.7)"
+    "69.2, 81.8"
   )
   result <- align_decimal_column(vals)
   # All same nchar
   expect_equal(length(unique(nchar(result))), 1L)
-  # n_pct values should have left-padded n part (not just right-padded raw)
-  # " 8   (9.3 )" not "8 (9.3)    "
-  npct_8 <- result[grepl("8.*9\\.3", result)]
-  expect_true(grepl("^ ", npct_8))
+  # est and range decimals should align
+  est_dot <- regexpr("\\.", result[2])
+  rng_dot <- regexpr("\\.", result[4])
+  expect_equal(as.integer(est_dot), as.integer(rng_dot))
 })
 
 test_that("AE table: no page_by, group_by=soc → global alignment", {
