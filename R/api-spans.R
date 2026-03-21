@@ -200,10 +200,11 @@ fr_spans <- function(spec, ..., .level = 1L, .hline = TRUE, .gap = NULL) {
       },
       error = function(e) {
         # Try as tidyselect expression
-        pos <- tidyselect::eval_select(
+        pos <- resolve_tidyselect(
           cols_quo,
           data = spec$data,
-          error_call = call
+          context = cli::format_inline("span {.val {label}}"),
+          call = call
         )
         if (length(pos) == 0L) {
           cli_abort(

@@ -10,7 +10,7 @@
 inches_to_twips <- function(inches) as.integer(round(inches * 1440))
 
 #' @noRd
-twips_to_inches <- function(twips) twips / 1440
+twips_to_inches <- function(twips) round(twips / 1440, 6)
 
 #' Points to RTF half-points
 #' @noRd

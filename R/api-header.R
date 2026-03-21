@@ -166,21 +166,13 @@ fr_header <- function(
       for (i in seq_along(align_args)) {
         a <- align_names[[i]]
         sel_expr <- align_args[[i]]
-        sel <- tryCatch(
-          tidyselect::eval_select(
-            sel_expr,
-            data = col_proxy,
-            error_call = call
+        sel <- resolve_tidyselect(
+          sel_expr,
+          data = col_proxy,
+          context = cli::format_inline(
+            "{.arg align} tidyselect for {.val {a}}"
           ),
-          error = function(e) {
-            cli_abort(
-              c(
-                "Failed to resolve {.arg align} tidyselect for {.val {a}}.",
-                "x" = conditionMessage(e)
-              ),
-              call = call
-            )
-          }
+          call = call
         )
         for (nm in names(sel)) {
           align_map[[nm]] <- a

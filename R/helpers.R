@@ -126,7 +126,61 @@ resolve_rows_selector <- function(selector, data, call = caller_env()) {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 4. Tidyselect Column Resolution
+# 4a. Shared Tidyselect Resolution
+#
+# Central wrapper around tidyselect::eval_select() used by fr_cols(),
+# fr_header(), and fr_spans() to resolve column expressions against data.
+# ══════════════════════════════════════════════════════════════════════════════
+
+#' Resolve a tidyselect expression against column data
+#'
+#' Thin wrapper around [tidyselect::eval_select()] that adds consistent
+#' error handling. Returns a named integer vector (column positions) on
+#' success, or re-raises a contextual error on failure.
+#'
+#' @param expr A tidyselect expression (quosure, symbol, or call).
+#' @param data A data frame or named vector used as the column source for
+#'   tidyselect evaluation.
+#' @param context Character scalar included in the error message to identify
+#'   which caller triggered the failure (e.g. `"span 'Treatment'"`,
+#'   `"align 'center'"`, `"formula selector"`).
+#' @param call Caller environment for error messages.
+#' @return Named integer vector of matched column positions.
+#' @noRd
+resolve_tidyselect <- function(
+  expr,
+  data,
+  context = NULL,
+  call = caller_env()
+) {
+  tryCatch(
+    tidyselect::eval_select(expr, data = data, error_call = call),
+    error = function(e) {
+      if (is.null(context)) {
+        cli_abort(
+          c(
+            "Failed to resolve tidyselect expression.",
+            "x" = conditionMessage(e)
+          ),
+          call = call,
+          parent = e
+        )
+      }
+      cli_abort(
+        c(
+          "Failed to resolve tidyselect expression for {context}.",
+          "x" = conditionMessage(e)
+        ),
+        call = call,
+        parent = e
+      )
+    }
+  )
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 4b. Tidyselect Column Resolution (Deferred Style Cols)
 #
 # Supports deferred resolution of tidyselect expressions in cols parameters.
 # Style constructors (fr_style, fr_col_style, fr_style_if) capture cols
@@ -168,8 +222,28 @@ resolve_cols_expr <- function(quo, call = caller_env()) {
       )
     },
     error = function(e) {
-      # Likely a tidyselect expression — store quosure for deferred resolution
-      quo
+      # Defer only errors that indicate a tidyselect expression needing data
+      # context: column not found, tidyselect helpers called outside
+      # eval_select(), or rlang subset errors. Re-raise everything else
+      # (syntax errors, etc.) immediately so the original message isn't lost.
+      msg <- conditionMessage(e)
+      is_deferred <- grepl("not found", msg, fixed = TRUE) ||
+        grepl("could not find function", msg, fixed = TRUE) ||
+        grepl("object .+ not found", msg) ||
+        inherits(e, "rlang_error") &&
+          grepl("can't subset", msg, ignore.case = TRUE)
+      if (is_deferred) {
+        quo
+      } else {
+        cli_abort(
+          c(
+            "Failed to evaluate {.arg cols} expression.",
+            "x" = conditionMessage(e)
+          ),
+          call = call,
+          parent = e
+        )
+      }
     }
   )
 }

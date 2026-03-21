@@ -457,7 +457,12 @@ fr_cols <- function(
         rhs <- rlang::f_rhs(val)
 
         # Evaluate selector against dataframe to get matched column indices/names
-        sel <- tidyselect::eval_select(rlang::expr(!!lhs), spec$data)
+        sel <- resolve_tidyselect(
+          rlang::expr(!!lhs),
+          data = spec$data,
+          context = "formula selector",
+          call = call
+        )
 
         # Evaluate the config (rhs) in its environment
         rhs_eval <- rlang::eval_tidy(rhs, env = rlang::f_env(val))

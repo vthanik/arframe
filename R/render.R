@@ -128,6 +128,10 @@ fr_render <- function(spec, path, format = NULL, ...) {
   check_fr_spec(spec, call = call)
   check_scalar_chr(path, arg = "path", call = call)
 
+  # Clear per-render provenance cache (recomputed once per render call)
+  fr_env$cached_source_path <- NULL
+  fr_env$cached_timestamp <- NULL
+
   format <- format %||% detect_format(path, call = call)
 
   # Figure dispatch — separate render path

@@ -1288,7 +1288,7 @@ fr_env$stat_type_registry <- list(
   missing = list(
     pattern = paste0(
       "^\\s*$|^[-\u2014\u2013]{1,3}$|^(",
-      "NA|NE|NC|ND|NR|BLQ|INF|-INF",
+      fr_env$missing_token_re,
       ")$"
     ),
     family = "missing",

@@ -184,6 +184,12 @@ resolve_style_mask <- function(style, grid, col_names) {
   } else if (is.numeric(style$cols)) {
     col_mask <- grid$col_idx %in% style$cols
   } else {
+    cli::cli_warn(c(
+      "Malformed {.arg cols} selector in style definition.",
+      "x" = "{.arg cols} has unexpected type {.obj_type_friendly {style$cols}}.",
+      "i" = "Expected {.cls character}, {.cls numeric}, {.val all}, or {.val NULL}.",
+      "i" = "Falling back to targeting all columns."
+    ))
     col_mask <- rep(TRUE, nrow(grid))
   }
 

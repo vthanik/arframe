@@ -112,14 +112,16 @@ build_token_map <- function(page_num, total_pages, spec) {
   )
 
   # Overridable tokens — user can set via fr_page(tokens = ...)
-  src_path <- get_source_path()
-  if (is.na(src_path)) {
-    src_path <- ""
+  # Cache provenance per render call (avoid re-walking frame stack per page)
+  if (is.null(fr_env$cached_source_path)) {
+    src_path <- get_source_path()
+    fr_env$cached_source_path <- if (is.na(src_path)) "" else src_path
+    fr_env$cached_timestamp <- get_timestamp()
   }
   overridable <- list(
-    program = user_tokens[["program"]] %||% src_path,
+    program = user_tokens[["program"]] %||% fr_env$cached_source_path,
     datetime = user_tokens[["datetime"]] %||%
-      get_timestamp()
+      fr_env$cached_timestamp
   )
 
   # Remove overridable token names from user list to get truly custom tokens

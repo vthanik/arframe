@@ -325,7 +325,7 @@ scale_auto_columns <- function(columns, auto_names, remaining) {
 #' @noRd
 distribute_auto_widths <- function(columns, page) {
   printable <- printable_area_inches(page)[["width"]]
-  visible <- Filter(function(col) !isFALSE(col$visible), columns)
+  visible <- visible_columns(columns)
   if (length(visible) == 0L) {
     return(columns)
   }
@@ -356,7 +356,7 @@ distribute_auto_widths <- function(columns, page) {
 #' @noRd
 distribute_fit_widths <- function(columns, page) {
   printable <- printable_area_inches(page)[["width"]]
-  visible <- Filter(function(col) !isFALSE(col$visible), columns)
+  visible <- visible_columns(columns)
   if (length(visible) == 0L) {
     return(columns)
   }
@@ -382,7 +382,7 @@ distribute_fit_widths <- function(columns, page) {
 #' @noRd
 distribute_equal_widths <- function(columns, page) {
   printable <- printable_area_inches(page)[["width"]]
-  visible <- Filter(function(col) !isFALSE(col$visible), columns)
+  visible <- visible_columns(columns)
   if (length(visible) == 0L) {
     return(columns)
   }
