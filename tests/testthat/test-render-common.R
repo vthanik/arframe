@@ -911,6 +911,22 @@ test_that("est_spread aligns with est_ci: estimate decimals align", {
 
 # --- Fill existing test gaps ---
 
+test_that("n_only wider than n in n_pct-dominant column expands w_n", {
+  # When n_only (e.g. "254") is wider than the n in n_pct (e.g. "75"),
+  # the integer zone must expand to accommodate
+  vals <- c("254", "75 (55.6)", "60 (44.4)")
+  result <- align_decimal_column(vals)
+  nchars <- nchar(result)
+  expect_true(all(nchars == nchars[1]))
+})
+
+test_that("n_only in n_pct_rate-dominant column expands w_n", {
+  vals <- c("135", "3 (2.5) 1.28", "42 (35.0) 17.94")
+  result <- align_decimal_column(vals)
+  nchars <- nchar(result)
+  expect_true(all(nchars == nchars[1]))
+})
+
 test_that("n_only in n_over_N_pct column aligns to numerator", {
   vals <- c("45", "3/45 (6.7)", "10/45 (22.2)")
   result <- align_decimal_column(vals)

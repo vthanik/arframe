@@ -1988,6 +1988,8 @@ align_decimal_column <- function(content_vec) {
       est_ci_bracket = ,
       est_ci_pval = ,
       est_spread_pct_ci = "w_est_si",
+      n_pct = ,
+      n_pct_rate = "w_n",
       scalar_float = "w_sign_int",
       pvalue = "w_int",
       NULL
