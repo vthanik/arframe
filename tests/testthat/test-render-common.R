@@ -500,8 +500,7 @@ test_that("page_by orig_rows: page 2 uses correct global indices", {
   expect_equal(length(pages), 2L)
 
   # Page 2 (DBP) should have orig_rows pointing to rows 4,5,6
-  page2_data <- pages[[2]]$data
-  orig <- attr(page2_data, "orig_rows")
+  orig <- pages[[2]]$orig_rows
   expect_equal(orig, 4:6)
 
   # The formatted values at orig indices should match DBP content

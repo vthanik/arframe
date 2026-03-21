@@ -328,7 +328,8 @@ render_rtf <- function(spec, page_groups, col_panels, path) {
           cellx,
           cell_grid,
           borders,
-          color_info
+          color_info,
+          orig_rows = group$orig_rows
         )
       )
 
@@ -1210,7 +1211,8 @@ rtf_body_rows <- function(
   cellx,
   cell_grid,
   borders,
-  color_info
+  color_info,
+  orig_rows = NULL
 ) {
   if (nrow(data) == 0L) {
     return("")
@@ -1226,7 +1228,7 @@ rtf_body_rows <- function(
   # Use pre-computed decimal geometry from finalize_spec()
   dec_geom <- spec$decimal_geometry
   is_decimal_col <- col_names %in% names(dec_geom %||% list())
-  orig_rows <- attr(data, "orig_rows")
+  row_idx <- orig_rows %||% seq_len(nrow(data))
 
   empty_cell <- "\\pard\\intbl\\cell"
 
@@ -1357,12 +1359,11 @@ rtf_body_rows <- function(
       # Decimal alignment: single cell with left indent for centering
       if (identical(g_align, "decimal") && is_decimal_col[j]) {
         geom <- dec_geom[[col_names[j]]]
-        ri <- if (!is.null(orig_rows)) orig_rows[i] else i
-        formatted <- geom$formatted[ri]
+        formatted <- geom$formatted[row_idx[i]]
         if (nzchar(trimws(formatted))) {
           formatted_esc <- rtf_escape_and_resolve(formatted)
           formatted_esc <- newline_to_rtf_line(formatted_esc)
-          dec_indent <- paste0("\\li", geom$center_offset[ri])
+          dec_indent <- paste0("\\li", geom$center_offset[row_idx[i]])
           cell_contents[[j]] <- paste0(
             "\\pard\\plain\\intbl",
             keepn_str,

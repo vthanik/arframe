@@ -2023,6 +2023,30 @@ align_decimal_column <- function(content_vec) {
 # 7. Integration with finalize_spec()
 # ══════════════════════════════════════════════════════════════════════════════
 
+#' Compute global decimal geometry (single alignment for all values)
+#'
+#' @param vals Character vector of cell values.
+#' @param col_width_twips Column width in twips.
+#' @param space_twips Width of a space character in twips.
+#' @return List with `formatted`, `center_offset`, and `max_width`.
+#' @noRd
+global_decimal_geom <- function(vals, col_width_twips, space_twips) {
+  formatted <- align_decimal_column(vals)
+  if (length(formatted) > 0L && any(nzchar(formatted))) {
+    max_width <- round(max(nchar(formatted)) * space_twips)
+    scalar_offset <- max(0L, round((col_width_twips - max_width) / 2))
+  } else {
+    max_width <- 0L
+    scalar_offset <- 0L
+  }
+  list(
+    formatted = formatted,
+    center_offset = rep(scalar_offset, length(formatted)),
+    max_width = max_width
+  )
+}
+
+
 #' Pre-compute decimal geometry for all decimal-aligned columns
 #'
 #' Called during `finalize_spec()` to pre-compute geometry for all columns
@@ -2091,8 +2115,7 @@ compute_all_decimal_geometry <- function(spec) {
         type_sigs <- vapply(
           unique_groups,
           function(grp) {
-            grp_vals <- vals[group_labels == grp]
-            grp_types <- detect_stat_types(grp_vals[nzchar(grp_vals)])
+            grp_types <- detect_stat_types(vals[group_labels == grp])
             paste(sort(unique(grp_types)), collapse = ",")
           },
           character(1)
@@ -2102,19 +2125,10 @@ compute_all_decimal_geometry <- function(spec) {
 
       if (use_global) {
         # All groups have same stat types — align globally for consistency
-        formatted <- align_decimal_column(vals)
-        if (length(formatted) > 0L && any(nzchar(formatted))) {
-          max_nc <- max(nchar(formatted))
-          max_width_twips <- round(max_nc * space_twips)
-          scalar_offset <- max(
-            0L,
-            round((col_width_twips - max_width_twips) / 2)
-          )
-        } else {
-          max_width_twips <- 0L
-          scalar_offset <- 0L
-        }
-        center_offset <- rep(scalar_offset, length(formatted))
+        geom <- global_decimal_geom(vals, col_width_twips, space_twips)
+        formatted <- geom$formatted
+        center_offset <- geom$center_offset
+        max_width_twips <- geom$max_width
       } else {
         formatted <- character(length(vals))
         group_max_nc <- integer(length(vals))
@@ -2139,21 +2153,10 @@ compute_all_decimal_geometry <- function(spec) {
         max_width_twips <- round(max(group_max_nc) * space_twips)
       }
     } else {
-      formatted <- align_decimal_column(vals)
-
-      # Compute scalar offset, replicate to vector for consistency
-      if (length(formatted) > 0L && any(nzchar(formatted))) {
-        max_chars <- max(nchar(formatted))
-        max_width_twips <- round(max_chars * space_twips)
-        scalar_offset <- max(
-          0L,
-          round((col_width_twips - max_width_twips) / 2)
-        )
-      } else {
-        max_width_twips <- 0L
-        scalar_offset <- 0L
-      }
-      center_offset <- rep(scalar_offset, length(formatted))
+      geom <- global_decimal_geom(vals, col_width_twips, space_twips)
+      formatted <- geom$formatted
+      center_offset <- geom$center_offset
+      max_width_twips <- geom$max_width
     }
 
     result[[nm]] <- list(

@@ -107,7 +107,8 @@ render_latex <- function(spec, page_groups, col_panels, path) {
         cell_grid,
         borders,
         label_overrides = label_overrides,
-        span_overrides = span_overrides
+        span_overrides = span_overrides,
+        orig_rows = group$orig_rows
       ))
     }
   }
@@ -923,7 +924,8 @@ latex_table <- function(
   cell_grid,
   borders,
   label_overrides = NULL,
-  span_overrides = NULL
+  span_overrides = NULL,
+  orig_rows = NULL
 ) {
   col_names <- names(columns)
   nc <- length(col_names)
@@ -1086,7 +1088,8 @@ latex_table <- function(
       columns,
       cell_grid,
       dec_geom = spec$decimal_geometry,
-      keep_mask = keep_mask
+      keep_mask = keep_mask,
+      orig_rows = orig_rows
     )
   )
 
@@ -1497,7 +1500,8 @@ latex_body_rows <- function(
   columns,
   cell_grid,
   dec_geom = NULL,
-  keep_mask = NULL
+  keep_mask = NULL,
+  orig_rows = NULL
 ) {
   nr <- nrow(data)
   if (nr == 0L) {
@@ -1509,7 +1513,7 @@ latex_body_rows <- function(
 
   # Pre-compute which columns are decimal-aligned
   is_decimal <- col_names %in% names(dec_geom %||% list())
-  orig_rows <- attr(data, "orig_rows")
+  row_idx <- orig_rows %||% seq_len(nr)
 
   # Pre-extract cell_grid columns as vectors for O(1) indexed access.
   # Grid is column-major (build_cell_grid): cell (i, j) → index (j-1)*nr + i.
@@ -1543,8 +1547,7 @@ latex_body_rows <- function(
       if (is_decimal[j]) {
         # Decimal alignment via pre-formatted string with centering offset
         geom <- dec_geom[[col_names[j]]]
-        ri <- if (!is.null(orig_rows)) orig_rows[i] else i
-        formatted <- geom$formatted[ri]
+        formatted <- geom$formatted[row_idx[i]]
         if (!nzchar(trimws(formatted))) {
           cells[j] <- ""
           next
@@ -1552,7 +1555,7 @@ latex_body_rows <- function(
         formatted_esc <- latex_escape_and_resolve(formatted)
         # Replace spaces with ~ (non-breaking) for LaTeX alignment preservation
         formatted_esc <- gsub(" ", "~", formatted_esc, fixed = TRUE)
-        offset_pt <- round(geom$center_offset[ri] / 20, 1)
+        offset_pt <- round(geom$center_offset[row_idx[i]] / 20, 1)
         cells[j] <- paste0("\\hspace{", offset_pt, "pt}", formatted_esc)
       } else {
         # Standard cell handling

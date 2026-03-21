@@ -768,7 +768,8 @@ html_section <- function(
     cell_grid,
     borders,
     label_overrides,
-    span_overrides
+    span_overrides,
+    orig_rows = group$orig_rows
   )
   parts <- c(parts, tbl)
 
@@ -866,7 +867,8 @@ html_table <- function(
   cell_grid,
   borders,
   label_overrides,
-  span_overrides
+  span_overrides,
+  orig_rows = NULL
 ) {
   col_names <- names(vis_columns)
   ncol <- length(col_names)
@@ -907,7 +909,14 @@ html_table <- function(
   )
 
   # Body
-  tbody <- html_body_rows(data, vis_columns, cell_grid, borders, spec)
+  tbody <- html_body_rows(
+    data,
+    vis_columns,
+    cell_grid,
+    borders,
+    spec,
+    orig_rows = orig_rows
+  )
 
   paste0(
     "<table class=\"ar-table\">\n",
@@ -1117,7 +1126,14 @@ html_col_header_row <- function(spec, vis_columns, borders, label_overrides) {
 
 #' Build HTML body rows
 #' @noRd
-html_body_rows <- function(data, vis_columns, cell_grid, borders, spec) {
+html_body_rows <- function(
+  data,
+  vis_columns,
+  cell_grid,
+  borders,
+  spec,
+  orig_rows = NULL
+) {
   nr <- nrow(data)
   if (nr == 0L) {
     return("<tbody></tbody>")
@@ -1144,7 +1160,7 @@ html_body_rows <- function(data, vis_columns, cell_grid, borders, spec) {
   # Decimal geometry
   dec_geom <- spec$decimal_geometry
   is_decimal_col <- col_names %in% names(dec_geom %||% list())
-  orig_rows <- attr(data, "orig_rows")
+  row_idx <- orig_rows %||% seq_len(nr)
 
   rows <- vector("list", nr)
   for (i in seq_len(nr)) {
@@ -1204,8 +1220,7 @@ html_body_rows <- function(data, vis_columns, cell_grid, borders, spec) {
       # Content: decimal or regular
       if (identical(cg_align[idx], "decimal") && is_decimal_col[j]) {
         geom <- dec_geom[[col_names[j]]]
-        ri <- if (!is.null(orig_rows)) orig_rows[i] else i
-        formatted <- geom$formatted[ri]
+        formatted <- geom$formatted[row_idx[i]]
         if (nzchar(trimws(formatted))) {
           content <- html_escape_and_resolve(formatted)
           content <- gsub("\n", "<br>", content, fixed = TRUE)

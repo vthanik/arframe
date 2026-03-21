@@ -1173,7 +1173,11 @@ prepare_pages <- function(spec) {
   page_by <- spec$body$page_by
 
   if (length(page_by) == 0L) {
-    return(list(list(data = spec$data, group_label = NULL)))
+    return(list(list(
+      data = spec$data,
+      group_label = NULL,
+      orig_rows = NULL
+    )))
   }
 
   # Validate page_by columns exist
@@ -1195,10 +1199,10 @@ prepare_pages <- function(spec) {
   lapply(unique_keys, function(k) {
     mask <- keys == k
     group_data <- spec$data[mask, , drop = FALSE]
-    attr(group_data, "orig_rows") <- which(mask)
     group_overrides <- resolve_group_labels(spec, group_data, k)
     list(
       data = group_data,
+      orig_rows = which(mask),
       group_label = k,
       label_overrides = if (is.list(group_overrides)) {
         group_overrides$columns
