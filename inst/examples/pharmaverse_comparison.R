@@ -44,7 +44,7 @@ fr_theme(
   font_size = 9,
   font_family = "Courier New",
   orientation = "landscape",
-  hlines = "open",
+  hlines = "header",
   header = list(bold = TRUE, align = "center"),
   n_format = "{label}\n(N={n})",
   footnote_separator = FALSE,
@@ -116,7 +116,8 @@ cat("Demographics ARD:", nrow(demog_ard), "rows\n")
 # We show the reshape + tfrmt spec (commented — requires tfrmt/gt/docorator):
 
 cat("\n--- PATH A: GSK pharmaverse approach ---\n")
-cat('
+cat(
+  '
 # Step 1: Reshape ARD for tfrmt (~150 lines in real GSK code)
 # tfrmt needs: group | label | column | param | value
 # Must manually: unlist list-columns, extract group1_level,
@@ -166,7 +167,8 @@ cat('
 #
 # Step 3: gsk_styling() + tfl_format() → as_docorator() → render_pdf()
 # ~30 lines including fancyhead/fancyfoot/geom_set
-')
+'
+)
 cat("Lines: ~250 (reshape + spec + styling + render)\n")
 cat("Packages: cards + tfrmt + gt + docorator (4)\n\n")
 
@@ -181,14 +183,14 @@ demog_wide <- fr_wide_ard(
   demog_ard,
   statistic = list(
     continuous = c(
-      "n"         = "{N}",
+      "n" = "{N}",
       "Mean (SD)" = "{mean} ({sd})",
-      "Median"    = "{median}",
-      "Min, Max"  = "{min}, {max}"
+      "Median" = "{median}",
+      "Min, Max" = "{min}, {max}"
     ),
     categorical = "{n} ({p}%)"
   ),
-  decimals = c(mean = 1, sd = 2, median = 1, p = 1),
+  decimals = c(mean = 1, sd = 2, median = 1, p = 0),
   label = c(
     AGE = "Age (years)",
     AGEGR1 = "Age Group, n (%)",
@@ -206,8 +208,8 @@ demog_spec <- demog_wide |>
     "Safety Population"
   ) |>
   fr_cols(
-    variable   = fr_col(visible = FALSE),
-    stat_label = fr_col("", width = 2.5),
+    variable = fr_col(visible = FALSE),
+    stat_label = fr_col(" ", width = 2.5),
     !!!setNames(
       lapply(arm_levels, function(a) fr_col(a, align = "decimal")),
       arm_levels
@@ -265,7 +267,8 @@ cat("Hierarchical AE ARD:", nrow(ae_ard), "rows\n")
 # └──────────────────────────────────────────────────────────────────────┘
 
 cat("\n--- PATH A: GSK pharmaverse approach ---\n")
-cat('
+cat(
+  '
 # In real GSK code (t_saf_ae01_all.R — 621 lines):
 #   - 6 × ard_stack_hierarchical() calls for subgroups (~90 lines each)
 #   - Manual ARD cleanup: unlist, complete missing 0 records, sort by
@@ -276,7 +279,8 @@ cat('
 #   - tfl_format() with geom_set(landscape=TRUE, left="0.4in") (~15 lines)
 #
 # Total: ~621 lines, 5+ packages
-')
+'
+)
 cat("Lines: ~621\n")
 cat("Packages: cards + tfrmt + gt + docorator + tidyverse (5+)\n\n")
 
@@ -290,7 +294,7 @@ cat("--- PATH B: arframe approach ---\n\n")
 ae_wide <- fr_wide_ard(
   ae_ard,
   statistic = "{n} ({p}%)",
-  decimals = c(p = 1),
+  decimals = c(p = 0),
   label = c("..ard_hierarchical_overall.." = "Any TEAE")
 )
 
@@ -306,8 +310,8 @@ ae_spec <- ae_wide |>
   ) |>
   fr_page(continuation = "(continued)") |>
   fr_cols(
-    soc      = fr_col(visible = FALSE),
-    pt       = fr_col("System Organ Class\n  Preferred Term", width = 3.5),
+    soc = fr_col(visible = FALSE),
+    pt = fr_col("System Organ Class\n  Preferred Term", width = 3.5),
     row_type = fr_col(visible = FALSE),
     !!!setNames(
       lapply(arm_levels, function(a) fr_col(a, align = "decimal")),
@@ -315,7 +319,7 @@ ae_spec <- ae_wide |>
     ),
     .n = arm_n
   ) |>
-  fr_rows(group_by = "soc", indent_by = "pt") |>
+  fr_rows(group_by = "soc", group_label = "pt", indent_by = "pt") |>
   fr_styles(
     fr_row_style(rows = fr_rows_matches("row_type", value = "soc"), bold = TRUE)
   ) |>
@@ -360,20 +364,20 @@ vs_stats <- advs_clean |>
   filter(AVISIT != "Baseline") |>
   group_by(PARAM, AVISIT, TRT01A) |>
   summarise(
-    n          = as.character(n()),
-    base_mean  = sprintf("%.1f", mean(BASE, na.rm = TRUE)),
-    base_sd    = sprintf("%.2f", sd(BASE, na.rm = TRUE)),
-    val_mean   = sprintf("%.1f", mean(AVAL, na.rm = TRUE)),
-    val_sd     = sprintf("%.2f", sd(AVAL, na.rm = TRUE)),
-    chg_mean   = sprintf("%.1f", mean(CHG, na.rm = TRUE)),
-    chg_sd     = sprintf("%.2f", sd(CHG, na.rm = TRUE)),
+    n = as.character(n()),
+    base_mean = sprintf("%.1f", mean(BASE, na.rm = TRUE)),
+    base_sd = sprintf("%.2f", sd(BASE, na.rm = TRUE)),
+    val_mean = sprintf("%.1f", mean(AVAL, na.rm = TRUE)),
+    val_sd = sprintf("%.2f", sd(AVAL, na.rm = TRUE)),
+    chg_mean = sprintf("%.1f", mean(CHG, na.rm = TRUE)),
+    chg_sd = sprintf("%.2f", sd(CHG, na.rm = TRUE)),
     .groups = "drop"
   ) |>
   # Combine into display strings
   mutate(
     baseline = paste0(base_mean, " (", base_sd, ")"),
-    value    = paste0(val_mean, " (", val_sd, ")"),
-    cfb      = paste0(chg_mean, " (", chg_sd, ")")
+    value = paste0(val_mean, " (", val_sd, ")"),
+    cfb = paste0(chg_mean, " (", chg_sd, ")")
   ) |>
   select(PARAM, AVISIT, TRT01A, n, baseline, value, cfb)
 
@@ -386,17 +390,26 @@ vs_long <- vs_stats |>
   ) |>
   mutate(
     statistic = case_when(
-      statistic == "n"        ~ "n",
+      statistic == "n" ~ "n",
       statistic == "baseline" ~ "Baseline Mean (SD)",
-      statistic == "value"    ~ "Post-baseline Mean (SD)",
-      statistic == "cfb"      ~ "Change Mean (SD)"
+      statistic == "value" ~ "Post-baseline Mean (SD)",
+      statistic == "cfb" ~ "Change Mean (SD)"
     )
   ) |>
   pivot_wider(names_from = TRT01A, values_from = val) |>
-  arrange(PARAM, AVISIT, match(
-    statistic,
-    c("n", "Baseline Mean (SD)", "Post-baseline Mean (SD)", "Change Mean (SD)")
-  ))
+  arrange(
+    PARAM,
+    AVISIT,
+    match(
+      statistic,
+      c(
+        "n",
+        "Baseline Mean (SD)",
+        "Post-baseline Mean (SD)",
+        "Change Mean (SD)"
+      )
+    )
+  )
 
 # Per-parameter N-counts for headers
 vs_n <- advs_clean |>
@@ -415,7 +428,8 @@ n_vs <- unlist(vs_n[1, ])
 # └──────────────────────────────────────────────────────────────────────┘
 
 cat("--- PATH A: GSK pharmaverse approach ---\n")
-cat('
+cat(
+  '
 # GSK approach for vital signs:
 #   - cards::ard_stack() with ard_continuous() per timepoint per param
 #   - Manual reshape: baseline, value, change as separate params
@@ -430,7 +444,8 @@ cat('
 #
 # In practice, GSK generates one .R file per parameter or uses
 # a loop with separate tfrmt specs. ~400+ lines total.
-')
+'
+)
 cat("Lines: ~400+\n")
 cat("Packages: cards + tfrmt + gt + docorator (4)\n")
 cat("Limitations: no column split, no per-page N, no repeating headers\n\n")
@@ -451,8 +466,8 @@ vs_spec <- vs_long |>
   ) |>
   fr_page(continuation = "(continued)") |>
   fr_cols(
-    PARAM     = fr_col(visible = FALSE),
-    AVISIT    = fr_col(visible = FALSE),
+    PARAM = fr_col(visible = FALSE),
+    AVISIT = fr_col(visible = FALSE),
     statistic = fr_col("Statistic", width = 2.0, stub = TRUE),
     !!!setNames(
       lapply(arm_levels, function(a) fr_col(a, align = "decimal")),
@@ -494,15 +509,26 @@ cat("  COMPARISON SUMMARY\n")
 cat("================================================================\n\n")
 
 cat(sprintf("  %-35s  %-20s  %-15s\n", "", "GSK pharmaverse", "arframe"))
-cat(sprintf("  %-35s  %-20s  %-15s\n",
-  "Demographics (Table 14.1.1)", "~250 lines, 4 pkgs", "~35 lines, 2 pkgs"))
-cat(sprintf("  %-35s  %-20s  %-15s\n",
-  "AE SOC/PT (Table 14.3.1)", "~621 lines, 5+ pkgs", "~35 lines, 2 pkgs"))
-cat(sprintf("  %-35s  %-20s  %-15s\n",
-  "Vital Signs (Table 14.3.6)", "~400+ lines, 4 pkgs", "~35 lines, 2 pkgs"))
+cat(sprintf(
+  "  %-35s  %-20s  %-15s\n",
+  "Demographics (Table 14.1.1)",
+  "~250 lines, 4 pkgs",
+  "~35 lines, 2 pkgs"
+))
+cat(sprintf(
+  "  %-35s  %-20s  %-15s\n",
+  "AE SOC/PT (Table 14.3.1)",
+  "~621 lines, 5+ pkgs",
+  "~35 lines, 2 pkgs"
+))
+cat(sprintf(
+  "  %-35s  %-20s  %-15s\n",
+  "Vital Signs (Table 14.3.6)",
+  "~400+ lines, 4 pkgs",
+  "~35 lines, 2 pkgs"
+))
 cat(sprintf("  %-35s  %-20s  %-15s\n", "", "─────────────", "────────────"))
-cat(sprintf("  %-35s  %-20s  %-15s\n",
-  "Total", "~1,271 lines", "~105 lines"))
+cat(sprintf("  %-35s  %-20s  %-15s\n", "Total", "~1,271 lines", "~105 lines"))
 
 cat("\n  arframe-only features (not possible in pharmaverse stack):\n")
 cat("    - Decimal alignment (numbers line up on the decimal point)\n")

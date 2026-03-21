@@ -1382,8 +1382,16 @@ format_ard_stat <- function(
 
 #' @noRd
 format_stat_with_decimals <- function(value, stat_name, d) {
-  if (stat_name %in% c("p", "p_miss", "p_nonmiss", "p_cum")) {
+  is_pct <- stat_name %in% c("p", "p_miss", "p_nonmiss", "p_cum")
+  if (is_pct) {
     value <- value * 100
+  }
+  # Pharma boundary rules for integer percentages (d == 0):
+  #   >0 and <1   -> "<1"    (not "0" — subjects exist)
+  #   >99 and <100 -> ">99"   (not "100" — not all subjects)
+  if (is_pct && d == 0L) {
+    if (value > 0 && value < 1) return("<1")
+    if (value > 99 && value < 100) return(">99")
   }
   sprintf(paste0("%.", d, "f"), value)
 }
