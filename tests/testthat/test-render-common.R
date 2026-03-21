@@ -557,6 +557,27 @@ test_that("page_by with different stat types: per-page alignment", {
   expect_false(nchar(wt[1]) == nchar(pl[1]))
 })
 
+test_that("n_pct aligns internally when est_spread is dominant", {
+  # Demographics column mixing continuous stats with categorical n(pct)
+  vals <- c(
+    "86",
+    "75.2 (8.59)",
+    "76.0",
+    "69.2, 81.8",
+    "86",
+    "72 (83.7)",
+    "8 (9.3)",
+    "78 (90.7)"
+  )
+  result <- align_decimal_column(vals)
+  # All same nchar
+  expect_equal(length(unique(nchar(result))), 1L)
+  # n_pct values should have left-padded n part (not just right-padded raw)
+  # " 8   (9.3 )" not "8 (9.3)    "
+  npct_8 <- result[grepl("8.*9\\.3", result)]
+  expect_true(grepl("^ ", npct_8))
+})
+
 test_that("AE table: no page_by, group_by=soc → global alignment", {
   # AE-style: group_by for SOC labels, but alignment should be global
   df <- data.frame(

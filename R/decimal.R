@@ -1378,6 +1378,56 @@ rebuild_stat_aligned <- function(parsed, widths, dominant_type) {
     }
 
     # --- n_pct fallbacks ---
+    if (
+      parsed$type == "n_pct" &&
+        dominant_type %in%
+          c("est_spread", "est_spread_pct", "est_ci", "est_ci_bracket")
+    ) {
+      # n part aligns with est integer zone (left-padded)
+      padded_n <- stringi::stri_pad_left(parsed$n, widths$w_est_si)
+      # Fill est decimal zone (n has no decimals)
+      if (isTRUE(widths$has_est_dec)) {
+        padded_n <- stringi::stri_pad_right(
+          padded_n,
+          widths$w_est_si + 1L + widths$w_est_dec
+        )
+      }
+      # pct part: pad integer + decimal to match spread/CI widths
+      pct_si_w <- if (dominant_type %in% c("est_ci", "est_ci_bracket")) {
+        widths$w_lo_si
+      } else {
+        widths$w_sprd_si
+      }
+      pct_dec_w <- if (dominant_type %in% c("est_ci", "est_ci_bracket")) {
+        widths$w_lo_dec
+      } else {
+        widths$w_sprd_dec
+      }
+      pct_has_dec <- if (dominant_type %in% c("est_ci", "est_ci_bracket")) {
+        widths$has_lo_dec
+      } else {
+        widths$has_sprd_dec
+      }
+      padded_pi <- stringi::stri_pad_left(
+        paste0(parsed$pct_prefix, parsed$pct_int),
+        pct_si_w
+      )
+      if (isTRUE(pct_has_dec) && nzchar(parsed$pct_dec)) {
+        pct_part <- paste0(
+          padded_pi,
+          ".",
+          stringi::stri_pad_right(parsed$pct_dec, pct_dec_w)
+        )
+      } else if (isTRUE(pct_has_dec)) {
+        pct_part <- stringi::stri_pad_right(
+          padded_pi,
+          pct_si_w + 1L + pct_dec_w
+        )
+      } else {
+        pct_part <- padded_pi
+      }
+      return(paste0(padded_n, " (", pct_part, ")"))
+    }
     if (parsed$type == "n_pct" && dominant_type == "n_over_N_pct") {
       padded_n <- stringi::stri_pad_left(parsed$n, widths$w_num)
       slash_den <- strrep(" ", 1L + widths$w_den)
