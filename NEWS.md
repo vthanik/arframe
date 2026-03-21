@@ -12,6 +12,16 @@
 
 ## Bug fixes
 
+* Fixed decimal alignment across pages: page 2+ was showing page 1's values because geometry indices used per-page row numbers instead of global indices. All three backends (RTF, HTML, LaTeX) now correctly map page-local rows to global decimal geometry.
+
+* Fixed decimal alignment for mixed integer + decimal columns: columns mixing pure integers (e.g., "143") with decimal stats (e.g., "75.7 (8.19)") now align correctly.
+
+* Fixed `n_only` decimal alignment: widened integer zone for columns with wider n values (e.g., 3-digit counts).
+
+* Added pharma percentage boundary rules for integer percentages (d=0): handles edge cases like "100%" and "0" alignment.
+
+* Unified internal decimal parser: eliminated parallel implementations into a single stat-type detection + alignment engine.
+
 * Injected group header rows and blank-after rows now inherit `page_by` column values, fixing incorrect page splits when `page_by` and `group_by`/`blank_after` are used together.
 
 ## Font system overhaul

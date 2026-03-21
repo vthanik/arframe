@@ -24,7 +24,8 @@ contribute.
 | fr_table -> fr_cols -> fr_header -> fr_titles -> ... -> fr_render    |
 | Each verb: validate -> modify fr_spec -> return fr_spec              |
 +----------------------------------------------------------------------+
-| Infrastructure Layer (9 files)                                       |
+| Infrastructure Layer (10 files)                                      |
+| ard.R         fr_wide_ard(): ARD-to-wide converter                   |
 | classes.R     S3 constructors (fr_spec, fr_col, fr_rule, ...)        |
 | columns.R     Width estimation, AFM metrics, auto-distribution       |
 | config.R      YAML discovery, loading, merging                       |
