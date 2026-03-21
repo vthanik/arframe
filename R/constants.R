@@ -1248,3 +1248,221 @@ fr_env$ard_standard_cols <- c(
   "error",
   "stat_fmt"
 )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 11. Decimal Alignment Engine Constants
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Missing token alternation (reused across CI / pvalue patterns)
+fr_env$missing_token_re <- "NR|NE|NC|NA|ND|INF|-INF|BLQ|-"
+
+# Non-capturing numeric-or-token (for detection patterns)
+fr_env$num_or_tok_nc <- paste0(
+  "(?:-?\\d+\\.?\\d*|",
+  fr_env$missing_token_re,
+  ")"
+)
+
+# Capturing numeric-or-token — 4 groups: (sign)(int)(dec)|(token)
+fr_env$num_or_tok_cap <- paste0(
+  "(?:(-?)(\\d+)\\.?(\\d*)|(",
+  fr_env$missing_token_re,
+  "))"
+)
+
+# Capturing pval-or-token — 4 groups: (prefix)(int)(dec)|(token)
+fr_env$pval_or_tok_cap <- paste0(
+  "(?:([<>=]?)(\\d+)\\.(\\d+)|(",
+  fr_env$missing_token_re,
+  "))"
+)
+
+# Standard compound gap width (spaces between segments)
+fr_env$compound_gap <- 4L
+
+# Stat type registry — single source of truth for all type metadata.
+# ORDER MATTERS: most specific patterns first to avoid false matches.
+fr_env$stat_type_registry <- list(
+  # --- Missing (expanded with BLQ/INF/-INF) ---
+  missing = list(
+    pattern = paste0(
+      "^\\s*$|^[-\u2014\u2013]{1,3}$|^(",
+      "NA|NE|NC|ND|NR|BLQ|INF|-INF",
+      ")$"
+    ),
+    family = "missing",
+    richness = 0L
+  ),
+
+  # --- Compound types (most specific first) ---
+  est_spread_pct_ci = list(
+    pattern = paste0(
+      "^\\s*-?\\d+\\.?\\d*\\s*\\(\\s*-?\\d+\\.?\\d*\\s*%\\s*\\)",
+      "\\s+",
+      "\\(\\s*-?\\d+\\.?\\d*\\s*,\\s*-?\\d+\\.?\\d*\\s*\\)\\s*$"
+    ),
+    family = "compound",
+    richness = 5L
+  ),
+  est_ci_pval = list(
+    pattern = paste0(
+      "^\\s*",
+      fr_env$num_or_tok_nc,
+      "\\s*\\(\\s*",
+      fr_env$num_or_tok_nc,
+      "\\s*,\\s*",
+      fr_env$num_or_tok_nc,
+      "\\s*\\)\\s+",
+      "(?:[<>=]?\\d+\\.\\d+|",
+      fr_env$missing_token_re,
+      ")\\s*$"
+    ),
+    family = "compound",
+    richness = 4L
+  ),
+  n_over_N_pct_ci = list(
+    pattern = paste0(
+      "^\\s*\\d+\\s*/\\s*\\d+\\s*\\(\\s*[<>]?\\d+\\.?\\d*\\s*%?\\s*\\)",
+      "\\s+",
+      "\\[\\s*-?\\d+\\.?\\d*\\s*,\\s*-?\\d+\\.?\\d*\\s*\\]\\s*$"
+    ),
+    family = "compound",
+    richness = 4L
+  ),
+  n_pct_rate = list(
+    pattern = paste0(
+      "^\\s*\\d+\\s*\\(\\s*[<>]?\\d+\\.?\\d*\\s*%?\\s*\\)",
+      "\\s+",
+      "-?\\d+\\.?\\d*\\s*$"
+    ),
+    family = "compound",
+    richness = 3L
+  ),
+
+  # --- Standard types ---
+  n_over_N_pct = list(
+    pattern = "^\\s*\\d+\\s*/\\s*\\d+\\s*\\(\\s*[<>]?\\d+\\.?\\d*\\s*%?\\s*\\)\\s*$",
+    family = "count",
+    richness = 3L
+  ),
+  est_ci = list(
+    pattern = paste0(
+      "^\\s*",
+      fr_env$num_or_tok_nc,
+      "\\s*\\(\\s*",
+      fr_env$num_or_tok_nc,
+      "\\s*,\\s*",
+      fr_env$num_or_tok_nc,
+      "\\s*\\)\\s*$"
+    ),
+    family = "estimate",
+    richness = 2L
+  ),
+  est_ci_bracket = list(
+    pattern = paste0(
+      "^\\s*",
+      fr_env$num_or_tok_nc,
+      "\\s*\\[\\s*",
+      fr_env$num_or_tok_nc,
+      "\\s*,\\s*",
+      fr_env$num_or_tok_nc,
+      "\\s*\\]\\s*$"
+    ),
+    family = "estimate",
+    richness = 2L
+  ),
+  n_pct = list(
+    pattern = "^\\s*\\d+\\s*\\(\\s*[<>]?\\d+\\.?\\d*\\s*%?\\s*\\)\\s*$",
+    family = "count",
+    richness = 2L
+  ),
+  est_spread_pct = list(
+    pattern = "^\\s*-?\\d+\\.?\\d*\\s*\\(\\s*-?\\d+\\.?\\d*\\s*%\\s*\\)\\s*$",
+    family = "estimate",
+    richness = 1L
+  ),
+  est_spread = list(
+    pattern = "^\\s*-?\\d+\\.?\\d*\\s*\\(\\s*-?\\d+\\.?\\d*\\s*\\)\\s*$",
+    family = "estimate",
+    richness = 1L
+  ),
+  n_over_N = list(
+    pattern = "^\\s*\\d+\\s*/\\s*\\d+\\s*$",
+    family = "count",
+    richness = 2L
+  ),
+  n_over_float = list(
+    pattern = "^\\s*\\d+\\s*/\\s*\\d+\\.\\d+\\s*$",
+    family = "count",
+    richness = 2L
+  ),
+  int_range = list(
+    pattern = "^\\s*\\d+\\s+[-\u2013\u2014]\\s+\\d+\\s*$",
+    family = "range",
+    richness = 2L
+  ),
+  range_pair = list(
+    pattern = "^\\s*-?\\d+\\.?\\d*\\s*,\\s*-?\\d+\\.?\\d*\\s*$",
+    family = "range",
+    richness = 1L
+  ),
+  pvalue = list(
+    pattern = "^\\s*[<>=]\\d+\\.\\d+\\s*$",
+    family = "float",
+    richness = 2L
+  ),
+  scalar_float = list(
+    pattern = "^\\s*-?\\d+\\.\\d+\\s*$",
+    family = "float",
+    richness = 1L
+  ),
+  n_only = list(
+    pattern = "^\\s*\\d+\\s*$",
+    family = "count",
+    richness = 1L
+  )
+)
+
+# Derived lookup vectors from stat_type_registry
+fr_env$stat_type_patterns <- vapply(
+  fr_env$stat_type_registry,
+  `[[`,
+  character(1),
+  "pattern"
+)
+
+fr_env$stat_type_family <- vapply(
+  fr_env$stat_type_registry,
+  `[[`,
+  character(1),
+  "family"
+)
+# Remove types without a meaningful family (missing)
+fr_env$stat_type_family <- fr_env$stat_type_family[
+  !fr_env$stat_type_family %in% "missing"
+]
+
+fr_env$stat_type_richness <- vapply(
+  fr_env$stat_type_registry,
+  `[[`,
+  integer(1),
+  "richness"
+)
+
+# Tie-breaker priority across families
+fr_env$stat_family_priority <- c(
+  compound = 5L,
+  estimate = 4L,
+  range = 3L,
+  count = 2L,
+  float = 1L
+)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 12. RTF Rendering Constants (additional)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Zero top/bottom cell padding (eliminates Word's default ~29twips each side)
+fr_env$rtf_zero_cell_padding <- "\\trpaddt0\\trpaddft3\\trpaddb0\\trpaddfb3"

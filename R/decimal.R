@@ -14,228 +14,7 @@
 # alignment. Rendered as a single cell with left indent for centering.
 # ──────────────────────────────────────────────────────────────────────────────
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 0. Constants & Regex Building Blocks
-# ══════════════════════════════════════════════════════════════════════════════
-
-#' Missing token alternation (reused across CI / pvalue patterns)
-#' @noRd
-MISSING_TOKEN_RE <- "NR|NE|NC|NA|ND|INF|-INF|BLQ|-"
-
-#' Non-capturing numeric-or-token (for detection patterns)
-#' @noRd
-NUM_OR_TOK_NC <- paste0("(?:-?\\d+\\.?\\d*|", MISSING_TOKEN_RE, ")")
-
-#' Capturing numeric-or-token — 4 groups: (sign)(int)(dec)|(token)
-#' @noRd
-NUM_OR_TOK_CAP <- paste0(
-  "(?:(-?)(\\d+)\\.?(\\d*)|(",
-  MISSING_TOKEN_RE,
-  "))"
-)
-
-#' Capturing pval-or-token — 4 groups: (prefix)(int)(dec)|(token)
-#' @noRd
-PVAL_OR_TOK_CAP <- paste0(
-  "(?:([<>=]?)(\\d+)\\.(\\d+)|(",
-  MISSING_TOKEN_RE,
-  "))"
-)
-
-#' Standard compound gap width (spaces between segments)
-#' @noRd
-COMPOUND_GAP <- 4L
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# 1. Type Detection (vectorized)
-# ══════════════════════════════════════════════════════════════════════════════
-
-#' Stat type registry -- single source of truth for all type metadata
-#'
-#' ORDER MATTERS: most specific patterns first to avoid false matches.
-#' Compound types first, then standard types in decreasing specificity.
-#' @noRd
-stat_type_registry <- list(
-  # --- Missing (expanded with BLQ/INF/-INF) ---
-  missing = list(
-    pattern = paste0(
-      "^\\s*$|^[-\u2014\u2013]{1,3}$|^(",
-      "NA|NE|NC|ND|NR|BLQ|INF|-INF",
-      ")$"
-    ),
-    family = "missing",
-    richness = 0L
-  ),
-
-  # --- Compound types (most specific first) ---
-  est_spread_pct_ci = list(
-    pattern = paste0(
-      "^\\s*-?\\d+\\.?\\d*\\s*\\(\\s*-?\\d+\\.?\\d*\\s*%\\s*\\)",
-      "\\s+",
-      "\\(\\s*-?\\d+\\.?\\d*\\s*,\\s*-?\\d+\\.?\\d*\\s*\\)\\s*$"
-    ),
-    family = "compound",
-    richness = 5L
-  ),
-  est_ci_pval = list(
-    pattern = paste0(
-      "^\\s*",
-      NUM_OR_TOK_NC,
-      "\\s*\\(\\s*",
-      NUM_OR_TOK_NC,
-      "\\s*,\\s*",
-      NUM_OR_TOK_NC,
-      "\\s*\\)\\s+",
-      "(?:[<>=]?\\d+\\.\\d+|",
-      MISSING_TOKEN_RE,
-      ")\\s*$"
-    ),
-    family = "compound",
-    richness = 4L
-  ),
-  n_over_N_pct_ci = list(
-    pattern = paste0(
-      "^\\s*\\d+\\s*/\\s*\\d+\\s*\\(\\s*[<>]?\\d+\\.?\\d*\\s*%?\\s*\\)",
-      "\\s+",
-      "\\[\\s*-?\\d+\\.?\\d*\\s*,\\s*-?\\d+\\.?\\d*\\s*\\]\\s*$"
-    ),
-    family = "compound",
-    richness = 4L
-  ),
-  n_pct_rate = list(
-    pattern = paste0(
-      "^\\s*\\d+\\s*\\(\\s*[<>]?\\d+\\.?\\d*\\s*%?\\s*\\)",
-      "\\s+",
-      "-?\\d+\\.?\\d*\\s*$"
-    ),
-    family = "compound",
-    richness = 3L
-  ),
-
-  # --- Standard types ---
-  n_over_N_pct = list(
-    pattern = "^\\s*\\d+\\s*/\\s*\\d+\\s*\\(\\s*[<>]?\\d+\\.?\\d*\\s*%?\\s*\\)\\s*$",
-    family = "count",
-    richness = 3L
-  ),
-  est_ci = list(
-    pattern = paste0(
-      "^\\s*",
-      NUM_OR_TOK_NC,
-      "\\s*\\(\\s*",
-      NUM_OR_TOK_NC,
-      "\\s*,\\s*",
-      NUM_OR_TOK_NC,
-      "\\s*\\)\\s*$"
-    ),
-    family = "estimate",
-    richness = 2L
-  ),
-  est_ci_bracket = list(
-    pattern = paste0(
-      "^\\s*",
-      NUM_OR_TOK_NC,
-      "\\s*\\[\\s*",
-      NUM_OR_TOK_NC,
-      "\\s*,\\s*",
-      NUM_OR_TOK_NC,
-      "\\s*\\]\\s*$"
-    ),
-    family = "estimate",
-    richness = 2L
-  ),
-  n_pct = list(
-    pattern = "^\\s*\\d+\\s*\\(\\s*[<>]?\\d+\\.?\\d*\\s*%?\\s*\\)\\s*$",
-    family = "count",
-    richness = 2L
-  ),
-  est_spread_pct = list(
-    pattern = "^\\s*-?\\d+\\.?\\d*\\s*\\(\\s*-?\\d+\\.?\\d*\\s*%\\s*\\)\\s*$",
-    family = "estimate",
-    richness = 1L
-  ),
-  est_spread = list(
-    pattern = "^\\s*-?\\d+\\.?\\d*\\s*\\(\\s*-?\\d+\\.?\\d*\\s*\\)\\s*$",
-    family = "estimate",
-    richness = 1L
-  ),
-  n_over_N = list(
-    pattern = "^\\s*\\d+\\s*/\\s*\\d+\\s*$",
-    family = "count",
-    richness = 2L
-  ),
-  n_over_float = list(
-    pattern = "^\\s*\\d+\\s*/\\s*\\d+\\.\\d+\\s*$",
-    family = "count",
-    richness = 2L
-  ),
-  int_range = list(
-    pattern = "^\\s*\\d+\\s+[-\u2013\u2014]\\s+\\d+\\s*$",
-    family = "range",
-    richness = 2L
-  ),
-  range_pair = list(
-    pattern = "^\\s*-?\\d+\\.?\\d*\\s*,\\s*-?\\d+\\.?\\d*\\s*$",
-    family = "range",
-    richness = 1L
-  ),
-  pvalue = list(
-    pattern = "^\\s*[<>=]\\d+\\.\\d+\\s*$",
-    family = "float",
-    richness = 2L
-  ),
-  scalar_float = list(
-    pattern = "^\\s*-?\\d+\\.\\d+\\s*$",
-    family = "float",
-    richness = 1L
-  ),
-  n_only = list(
-    pattern = "^\\s*\\d+\\s*$",
-    family = "count",
-    richness = 1L
-  )
-)
-
-#' Derived lookup vectors from stat_type_registry
-#' @noRd
-stat_type_patterns <- vapply(
-  stat_type_registry,
-  `[[`,
-  character(1),
-  "pattern"
-)
-
-#' @noRd
-stat_type_family <- vapply(
-  stat_type_registry,
-  `[[`,
-  character(1),
-  "family"
-)
-# Remove types without a meaningful family (missing)
-stat_type_family <- stat_type_family[
-  !stat_type_family %in% "missing"
-]
-
-#' @noRd
-stat_type_richness <- vapply(
-  stat_type_registry,
-  `[[`,
-  integer(1),
-  "richness"
-)
-
-#' Tie-breaker priority across families
-#' @noRd
-stat_family_priority <- c(
-  compound = 5L,
-  estimate = 4L,
-  range = 3L,
-  count = 2L,
-  float = 1L
-)
-
+# Constants for decimal alignment live in fr_env (see constants.R, section 11)
 
 #' Detect the stat display type of a single value
 #'
@@ -244,9 +23,9 @@ stat_family_priority <- c(
 #' @noRd
 detect_stat_type <- function(value) {
   value <- trimws(value)
-  for (i in seq_along(stat_type_patterns)) {
-    if (grepl(stat_type_patterns[[i]], value, perl = TRUE)) {
-      return(names(stat_type_patterns)[[i]])
+  for (i in seq_along(fr_env$stat_type_patterns)) {
+    if (grepl(fr_env$stat_type_patterns[[i]], value, perl = TRUE)) {
+      return(names(fr_env$stat_type_patterns)[[i]])
     }
   }
   "unknown"
@@ -267,14 +46,17 @@ detect_stat_types <- function(content_vec) {
   result <- rep("unknown", n)
   unassigned <- rep(TRUE, n)
 
-  for (i in seq_along(stat_type_patterns)) {
+  for (i in seq_along(fr_env$stat_type_patterns)) {
     if (!any(unassigned)) {
       break
     }
-    matches <- stringi::stri_detect_regex(content_vec, stat_type_patterns[[i]])
+    matches <- stringi::stri_detect_regex(
+      content_vec,
+      fr_env$stat_type_patterns[[i]]
+    )
     hits <- unassigned & matches
     if (any(hits)) {
-      result[hits] <- names(stat_type_patterns)[[i]]
+      result[hits] <- names(fr_env$stat_type_patterns)[[i]]
       unassigned[hits] <- FALSE
     }
   }
@@ -291,11 +73,11 @@ detect_stat_types <- function(content_vec) {
 #' @noRd
 est_ci_parse_re <- paste0(
   "^",
-  NUM_OR_TOK_CAP,
+  fr_env$num_or_tok_cap,
   "\\s*\\(\\s*",
-  NUM_OR_TOK_CAP,
+  fr_env$num_or_tok_cap,
   "\\s*,\\s*",
-  NUM_OR_TOK_CAP,
+  fr_env$num_or_tok_cap,
   "\\s*\\)$"
 )
 
@@ -303,11 +85,11 @@ est_ci_parse_re <- paste0(
 #' @noRd
 est_ci_bracket_parse_re <- paste0(
   "^",
-  NUM_OR_TOK_CAP,
+  fr_env$num_or_tok_cap,
   "\\s*\\[\\s*",
-  NUM_OR_TOK_CAP,
+  fr_env$num_or_tok_cap,
   "\\s*,\\s*",
-  NUM_OR_TOK_CAP,
+  fr_env$num_or_tok_cap,
   "\\s*\\]$"
 )
 
@@ -315,13 +97,13 @@ est_ci_bracket_parse_re <- paste0(
 #' @noRd
 est_ci_pval_parse_re <- paste0(
   "^",
-  NUM_OR_TOK_CAP,
+  fr_env$num_or_tok_cap,
   "\\s*\\(\\s*",
-  NUM_OR_TOK_CAP,
+  fr_env$num_or_tok_cap,
   "\\s*,\\s*",
-  NUM_OR_TOK_CAP,
+  fr_env$num_or_tok_cap,
   "\\s*\\)\\s+",
-  PVAL_OR_TOK_CAP,
+  fr_env$pval_or_tok_cap,
   "$"
 )
 
@@ -1509,8 +1291,8 @@ compute_stat_widths <- function(parsed_values, dominant_type) {
         w_pv_pi = w_pv_pi,
         w_pv_dec = w_pv_dec,
         has_pv_dec = has_pv_dec,
-        gap = COMPOUND_GAP,
-        full_width = ci_fw + COMPOUND_GAP + pv_fw
+        gap = fr_env$compound_gap,
+        full_width = ci_fw + fr_env$compound_gap + pv_fw
       )
     },
 
@@ -1545,8 +1327,8 @@ compute_stat_widths <- function(parsed_values, dominant_type) {
         w_rate_si = w_rate_si,
         w_rate_dec = w_rate_dec,
         has_rate_dec = has_rate_dec,
-        gap = COMPOUND_GAP,
-        full_width = npct_fw + COMPOUND_GAP + rate_fw
+        gap = fr_env$compound_gap,
+        full_width = npct_fw + fr_env$compound_gap + rate_fw
       )
     },
 
@@ -1594,7 +1376,7 @@ compute_stat_widths <- function(parsed_values, dominant_type) {
         w_ci_hi_dec = w_ci_hi_dec,
         has_ci_lo_dec = has_ci_lo_dec,
         has_ci_hi_dec = has_ci_hi_dec,
-        gap = 1L, # 1 space (not COMPOUND_GAP) — CI bracket is visually adjacent
+        gap = 1L, # 1 space (not compound_gap) — CI bracket is visually adjacent
         full_width = npct_fw + 1L + ci_fw
       )
     },
@@ -1645,8 +1427,8 @@ compute_stat_widths <- function(parsed_values, dominant_type) {
         w_ci_hi_dec = w_ci_hi_dec,
         has_ci_lo_dec = has_ci_lo_dec,
         has_ci_hi_dec = has_ci_hi_dec,
-        gap = COMPOUND_GAP,
-        full_width = espct_fw + COMPOUND_GAP + ci_fw
+        gap = fr_env$compound_gap,
+        full_width = espct_fw + fr_env$compound_gap + ci_fw
       )
     },
 
@@ -2405,14 +2187,18 @@ align_decimal_column <- function(content_vec) {
     return(rep("", n))
   }
 
-  families <- stat_type_family[non_skip]
+  families <- fr_env$stat_type_family[non_skip]
   fam_counts <- table(families)
   max_count <- max(fam_counts)
   tied_fams <- names(fam_counts)[fam_counts == max_count]
-  dominant_family <- tied_fams[which.max(stat_family_priority[tied_fams])]
+  dominant_family <- tied_fams[which.max(fr_env$stat_family_priority[
+    tied_fams
+  ])]
 
   family_types <- unique(non_skip[families == dominant_family])
-  dominant_type <- family_types[which.max(stat_type_richness[family_types])]
+  dominant_type <- family_types[which.max(fr_env$stat_type_richness[
+    family_types
+  ])]
 
   # Parse all values (vectorized per-type batch)
   parsed_values <- parse_stat_values_batch(content_vec, types)

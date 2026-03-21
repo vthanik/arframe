@@ -61,10 +61,7 @@ rtf_merged_row <- function(content, cellx, row_height_str, trhdr = FALSE) {
 }
 
 
-#' Zero top/bottom cell padding (eliminates Word's default ~29twips each side)
-#' @noRd
-rtf_zero_cell_padding <- "\\trpaddt0\\trpaddft3\\trpaddb0\\trpaddfb3"
-
+# fr_env$rtf_zero_cell_padding lives in fr_env (see constants.R, section 12)
 
 #' Row-level padding string: at-least height + zero top/bottom cell padding
 #'
@@ -78,7 +75,7 @@ rtf_zero_cell_padding <- "\\trpaddt0\\trpaddft3\\trpaddb0\\trpaddfb3"
 #' @noRd
 rtf_row_height_str <- function(font_size_pt) {
   rh <- row_height_twips(font_size_pt)
-  paste0("\\trrh", rh, rtf_zero_cell_padding)
+  paste0("\\trrh", rh, fr_env$rtf_zero_cell_padding)
 }
 
 
@@ -1286,7 +1283,7 @@ rtf_body_rows <- function(
       height_str <- paste0(
         "\\trrh",
         inches_to_twips(row_heights[i]),
-        rtf_zero_cell_padding
+        fr_env$rtf_zero_cell_padding
       )
     } else {
       height_str <- rh_str
