@@ -1506,14 +1506,21 @@ rebuild_stat_aligned <- function(parsed, widths, dominant_type) {
         dominant_type %in%
           c("est_spread", "est_spread_pct", "est_ci", "est_ci_bracket")
     ) {
+      # Only apply decimal padding when the value actually has a decimal part.
+      # Integer range values (e.g., "54, 89") should NOT get phantom decimals.
+      l_has_dec <- nzchar(parsed$l_dec)
       l <- pad_float_part(
         parsed$l_sign,
         parsed$l_int,
         parsed$l_dec,
         widths$w_est_si,
         widths$w_est_dec,
-        widths$has_est_dec
+        l_has_dec
       )
+      # If dominant has decimals but this value doesn't, space-fill the decimal zone
+      if (isTRUE(widths$has_est_dec) && !l_has_dec) {
+        l <- stringi::stri_pad_right(l, widths$w_est_si + 1L + widths$w_est_dec)
+      }
       r <- paste0(parsed$r_sign, parsed$r_int)
       if (nzchar(parsed$r_dec)) {
         r <- paste0(r, ".", parsed$r_dec)
@@ -1918,6 +1925,18 @@ align_decimal_column <- function(content_vec) {
 
   families <- fr_env$stat_type_family[non_skip]
   fam_counts <- table(families)
+
+  # Decimal-capable families (estimate, float, compound) should dominate over
+
+  # integer-only families (count, range) when both are present. Without this,
+  # a column with "53", "76.4 (8.73)", "78.0", "59, 89" would let range win
+  # (2 range types vs 1 estimate) and lose all decimal geometry.
+  decimal_fams <- c("estimate", "float", "compound")
+  has_decimal <- any(names(fam_counts) %in% decimal_fams)
+  if (has_decimal) {
+    fam_counts <- fam_counts[names(fam_counts) %in% decimal_fams]
+  }
+
   max_count <- max(fam_counts)
   tied_fams <- names(fam_counts)[fam_counts == max_count]
   dominant_family <- tied_fams[which.max(fr_env$stat_family_priority[
