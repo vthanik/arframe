@@ -819,7 +819,7 @@ html_titles <- function(spec, panel_idx = 1L) {
 
       content <- html_escape_and_resolve(entry$content)
       # Newlines in title content
-      content <- gsub("\n", "<br>", content, fixed = TRUE)
+      content <- gsub("\n", "<br style=\"line-height:0\">", content, fixed = TRUE)
 
       # Continuation on panel 2+
       if (idx == 1L && !is.null(continuation) && panel_idx > 1L) {
@@ -973,7 +973,7 @@ html_spanner_rows <- function(spec, vis_columns, borders, span_overrides) {
           if (!is.na(ov)) span_label <- ov
         }
         content <- html_escape_and_resolve(span_label)
-        content <- gsub("\n", "<br>", content, fixed = TRUE)
+        content <- gsub("\n", "<br style=\"line-height:0\">", content, fixed = TRUE)
 
         # Border on spanning header
         border_css <- html_span_border_css(
@@ -1072,7 +1072,7 @@ html_col_header_row <- function(spec, vis_columns, borders, label_overrides) {
         }
       }
       content <- html_escape_and_resolve(label %||% "")
-      content <- gsub("\n", "<br>", content, fixed = TRUE)
+      content <- gsub("\n", "<br style=\"line-height:0\">", content, fixed = TRUE)
 
       style_parts <- character(0)
       style_parts <- c(style_parts, paste0("text-align:", g$align))
@@ -1221,7 +1221,7 @@ html_body_rows <- function(
         formatted <- geom$formatted[row_idx[i]]
         if (nzchar(trimws(formatted))) {
           content <- html_escape_and_resolve(formatted)
-          content <- gsub("\n", "<br>", content, fixed = TRUE)
+          content <- gsub("\n", "<br style=\"line-height:0\">", content, fixed = TRUE)
           # Decimal-aligned cells use pre-formatted whitespace
           style_parts <- c(style_parts, "white-space:pre")
         } else {
@@ -1229,7 +1229,7 @@ html_body_rows <- function(
         }
       } else {
         content <- html_escape_and_resolve(cg_content[idx])
-        content <- gsub("\n", "<br>", content, fixed = TRUE)
+        content <- gsub("\n", "<br style=\"line-height:0\">", content, fixed = TRUE)
       }
 
       cells[[j]] <- paste0(
@@ -1282,7 +1282,7 @@ html_footnotes <- function(spec, is_last) {
     fs <- fn$font_size %||% spec$page$font_size
     align <- fn$align %||% "left"
     content <- html_escape_and_resolve(fn$content)
-    content <- gsub("\n", "<br>", content, fixed = TRUE)
+    content <- gsub("\n", "<br style=\"line-height:0\">", content, fixed = TRUE)
 
     style_parts <- character(0)
     if (align != "left") {
@@ -1349,7 +1349,7 @@ html_chrome_div <- function(chrome, spec, token_map, context) {
   chrome_escape <- function(txt) {
     txt <- resolve_tokens(txt, token_map, context)
     txt <- html_escape_and_resolve(txt)
-    gsub("\n", "<br>", txt, fixed = TRUE)
+    gsub("\n", "<br style=\"line-height:0\">", txt, fixed = TRUE)
   }
 
   # Build inline style for bold + custom font_size
@@ -1502,7 +1502,7 @@ html_sentinel_resolver <- function(type, content) {
     "BOLD" = paste0("<b>", html_escape_and_resolve(content), "</b>"),
     "ITALIC" = paste0("<em>", html_escape_and_resolve(content), "</em>"),
     "UNDERLINE" = paste0("<u>", html_escape_and_resolve(content), "</u>"),
-    "NEWLINE" = "<br>",
+    "NEWLINE" = "<br style=\"line-height:0\">",
     "UNICODE" = content, # HTML is UTF-8 — pass through
     content
   )
