@@ -1499,3 +1499,55 @@ test_that("extract_glue_refs handles escaped braces without false positives", {
   expect_equal(arframe:::extract_glue_refs("{mean} ({sd})"), c("mean", "sd"))
   expect_equal(arframe:::extract_glue_refs("no refs here"), character(0L))
 })
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Bug regression: PT-level Total column missing with ard_stack_hierarchical
+# overall = TRUE, over_variables = TRUE
+# ══════════════════════════════════════════════════════════════════════════════
+
+test_that("ard_stack_hierarchical overall=TRUE, over_variables=TRUE: PT rows have Total values", {
+  skip_if_not_installed("cards")
+
+  adsl_safe <- arframe::adsl[arframe::adsl$SAFFL == "Y", ]
+  adae_safe <- arframe::adae[arframe::adae$SAFFL == "Y", ]
+
+  ard <- cards::ard_stack_hierarchical(
+    data = adae_safe,
+    variables = c(AEBODSYS, AEDECOD),
+    by = TRTA,
+    denominator = adsl_safe,
+    id = USUBJID,
+    overall = TRUE,
+    over_variables = TRUE
+  )
+
+  wide <- fr_wide_ard(
+    ard,
+    statistic = "{n} ({p}%)",
+    overall = "Total"
+  )
+
+  expect_s3_class(wide, "data.frame")
+
+  # Hierarchical output has soc, pt, row_type columns
+  expect_true(all(c("soc", "pt", "row_type", "Total") %in% names(wide)))
+
+  # Overall row must exist with non-empty Total
+  overall_rows <- wide[wide$row_type == "overall", , drop = FALSE]
+  expect_gte(nrow(overall_rows), 1L)
+  expect_true(
+    nchar(overall_rows$Total[1L]) > 0L,
+    label = "Overall row has a non-empty Total value"
+  )
+
+  # PT-level rows must have non-empty Total values
+  pt_rows <- wide[wide$row_type == "pt", , drop = FALSE]
+  expect_gte(nrow(pt_rows), 1L)
+  pt_with_total <- pt_rows[nchar(pt_rows$Total) > 0L, , drop = FALSE]
+  expect_equal(
+    nrow(pt_with_total),
+    nrow(pt_rows),
+    label = "All PT-level rows have non-empty Total values"
+  )
+})

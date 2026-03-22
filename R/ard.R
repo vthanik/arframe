@@ -542,6 +542,7 @@ fr_wide_ard <- function(
         col_vals <- normalize_ard_chr(df[[gp$name_col]])
         column <- col_vals[!is.na(col_vals)][1L]
       }
+
     } else {
       df$arm <- NA_character_
     }
@@ -618,6 +619,22 @@ fr_wide_ard <- function(
     }
   }
 
+  # ── Fix arm for hierarchical overall rows ────────────────────────────────
+  # In hierarchical ARDs with overall = TRUE, PT-level total rows have
+
+  # group1 = <parent_var> (e.g., AEBODSYS) instead of the by-variable
+  # (e.g., TRT01A). Their arm was set to the parent level value — correct
+  # it to NA so the overall-labelling step converts them to "Total".
+  if (hierarchy$is_hierarchical && !is.null(column) && "group1" %in% names(df)) {
+    g1_names <- if (is.list(df$group1)) {
+      normalize_ard_chr(df$group1)
+    } else {
+      df$group1
+    }
+    is_overall_child <- !is.na(g1_names) & g1_names != column
+    df$arm[is_overall_child] <- NA_character_
+  }
+
   # ── Determine context per row ────────────────────────────────────────────
   if ("context" %in% names(df)) {
     df$ctx <- as.character(df$context)
@@ -672,9 +689,12 @@ fr_wide_ard <- function(
   # ── Filter to the target column group (raw ARD with group1) ────────────
   if (!is.null(column) && "group1" %in% names(df)) {
     g1 <- if (is.list(df$group1)) normalize_ard_chr(df$group1) else df$group1
-    # Only filter if column matches group1 values
+    # Only filter if column matches group1 values.
+    # Keep overall rows (arm labelled as the overall value) — these are
+    # hierarchical total rows whose group1 is the parent variable.
     if (column %in% g1) {
-      df <- df[is.na(g1) | g1 == column, , drop = FALSE]
+      is_overall_row <- if (!is.null(overall)) df$arm == overall else FALSE
+      df <- df[is.na(g1) | g1 == column | is_overall_row, , drop = FALSE]
     }
   }
 
@@ -909,6 +929,13 @@ build_hierarchical_wide <- function(df, statistic, hierarchy, call) {
   # Extract SOC-level values (handles both list and atomic)
   if (soc_col %in% names(df)) {
     df$soc_val <- normalize_ard_chr(df[[soc_col]])
+    # For overall PT rows (arm = NA), group2 is absent but the SOC value
+    # lives in group1_level. Fill in missing soc_val from group1_level.
+    if ("group1_level" %in% names(df)) {
+      g1_val <- normalize_ard_chr(df$group1_level)
+      missing_soc <- is.na(df$soc_val) & !is.na(g1_val)
+      df$soc_val[missing_soc] <- g1_val[missing_soc]
+    }
   } else {
     df$soc_val <- NA_character_
   }
