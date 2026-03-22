@@ -1549,6 +1549,26 @@ rebuild_stat_aligned <- function(parsed, widths, dominant_type) {
       return(stringi::stri_pad_right(paste0(l, ", ", r), fw))
     }
 
+    # --- n_pct in estimate/float/compound dominant ---
+    # n_pct count aligns within its own n_pct values, not the dominant's integer
+    if (parsed$type == "n_pct" && !is.null(widths$w_npct_n)) {
+      padded_n <- stringi::stri_pad_left(parsed$n, widths$w_npct_n)
+      pct <- pad_pct_part(
+        parsed$pct_prefix,
+        parsed$pct_int,
+        parsed$pct_dec,
+        parsed$pct_sign,
+        list(
+          w_pct_prefix = widths$w_npct_pct_prefix,
+          w_pct_int = widths$w_npct_pct_int,
+          w_pct_dec = widths$w_npct_pct_dec,
+          w_pct_sign = widths$w_npct_pct_sign,
+          has_dec = widths$has_npct_dec
+        )
+      )
+      return(stringi::stri_pad_right(paste0(padded_n, " (", pct, ")"), fw))
+    }
+
     # Generic fallback: right-pad raw
     return(stringi::stri_pad_right(parsed$raw, fw))
   }
@@ -1975,30 +1995,18 @@ align_decimal_column <- function(content_vec) {
   # Compute column-wide widths from dominant type values
   widths <- compute_stat_widths(parsed_values, dominant_type)
 
-  # Widen the integer zone to accommodate n_only values that may be wider
-  # than the dominant type's integer part (e.g., "143" vs "75" in est_spread)
-  n_only_vals <- parsed_values[types == "n_only"]
-  if (length(n_only_vals) > 0L) {
-    max_n_w <- max(vapply(n_only_vals, function(p) nchar(p$n), integer(1)))
-    si_key <- switch(
-      dominant_type,
-      est_spread = ,
-      est_spread_pct = ,
-      est_ci = ,
-      est_ci_bracket = ,
-      est_ci_pval = ,
-      est_spread_pct_ci = "w_est_si",
-      n_pct = ,
-      n_pct_rate = "w_n",
-      scalar_float = "w_sign_int",
-      pvalue = "w_int",
-      NULL
-    )
-    if (!is.null(si_key) && max_n_w > widths[[si_key]]) {
-      extra <- max_n_w - widths[[si_key]]
-      widths[[si_key]] <- max_n_w
-      widths$full_width <- widths$full_width + extra
-    }
+  # Compute subsidiary widths for non-dominant types that need their own
+  # integer alignment (n_pct in estimate-dominant columns, etc.)
+  # These do NOT expand full_width — they align within the dominant frame.
+  npct_vals <- parsed_values[types == "n_pct"]
+  if (length(npct_vals) > 0L) {
+    npct_widths <- compute_stat_widths(npct_vals, "n_pct")
+    widths$w_npct_n <- npct_widths$w_n
+    widths$w_npct_pct_prefix <- npct_widths$w_pct_prefix
+    widths$w_npct_pct_int <- npct_widths$w_pct_int
+    widths$w_npct_pct_dec <- npct_widths$w_pct_dec
+    widths$w_npct_pct_sign <- npct_widths$w_pct_sign
+    widths$has_npct_dec <- npct_widths$has_dec
   }
 
   # Rebuild all values as fixed-width strings
