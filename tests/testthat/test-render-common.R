@@ -920,6 +920,37 @@ test_that("n_only wider than n in n_pct-dominant column expands w_n", {
   expect_true(all(nchars == nchars[1]))
 })
 
+test_that("mixed types in n_pct-dominant column align integers", {
+  # Demographics pattern: n_only, est_spread, scalar_float, range_pair
+  # all coexist with n_pct in the same column.
+  vals <- c(
+    "254",
+    "75.1 (8.25)",
+    "77.0",
+    "51, 89",
+    "143 (56.3)",
+    "111 (43.7)",
+    "23 ( 9.1)",
+    "230 (90.6)",
+    "0"
+  )
+  result <- align_decimal_column(vals)
+  # All values must have the same nchar (uniform width)
+  nchars <- nchar(result)
+  expect_true(all(nchars == nchars[1]))
+  # "254" (n_only) integer right-edge aligns with "143" (n_pct) integer
+  # "75.1" (est_spread) integer "75" aligns under "254"
+  # Verify: position of last digit of integer part is consistent
+  # "254" -> digit ends at position 3
+  # " 75.1 (8.25)" -> digit "5" at position 3
+  # "143 (56.3)" -> digit "3" at position 3
+  pos_254 <- regexpr("\\d(?=\\D|$)", result[1], perl = TRUE)
+  pos_75 <- regexpr("\\d(?=\\.)", result[2], perl = TRUE)
+  pos_143 <- regexpr("\\d(?= )", result[5], perl = TRUE)
+  expect_equal(as.integer(pos_254), as.integer(pos_75))
+  expect_equal(as.integer(pos_254), as.integer(pos_143))
+})
+
 test_that("n_only in n_pct_rate-dominant column expands w_n", {
   vals <- c("135", "3 (2.5) 1.28", "42 (35.0) 17.94")
   result <- align_decimal_column(vals)

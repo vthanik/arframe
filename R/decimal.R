@@ -1610,6 +1610,86 @@ rebuild_stat_aligned <- function(parsed, widths, dominant_type) {
       return(stringi::stri_pad_right(paste0(padded_n, " (", pct, ")"), fw))
     }
 
+    # --- est_spread / est_spread_pct in n_pct dominant ---
+    # Align estimate integer with n_pct n-part so "75.1 (8.25)" lines up
+    # under "143 (56.3)" at the integer boundary.
+    if (
+      parsed$type %in%
+        c("est_spread", "est_spread_pct") &&
+        dominant_type == "n_pct"
+    ) {
+      w_n <- widths$w_npct_n %||% widths$w_n
+      est <- pad_float_part(
+        parsed$est_sign,
+        parsed$est_int,
+        parsed$est_dec,
+        w_n,
+        nchar(parsed$est_dec),
+        nzchar(parsed$est_dec)
+      )
+      padded_si <- stringi::stri_pad_left(
+        paste0(parsed$sprd_sign, parsed$sprd_int),
+        nchar(paste0(parsed$sprd_sign, parsed$sprd_int))
+      )
+      sprd <- if (nzchar(parsed$sprd_dec)) {
+        suffix <- if (parsed$type == "est_spread_pct") {
+          paste0(parsed$sprd_dec, "%")
+        } else {
+          parsed$sprd_dec
+        }
+        paste0(padded_si, ".", suffix)
+      } else {
+        if (parsed$type == "est_spread_pct") {
+          paste0(padded_si, "%")
+        } else {
+          padded_si
+        }
+      }
+      return(stringi::stri_pad_right(paste0(est, " (", sprd, ")"), fw))
+    }
+
+    # --- scalar_float in n_pct dominant ---
+    # Align integer part with n_pct n-part so "77.0" lines up under "143".
+    if (parsed$type == "scalar_float" && dominant_type == "n_pct") {
+      w_n <- widths$w_npct_n %||% widths$w_n
+      result <- pad_float_part(
+        parsed$sign,
+        parsed$int,
+        parsed$dec,
+        w_n,
+        nchar(parsed$dec),
+        nzchar(parsed$dec)
+      )
+      return(stringi::stri_pad_right(result, fw))
+    }
+
+    # --- range_pair in n_pct dominant ---
+    # Align left integer with n_pct n-part so "51, 89" lines up under "143".
+    if (parsed$type == "range_pair" && dominant_type == "n_pct") {
+      w_n <- widths$w_npct_n %||% widths$w_n
+      l_has_dec <- nzchar(parsed$l_dec)
+      l <- pad_float_part(
+        parsed$l_sign,
+        parsed$l_int,
+        parsed$l_dec,
+        w_n,
+        nchar(parsed$l_dec),
+        l_has_dec
+      )
+      r_has_dec <- nzchar(parsed$r_dec)
+      r <- pad_float_part(
+        parsed$r_sign,
+        parsed$r_int,
+        parsed$r_dec,
+        nchar(paste0(parsed$r_sign, parsed$r_int)),
+        nchar(parsed$r_dec),
+        r_has_dec
+      )
+      od <- parsed$open_delim %||% ""
+      cd <- parsed$close_delim %||% ""
+      return(stringi::stri_pad_right(paste0(od, l, ", ", r, cd), fw))
+    }
+
     # Generic fallback: right-pad raw
     return(stringi::stri_pad_right(parsed$raw, fw))
   }
@@ -2037,6 +2117,42 @@ align_decimal_column <- function(content_vec) {
 
   # Compute column-wide widths from dominant type values
   widths <- compute_stat_widths(parsed_values, dominant_type)
+
+  # Expand integer slot when n_only values are wider than the dominant type's
+
+  # integer width (e.g., "254" wider than "75" in est_spread "75.1 (8.25)").
+  nonly_vals <- parsed_values[types == "n_only"]
+  if (length(nonly_vals) > 0L && dominant_type != "n_only") {
+    max_n_w <- max(vapply(nonly_vals, function(p) nchar(p$n), integer(1L)))
+    # Identify which integer slot the n_only fallback uses
+    int_slot <- switch(
+      dominant_type,
+      n_pct = ,
+      n_pct_rate = "w_n",
+      n_over_N_pct = ,
+      n_over_N_pct_ci = ,
+      n_over_N = ,
+      n_over_float = "w_num",
+      est_spread = ,
+      est_spread_pct = ,
+      est_ci = ,
+      est_ci_bracket = ,
+      est_ci_pval = ,
+      est_spread_pct_ci = "w_est_si",
+      scalar_float = "w_sign_int",
+      pvalue = "w_int",
+      range_pair = "w_l_si",
+      int_range = "w_left",
+      NULL
+    )
+    if (!is.null(int_slot) && !is.null(widths[[int_slot]])) {
+      expansion <- max_n_w - widths[[int_slot]]
+      if (expansion > 0L) {
+        widths[[int_slot]] <- max_n_w
+        widths$full_width <- widths$full_width + expansion
+      }
+    }
+  }
 
   # Compute subsidiary widths for non-dominant types that need their own
   # integer alignment (n_pct in estimate-dominant columns, etc.)

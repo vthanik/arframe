@@ -191,6 +191,15 @@ n_only in n_pct column:
   1 (2.2)                              " 1 ( 2.2)"
   0                                    " 0       "
 
+Demographics column (n_pct dominant, mixed types):
+  254                                  "254        "
+  75.1 (8.25)                          " 75.1 (8.25)"
+  77.0                                 " 77.0       "
+  51, 89                               " 51  , 89   "
+  143 (56.3)                           "143 (56.3)  "
+  23 ( 9.1)                            " 23 ( 9.1)  "
+  0                                    "  0         "
+
 est_spread_pct + est_spread (% tight, dec-slot shared):
   52.43 (23.4%)                        " 52.43 (23.4%)"
   75.0 (6.75)                          " 75.0  ( 6.75)"
