@@ -39,7 +39,7 @@ home:
 navbar:
   type: light
   structure:
-    left: [intro, reference, articles, news, gallery]
+    left: [intro, reference, articles, gallery, news]
     right: [search, lightswitch, github]
   components:
     intro:
