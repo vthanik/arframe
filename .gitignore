@@ -24,6 +24,7 @@ CLAUDE.md
 
 # Local working files (plans, notes, scripts, blueprints)
 .local/
+deploy-site.sh
 
 # Presentation materials (local only)
 presentation/
