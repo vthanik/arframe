@@ -794,79 +794,94 @@ collapse_hierarchy <- function(spec) {
   # For level k, the key is paste(cols[1], ..., cols[k])
   page_by_cols <- spec$body$page_by
 
-  # Pre-compute: for each row, what's the display value and level
+  # Pre-compute column values as character (once, not per-row)
+  non_leaf_vals <- lapply(
+    stats::setNames(non_leaf, non_leaf),
+    function(lvl) as.character(data[[lvl]])
+  )
   leaf_values <- as.character(data[[leaf]])
 
-  # Add __display__ and __row_level__ columns to data first so types are
+  # Detect boundaries for each non-leaf level (vectorised).
+  # A boundary at level k occurs when the value changes from the previous row,
 
-  # consistent across header and data rows when combined with vec_rbind().
-  data[["__display__"]] <- NA_character_
-  data[["__row_level__"]] <- NA_character_
+  # OR when any higher level (lower depth) also has a boundary.
+  boundary_list <- vector("list", length(non_leaf))
+  names(boundary_list) <- non_leaf
+  for (k in seq_along(non_leaf)) {
+    lvl <- non_leaf[k]
+    vals <- non_leaf_vals[[lvl]]
+    changed <- c(
+      TRUE,
+      vals[-1L] != vals[-nr] | is.na(vals[-1L]) != is.na(vals[-nr])
+    )
+    # Propagate: if a parent level changed, child levels also emit headers
+    if (k > 1L) {
+      parent_boundaries <- boundary_list[[non_leaf[k - 1L]]]
+      changed <- changed | parent_boundaries
+    }
+    boundary_list[[lvl]] <- changed
+  }
 
-  # We'll build the result by walking through the data and inserting
-  # header rows at boundaries of each non-leaf level.
-  prev_values <- stats::setNames(
-    rep(NA_character_, length(non_leaf)),
-    non_leaf
-  )
+  # Count total header rows to pre-allocate
+  n_headers <- sum(vapply(boundary_list, sum, integer(1)))
 
-  result_chunks <- vector("list", nr * (1L + length(non_leaf)))
-  chunk_idx <- 0L
+  # Add __display__ and __row_level__ to data so types match header rows
+  data[["__display__"]] <- leaf_values
+  data[["__row_level__"]] <- leaf
 
-  # Template for header rows: typed NA for each column, not ""
+  # Build header rows in batch
+  # For each boundary, record: which data row it precedes, level name, display value
+  hdr_row_idx <- integer(n_headers)
+  hdr_display <- character(n_headers)
+  hdr_level <- character(n_headers)
+  h <- 0L
+  for (lvl in non_leaf) {
+    boundaries <- which(boundary_list[[lvl]])
+    for (b in boundaries) {
+      h <- h + 1L
+      hdr_row_idx[h] <- b
+      hdr_display[h] <- non_leaf_vals[[lvl]][b]
+      hdr_level[h] <- lvl
+    }
+  }
+
+  # Sort headers by (data_row, depth) so they interleave correctly
+  hdr_depth <- depth_map[hdr_level]
+  hdr_order <- order(hdr_row_idx, hdr_depth)
+  hdr_row_idx <- hdr_row_idx[hdr_order]
+  hdr_display <- hdr_display[hdr_order]
+  hdr_level <- hdr_level[hdr_order]
+
+  # Build header data frame in one shot
   hdr_template <- vctrs::vec_init(data, 1L)
-  # Set character columns to "" (for display), leave numeric as NA
   for (cn in names(hdr_template)) {
     if (is.character(hdr_template[[cn]])) {
       hdr_template[[cn]] <- ""
     }
   }
 
-  # Columns to preserve on header rows (page_by for pagination)
-  preserve_cols <- intersect(page_by_cols, names(data))
+  hdr_block <- vctrs::vec_slice(hdr_template, rep(1L, n_headers))
+  hdr_block[["__display__"]] <- hdr_display
+  hdr_block[["__row_level__"]] <- hdr_level
 
-  for (i in seq_len(nr)) {
-    # Check each non-leaf level for boundary changes
-    for (lvl in non_leaf) {
-      cur_val <- as.character(data[[lvl]][i])
-      if (is.na(prev_values[lvl]) || cur_val != prev_values[lvl]) {
-        # Boundary at this level — inject header row
-        hdr <- hdr_template
-        hdr[["__display__"]] <- cur_val
-        hdr[["__row_level__"]] <- lvl
-        # Preserve page_by columns for downstream pagination
-        for (pc in preserve_cols) {
-          hdr[[pc]] <- as.character(data[[pc]][i])
-        }
-        # Preserve hierarchy columns for blank_after detection
-        for (hc in hierarchy_cols) {
-          hdr[[hc]] <- as.character(data[[hc]][i])
-        }
-        chunk_idx <- chunk_idx + 1L
-        result_chunks[[chunk_idx]] <- hdr
-        # header row injected
-        prev_values[lvl] <- cur_val
-
-        # Reset deeper non-leaf levels so they re-emit headers
-        lvl_idx <- which(non_leaf == lvl)
-        if (lvl_idx < length(non_leaf)) {
-          deeper <- non_leaf[seq(lvl_idx + 1L, length(non_leaf))]
-          prev_values[deeper] <- NA_character_
-        }
-      }
-    }
-
-    # Add the data row itself
-    row <- vctrs::vec_slice(data, i)
-    row[["__display__"]] <- leaf_values[i]
-    row[["__row_level__"]] <- leaf
-    chunk_idx <- chunk_idx + 1L
-    result_chunks[[chunk_idx]] <- row
+  # Preserve columns on header rows (page_by + hierarchy cols)
+  preserve_cols <- unique(c(
+    intersect(page_by_cols, names(data)),
+    hierarchy_cols
+  ))
+  for (pc in preserve_cols) {
+    hdr_block[[pc]] <- as.character(data[[pc]][hdr_row_idx])
   }
 
-  # Trim unused slots and combine
-  result_chunks <- result_chunks[seq_len(chunk_idx)]
-  new_data <- vctrs::vec_rbind(!!!result_chunks)
+  # Interleave: build an index that places headers before their data rows.
+  # Each data row gets position (row_number * 2); headers get (row_number * 2 - 1).
+  # Then sort to get final order.
+  data_positions <- seq_len(nr) * 2L
+  hdr_positions <- hdr_row_idx * 2L - 1L
+
+  new_data <- vctrs::vec_rbind(data, hdr_block)
+  final_order <- order(c(data_positions, hdr_positions), method = "radix")
+  new_data <- vctrs::vec_slice(new_data, final_order)
   rownames(new_data) <- NULL
 
   spec$data <- new_data

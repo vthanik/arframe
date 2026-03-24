@@ -21,7 +21,7 @@ page:
 
 columns:
   split: false
-  spaces: indent
+  space_mode: indent
   n_format: ~
 
 header:
