@@ -381,39 +381,9 @@ fr_cols <- function(
   call <- caller_env()
   check_fr_spec(spec, call = call)
 
-  # Validate .n input shape early (errors here, not at render time)
+  # Validate .n input shape early (before build_default_columns)
   if (!missing(.n) && !is.null(.n)) {
-    if (is.data.frame(.n)) {
-      if (ncol(.n) < 2L || ncol(.n) > 3L) {
-        cli_abort(
-          c(
-            "{.arg .n} data frame must have 2 or 3 columns.",
-            "x" = "You supplied a data frame with {ncol(.n)} column{?s}.",
-            "i" = "Use {.code data.frame(label, n)} or {.code data.frame(page_group, label, n)}."
-          ),
-          call = call
-        )
-      }
-    } else if (is.numeric(.n)) {
-      if (is.null(names(.n))) {
-        cli_abort(
-          c(
-            "{.arg .n} numeric vector must be named.",
-            "x" = "You supplied an unnamed vector of length {length(.n)}.",
-            "i" = "Example: {.code .n = c(Placebo = 86, Drug = 72)}"
-          ),
-          call = call
-        )
-      }
-    } else if (!is.list(.n)) {
-      cli_abort(
-        c(
-          "{.arg .n} must be a named numeric vector, data frame, or named list.",
-          "x" = "You supplied {.obj_type_friendly {.n}}."
-        ),
-        call = call
-      )
-    }
+    validate_n_param(n = .n, format = .n_format %||% NULL, call = call)
   }
 
   # Validate .split: NULL, TRUE, or FALSE
@@ -561,9 +531,8 @@ fr_cols <- function(
 
   spec$columns_meta$width_mode <- width_mode
 
-  # Validate and store N-count parameters
+  # Store N-count parameters (validation already done above)
   if (!is.null(.n)) {
-    validate_n_param(n = .n, format = .n_format, call = call)
     spec$columns_meta$n <- .n
   }
   if (!is.null(.n_format)) {

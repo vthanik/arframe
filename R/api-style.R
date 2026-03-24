@@ -240,12 +240,12 @@ fr_rows_matches <- function(
 #' # Apply to any spec via fr_styles()
 #' tbl_demog |>
 #'   fr_table() |>
-#'   fr_styles(header_bold, total_bg)
+#'   fr_styles(header_bold, total_background)
 #'
 #' # Reuse the same styles across different tables
 #' tbl_disp |>
 #'   fr_table() |>
-#'   fr_styles(header_bold, total_bg)
+#'   fr_styles(header_bold, total_background)
 #'
 #' ## ── Bold the entire column header ────────────────────────────────────────
 #'

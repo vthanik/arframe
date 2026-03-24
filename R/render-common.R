@@ -918,7 +918,7 @@ collapse_hierarchy <- function(spec) {
 
 #' Convert leading spaces to paragraph-level indent
 #'
-#' For columns with `spaces = "indent"` (the default), detects leading spaces
+#' For columns with `space_mode = "indent"` (the default), detects leading spaces
 #' in each cell, measures their width via AFM font metrics, strips them from
 #' the data, and injects cell_styles with the equivalent indent in inches.
 #'

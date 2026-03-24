@@ -220,10 +220,8 @@ spec <- tbl_demog |>
     total     = fr_col("Total"),
     group     = fr_col(visible = FALSE)
   ) |>
-  fr_header(bold = TRUE, align = list(
-    left   = "characteristic",
-    center = c(starts_with("zom"), "placebo", "total")
-  ))
+  fr_header(bold = TRUE, align = "center") |>
+  fr_cols(characteristic = fr_col(header_align = "left"))
 ```
 
 > **SAS:** `STYLE(header)=[just=center font_weight=bold];`
