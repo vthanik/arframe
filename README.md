@@ -145,7 +145,7 @@ Every verb takes an `fr_spec`, returns a modified `fr_spec`. Verb order doesn't 
 | `fr_header()` | Header styling (bold, align, valign, colors) |
 | `fr_titles()` | Table titles (1-4 lines, with inline markup) |
 | `fr_footnotes()` | Footnotes with placement control (`"every"` or `"last"`) |
-| `fr_rows()` | `group_by`, `group_label`, `group_keep`, `page_by`, `indent_by` (multi-level), `blank_after`, `sort_by`, `repeat_cols`, `wrap` |
+| `fr_rows()` | `group_by` (with list form for `label`), `group_keep`, `page_by` (with list form for `visible`), `indent_by` (multi-level), `blank_after`, `sort_by`, `suppress`, `wrap` |
 | `fr_page()` | Paper size, orientation, margins, font, continuation text |
 | `fr_pagehead()` / `fr_pagefoot()` | Running headers/footers with token substitution |
 | `fr_hlines()` / `fr_vlines()` / `fr_grid()` | Horizontal/vertical rules (8 presets) |

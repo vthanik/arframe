@@ -129,7 +129,7 @@
 #'     total          = fr_col("Total\n(N=135)", width = 1.5),
 #'     group          = fr_col(visible = FALSE)
 #'   ) |>
-#'   fr_header(bold = TRUE, bg = "#D9E2F3") |>
+#'   fr_header(bold = TRUE, background = "#D9E2F3") |>
 #'   fr_spans("Treatment Arm" = c("placebo", "zom_50mg", "zom_100mg")) |>
 #'   fr_rows(group_by = "group", blank_after = "group", indent_by = "group") |>
 #'   fr_hlines("header") |>
@@ -223,7 +223,7 @@ fr_table <- function(data) {
 #'
 #' @section Listing-specific features:
 #' * **`sort_by`**: Pass to [fr_rows()] to sort data before rendering
-#' * **`repeat_cols`**: Pass to [fr_rows()] to suppress repeated values
+#' * **`suppress`**: Pass to [fr_rows()] to suppress repeated values
 #' * **`wrap`**: Auto-enabled for long text columns
 #'
 #' @examples
@@ -241,7 +241,7 @@ fr_table <- function(data) {
 #'     AESEV   = fr_col("Severity", width = 1.0)
 #'   ) |>
 #'   fr_rows(sort_by = c("USUBJID", "ASTDT"),
-#'           repeat_cols = "USUBJID") |>
+#'           suppress = "USUBJID") |>
 #'   fr_titles("Listing 16.2.7 Adverse Events") |>
 #'   fr_footnotes("Source: ADAE")
 #'
@@ -276,7 +276,7 @@ fr_table <- function(data) {
 #'   fr_rows(page_by = "TRTA") |>
 #'   fr_titles("Listing 16.2.7.1 Adverse Events by Treatment Arm")
 #'
-#' ## ── sort_by + repeat_cols together ────────────────────────────────────────
+#' ## ── sort_by + suppress together ────────────────────────────────────────
 #' # Sort by subject and start day, suppress repeated subject IDs.
 #'
 #' adae |>
@@ -290,13 +290,13 @@ fr_table <- function(data) {
 #'   ) |>
 #'   fr_rows(
 #'     sort_by = c("USUBJID", "ASTDY"),
-#'     repeat_cols = "USUBJID"
+#'     suppress = "USUBJID"
 #'   ) |>
 #'   fr_titles("Listing 16.2.7.2 Adverse Events Sorted by Subject and Study Day") |>
 #'   fr_footnotes("Repeated subject IDs are suppressed for readability.")
 #'
 #' @seealso [fr_table()] for summary tables, [fr_rows()] for `sort_by` and
-#'   `repeat_cols`, [fr_render()] to produce output.
+#'   `suppress`, [fr_render()] to produce output.
 #'
 #' @export
 fr_listing <- function(data) {

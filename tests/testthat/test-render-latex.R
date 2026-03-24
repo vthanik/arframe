@@ -1117,12 +1117,12 @@ test_that("latex_header_style_specs handles bold header cells", {
   expect_match(spec_str, "bfseries", fixed = TRUE)
 })
 
-test_that("latex_header_style_specs handles header bg/fg colors", {
+test_that("latex_header_style_specs handles header background/color colors", {
   df <- data.frame(a = 1)
   spec <- df |>
     fr_table() |>
     fr_cols(a = fr_col("A", width = 2)) |>
-    fr_header(bg = "#CCCCCC", fg = "#FF0000")
+    fr_header(background = "#CCCCCC", color = "#FF0000")
   fspec <- finalize_spec(spec)
   nrow_header <- 1L
   hgrid <- build_header_cell_grid(
@@ -1268,7 +1268,7 @@ test_that("latex_preamble omits lastpage when no total_pages token", {
 
 test_that("latex_preamble includes color definitions for header colors", {
   df <- data.frame(x = 1)
-  spec <- df |> fr_table() |> fr_header(bg = "#0000FF")
+  spec <- df |> fr_table() |> fr_header(background = "#0000FF")
   fspec <- finalize_spec(spec)
   preamble <- paste(latex_preamble(fspec), collapse = "\n")
   expect_match(preamble, "definecolor\\{tblr0000FF\\}", perl = TRUE)
@@ -1533,8 +1533,8 @@ test_that("latex_cell_style_specs returns empty for empty cell_grid", {
     col_idx = integer(0),
     bold = logical(0),
     italic = logical(0),
-    bg = character(0),
-    fg = character(0),
+    background = character(0),
+    color = character(0),
     indent = numeric(0),
     content = character(0),
     stringsAsFactors = FALSE
@@ -1751,7 +1751,7 @@ test_that("fr_render .tex works with legal paper", {
 })
 
 
-# ── Full integration: cell styles (italic, fg color, bg color) ────────────
+# ── Full integration: cell styles (italic, color, background) ─────────────
 
 test_that("fr_render .tex applies italic cell style", {
   tmp <- tempfile(fileext = ".tex")
@@ -1768,7 +1768,7 @@ test_that("fr_render .tex applies italic cell style", {
   expect_match(txt, "itshape", fixed = TRUE)
 })
 
-test_that("fr_render .tex applies fg color cell style", {
+test_that("fr_render .tex applies color cell style", {
   tmp <- tempfile(fileext = ".tex")
   on.exit(unlink(tmp), add = TRUE)
 
@@ -1776,14 +1776,14 @@ test_that("fr_render .tex applies fg color cell style", {
   df |>
     fr_table() |>
     fr_cols(.width = "equal") |>
-    fr_styles(fr_col_style(cols = "a", fg = "#FF0000")) |>
+    fr_styles(fr_col_style(cols = "a", color = "#FF0000")) |>
     fr_render(tmp)
 
   txt <- paste(readLines(tmp, warn = FALSE), collapse = "\n")
   expect_match(txt, "tblrFF0000", fixed = TRUE)
 })
 
-test_that("fr_render .tex applies bg color cell style", {
+test_that("fr_render .tex applies background color cell style", {
   tmp <- tempfile(fileext = ".tex")
   on.exit(unlink(tmp), add = TRUE)
 
@@ -1791,7 +1791,7 @@ test_that("fr_render .tex applies bg color cell style", {
   df |>
     fr_table() |>
     fr_cols(.width = "equal") |>
-    fr_styles(fr_col_style(cols = "a", bg = "#EEEEEE")) |>
+    fr_styles(fr_col_style(cols = "a", background = "#EEEEEE")) |>
     fr_render(tmp)
 
   txt <- paste(readLines(tmp, warn = FALSE), collapse = "\n")

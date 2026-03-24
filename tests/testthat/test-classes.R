@@ -418,8 +418,8 @@ test_that("new_fr_cell_style creates object with NULLs and type=cell", {
   expect_equal(cs$type, "cell")
   expect_equal(cs$region, "body")
   expect_null(cs$bold)
-  expect_null(cs$fg)
-  expect_null(cs$bg)
+  expect_null(cs$color)
+  expect_null(cs$background)
   expect_null(cs$colspan)
   expect_null(cs$rowspan)
 })
@@ -429,14 +429,14 @@ test_that("new_fr_cell_style accepts style properties", {
     region = "header",
     bold = TRUE,
     italic = FALSE,
-    fg = "#FF0000",
-    bg = "#EEEEEE",
+    color = "#FF0000",
+    background = "#EEEEEE",
     font_size = 10
   )
   expect_equal(cs$region, "header")
   expect_true(cs$bold)
   expect_false(cs$italic)
-  expect_equal(cs$fg, "#FF0000")
+  expect_equal(cs$color, "#FF0000")
   expect_equal(cs$font_size, 10)
 })
 
@@ -447,23 +447,23 @@ test_that("new_fr_cell_style stores colspan and rowspan", {
 })
 
 test_that("new_fr_row_style creates row-type cell_style", {
-  rs <- new_fr_row_style(rows = c(1L, 2L), bg = "#EEEEEE", bold = TRUE)
+  rs <- new_fr_row_style(rows = c(1L, 2L), background = "#EEEEEE", bold = TRUE)
   expect_s3_class(rs, "fr_cell_style")
   expect_equal(rs$type, "row")
   expect_equal(rs$region, "body")
   expect_equal(rs$rows, c(1L, 2L))
-  expect_equal(rs$bg, "#EEEEEE")
+  expect_equal(rs$background, "#EEEEEE")
   expect_true(rs$bold)
   expect_null(rs$cols)
 })
 
 test_that("new_fr_col_style creates col-type cell_style", {
-  cs <- new_fr_col_style(cols = c("a", "b"), fg = "#003366")
+  cs <- new_fr_col_style(cols = c("a", "b"), color = "#003366")
   expect_s3_class(cs, "fr_cell_style")
   expect_equal(cs$type, "col")
   expect_equal(cs$region, "body")
   expect_equal(cs$cols, c("a", "b"))
-  expect_equal(cs$fg, "#003366")
+  expect_equal(cs$color, "#003366")
   expect_null(cs$rows)
 })
 
@@ -1246,8 +1246,8 @@ test_that("new_fr_header stores all optional parameters", {
     valign = "top",
     align = "center",
     bold = TRUE,
-    bg = "#EEEEEE",
-    fg = "#333333",
+    background = "#EEEEEE",
+    color = "#333333",
     font_size = 10,
     span_gap = FALSE
   )
@@ -1255,8 +1255,8 @@ test_that("new_fr_header stores all optional parameters", {
   expect_equal(h$valign, "top")
   expect_equal(h$align, "center")
   expect_true(h$bold)
-  expect_equal(h$bg, "#EEEEEE")
-  expect_equal(h$fg, "#333333")
+  expect_equal(h$background, "#EEEEEE")
+  expect_equal(h$color, "#333333")
   expect_equal(h$font_size, 10)
   expect_false(h$span_gap)
 })
@@ -1274,20 +1274,24 @@ test_that("new_fr_body stores all parameters", {
     group_by = "grp",
     indent_by = "indent",
     blank_after = "grp",
-    page_by_bold = TRUE,
-    page_by_align = "center",
+    page_by_visible = FALSE,
+    group_label = "stat",
+    group_keep = TRUE,
+    group_leaf = "leaf_col",
     sort_by = "ord",
-    repeat_cols = c("a", "b"),
+    suppress = c("a", "b"),
     wrap = TRUE
   )
   expect_equal(b$page_by, "cat")
   expect_equal(b$group_by, "grp")
   expect_equal(b$indent_by, "indent")
   expect_equal(b$blank_after, "grp")
-  expect_true(b$page_by_bold)
-  expect_equal(b$page_by_align, "center")
+  expect_false(b$page_by_visible)
+  expect_equal(b$group_label, "stat")
+  expect_true(b$group_keep)
+  expect_equal(b$group_leaf, "leaf_col")
   expect_equal(b$sort_by, "ord")
-  expect_equal(b$repeat_cols, c("a", "b"))
+  expect_equal(b$suppress, c("a", "b"))
   expect_true(b$wrap)
 })
 
@@ -1339,8 +1343,8 @@ test_that("new_fr_cell_style stores all optional fields", {
     bold = TRUE,
     italic = TRUE,
     underline = TRUE,
-    fg = "#FF0000",
-    bg = "#00FF00",
+    color = "#FF0000",
+    background = "#00FF00",
     font = "Arial",
     font_size = 12,
     align = "center",
@@ -1355,8 +1359,8 @@ test_that("new_fr_cell_style stores all optional fields", {
   expect_true(cs$bold)
   expect_true(cs$italic)
   expect_true(cs$underline)
-  expect_equal(cs$fg, "#FF0000")
-  expect_equal(cs$bg, "#00FF00")
+  expect_equal(cs$color, "#FF0000")
+  expect_equal(cs$background, "#00FF00")
   expect_equal(cs$font, "Arial")
   expect_equal(cs$font_size, 12)
   expect_equal(cs$align, "center")
@@ -1368,9 +1372,9 @@ test_that("new_fr_cell_style stores all optional fields", {
 })
 
 test_that("new_fr_cell_style resolves named colors", {
-  cs <- new_fr_cell_style(fg = "red", bg = "blue")
-  expect_match(cs$fg, "^#[0-9A-Fa-f]{6}$")
-  expect_match(cs$bg, "^#[0-9A-Fa-f]{6}$")
+  cs <- new_fr_cell_style(color = "red", background = "blue")
+  expect_match(cs$color, "^#[0-9A-Fa-f]{6}$")
+  expect_match(cs$background, "^#[0-9A-Fa-f]{6}$")
 })
 
 test_that("new_fr_row_style passes height through", {

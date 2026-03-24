@@ -50,9 +50,9 @@
 #' @param bold Logical or `NULL`. Whether header cells are bold. Default
 #'   `NULL` inherits the built-in default (FALSE). Set `TRUE` explicitly
 #'   if you want bold headers.
-#' @param bg Background colour for header cells: hex string (`"#003366"`) or
+#' @param background Background colour for header cells: hex string (`"#003366"`) or
 #'   CSS named colour (`"steelblue"`, `"lightgray"`, etc.). `NULL` inherits.
-#' @param fg Foreground (text) colour for header cells: hex string or CSS
+#' @param color Foreground (text) colour for header cells: hex string or CSS
 #'   named colour. `NULL` inherits.
 #' @param font_size Font size in points for header cells. `NULL` inherits
 #'   from page font size.
@@ -94,12 +94,12 @@
 #' # Hex colour
 #' tbl_demog |>
 #'   fr_table() |>
-#'   fr_header(bg = "#E0E0E0", bold = TRUE)
+#'   fr_header(background = "#E0E0E0", bold = TRUE)
 #'
 #' # CSS named colour (148 available: lavender, aliceblue, gainsboro, etc.)
 #' tbl_demog |>
 #'   fr_table() |>
-#'   fr_header(bg = "lavender", fg = "midnightblue", bold = TRUE)
+#'   fr_header(background = "lavender", color = "midnightblue", bold = TRUE)
 #'
 #' ## ── N-counts now on fr_cols(), not fr_header() ────────────────────────────
 #'
@@ -124,8 +124,8 @@ fr_header <- function(
   align = NULL,
   valign = NULL,
   bold = NULL,
-  bg = NULL,
-  fg = NULL,
+  background = NULL,
+  color = NULL,
   font_size = NULL,
   repeat_on_page = NULL
 ) {
@@ -199,11 +199,11 @@ fr_header <- function(
   if (!is.null(font_size)) {
     check_positive_num(font_size, arg = "font_size", call = call)
   }
-  if (!is.null(bg)) {
-    bg <- resolve_color(bg, call = call)
+  if (!is.null(background)) {
+    background <- resolve_color(background, call = call)
   }
-  if (!is.null(fg)) {
-    fg <- resolve_color(fg, call = call)
+  if (!is.null(color)) {
+    color <- resolve_color(color, call = call)
   }
   if (!is.null(repeat_on_page)) {
     check_scalar_lgl(repeat_on_page, arg = "repeat_on_page", call = call)
@@ -223,8 +223,8 @@ fr_header <- function(
     align = if (!missing(align)) align else old$align,
     align_map = if (!is.null(align_map)) align_map else old$align_map,
     bold = if (!missing(bold)) bold else old$bold,
-    bg = if (!missing(bg)) bg else old$bg,
-    fg = if (!missing(fg)) fg else old$fg,
+    background = if (!missing(background)) background else old$background,
+    color = if (!missing(color)) color else old$color,
     font_size = if (!missing(font_size)) font_size else old$font_size,
     span_gap = old$span_gap
   )

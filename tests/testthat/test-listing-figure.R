@@ -161,11 +161,11 @@ test_that("fr_listing works with fr_rows sort_by", {
   expect_equal(spec$body$sort_by, c("USUBJID", "ASTDY"))
 })
 
-test_that("fr_listing works with fr_rows repeat_cols", {
+test_that("fr_listing works with fr_rows suppress", {
   spec <- df_listing |>
     fr_listing() |>
-    fr_rows(repeat_cols = "USUBJID")
-  expect_equal(spec$body$repeat_cols, "USUBJID")
+    fr_rows(suppress = "USUBJID")
+  expect_equal(spec$body$suppress, "USUBJID")
 })
 
 test_that("fr_listing works with fr_rows page_by", {
@@ -279,7 +279,7 @@ test_that("fr_listing full pipeline assembles correct spec", {
     ) |>
     fr_rows(
       sort_by = c("USUBJID", "ASTDY"),
-      repeat_cols = "USUBJID"
+      suppress = "USUBJID"
     ) |>
     fr_header(bold = TRUE) |>
     fr_page(font_size = 7) |>
@@ -292,7 +292,7 @@ test_that("fr_listing full pipeline assembles correct spec", {
   expect_length(spec$meta$titles, 2L)
   expect_length(spec$meta$footnotes, 1L)
   expect_equal(spec$body$sort_by, c("USUBJID", "ASTDY"))
-  expect_equal(spec$body$repeat_cols, "USUBJID")
+  expect_equal(spec$body$suppress, "USUBJID")
   expect_true(spec$header$bold)
   expect_equal(spec$page$font_size, 7) # overridden from listing default of 8
   expect_s3_class(spec$pagehead, "fr_pagechrome")

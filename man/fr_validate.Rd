@@ -34,7 +34,7 @@ error.
 \item Column widths sum to printable area (warning if >110\%)
 \item Style row/col indices are in valid range
 \item Font family is recognised
-\item \code{sort_by} / \code{repeat_cols} columns exist (for listings)
+\item \code{sort_by} / \code{suppress} columns exist (for listings)
 }
 }
 

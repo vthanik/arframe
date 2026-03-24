@@ -144,8 +144,8 @@ spec <- tbl_demog |>
   fr_hlines("header") |>
   fr_styles(
     fr_row_style(rows = 1, bold = TRUE),
-    fr_col_style(cols = "total", bg = "#EBF5FB"),
-    fr_style(rows = 3, cols = "placebo", fg = "#CC0000")
+    fr_col_style(cols = "total", background = "#EBF5FB"),
+    fr_style(rows = 3, cols = "placebo", color = "#CC0000")
   )
 ```
 
@@ -157,10 +157,10 @@ spec
 
 | Constructor | Scope | Key args |
 |------------|-------|----------|
-| `fr_row_style()` | Entire row(s) | `rows`, `bold`, `bg`, `fg`, `align`, `valign`, `height`, ... |
-| `fr_col_style()` | Entire column(s) | `cols`, `bold`, `bg`, `fg`, `align`, `valign`, ... |
-| `fr_style()` | Row-column intersection | `region`, `rows`, `cols`, `bold`, `bg`, `fg`, `align`, `valign`, `colspan`, ... |
-| `fr_style_if()` | Data-driven (conditional) | `condition`, `cols`, `apply_to`, `bold`, `bg`, `fg`, `align`, ... |
+| `fr_row_style()` | Entire row(s) | `rows`, `bold`, `background`, `color`, `align`, `valign`, `height`, ... |
+| `fr_col_style()` | Entire column(s) | `cols`, `bold`, `background`, `color`, `align`, `valign`, ... |
+| `fr_style()` | Row-column intersection | `region`, `rows`, `cols`, `bold`, `background`, `color`, `align`, `valign`, `colspan`, ... |
+| `fr_style_if()` | Data-driven (conditional) | `condition`, `cols`, `apply_to`, `bold`, `background`, `color`, `align`, ... |
 
 `fr_style()` targets a specific `region`: `"body"` (default), `"header"`, or `"stub"`.
 `valign` controls vertical placement within the cell: `"top"`, `"middle"`, or `"bottom"`.
@@ -189,7 +189,7 @@ spec <- tbl_ae_soc |>
     ),
     fr_row_style(
       rows = fr_rows_matches("row_type", value = "total"),
-      bold = TRUE, bg = "#D5E8D4"
+      bold = TRUE, background = "#D5E8D4"
     )
   )
 ```
@@ -217,8 +217,8 @@ spec <- tbl_tte |>
 spec <- tbl_demog |>
   fr_table() |>
   fr_styles(
-    fr_style(region = "header", bold = TRUE, bg = "#003366",
-             fg = "#FFFFFF", align = "center")
+    fr_style(region = "header", bold = TRUE, background = "#003366",
+             color = "#FFFFFF", align = "center")
   )
 ```
 
@@ -232,7 +232,7 @@ spec
 spec <- tbl_disp |>
   fr_table() |>
   fr_styles(
-    fr_row_style(rows = seq(1, nrow(tbl_disp), 2), bg = "#F5F5F5")
+    fr_row_style(rows = seq(1, nrow(tbl_disp), 2), background = "#F5F5F5")
   )
 ```
 
@@ -258,7 +258,7 @@ spec <- tbl_demog |>
       cols = "characteristic",
       condition = ~ .x == "Total",
       apply_to = "row",
-      bold = TRUE, bg = "#E8E8E8"
+      bold = TRUE, background = "#E8E8E8"
     )
   )
 ```
@@ -274,7 +274,7 @@ spec <- tbl_disp |>
     fr_style_if(
       condition = ~ (.x %% 2) == 0,
       apply_to = "row",
-      bg = "#F5F5F5"
+      background = "#F5F5F5"
     )
   )
 ```
@@ -298,7 +298,7 @@ spec <- pval_data |>
       cols = "pvalue",
       condition = ~ as.numeric(.x) < 0.05,
       apply_to = "row",
-      bold = TRUE, fg = "#CC0000"
+      bold = TRUE, color = "#CC0000"
     )
   )
 ```
@@ -315,7 +315,7 @@ spec <- tbl_ae_soc |>
       cols = "soc",
       condition = ~ grepl("SKIN|GASTROINTESTINAL", .x, ignore.case = TRUE),
       apply_to = "row",
-      bg = "#FFF3CD"
+      background = "#FFF3CD"
     )
   )
 ```
@@ -332,7 +332,7 @@ tbl_demog |>
       cols = "characteristic",
       condition = is_total,
       apply_to = "row",
-      bold = TRUE, bg = "#E8E8E8"
+      bold = TRUE, background = "#E8E8E8"
     )
   )
 ```
@@ -353,10 +353,10 @@ spec <- tbl_demog |>
   fr_table() |>
   fr_cols(group = fr_col(visible = FALSE)) |>
   fr_styles(
-    fr_col_style(cols = "total", bg = "#F0F4F8"),       # broadest
+    fr_col_style(cols = "total", background = "#F0F4F8"),       # broadest
     fr_row_style(rows = 1, bold = TRUE),                # narrower
     fr_style(rows = 1, cols = "total",
-             bg = "#003366", fg = "#FFFFFF")             # most specific
+             background = "#003366", color = "#FFFFFF")             # most specific
   )
 ```
 
@@ -369,7 +369,7 @@ spec <- tbl_demog |>
   fr_table() |>
   fr_styles(
     fr_row_style(rows = 1, bold = TRUE),
-    fr_col_style(cols = "total", bg = "#EBF5FB")
+    fr_col_style(cols = "total", background = "#EBF5FB")
   )
 fr_style_explain(spec, row = 1, col = "total")
 ```

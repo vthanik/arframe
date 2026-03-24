@@ -894,9 +894,9 @@ rtf_title_rows <- function(spec, columns, cellx, color_info, panel_idx = 1L) {
 #' @noRd
 rtf_page_by_rows <- function(spec, columns, cellx, group_label) {
   fs <- pt_to_half_pt(spec$page$font_size)
-  pb_align <- fr_env$align_to_rtf[[spec$body$page_by_align %||% "left"]]
-  pb_bold_on <- if (isTRUE(spec$body$page_by_bold)) "\\b " else ""
-  pb_bold_off <- if (isTRUE(spec$body$page_by_bold)) "\\b0" else ""
+  pb_align <- fr_env$align_to_rtf[["left"]]
+  pb_bold_on <- ""
+  pb_bold_off <- ""
   content <- rtf_escape_and_resolve(group_label)
 
   pb_fs_pt <- spec$page$font_size
@@ -1116,8 +1116,8 @@ rtf_col_header_row <- function(
 
     # Background color
     bg_str <- ""
-    if (!is.na(g$bg) && nzchar(g$bg)) {
-      ci <- color_info$index[[g$bg]]
+    if (!is.na(g$background) && nzchar(g$background)) {
+      ci <- color_info$index[[g$background]]
       if (!is.null(ci)) bg_str <- paste0("\\clcbpat", ci)
     }
 
@@ -1168,8 +1168,8 @@ rtf_col_header_row <- function(
 
     # Foreground color
     fg_str <- ""
-    if (!is.na(g$fg) && g$fg != "#000000") {
-      ci <- color_info$index[[g$fg]]
+    if (!is.na(g$color) && g$color != "#000000") {
+      ci <- color_info$index[[g$color]]
       if (!is.null(ci)) fg_str <- paste0("\\cf", ci, " ")
     }
 
@@ -1262,14 +1262,14 @@ rtf_body_rows <- function(
 
   # Pre-extract cell_grid columns as vectors for O(1) indexed access.
   # Grid is column-major (build_cell_grid): cell (i, j) → index (j-1)*nr + i.
-  cg_bg <- cell_grid$bg
+  cg_bg <- cell_grid$background
   cg_valign <- cell_grid$valign
   cg_align <- cell_grid$align
   cg_content <- cell_grid$content
   cg_bold <- cell_grid$bold
   cg_italic <- cell_grid$italic
   cg_underline <- cell_grid$underline
-  cg_fg <- cell_grid$fg
+  cg_fg <- cell_grid$color
   cg_indent <- cell_grid$indent
   cg_font_size <- cell_grid$font_size
 
@@ -1299,7 +1299,7 @@ rtf_body_rows <- function(
     for (j in seq_len(ncol)) {
       idx <- (j - 1L) * nr + i
 
-      # --- Cell definition (borders, bg, valign) ---
+      # --- Cell definition (borders, background, valign) ---
       bg <- cg_bg[idx]
       bg_str <- ""
       if (!is.na(bg) && nzchar(bg)) {

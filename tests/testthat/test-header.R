@@ -92,13 +92,13 @@ test_that("fr_cols and fr_header are order-independent", {
   expect_equal(fspec2$columns$zom_50mg$label, "Zom 50mg\n(N=45)")
 })
 
-test_that("fr_header sets bg and fg", {
+test_that("fr_header sets background and color", {
   spec <- tbl_demog |>
     fr_table() |>
-    fr_header(bg = "#E0E0E0", fg = "navy")
+    fr_header(background = "#E0E0E0", color = "navy")
 
-  expect_equal(spec$header$bg, "#E0E0E0")
-  expect_equal(spec$header$fg, "#000080")
+  expect_equal(spec$header$background, "#E0E0E0")
+  expect_equal(spec$header$color, "#000080")
 })
 
 test_that("fr_header sets font_size", {
@@ -155,7 +155,7 @@ test_that("header_cfg flows to build_header_cell_grid", {
   spec <- tbl_demog |>
     fr_table() |>
     fr_cols(.width = "auto") |>
-    fr_header(bold = FALSE, bg = "#E0E0E0", font_size = 8)
+    fr_header(bold = FALSE, background = "#E0E0E0", font_size = 8)
 
   fspec <- arframe:::finalize_spec(spec)
   vis_cols <- Filter(function(c) !isFALSE(c$visible), fspec$columns)
@@ -171,7 +171,7 @@ test_that("header_cfg flows to build_header_cell_grid", {
   )
 
   expect_false(any(hgrid$bold))
-  expect_true(all(hgrid$bg == "#E0E0E0"))
+  expect_true(all(hgrid$background == "#E0E0E0"))
   expect_true(all(hgrid$font_size == 8))
 })
 

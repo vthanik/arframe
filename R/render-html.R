@@ -749,14 +749,9 @@ html_section <- function(
       isTRUE(spec$body$page_by_visible %||% TRUE)
   ) {
     content <- html_escape_and_resolve(group$group_label)
-    pb_bold <- if (isTRUE(spec$body$page_by_bold)) {
-      " style=\"font-weight:bold\""
-    } else {
-      ""
-    }
     parts <- c(
       parts,
-      paste0("<div class=\"ar-page-by\"", pb_bold, ">", content, "</div>")
+      paste0("<div class=\"ar-page-by\">", content, "</div>")
     )
   }
 
@@ -819,7 +814,12 @@ html_titles <- function(spec, panel_idx = 1L) {
 
       content <- html_escape_and_resolve(entry$content)
       # Newlines in title content
-      content <- gsub("\n", "<br style=\"line-height:0\">", content, fixed = TRUE)
+      content <- gsub(
+        "\n",
+        "<br style=\"line-height:0\">",
+        content,
+        fixed = TRUE
+      )
 
       # Continuation on panel 2+
       if (idx == 1L && !is.null(continuation) && panel_idx > 1L) {
@@ -973,7 +973,12 @@ html_spanner_rows <- function(spec, vis_columns, borders, span_overrides) {
           if (!is.na(ov)) span_label <- ov
         }
         content <- html_escape_and_resolve(span_label)
-        content <- gsub("\n", "<br style=\"line-height:0\">", content, fixed = TRUE)
+        content <- gsub(
+          "\n",
+          "<br style=\"line-height:0\">",
+          content,
+          fixed = TRUE
+        )
 
         # Border on spanning header
         border_css <- html_span_border_css(
@@ -1072,7 +1077,12 @@ html_col_header_row <- function(spec, vis_columns, borders, label_overrides) {
         }
       }
       content <- html_escape_and_resolve(label %||% "")
-      content <- gsub("\n", "<br style=\"line-height:0\">", content, fixed = TRUE)
+      content <- gsub(
+        "\n",
+        "<br style=\"line-height:0\">",
+        content,
+        fixed = TRUE
+      )
 
       style_parts <- character(0)
       style_parts <- c(style_parts, paste0("text-align:", g$align))
@@ -1087,11 +1097,11 @@ html_col_header_row <- function(spec, vis_columns, borders, label_overrides) {
       if (isTRUE(g$underline)) {
         style_parts <- c(style_parts, "text-decoration:underline")
       }
-      if (!is.na(g$fg) && g$fg != "#000000") {
-        style_parts <- c(style_parts, paste0("color:", g$fg))
+      if (!is.na(g$color) && g$color != "#000000") {
+        style_parts <- c(style_parts, paste0("color:", g$color))
       }
-      if (!is.na(g$bg) && nzchar(g$bg)) {
-        style_parts <- c(style_parts, paste0("background-color:", g$bg))
+      if (!is.na(g$background) && nzchar(g$background)) {
+        style_parts <- c(style_parts, paste0("background-color:", g$background))
       }
       if (g$font_size != spec$page$font_size) {
         style_parts <- c(style_parts, paste0("font-size:", g$font_size, "pt"))
@@ -1149,8 +1159,8 @@ html_body_rows <- function(
   cg_bold <- cell_grid$bold
   cg_italic <- cell_grid$italic
   cg_underline <- cell_grid$underline
-  cg_fg <- cell_grid$fg
-  cg_bg <- cell_grid$bg
+  cg_fg <- cell_grid$color
+  cg_bg <- cell_grid$background
   cg_indent <- cell_grid$indent
   cg_font_size <- cell_grid$font_size
   cg_valign <- cell_grid$valign
@@ -1221,7 +1231,12 @@ html_body_rows <- function(
         formatted <- geom$formatted[row_idx[i]]
         if (nzchar(trimws(formatted))) {
           content <- html_escape_and_resolve(formatted)
-          content <- gsub("\n", "<br style=\"line-height:0\">", content, fixed = TRUE)
+          content <- gsub(
+            "\n",
+            "<br style=\"line-height:0\">",
+            content,
+            fixed = TRUE
+          )
           # Decimal-aligned cells use pre-formatted whitespace
           style_parts <- c(style_parts, "white-space:pre")
         } else {
@@ -1229,7 +1244,12 @@ html_body_rows <- function(
         }
       } else {
         content <- html_escape_and_resolve(cg_content[idx])
-        content <- gsub("\n", "<br style=\"line-height:0\">", content, fixed = TRUE)
+        content <- gsub(
+          "\n",
+          "<br style=\"line-height:0\">",
+          content,
+          fixed = TRUE
+        )
       }
 
       cells[[j]] <- paste0(

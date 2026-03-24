@@ -9,8 +9,8 @@ fr_header(
   align = NULL,
   valign = NULL,
   bold = NULL,
-  bg = NULL,
-  fg = NULL,
+  background = NULL,
+  color = NULL,
   font_size = NULL,
   repeat_on_page = NULL
 )
@@ -52,10 +52,10 @@ to the body \code{align} setting.
 \code{NULL} inherits the built-in default (FALSE). Set \code{TRUE} explicitly
 if you want bold headers.}
 
-\item{bg}{Background colour for header cells: hex string (\code{"#003366"}) or
+\item{background}{Background colour for header cells: hex string (\code{"#003366"}) or
 CSS named colour (\code{"steelblue"}, \code{"lightgray"}, etc.). \code{NULL} inherits.}
 
-\item{fg}{Foreground (text) colour for header cells: hex string or CSS
+\item{color}{Foreground (text) colour for header cells: hex string or CSS
 named colour. \code{NULL} inherits.}
 
 \item{font_size}{Font size in points for header cells. \code{NULL} inherits
@@ -120,12 +120,12 @@ tbl_demog |>
 # Hex colour
 tbl_demog |>
   fr_table() |>
-  fr_header(bg = "#E0E0E0", bold = TRUE)
+  fr_header(background = "#E0E0E0", bold = TRUE)
 
 # CSS named colour (148 available: lavender, aliceblue, gainsboro, etc.)
 tbl_demog |>
   fr_table() |>
-  fr_header(bg = "lavender", fg = "midnightblue", bold = TRUE)
+  fr_header(background = "lavender", color = "midnightblue", bold = TRUE)
 
 ## ── N-counts now on fr_cols(), not fr_header() ────────────────────────────
 

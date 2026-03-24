@@ -394,8 +394,7 @@ reconstruct_renamed_ard <- function(df, column, call) {
 #'       stat_label = fr_col("", width = 2.5),
 #'       .align = "decimal"
 #'     ) |>
-#'     fr_rows(group_by = "variable", group_label = "stat_label",
-#'             group_bold = TRUE)
+#'     fr_rows(group_by = list(cols = "variable", label = "stat_label"))
 #' }
 #'
 #' @seealso [fr_table()] for the pipeline entry point.
@@ -542,7 +541,6 @@ fr_wide_ard <- function(
         col_vals <- normalize_ard_chr(df[[gp$name_col]])
         column <- col_vals[!is.na(col_vals)][1L]
       }
-
     } else {
       df$arm <- NA_character_
     }
@@ -625,7 +623,9 @@ fr_wide_ard <- function(
   # group1 = <parent_var> (e.g., AEBODSYS) instead of the by-variable
   # (e.g., TRT01A). Their arm was set to the parent level value — correct
   # it to NA so the overall-labelling step converts them to "Total".
-  if (hierarchy$is_hierarchical && !is.null(column) && "group1" %in% names(df)) {
+  if (
+    hierarchy$is_hierarchical && !is.null(column) && "group1" %in% names(df)
+  ) {
     g1_names <- if (is.list(df$group1)) {
       normalize_ard_chr(df$group1)
     } else {

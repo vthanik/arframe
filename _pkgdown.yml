@@ -115,7 +115,7 @@ reference:
       `fr_header()` controls header presentation: bold, `align` (scalar or
       tidyselect named list for per-column targeting), `valign`
       (`"bottom"` default aligns short labels under multi-line ones),
-      `bg`/`fg` colors, `font_size`, and `repeat_on_page`. N-counts are
+      `background`/`color` colors, `font_size`, and `repeat_on_page`. N-counts are
       set via `fr_cols(.n=)`. `fr_spans()` adds spanning headers at one or
       more levels (`.level`) with optional underline (`.hline`) and gap
       columns (`.gap`). For simple grouping, use `fr_col(group=)` inside
@@ -142,11 +142,12 @@ reference:
 
   - title: "Row Organization"
     desc: >
-      `fr_rows()` handles `group_by` (keep-together groups), `page_by` (page
-      breaks with a group label), `indent_by` (single-level string or
-      multi-level named list for SOC/HLT/PT hierarchies), `group_label`
-      (inject group values as header rows into a display column),
-      `blank_after`, `sort_by`, `repeat_cols`, `wrap`, `group_bold`, and `group_keep`.
+      `fr_rows()` handles `group_by` (keep-together groups, with optional
+      `label` for header row injection via list form), `page_by` (page breaks
+      with a group label, with optional `visible` control via list form),
+      `indent_by` (single-level string or multi-level named list for
+      SOC/HLT/PT hierarchies), `blank_after`, `sort_by`, `suppress`, `wrap`,
+      and `group_keep`.
       `fr_rows_matches()` creates data-driven row selectors (exact value or
       regex) for use in styling verbs.
     contents:

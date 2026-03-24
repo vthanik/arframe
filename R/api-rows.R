@@ -24,16 +24,41 @@
 #'   at the top of the next page.
 #'
 #' @param spec An `fr_spec` object from [fr_table()].
-#' @param page_by Character vector of column name(s). A new page begins
-#'   whenever any of these columns change value. The column value is rendered
-#'   as a group label above the column headers, and the column is
-#'   **automatically hidden** from the table body at render time. Use for
-#'   multi-SOC tables that break by System Organ Class.
-#' @param group_by Character vector of column name(s). Rows sharing the same
-#'   value are visually grouped (indented detail rows, kept together on the
-#'   same page when possible). When a group spans pages, a "(continued)"
-#'   header row repeats at the top of the next page. To add blank rows
-#'   between groups, also set `blank_after` to the same column(s).
+#' @param page_by Page break specification. Accepts two forms:
+#'
+#'   **Simple (character)**: Character vector of column name(s). A new page
+#'   begins whenever any of these columns change value. The column value is
+#'   rendered as a group label above the column headers, and the column is
+#'   **automatically hidden** from the table body at render time.
+#'
+#'   **List form**: A named list with elements:
+#'   * `cols` — character vector of column name(s) (required)
+#'   * `visible` — logical; whether the page-by label is displayed above the
+#'     column headers (default `TRUE`). Set `FALSE` to get page breaks at group
+#'     boundaries without a visible label.
+#'
+#'   Style page-by labels (bold, alignment) via [fr_styles()] by targeting
+#'   page-by rows.
+#'
+#' @param group_by Group specification. Accepts two forms:
+#'
+#'   **Simple (character)**: Character vector of column name(s). Rows sharing
+#'   the same value are visually grouped (kept together on the same page when
+#'   possible). When a group spans pages, a "(continued)" header row repeats
+#'   at the top of the next page.
+#'
+#'   **List form**: A named list with elements:
+#'   * `cols` — character vector of column name(s) (required)
+#'   * `label` — character scalar; column name into which group header values
+#'     are injected. A **header row** is inserted at the start of each group.
+#'     When `label` is set and `indent_by` is not, `indent_by` is
+#'     **automatically inferred** from `label`.
+#'   * `leaf` — character scalar; reserved for multi-level hierarchy (future).
+#'     Must be one of the `cols` values.
+#'
+#'   Style group header rows (bold, etc.) via [fr_styles()] by targeting
+#'   group header rows with [fr_rows_matches()].
+#'
 #' @param indent_by Row indentation specification. Accepts two forms:
 #'
 #'   **Simple (single level)**: A character vector of column name(s). All
@@ -51,34 +76,6 @@
 #'   Rows whose key value is not in `levels` receive no indent.
 #' @param blank_after Character vector of column name(s). A blank row is
 #'   inserted after each group boundary in these columns.
-#' @param page_by_bold Logical. Whether the page-by label is rendered in
-#'   bold. Default `FALSE`. Set `TRUE` to make the label stand out above
-#'   the column headers.
-#' @param page_by_align Horizontal alignment for the page-by label. One of
-#'   `"left"` (default), `"center"`, `"right"`, or `"decimal"`.
-#' @param page_by_visible Logical. Whether the page-by group label is
-#'   displayed above the column headers. Default `TRUE`. Set `FALSE` to get
-#'   page breaks at group boundaries without a visible label — useful when
-#'   the grouping column already appears in the table body.
-#' @param group_label Character scalar. Column name into which group header
-#'   values are injected. When `group_by` and `group_label` are both set,
-#'   a **header row** is inserted at the start of each group: the group's
-#'   value (from `group_by`) appears in the `group_label` column, all other
-#'   columns are empty, and detail rows are indented underneath.
-#'
-#'   When `group_label` is set and `indent_by` is not, `indent_by` is
-#'   **automatically inferred** from `group_label` — so you only need:
-#'   ```r
-#'   fr_rows(group_by = "group", group_label = "stat")
-#'   # indent_by = "stat" is implied — detail rows auto-indented
-#'   ```
-#'
-#'   Use `group_bold = TRUE` to bold the injected header rows, or
-#'   style them further via [fr_styles()]. Requires `group_by`.
-#' @param group_bold Logical. Whether group header rows injected by
-#'   `group_label` are rendered in bold. Default `FALSE`. Set `TRUE` to
-#'   make group headers visually distinct from detail rows. Only takes
-#'   effect when `group_label` is set.
 #' @param group_keep Logical. Whether `group_by` groups are kept together
 #'   on the same page via RTF `\keepn` / LaTeX keep-with-next. Default
 #'   `TRUE`. Set `FALSE` for visual-only grouping (blank_after, indent)
@@ -130,6 +127,8 @@
 #'   but not necessarily start on a new page.
 #' * `blank_after` is the simplest way to add visual group separation without
 #'   bold headers.
+#' * Style page-by labels and group header rows via [fr_styles()] for full
+#'   control over bold, alignment, and other formatting.
 #'
 #' @examples
 #' ## ── AE table paginated by System Organ Class ─────────────────────────────
@@ -165,6 +164,12 @@
 #'     indent_by = "pt"
 #'   )
 #'
+#' ## ── page_by with hidden label (page breaks only, no visible label) ───────
+#'
+#' tbl_ae_soc |>
+#'   fr_table() |>
+#'   fr_rows(page_by = list(cols = "soc", visible = FALSE))
+#'
 #' ## ── Multi-level indent (SOC / HLT / PT hierarchy) ─────────────────────
 #' ## Uses a named list: key column determines indent level per row
 #'
@@ -189,8 +194,8 @@
 #'     )
 #'   )
 #'
-#' ## ── group_label: auto-inject group headers ─────────────────────────
-#' ## group_label creates header rows from group_by values.
+#' ## ── group_by list form: auto-inject group headers ────────────────────
+#' ## label injects header rows from group_by values into the named column.
 #' ## indent_by is auto-inferred — no need to specify both.
 #' ##
 #' ## Result:
@@ -213,8 +218,7 @@
 #'   fr_table() |>
 #'   fr_cols(group = fr_col(visible = FALSE)) |>
 #'   fr_rows(
-#'     group_by    = "group",
-#'     group_label = "stat"
+#'     group_by = list(cols = "group", label = "stat")
 #'   )
 #'
 #' ## ── sort_by: order a listing by subject and start date ────────────────
@@ -223,13 +227,13 @@
 #'   fr_table() |>
 #'   fr_rows(sort_by = c("USUBJID", "ASTDT"))
 #'
-#' ## ── repeat_cols: suppress repeated subject IDs in a listing ───────────
+#' ## ── suppress: suppress repeated subject IDs in a listing ───────────
 #'
 #' adae[1:20, c("USUBJID", "AEBODSYS", "AEDECOD", "AESEV")] |>
 #'   fr_table() |>
 #'   fr_rows(
 #'     sort_by     = c("USUBJID", "AEBODSYS"),
-#'     repeat_cols = "USUBJID"
+#'     suppress = "USUBJID"
 #'   )
 #'
 #' ## ── wrap = TRUE: enable text wrapping for long verbatim terms ─────────
@@ -238,13 +242,13 @@
 #'   fr_table() |>
 #'   fr_rows(wrap = TRUE)
 #'
-#' ## ── Combined: sort_by + repeat_cols on adverse event listing ──────────
+#' ## ── Combined: sort_by + suppress on adverse event listing ──────────
 #'
 #' adae[1:30, c("USUBJID", "AEBODSYS", "AEDECOD", "AESEV", "ASTDT")] |>
 #'   fr_table() |>
 #'   fr_rows(
 #'     sort_by     = c("USUBJID", "AEBODSYS", "AEDECOD"),
-#'     repeat_cols = c("USUBJID", "AEBODSYS"),
+#'     suppress = c("USUBJID", "AEBODSYS"),
 #'     wrap        = TRUE
 #'   )
 #'
@@ -252,7 +256,7 @@
 #'   columns before rendering. For listings, this controls the display order
 #'   (e.g., `sort_by = c("USUBJID", "ASTDT")`). Sorting is applied in
 #'   `finalize_spec()`.
-#' @param repeat_cols Character vector of column name(s). Suppresses repeated
+#' @param suppress Character vector of column name(s). Suppresses repeated
 #'   consecutive values in these columns — only the first occurrence in each
 #'   run is displayed. Standard for listings where subject ID appears once per
 #'   block. Suppression is applied in `finalize_spec()`.
@@ -270,14 +274,9 @@ fr_rows <- function(
   group_by = NULL,
   indent_by = NULL,
   blank_after = NULL,
-  page_by_bold = FALSE,
-  page_by_align = "left",
-  page_by_visible = TRUE,
-  group_label = NULL,
-  group_bold = FALSE,
   group_keep = TRUE,
   sort_by = NULL,
-  repeat_cols = NULL,
+  suppress = NULL,
   wrap = FALSE
 ) {
   call <- caller_env()
@@ -362,25 +361,77 @@ fr_rows <- function(
     )
   }
 
-  if (!missing(group_label) && !is.null(group_label)) {
-    check_scalar_chr(group_label, arg = "group_label", call = call)
-    validate_cols_exist(
-      group_label,
-      names(spec$data),
-      arg = "group_label",
-      call = call
-    )
-    # group_label requires group_by to have any effect
-    effective_group_by <- if (!missing(group_by)) {
-      group_by
+  # ── Normalise page_by: string or list(cols, visible) ────────────────────
+  page_by_cols <- NULL
+  page_by_visible <- NULL
+  if (!missing(page_by) && !is.null(page_by)) {
+    if (is.character(page_by)) {
+      page_by_cols <- validate_cols(page_by, "page_by")
+      page_by_visible <- TRUE
+    } else if (is.list(page_by) && "cols" %in% names(page_by)) {
+      page_by_cols <- validate_cols(page_by$cols, "page_by$cols")
+      page_by_visible <- page_by$visible %||% TRUE
+      check_scalar_lgl(page_by_visible, arg = "page_by$visible", call = call)
     } else {
-      spec$body$group_by
-    }
-    if (is.null(effective_group_by) || length(effective_group_by) == 0L) {
       cli_abort(
         c(
-          "{.arg group_label} requires {.arg group_by} to be set.",
-          "i" = "Set {.code group_by} in this call or a prior {.fn fr_rows} call."
+          "{.arg page_by} must be a character vector or a list with a {.val cols} element.",
+          "x" = "You supplied {.obj_type_friendly {page_by}}.",
+          "i" = paste0(
+            "Simple: {.code page_by = \"PARAM\"}. ",
+            "List: {.code page_by = list(cols = \"PARAM\", visible = FALSE)}"
+          )
+        ),
+        call = call
+      )
+    }
+  }
+
+  # ── Normalise group_by: string or list(cols, label, leaf) ───────────────
+  group_by_cols <- NULL
+  group_label <- NULL
+  group_leaf <- NULL
+  if (!missing(group_by) && !is.null(group_by)) {
+    if (is.character(group_by)) {
+      group_by_cols <- validate_cols(group_by, "group_by")
+    } else if (is.list(group_by) && "cols" %in% names(group_by)) {
+      group_by_cols <- validate_cols(group_by$cols, "group_by$cols")
+
+      # Validate label
+      if (!is.null(group_by$label)) {
+        check_scalar_chr(group_by$label, arg = "group_by$label", call = call)
+        validate_cols_exist(
+          group_by$label,
+          names(spec$data),
+          arg = "group_by$label",
+          call = call
+        )
+        group_label <- group_by$label
+      }
+
+      # Validate leaf (placeholder for Fix 3)
+      if (!is.null(group_by$leaf)) {
+        check_scalar_chr(group_by$leaf, arg = "group_by$leaf", call = call)
+        if (!group_by$leaf %in% group_by$cols) {
+          cli_abort(
+            c(
+              "{.arg group_by$leaf} must be one of the {.arg group_by$cols} values.",
+              "x" = "{.val {group_by$leaf}} is not in {.val {group_by$cols}}."
+            ),
+            call = call
+          )
+        }
+        group_leaf <- group_by$leaf
+      }
+    } else {
+      cli_abort(
+        c(
+          "{.arg group_by} must be a character vector or a list with a {.val cols} element.",
+          "x" = "You supplied {.obj_type_friendly {group_by}}.",
+          "i" = paste0(
+            "Simple: {.code group_by = \"soc\"}. ",
+            "List: {.code group_by = list(cols = \"variable\", label = \"stat_label\")}"
+          )
         ),
         call = call
       )
@@ -388,8 +439,8 @@ fr_rows <- function(
   }
 
   # Warn if multi-level indent_by is set without group_by
+  effective_gb <- group_by_cols %||% spec$body$group_by
   if (!missing(indent_by) && is.list(indent_by)) {
-    effective_gb <- if (!missing(group_by)) group_by else spec$body$group_by
     if (is.null(effective_gb) || length(effective_gb) == 0L) {
       cli::cli_warn(
         c(
@@ -401,40 +452,16 @@ fr_rows <- function(
     }
   }
 
-  if (!missing(page_by_bold)) {
-    check_scalar_lgl(page_by_bold, arg = "page_by_bold", call = call)
-  }
-  if (!missing(page_by_visible)) {
-    check_scalar_lgl(page_by_visible, arg = "page_by_visible", call = call)
-  }
-  if (!missing(group_bold)) {
-    check_scalar_lgl(group_bold, arg = "group_bold", call = call)
-  }
   if (!missing(group_keep)) {
     check_scalar_lgl(group_keep, arg = "group_keep", call = call)
   }
   if (!missing(wrap)) {
     check_scalar_lgl(wrap, arg = "wrap", call = call)
   }
-  if (!missing(page_by_align)) {
-    page_by_align <- match_arg_fr(
-      page_by_align,
-      fr_env$valid_aligns,
-      call = call
-    )
-  }
 
   # Validate page_by and group_by don't share the same column
-  effective_page_by <- if (!missing(page_by) && !is.null(page_by)) {
-    page_by
-  } else {
-    spec$body$page_by
-  }
-  effective_group_by <- if (!missing(group_by) && !is.null(group_by)) {
-    group_by
-  } else {
-    spec$body$group_by
-  }
+  effective_page_by <- page_by_cols %||% spec$body$page_by
+  effective_group_by <- group_by_cols %||% spec$body$group_by
   if (
     !is.null(effective_page_by) &&
       !is.null(effective_group_by) &&
@@ -452,10 +479,12 @@ fr_rows <- function(
 
   old <- spec$body
 
+  # Resolve group_label: from list-form group_by or from prior call
+  effective_gl <- group_label %||% old$group_label
+
   # Auto-infer indent_by from group_label when not explicitly set.
   # group_label inserts header rows — detail rows should be indented under them.
   effective_indent <- validate_indent_by(indent_by) %||% old$indent_by
-  effective_gl <- if (!missing(group_label)) group_label else old$group_label
   indent_not_set <- is.null(effective_indent) ||
     (is.character(effective_indent) && length(effective_indent) == 0L)
   if (indent_not_set && !is.null(effective_gl)) {
@@ -463,45 +492,40 @@ fr_rows <- function(
   }
 
   spec$body <- new_fr_body(
-    page_by = validate_cols(page_by, "page_by") %||% old$page_by,
-    group_by = validate_cols(group_by, "group_by") %||% old$group_by,
+    page_by = page_by_cols %||% old$page_by,
+    group_by = group_by_cols %||% old$group_by,
     indent_by = effective_indent,
     blank_after = validate_cols(blank_after, "blank_after") %||%
       old$blank_after,
-    page_by_bold = if (!missing(page_by_bold)) {
-      page_by_bold
-    } else {
-      old$page_by_bold
-    },
-    page_by_align = if (!missing(page_by_align)) {
-      page_by_align
-    } else {
-      old$page_by_align
-    },
-    page_by_visible = if (!missing(page_by_visible)) {
+    page_by_visible = if (!is.null(page_by_visible)) {
       page_by_visible
     } else {
       old$page_by_visible
     },
-    group_label = if (!missing(group_label)) {
-      group_label
-    } else {
-      old$group_label
-    },
-    group_bold = if (!missing(group_bold)) {
-      group_bold
-    } else {
-      old$group_bold
-    },
+    group_label = effective_gl,
     group_keep = if (!missing(group_keep)) {
       group_keep
     } else {
       old$group_keep
     },
+    group_leaf = group_leaf %||% old$group_leaf,
+    group_hierarchy_cols = if (
+      !is.null(group_leaf) && length(group_by_cols) > 1L
+    ) {
+      group_by_cols
+    } else {
+      old$group_hierarchy_cols
+    },
     sort_by = validate_cols(sort_by, "sort_by") %||% old$sort_by,
-    repeat_cols = validate_cols(repeat_cols, "repeat_cols") %||%
-      old$repeat_cols,
+    suppress = validate_cols(suppress, "suppress") %||%
+      old$suppress,
     wrap = if (!missing(wrap)) wrap else old$wrap
   )
+
+  # Collapse hierarchy immediately so __display__ and __row_level__ columns
+
+  # exist in spec$data for downstream fr_cols() calls.
+  spec <- collapse_hierarchy(spec)
+
   spec
 }

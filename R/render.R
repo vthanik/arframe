@@ -98,7 +98,7 @@
 #'     AESEV   = fr_col("Severity", width = 1.0)
 #'   ) |>
 #'   fr_rows(sort_by = c("USUBJID", "ASTDT"),
-#'           repeat_cols = "USUBJID") |>
+#'           suppress = "USUBJID") |>
 #'   fr_titles("Listing 16.2.7", "Adverse Events") |>
 #'   fr_footnotes("Source: ADAE") |>
 #'   fr_render(out)
@@ -518,13 +518,16 @@ finalize_columns <- function(spec) {
 
   # Resolve column visibility:
   # - page_by columns with visible = NULL -> FALSE (auto-hide)
+  # - hierarchy source columns with visible = NULL -> FALSE (auto-hide)
   # - all other columns with visible = NULL -> TRUE (default visible)
   # - explicit TRUE/FALSE always respected
   page_by_cols <- spec$body$page_by
+  auto_hide_cols <- spec$body$.auto_hide_cols %||% character(0)
+  hide_cols <- unique(c(page_by_cols, auto_hide_cols))
   for (nm in names(spec$columns)) {
     vis <- spec$columns[[nm]]$visible
     if (is.null(vis)) {
-      spec$columns[[nm]]$visible <- !(nm %in% page_by_cols)
+      spec$columns[[nm]]$visible <- !(nm %in% hide_cols)
     }
   }
 
@@ -728,10 +731,10 @@ finalize_rows <- function(spec) {
     rownames(spec$data) <- NULL
   }
 
-  # Suppress repeated values in repeat_cols (listings)
-  repeat_cols <- spec$body$repeat_cols
-  if (length(repeat_cols) > 0L) {
-    for (col in repeat_cols) {
+  # Suppress repeated values in suppress (listings)
+  suppress <- spec$body$suppress
+  if (length(suppress) > 0L) {
+    for (col in suppress) {
       if (!col %in% names(spec$data)) {
         next
       }
@@ -765,14 +768,6 @@ finalize_rows <- function(spec) {
       spec$cell_styles <- remap_style_indices_for_injected(
         spec$cell_styles,
         gl_result$header_rows
-      )
-    }
-
-    # Apply group_bold: inject row-level bold style for header rows
-    if (isTRUE(spec$body$group_bold) && length(gl_result$header_rows) > 0L) {
-      spec$cell_styles <- c(
-        spec$cell_styles,
-        list(new_fr_row_style(rows = gl_result$header_rows, bold = TRUE))
       )
     }
   }

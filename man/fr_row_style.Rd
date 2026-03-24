@@ -9,8 +9,8 @@ fr_row_style(
   bold = NULL,
   italic = NULL,
   underline = NULL,
-  fg = NULL,
-  bg = NULL,
+  color = NULL,
+  background = NULL,
   font_size = NULL,
   align = NULL,
   valign = NULL,
@@ -24,9 +24,9 @@ body rows). Row indices are 1-based. Multiple indices are supported:
 
 \item{bold, italic, underline}{Logical or \code{NULL} to inherit.}
 
-\item{fg}{Foreground (text) colour, or \code{NULL}.}
+\item{color}{Foreground (text) colour, or \code{NULL}.}
 
-\item{bg}{Background (fill) colour, or \code{NULL}.}
+\item{background}{Background (fill) colour, or \code{NULL}.}
 
 \item{font_size}{Font size in points, or \code{NULL}.}
 
@@ -62,7 +62,7 @@ because row styles are narrower than column styles.
 \section{Tips}{
 
 \itemize{
-\item Use \code{fr_row_style(rows = "all", bg = "#F5F5F5")} for a subtle
+\item Use \code{fr_row_style(rows = "all", background = "#F5F5F5")} for a subtle
 background on all body rows (zebra striping requires alternating calls:
 rows of odd/even index).
 \item Row height in regulatory tables is normally controlled by \code{fr_page(font_size = ...)}
@@ -84,16 +84,16 @@ fr_row_style(rows = 1L, bold = TRUE)
 
 ## ── Light grey background on all body rows ────────────────────────────────
 
-fr_row_style(rows = "all", bg = "#F5F5F5")
+fr_row_style(rows = "all", background = "#F5F5F5")
 
 ## ── Highlight multiple specific rows ──────────────────────────────────────
 
 # Pass a vector of row indices to style multiple disparate rows at once:
-fr_row_style(rows = c(2L, 4L, 6L), bg = "#E8F4FD")
+fr_row_style(rows = c(2L, 4L, 6L), background = "#E8F4FD")
 
 ## ── Highlight last row (totals) in a different colour ─────────────────────
 
-fr_row_style(rows = nrow(tbl_demog), bg = "#FFF3CD", bold = TRUE)
+fr_row_style(rows = nrow(tbl_demog), background = "#FFF3CD", bold = TRUE)
 
 ## ── Increase height of header-adjacent row ────────────────────────────────
 
@@ -105,8 +105,8 @@ tbl_demog |>
   fr_table() |>
   fr_hlines("header") |>
   fr_styles(
-    fr_row_style(rows = "all", bg = "#FAFAFA"),
-    fr_style(region = "header", bold = TRUE, bg = "#E0E0E0")
+    fr_row_style(rows = "all", background = "#FAFAFA"),
+    fr_style(region = "header", bold = TRUE, background = "#E0E0E0")
   )
 
 }

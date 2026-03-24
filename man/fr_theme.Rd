@@ -23,10 +23,6 @@ fr_theme(
   spacing = NULL,
   n_format = NULL,
   continuation = NULL,
-  page_by_bold = NULL,
-  page_by_align = NULL,
-  page_by_visible = NULL,
-  group_bold = NULL,
   group_keep = NULL,
   header = NULL,
   footnote_separator = NULL
@@ -89,24 +85,11 @@ tokens: \code{{label}} and \code{{n}}. \code{NULL} leaves unchanged.}
 continuation pages (e.g. \code{"(continued)"}). \code{NULL} leaves unchanged.
 See \code{\link[=fr_page]{fr_page()}} for details.}
 
-\item{page_by_bold}{Logical. Whether \code{page_by} group labels are bold.
-\code{NULL} leaves unchanged. See \code{\link[=fr_rows]{fr_rows()}} for details.}
-
-\item{page_by_align}{Alignment for \code{page_by} group labels. One of
-\code{"left"}, \code{"center"}, \code{"right"}, or \code{"decimal"}. \code{NULL} leaves unchanged.
-See \code{\link[=fr_rows]{fr_rows()}} for details.}
-
-\item{page_by_visible}{Logical. Whether \code{page_by} group labels are
-displayed. \code{NULL} leaves unchanged. See \code{\link[=fr_rows]{fr_rows()}} for details.}
-
-\item{group_bold}{Logical. Whether group header rows (from \code{group_label})
-are bold. \code{NULL} leaves unchanged. See \code{\link[=fr_rows]{fr_rows()}} for details.}
-
 \item{group_keep}{Logical. Whether \code{group_by} groups are kept together
 on the same page. \code{NULL} leaves unchanged. See \code{\link[=fr_rows]{fr_rows()}} for details.}
 
 \item{header}{Named list of header defaults. Supports all \code{\link[=fr_header]{fr_header()}}
-parameters: \code{bold}, \code{align}, \code{valign}, \code{bg}, \code{fg}, \code{font_size},
+parameters: \code{bold}, \code{align}, \code{valign}, \code{background}, \code{color}, \code{font_size},
 \code{repeat_on_page}, plus \code{span_gap} (logical, insert gap columns between
 adjacent spans, default \code{TRUE}). \code{NULL} leaves unchanged.}
 

@@ -38,7 +38,7 @@ header-only rules, and column splitting enabled.
 
 \itemize{
 \item \strong{\code{sort_by}}: Pass to \code{\link[=fr_rows]{fr_rows()}} to sort data before rendering
-\item \strong{\code{repeat_cols}}: Pass to \code{\link[=fr_rows]{fr_rows()}} to suppress repeated values
+\item \strong{\code{suppress}}: Pass to \code{\link[=fr_rows]{fr_rows()}} to suppress repeated values
 \item \strong{\code{wrap}}: Auto-enabled for long text columns
 }
 }
@@ -58,7 +58,7 @@ adae |>
     AESEV   = fr_col("Severity", width = 1.0)
   ) |>
   fr_rows(sort_by = c("USUBJID", "ASTDT"),
-          repeat_cols = "USUBJID") |>
+          suppress = "USUBJID") |>
   fr_titles("Listing 16.2.7 Adverse Events") |>
   fr_footnotes("Source: ADAE")
 
@@ -93,7 +93,7 @@ adae |>
   fr_rows(page_by = "TRTA") |>
   fr_titles("Listing 16.2.7.1 Adverse Events by Treatment Arm")
 
-## ── sort_by + repeat_cols together ────────────────────────────────────────
+## ── sort_by + suppress together ────────────────────────────────────────
 # Sort by subject and start day, suppress repeated subject IDs.
 
 adae |>
@@ -107,7 +107,7 @@ adae |>
   ) |>
   fr_rows(
     sort_by = c("USUBJID", "ASTDY"),
-    repeat_cols = "USUBJID"
+    suppress = "USUBJID"
   ) |>
   fr_titles("Listing 16.2.7.2 Adverse Events Sorted by Subject and Study Day") |>
   fr_footnotes("Repeated subject IDs are suppressed for readability.")
@@ -115,5 +115,5 @@ adae |>
 }
 \seealso{
 \code{\link[=fr_table]{fr_table()}} for summary tables, \code{\link[=fr_rows]{fr_rows()}} for \code{sort_by} and
-\code{repeat_cols}, \code{\link[=fr_render]{fr_render()}} to produce output.
+\code{suppress}, \code{\link[=fr_render]{fr_render()}} to produce output.
 }

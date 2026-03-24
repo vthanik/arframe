@@ -147,17 +147,16 @@ demog_gl_spec <- demog_long |>
     .n = c(placebo = 45, zom_50mg = 45, zom_100mg = 45)
   ) |>
   fr_rows(
-    group_by    = "variable",
-    group_label = "statistic",
-    group_bold  = TRUE
+    group_by = list(cols = "variable", label = "statistic")
   ) |>
   fr_footnotes("Percentages based on N per treatment arm.")
 fr_validate(demog_gl_spec)
 ```
 
-`group_label = "statistic"` injects `"Sex"`, `"Age (years)"`, and
-`"Race"` as bold header rows in the statistic column. Detail rows are
-automatically indented (inferred from `group_label`).
+`label = "statistic"` in the `group_by` list injects `"Sex"`, `"Age (years)"`,
+and `"Race"` as header rows in the statistic column. Detail rows are
+automatically indented (inferred from `label`). Style header rows via
+`fr_styles()` for bold or other formatting.
 
 ## 14.1.4 Subject Disposition
 

@@ -9,8 +9,8 @@ fr_col_style(
   bold = NULL,
   italic = NULL,
   underline = NULL,
-  fg = NULL,
-  bg = NULL,
+  color = NULL,
+  background = NULL,
   font_size = NULL,
   align = NULL,
   valign = NULL
@@ -32,9 +32,9 @@ style is applied via \code{\link[=fr_styles]{fr_styles()}}. Supported helpers:
 
 \item{bold, italic, underline}{Logical or \code{NULL} to inherit.}
 
-\item{fg}{Foreground (text) colour, or \code{NULL}.}
+\item{color}{Foreground (text) colour, or \code{NULL}.}
 
-\item{bg}{Background (fill) colour, or \code{NULL}.}
+\item{background}{Background (fill) colour, or \code{NULL}.}
 
 \item{font_size}{Font size in points, or \code{NULL}.}
 
@@ -72,7 +72,7 @@ body cells. \code{fr_row_style(align = ...)} overrides both. Finally,
 \item Column alignment is usually set in \code{\link[=fr_cols]{fr_cols()}} via \code{fr_col(align = ...)}.
 Use \code{fr_col_style()} only when you need to override alignment for
 a subset of columns without reconfiguring the full column spec.
-\item Use \code{fr_col_style(cols = "total", bg = "#EBF5FB")} to give the Total
+\item Use \code{fr_col_style(cols = "total", background = "#EBF5FB")} to give the Total
 column a distinct background — a common regulatory convention.
 \item Column styles apply only to \strong{body} cells. To style header cells,
 use \code{fr_style(region = "header", cols = ...)} or \code{\link[=fr_header]{fr_header()}}.
@@ -81,12 +81,12 @@ use \code{fr_style(region = "header", cols = ...)} or \code{\link[=fr_header]{fr
 
 \examples{
 ## ── Standalone: store and reuse ─────────────────────────────────────────
-total_highlight <- fr_col_style(cols = "total", bg = "aliceblue")
+total_highlight <- fr_col_style(cols = "total", background = "aliceblue")
 total_highlight  # inspect
 
 ## ── Total column with blue tint ──────────────────────────────────────────
 
-fr_col_style(cols = "total", bg = "#EBF5FB")
+fr_col_style(cols = "total", background = "#EBF5FB")
 
 ## ── Bold the row-label stub column ───────────────────────────────────────
 
@@ -107,11 +107,11 @@ fr_col_style(cols = starts_with("zom_"), align = "center")
 
 ## ── Tidyselect: all columns containing "mg" ──────────────────────────────
 
-fr_col_style(cols = contains("mg"), bg = "#F5F5F5")
+fr_col_style(cols = contains("mg"), background = "#F5F5F5")
 
 ## ── Foreground + background combined ─────────────────────────────────────
 
-fr_col_style(cols = "total", fg = "#003366", bg = "#E8F4FD")
+fr_col_style(cols = "total", color = "#003366", background = "#E8F4FD")
 
 ## ── Full pipeline with column styles ─────────────────────────────────────
 
@@ -121,7 +121,7 @@ tbl_demog |>
   fr_vlines("box") |>
   fr_styles(
     fr_style(region = "header", bold = TRUE),
-    fr_col_style(cols = "total", bg = "#EBF5FB")
+    fr_col_style(cols = "total", background = "#EBF5FB")
   )
 
 }

@@ -24,11 +24,11 @@ vs_wk24 <- tbl_vs[tbl_vs$timepoint == "Week 24",
 spec <- vs_wk24 |>
   fr_table() |>
   fr_cols(param = fr_col(visible = FALSE)) |>
-  fr_rows(page_by = "param", page_by_bold = TRUE)
+  fr_rows(page_by = "param")
 ```
 
 Each unique value of `param` gets its own page section. The label appears
-as a bold header above each section.
+as a header above each section. Style it (bold, alignment) via `fr_styles()`.
 
 > **SAS:** `BY param;` in PROC REPORT with `#BYVAL` in titles.
 
@@ -119,17 +119,15 @@ spec <- demog_long |>
   fr_table() |>
   fr_cols(variable = fr_col(visible = FALSE)) |>
   fr_rows(
-    group_by    = "variable",
-    group_label = "stat",
-    group_bold  = TRUE
+    group_by = list(cols = "variable", label = "stat")
   )
 ```
 
 This inserts `"Sex"` and `"Age (years)"` as header rows in the `stat`
 column at each group boundary. Detail rows are automatically indented
-underneath (when `indent_by` is not set, it is inferred from
-`group_label`). Setting `group_bold = TRUE` renders the injected header
-rows in bold — for finer control, use `fr_styles()` instead.
+underneath (when `indent_by` is not set, it is inferred from `label`).
+Style group header rows (e.g. bold) via `fr_styles()` and
+`fr_rows_matches()`.
 
 ## `group_keep`: visual-only grouping
 
@@ -157,7 +155,7 @@ adae[1:10, c("USUBJID", "AEBODSYS", "AEDECOD", "AEOUT")] |>
   fr_rows(wrap = TRUE)
 ```
 
-`wrap` pairs naturally with `repeat_cols` on listings where the first
+`wrap` pairs naturally with `suppress` on listings where the first
 column (e.g., subject ID) should appear only once per block:
 
 ```{r wrap-repeat, eval = FALSE}
@@ -165,7 +163,7 @@ adae[1:30, c("USUBJID", "AEBODSYS", "AEDECOD", "AESEV", "ASTDT")] |>
   fr_table() |>
   fr_rows(
     sort_by     = c("USUBJID", "AEBODSYS", "AEDECOD"),
-    repeat_cols = c("USUBJID", "AEBODSYS"),
+    suppress = c("USUBJID", "AEBODSYS"),
     wrap        = TRUE
   )
 ```
@@ -200,9 +198,9 @@ spec <- tbl_ae_soc |>
   fr_rows(group_by = "soc", indent_by = "pt")
 ```
 
-## `sort_by` and `repeat_cols`
+## `sort_by` and `suppress`
 
-For listings, `sort_by` controls row order and `repeat_cols` suppresses
+For listings, `sort_by` controls row order and `suppress` suppresses
 repeated values:
 
 ```{r sort-repeat}
@@ -210,10 +208,10 @@ ae_list <- adae[1:20, c("USUBJID", "ARM", "AEDECOD", "AESEV")]
 spec <- ae_list |>
   fr_listing() |>
   fr_rows(sort_by = c("ARM", "USUBJID"),
-          repeat_cols = "ARM")
+          suppress = "ARM")
 ```
 
-`repeat_cols` only prints the value when it changes (like `NOREPEAT` in SAS).
+`suppress` only prints the value when it changes (like `NOREPEAT` in SAS).
 
 ## Page configuration
 

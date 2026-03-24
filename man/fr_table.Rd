@@ -121,7 +121,7 @@ tbl_demog |>
     total          = fr_col("Total\n(N=135)", width = 1.5),
     group          = fr_col(visible = FALSE)
   ) |>
-  fr_header(bold = TRUE, bg = "#D9E2F3") |>
+  fr_header(bold = TRUE, background = "#D9E2F3") |>
   fr_spans("Treatment Arm" = c("placebo", "zom_50mg", "zom_100mg")) |>
   fr_rows(group_by = "group", blank_after = "group", indent_by = "group") |>
   fr_hlines("header") |>

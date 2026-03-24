@@ -337,7 +337,7 @@ test_that("fr_validate passes with known font families", {
 })
 
 
-# ── Check 9: sort_by / repeat_cols columns exist ──────────────────────────
+# ── Check 9: sort_by / suppress columns exist ──────────────────────────
 
 test_that("fr_validate warns on bad sort_by column", {
   spec <- tbl_demog |> fr_table()
@@ -351,15 +351,15 @@ test_that("fr_validate strict errors on bad sort_by column", {
   expect_error(fr_validate(spec, strict = TRUE), "validation issue")
 })
 
-test_that("fr_validate warns on bad repeat_cols column", {
+test_that("fr_validate warns on bad suppress column", {
   spec <- tbl_demog |> fr_table()
-  spec$body$repeat_cols <- "nonexistent_repeat"
-  expect_warning(fr_validate(spec), "repeat_cols")
+  spec$body$suppress <- "nonexistent_repeat"
+  expect_warning(fr_validate(spec), "suppress")
 })
 
-test_that("fr_validate strict errors on bad repeat_cols column", {
+test_that("fr_validate strict errors on bad suppress column", {
   spec <- tbl_demog |> fr_table()
-  spec$body$repeat_cols <- "nonexistent_repeat"
+  spec$body$suppress <- "nonexistent_repeat"
   expect_error(fr_validate(spec, strict = TRUE), "validation issue")
 })
 
@@ -370,10 +370,10 @@ test_that("fr_validate passes with valid sort_by columns", {
   expect_invisible(fr_validate(spec))
 })
 
-test_that("fr_validate passes with valid repeat_cols columns", {
+test_that("fr_validate passes with valid suppress columns", {
   cols <- names(tbl_demog)
   spec <- tbl_demog |> fr_table()
-  spec$body$repeat_cols <- cols[1]
+  spec$body$suppress <- cols[1]
   expect_invisible(fr_validate(spec))
 })
 

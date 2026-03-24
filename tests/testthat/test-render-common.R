@@ -136,7 +136,7 @@ test_that("collect_colors finds colors from rules and styles", {
     new_fr_rule(fg = "#FF0000")
   )
   spec$cell_styles <- list(
-    new_fr_cell_style(fg = "#00FF00", bg = "#0000FF")
+    new_fr_cell_style(color = "#00FF00", background = "#0000FF")
   )
 
   colors <- collect_colors(spec)
@@ -1096,8 +1096,8 @@ test_that("build_cell_grid applies body cell_styles", {
     cols = "a",
     bold = TRUE,
     italic = TRUE,
-    fg = "#FF0000",
-    bg = "#00FF00",
+    color = "#FF0000",
+    background = "#00FF00",
     font_size = 12,
     align = "center",
     valign = "middle",
@@ -1112,8 +1112,8 @@ test_that("build_cell_grid applies body cell_styles", {
   expect_true(grid$bold[idx])
   expect_true(grid$italic[idx])
   expect_true(grid$underline[idx])
-  expect_equal(grid$fg[idx], "#FF0000")
-  expect_equal(grid$bg[idx], "#00FF00")
+  expect_equal(grid$color[idx], "#FF0000")
+  expect_equal(grid$background[idx], "#00FF00")
   expect_equal(grid$font_size[idx], 12)
   expect_equal(grid$align[idx], "center")
   expect_equal(grid$valign[idx], "middle")
@@ -1248,8 +1248,8 @@ test_that("apply_styles_to_grid works with header region and header_row_idx", {
     bold = c(FALSE, FALSE),
     italic = c(FALSE, FALSE),
     underline = c(FALSE, FALSE),
-    fg = c("#000000", "#000000"),
-    bg = c(NA_character_, NA_character_),
+    color = c("#000000", "#000000"),
+    background = c(NA_character_, NA_character_),
     font_size = c(9, 9),
     stringsAsFactors = FALSE
   )
@@ -1258,7 +1258,7 @@ test_that("apply_styles_to_grid works with header region and header_row_idx", {
     type = "cell",
     cols = "a",
     bold = TRUE,
-    fg = "#FF0000"
+    color = "#FF0000"
   )
   result <- apply_styles_to_grid(
     grid,
@@ -1269,7 +1269,7 @@ test_that("apply_styles_to_grid works with header region and header_row_idx", {
   )
   expect_true(result$bold[1])
   expect_false(result$bold[2])
-  expect_equal(result$fg[1], "#FF0000")
+  expect_equal(result$color[1], "#FF0000")
 })
 
 test_that("apply_styles_to_grid skips non-matching region", {
@@ -1281,8 +1281,8 @@ test_that("apply_styles_to_grid skips non-matching region", {
     bold = FALSE,
     italic = FALSE,
     underline = FALSE,
-    fg = "#000000",
-    bg = NA_character_,
+    color = "#000000",
+    background = NA_character_,
     font_size = 9,
     stringsAsFactors = FALSE
   )
@@ -1306,8 +1306,8 @@ test_that("apply_styles_to_grid skips header style with non-matching row_idx", {
     bold = FALSE,
     italic = FALSE,
     underline = FALSE,
-    fg = "#000000",
-    bg = NA_character_,
+    color = "#000000",
+    background = NA_character_,
     font_size = 9,
     stringsAsFactors = FALSE
   )
@@ -1336,8 +1336,8 @@ test_that("apply_styles_to_grid handles numeric cols in header", {
     bold = c(FALSE, FALSE),
     italic = c(FALSE, FALSE),
     underline = c(FALSE, FALSE),
-    fg = c("#000000", "#000000"),
-    bg = c(NA_character_, NA_character_),
+    color = c("#000000", "#000000"),
+    background = c(NA_character_, NA_character_),
     font_size = c(9, 9),
     stringsAsFactors = FALSE
   )
@@ -1368,8 +1368,8 @@ test_that("apply_styles_to_grid handles indent in body mode", {
     bold = c(FALSE, FALSE),
     italic = c(FALSE, FALSE),
     underline = c(FALSE, FALSE),
-    fg = c("#000000", "#000000"),
-    bg = c(NA_character_, NA_character_),
+    color = c("#000000", "#000000"),
+    background = c(NA_character_, NA_character_),
     font_size = c(9, 9),
     indent = c(0, 0),
     stringsAsFactors = FALSE
@@ -1403,7 +1403,7 @@ test_that("build_header_cell_grid produces correct default structure", {
   expect_equal(unname(grid$align), c("left", "right"))
   expect_equal(grid$valign, c("bottom", "bottom"))
   expect_false(any(grid$bold))
-  expect_equal(grid$fg, c("#000000", "#000000"))
+  expect_equal(grid$color, c("#000000", "#000000"))
 })
 
 test_that("build_header_cell_grid uses header_cfg defaults", {
@@ -1412,8 +1412,8 @@ test_that("build_header_cell_grid uses header_cfg defaults", {
   page <- new_fr_page()
   hcfg <- new_fr_header(
     bold = TRUE,
-    fg = "#0000FF",
-    bg = "#FFFF00",
+    color = "#0000FF",
+    background = "#FFFF00",
     font_size = 14
   )
 
@@ -1425,8 +1425,8 @@ test_that("build_header_cell_grid uses header_cfg defaults", {
     header_cfg = hcfg
   )
   expect_true(grid$bold[1])
-  expect_equal(grid$fg[1], "#0000FF")
-  expect_equal(grid$bg[1], "#FFFF00")
+  expect_equal(grid$color[1], "#0000FF")
+  expect_equal(grid$background[1], "#FFFF00")
   expect_equal(grid$font_size[1], 14)
 })
 
@@ -1444,12 +1444,12 @@ test_that("build_header_cell_grid applies header styles", {
     type = "cell",
     cols = "b",
     bold = TRUE,
-    bg = "#CCCCCC"
+    background = "#CCCCCC"
   )
   grid <- build_header_cell_grid(cols, list(style), page, header_row_idx = 1L)
   expect_false(grid$bold[1])
   expect_true(grid$bold[2])
-  expect_equal(grid$bg[2], "#CCCCCC")
+  expect_equal(grid$background[2], "#CCCCCC")
 })
 
 test_that("build_header_cell_grid skips non-header styles", {
@@ -2319,9 +2319,9 @@ test_that("latex_encode_unicode_char passes through unknown unicode", {
 
 # ── collect_colors ───────────────────────────────────────────────────────────
 
-test_that("collect_colors includes header bg and fg", {
+test_that("collect_colors includes header background and color", {
   spec <- new_fr_spec(data.frame(x = 1))
-  spec$header <- new_fr_header(bg = "#AABBCC", fg = "#112233")
+  spec$header <- new_fr_header(background = "#AABBCC", color = "#112233")
   colors <- collect_colors(spec)
   expect_true("#AABBCC" %in% colors)
   expect_true("#112233" %in% colors)
@@ -2424,4 +2424,167 @@ test_that("fr_endash returns a UNICODE sentinel for U+2013", {
 
 test_that("fr_emdash and fr_endash produce distinct sentinels", {
   expect_false(identical(format(fr_emdash()), format(fr_endash())))
+})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# collapse_hierarchy
+# ══════════════════════════════════════════════════════════════════════════════
+
+test_that("collapse_hierarchy injects header rows for non-leaf levels", {
+  data <- data.frame(
+    phase = c("P1", "P1", "P2", "P2"),
+    visit = c("V1", "V1", "V1", "V1"),
+    pct = c("1H", "2H", "1H", "2H"),
+    val = c(10, 20, 30, 40),
+    stringsAsFactors = FALSE
+  )
+  spec <- data |>
+    fr_table() |>
+    fr_rows(group_by = list(cols = c("phase", "visit", "pct"), leaf = "pct"))
+
+  # 4 data rows + 2 phase headers + 2 visit headers = 8
+
+  expect_equal(nrow(spec$data), 8L)
+  expect_true("__display__" %in% names(spec$data))
+  expect_true("__row_level__" %in% names(spec$data))
+})
+
+test_that("collapse_hierarchy sets __display__ and __row_level__ correctly", {
+  data <- data.frame(
+    soc = c("GI", "GI", "NEURO", "NEURO"),
+    pt = c("Nausea", "Vomiting", "Headache", "Dizziness"),
+    val = c(10, 20, 30, 40),
+    stringsAsFactors = FALSE
+  )
+  spec <- data |>
+    fr_table() |>
+    fr_rows(group_by = list(cols = c("soc", "pt"), leaf = "pt"))
+
+  d <- spec$data
+  # 2 SOC headers + 4 data rows = 6
+  expect_equal(nrow(d), 6L)
+
+  # First row should be SOC header
+  expect_equal(d[["__display__"]][1], "GI")
+  expect_equal(d[["__row_level__"]][1], "soc")
+
+  # Second row should be leaf data
+  expect_equal(d[["__display__"]][2], "Nausea")
+  expect_equal(d[["__row_level__"]][2], "pt")
+
+  # Fourth row should be NEURO header
+  expect_equal(d[["__display__"]][4], "NEURO")
+  expect_equal(d[["__row_level__"]][4], "soc")
+})
+
+test_that("collapse_hierarchy auto-sets indent_by as multi-level list", {
+  data <- data.frame(
+    a = c("X", "X"),
+    b = c("Y", "Z"),
+    v = 1:2,
+    stringsAsFactors = FALSE
+  )
+  spec <- data |>
+    fr_table() |>
+    fr_rows(group_by = list(cols = c("a", "b"), leaf = "b"))
+
+  ib <- spec$body$indent_by
+  expect_true(is.list(ib))
+  expect_equal(ib$key, "__row_level__")
+  expect_equal(ib$col, "__display__")
+  expect_equal(ib$levels, c(a = 0, b = 1))
+})
+
+test_that("collapse_hierarchy works with 3 levels", {
+  data <- data.frame(
+    phase = c("P1", "P1", "P1", "P2"),
+    visit = c("D1", "D1", "DX", "D1"),
+    pct = c("1H", "2H", "PRE", "1H"),
+    n = c(10, 20, 30, 40),
+    stringsAsFactors = FALSE
+  )
+  spec <- data |>
+    fr_table() |>
+    fr_rows(group_by = list(cols = c("phase", "visit", "pct"), leaf = "pct"))
+
+  d <- spec$data
+  levels <- d[["__row_level__"]]
+
+  # Expect: P1(phase), D1(visit), 1H(pct), 2H(pct), DX(visit), PRE(pct),
+  #         P2(phase), D1(visit), 1H(pct)
+  expect_equal(
+    levels,
+    c("phase", "visit", "pct", "pct", "visit", "pct", "phase", "visit", "pct")
+  )
+  expect_equal(nrow(d), 9L)
+})
+
+test_that("collapse_hierarchy auto-hides source columns", {
+  data <- data.frame(
+    grp = c("A", "A"),
+    item = c("x", "y"),
+    val = 1:2,
+    stringsAsFactors = FALSE
+  )
+  spec <- data |>
+    fr_table() |>
+    fr_rows(group_by = list(cols = c("grp", "item"), leaf = "item"))
+
+  # Source columns should be marked for auto-hide
+  expect_true("grp" %in% spec$body$.auto_hide_cols)
+  expect_true("item" %in% spec$body$.auto_hide_cols)
+})
+
+test_that("collapse_hierarchy renders without error", {
+  data <- data.frame(
+    soc = c("GI", "GI", "NEURO"),
+    pt = c("Nausea", "Vomiting", "Headache"),
+    n = c("5 (11.1)", "1 (2.2)", "6 (13.3)"),
+    stringsAsFactors = FALSE
+  )
+  out <- tempfile(fileext = ".html")
+  expect_no_error(
+    data |>
+      fr_table() |>
+      fr_rows(group_by = list(cols = c("soc", "pt"), leaf = "pt")) |>
+      fr_cols(
+        `__display__` = fr_col("Term"),
+        n = fr_col("N (%)", align = "decimal")
+      ) |>
+      fr_styles(
+        fr_row_style(
+          rows = fr_rows_matches("__row_level__", value = "soc"),
+          bold = TRUE
+        )
+      ) |>
+      fr_render(out)
+  )
+  unlink(out)
+})
+
+test_that("collapse_hierarchy with single-row groups works", {
+  data <- data.frame(
+    grp = c("A", "B"),
+    item = c("x", "y"),
+    val = 1:2,
+    stringsAsFactors = FALSE
+  )
+  spec <- data |>
+    fr_table() |>
+    fr_rows(group_by = list(cols = c("grp", "item"), leaf = "item"))
+
+  # 2 group headers + 2 data rows = 4
+  expect_equal(nrow(spec$data), 4L)
+})
+
+test_that("collapse_hierarchy does nothing without leaf", {
+  data <- data.frame(x = 1:3, y = c("a", "b", "c"), stringsAsFactors = FALSE)
+  spec <- data |>
+    fr_table() |>
+    fr_rows(group_by = "x")
+
+  # No hierarchy — data unchanged
+  expect_equal(nrow(spec$data), 3L)
+  expect_false("__display__" %in% names(spec$data))
 })

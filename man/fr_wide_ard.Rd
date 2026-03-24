@@ -195,8 +195,7 @@ if (requireNamespace("cards", quietly = TRUE)) {
       stat_label = fr_col("", width = 2.5),
       .align = "decimal"
     ) |>
-    fr_rows(group_by = "variable", group_label = "stat_label",
-            group_bold = TRUE)
+    fr_rows(group_by = list(cols = "variable", label = "stat_label"))
 }
 
 }

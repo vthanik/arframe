@@ -596,8 +596,8 @@ new_fr_header <- function(
   align = NULL,
   align_map = NULL,
   bold = NULL,
-  bg = NULL,
-  fg = NULL,
+  background = NULL,
+  color = NULL,
   font_size = NULL,
   span_gap = TRUE
 ) {
@@ -609,8 +609,8 @@ new_fr_header <- function(
       align = align,
       align_map = align_map,
       bold = bold,
-      bg = bg,
-      fg = fg,
+      background = background,
+      color = color,
       font_size = font_size,
       span_gap = span_gap
     ),
@@ -629,14 +629,13 @@ new_fr_body <- function(
   group_by = character(0),
   indent_by = character(0),
   blank_after = character(0),
-  page_by_bold = FALSE,
-  page_by_align = "left",
   page_by_visible = TRUE,
   group_label = NULL,
   group_keep = TRUE,
-  group_bold = FALSE,
+  group_leaf = NULL,
+  group_hierarchy_cols = NULL,
   sort_by = character(0),
-  repeat_cols = character(0),
+  suppress = character(0),
   wrap = FALSE
 ) {
   structure(
@@ -649,14 +648,13 @@ new_fr_body <- function(
         vec_cast(indent_by, character())
       },
       blank_after = vec_cast(blank_after, character()),
-      page_by_bold = page_by_bold,
-      page_by_align = page_by_align,
       page_by_visible = page_by_visible,
       group_label = group_label,
       group_keep = group_keep,
-      group_bold = group_bold,
+      group_leaf = group_leaf,
+      group_hierarchy_cols = group_hierarchy_cols,
       sort_by = vec_cast(sort_by, character()),
-      repeat_cols = vec_cast(repeat_cols, character()),
+      suppress = vec_cast(suppress, character()),
       wrap = wrap
     ),
     class = "fr_body"
@@ -839,8 +837,8 @@ new_fr_cell_style <- function(
   bold = NULL,
   italic = NULL,
   underline = NULL,
-  fg = NULL,
-  bg = NULL,
+  color = NULL,
+  background = NULL,
   font = NULL,
   font_size = NULL,
   align = NULL,
@@ -859,8 +857,12 @@ new_fr_cell_style <- function(
       bold = bold,
       italic = italic,
       underline = underline,
-      fg = if (!is.null(fg)) resolve_color(fg) else NULL,
-      bg = if (!is.null(bg)) resolve_color(bg) else NULL,
+      color = if (!is.null(color)) resolve_color(color) else NULL,
+      background = if (!is.null(background)) {
+        resolve_color(background)
+      } else {
+        NULL
+      },
       font = font,
       font_size = font_size,
       align = align,
@@ -882,11 +884,11 @@ new_fr_cell_style <- function(
 # type = "col" and restrict the available fields accordingly.
 #
 # Backend key mapping:
-#   type = "row"  → row{i} = {bg, fg, font, halign, valign, ht, ...}
-#   type = "col"  → column{j} = {bg, fg, font, halign, wd}
+#   type = "row"  → row{i} = {background, color, font, halign, valign, ht, ...}
+#   type = "col"  → column{j} = {background, color, font, halign, wd}
 #
 # RTF mapping:
-#   type = "row"  → per-row: \trrh (height), \clcbpat (bg), \cf (fg), \b\i\ul
+#   type = "row"  → per-row: \trrh (height), \clcbpat (background), \cf (color), \b\i\ul
 #   type = "col"  → per-column: applied to every cell in the column
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -896,8 +898,8 @@ new_fr_row_style <- function(
   bold = NULL,
   italic = NULL,
   underline = NULL,
-  fg = NULL,
-  bg = NULL,
+  color = NULL,
+  background = NULL,
   font_size = NULL,
   align = NULL,
   valign = NULL,
@@ -911,8 +913,8 @@ new_fr_row_style <- function(
     bold = bold,
     italic = italic,
     underline = underline,
-    fg = fg,
-    bg = bg,
+    color = color,
+    background = background,
     font_size = font_size,
     align = align,
     valign = valign,
@@ -927,8 +929,8 @@ new_fr_col_style <- function(
   bold = NULL,
   italic = NULL,
   underline = NULL,
-  fg = NULL,
-  bg = NULL,
+  color = NULL,
+  background = NULL,
   font_size = NULL,
   align = NULL,
   valign = NULL
@@ -941,8 +943,8 @@ new_fr_col_style <- function(
     bold = bold,
     italic = italic,
     underline = underline,
-    fg = fg,
-    bg = bg,
+    color = color,
+    background = background,
     font_size = font_size,
     align = align,
     valign = valign
@@ -1298,10 +1300,18 @@ print.fr_spec <- function(x, ..., compact = FALSE) {
   if (!is.null(b)) {
     parts <- character(0)
     if (length(b$page_by) > 0L) {
-      parts <- c(parts, paste0("page_by=", paste(b$page_by, collapse = ",")))
+      pb_str <- paste0("page_by=", paste(b$page_by, collapse = ","))
+      if (!isTRUE(b$page_by_visible)) {
+        pb_str <- paste0(pb_str, " (visible=FALSE)")
+      }
+      parts <- c(parts, pb_str)
     }
     if (length(b$group_by) > 0L) {
-      parts <- c(parts, paste0("group_by=", paste(b$group_by, collapse = ",")))
+      gb_str <- paste0("group_by=", paste(b$group_by, collapse = ","))
+      if (!is.null(b$group_label)) {
+        gb_str <- paste0(gb_str, " (label=", b$group_label, ")")
+      }
+      parts <- c(parts, gb_str)
     }
     if (length(b$sort_by) > 0L) {
       parts <- c(parts, paste0("sort_by=", paste(b$sort_by, collapse = ",")))
@@ -1312,8 +1322,8 @@ print.fr_spec <- function(x, ..., compact = FALSE) {
         paste0("indent_by=", paste(b$indent_by, collapse = ","))
       )
     }
-    if (isTRUE(b$repeat_cols)) {
-      parts <- c(parts, "repeat_cols")
+    if (isTRUE(b$suppress)) {
+      parts <- c(parts, "suppress")
     }
     if (isTRUE(b$wrap)) {
       parts <- c(parts, "wrap")

@@ -218,7 +218,7 @@ test_that("fr_get_styles returns configured styles", {
     fr_table() |>
     fr_styles(
       fr_row_style(rows = 1L, bold = TRUE),
-      fr_col_style(cols = "total", bg = "#EBF5FB")
+      fr_col_style(cols = "total", background = "#EBF5FB")
     )
   styles <- fr_get_styles(spec)
   expect_length(styles, 2)

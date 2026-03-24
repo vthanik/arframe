@@ -245,30 +245,30 @@ test_that("finalize_spec sorts by multiple sort_by columns", {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# finalize_spec() — repeat_cols
+# finalize_spec() — suppress
 # ══════════════════════════════════════════════════════════════════════════════
 
-test_that("finalize_spec suppresses repeated values in repeat_cols", {
+test_that("finalize_spec suppresses repeated values in suppress", {
   spec <- data.frame(
     subj = c("S01", "S01", "S02", "S02"),
     event = c("AE1", "AE2", "AE3", "AE4"),
     stringsAsFactors = FALSE
   ) |>
     fr_table() |>
-    fr_rows(repeat_cols = "subj")
+    fr_rows(suppress = "subj")
 
   result <- arframe:::finalize_spec(spec)
   expect_equal(result$data$subj, c("S01", "", "S02", ""))
 })
 
-test_that("repeat_cols handles NAs without error", {
+test_that("suppress handles NAs without error", {
   spec <- data.frame(
     subj = c("S01", NA, NA, "S02"),
     event = c("A", "B", "C", "D"),
     stringsAsFactors = FALSE
   ) |>
     fr_table() |>
-    fr_rows(repeat_cols = "subj")
+    fr_rows(suppress = "subj")
 
   result <- arframe:::finalize_spec(spec)
   # Should not error; NAs handled

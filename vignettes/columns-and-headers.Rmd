@@ -202,7 +202,7 @@ spec <- tbl_demog |>
 ```
 
 `fr_header()` parameters: `align`, `valign` (`"top"` / `"middle"` /
-`"bottom"`), `bold`, `bg`, `fg`, `font_size`, `repeat_on_page` (default
+`"bottom"`), `bold`, `background`, `color`, `font_size`, `repeat_on_page` (default
 `TRUE` --- set `FALSE` to print the header only on the first page).
 
 ### Tidyselect alignment

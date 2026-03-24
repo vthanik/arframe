@@ -47,7 +47,7 @@ ae_listing_spec <- ae_list |>
     AEACN    = fr_col("Action", width = 1.2)
   ) |>
   fr_rows(sort_by = c("USUBJID", "AEBODSYS", "AEDECOD"),
-          repeat_cols = "USUBJID") |>
+          suppress = "USUBJID") |>
   fr_footnotes(
     "Related = Probable or Possible.",
     "Action = Action taken with study drug."
@@ -73,13 +73,13 @@ spec <- adae[1:10, c("USUBJID", "AEDECOD", "AESEV")] |>
   fr_rows(sort_by = c("USUBJID", "AEDECOD"))
 ```
 
-**`repeat_cols`** suppresses repeated values (like SAS `NOREPEAT`):
+**`suppress`** suppresses repeated values (like SAS `NOREPEAT`):
 
 ```{r repeat-demo}
 spec <- adae[1:10, c("ARM", "USUBJID", "AEDECOD")] |>
   fr_listing() |>
   fr_rows(sort_by = c("ARM", "USUBJID"),
-          repeat_cols = c("ARM", "USUBJID"))
+          suppress = c("ARM", "USUBJID"))
 ```
 
 **`wrap = TRUE`** enables automatic text wrapping (on by default in

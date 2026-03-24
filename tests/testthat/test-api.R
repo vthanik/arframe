@@ -714,8 +714,8 @@ test_that("fr_style accepts stub region", {
 test_that("fr_style NULL properties are NULL", {
   s <- fr_style()
   expect_null(s$bold)
-  expect_null(s$fg)
-  expect_null(s$bg)
+  expect_null(s$color)
+  expect_null(s$background)
   expect_null(s$colspan)
   expect_null(s$rowspan)
 })
@@ -738,18 +738,18 @@ test_that("fr_style validates font_size", {
 # ── fr_row_style ─────────────────────────────────────────────────────────────
 
 test_that("fr_row_style creates row-type fr_cell_style", {
-  rs <- fr_row_style(rows = 1L, bold = TRUE, bg = "#EEEEEE")
+  rs <- fr_row_style(rows = 1L, bold = TRUE, background = "#EEEEEE")
   expect_s3_class(rs, "fr_cell_style")
   expect_equal(rs$type, "row")
   expect_equal(rs$region, "body")
   expect_equal(rs$rows, 1L)
   expect_true(rs$bold)
-  expect_equal(rs$bg, "#EEEEEE")
+  expect_equal(rs$background, "#EEEEEE")
   expect_null(rs$cols)
 })
 
 test_that("fr_row_style rows=all is stored", {
-  rs <- fr_row_style(rows = "all", fg = "#CC0000")
+  rs <- fr_row_style(rows = "all", color = "#CC0000")
   expect_equal(rs$rows, "all")
 })
 
@@ -775,12 +775,12 @@ test_that("fr_row_style validates height", {
 # ── fr_col_style ─────────────────────────────────────────────────────────────
 
 test_that("fr_col_style creates col-type fr_cell_style", {
-  cs <- fr_col_style(cols = "total", bg = "#EBF5FB")
+  cs <- fr_col_style(cols = "total", background = "#EBF5FB")
   expect_s3_class(cs, "fr_cell_style")
   expect_equal(cs$type, "col")
   expect_equal(cs$region, "body")
   expect_equal(cs$cols, "total")
-  expect_equal(cs$bg, "#EBF5FB")
+  expect_equal(cs$background, "#EBF5FB")
   expect_null(cs$rows)
 })
 
@@ -800,8 +800,8 @@ test_that("fr_styles appends mixed style types", {
   spec <- fr_table(df_simple) |>
     fr_styles(
       fr_style(region = "header", bold = TRUE),
-      fr_row_style(rows = 1L, bg = "#EEEEEE"),
-      fr_col_style(cols = "a", fg = "#003366")
+      fr_row_style(rows = 1L, background = "#EEEEEE"),
+      fr_col_style(cols = "a", color = "#003366")
     )
   expect_length(spec$cell_styles, 3L)
   expect_equal(spec$cell_styles[[1]]$type, "cell")
@@ -812,7 +812,7 @@ test_that("fr_styles appends mixed style types", {
 test_that("fr_styles accumulates across calls", {
   spec <- fr_table(df_simple) |>
     fr_styles(fr_style(region = "header", bold = TRUE)) |>
-    fr_styles(fr_row_style(rows = 1L, bg = "#F0F0F0"))
+    fr_styles(fr_row_style(rows = 1L, background = "#F0F0F0"))
   expect_length(spec$cell_styles, 2L)
 })
 
@@ -869,7 +869,7 @@ test_that("fr_style_explain returns matching layers", {
   spec <- tbl_demog |>
     fr_table() |>
     fr_styles(
-      fr_col_style(cols = "total", bg = "#EBF5FB"),
+      fr_col_style(cols = "total", background = "#EBF5FB"),
       fr_row_style(rows = 1L, bold = TRUE)
     )
   result <- fr_style_explain(spec, row = 1L, col = "total")
@@ -878,7 +878,7 @@ test_that("fr_style_explain returns matching layers", {
   # Should match both col_style (total) and row_style (row 1)
   expect_equal(length(result$layers), 2L)
   expect_true(result$final$bold)
-  expect_equal(result$final$bg, "#EBF5FB")
+  expect_equal(result$final$background, "#EBF5FB")
 })
 
 test_that("fr_style_explain errors on invalid row/col", {

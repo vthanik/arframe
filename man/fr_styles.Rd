@@ -51,8 +51,8 @@ engine applies them in a single pass over the cell grid.
 
 \examples{
 ## ── Create reusable style objects, then apply ─────────────────────────────
-header_style <- fr_style(region = "header", bold = TRUE, bg = "lavender")
-total_col    <- fr_col_style(cols = "total", bg = "aliceblue")
+header_style <- fr_style(region = "header", bold = TRUE, background = "lavender")
+total_col    <- fr_col_style(cols = "total", background = "aliceblue")
 bold_totals  <- fr_row_style(
   rows = fr_rows_matches("characteristic", "Total"),
   bold = TRUE
@@ -69,7 +69,7 @@ tbl_demog |>
   fr_hlines("header") |>
   fr_styles(
     fr_style(region = "header", bold = TRUE),
-    fr_col_style(cols = "total", bg = "#EBF5FB")
+    fr_col_style(cols = "total", background = "#EBF5FB")
   )
 
 ## ── Zebra striping (alternating row shading) ─────────────────────────────
@@ -81,8 +81,8 @@ even_rows <- seq(2, n, by = 2)
 tbl_demog |>
   fr_table() |>
   fr_styles(
-    fr_row_style(rows = odd_rows,  bg = "#FFFFFF"),
-    fr_row_style(rows = even_rows, bg = "#F5F5F5")
+    fr_row_style(rows = odd_rows,  background = "#FFFFFF"),
+    fr_row_style(rows = even_rows, background = "#F5F5F5")
   )
 
 ## ── Multi-layer: col → row → cell ────────────────────────────────────────
@@ -91,11 +91,11 @@ tbl_demog |>
   fr_table() |>
   fr_styles(
     # Broad: light background for all data columns
-    fr_col_style(cols = c("zom_50mg", "zom_100mg", "placebo"), bg = "#FAFAFA"),
+    fr_col_style(cols = c("zom_50mg", "zom_100mg", "placebo"), background = "#FAFAFA"),
     # Mid: bold entire header
     fr_style(region = "header", bold = TRUE),
     # Narrow: red text for high-risk row
-    fr_style(region = "body", rows = 3L, fg = "#CC0000", bold = TRUE)
+    fr_style(region = "body", rows = 3L, color = "#CC0000", bold = TRUE)
   )
 
 ## ── Stub column bold + header background ─────────────────────────────────
@@ -105,7 +105,7 @@ tbl_demog |>
   fr_hlines("header") |>
   fr_vlines("box") |>
   fr_styles(
-    fr_style(region = "header", bold = TRUE, bg = "#E8E8E8"),
+    fr_style(region = "header", bold = TRUE, background = "#E8E8E8"),
     fr_style(region = "stub",   bold = TRUE)
   )
 
@@ -117,7 +117,7 @@ spec <- tbl_demog |>
 
 # Later: add Total column highlight (accumulates, does not replace)
 spec <- spec |>
-  fr_styles(fr_col_style(cols = "total", bg = "#EBF5FB"))
+  fr_styles(fr_col_style(cols = "total", background = "#EBF5FB"))
 
 }
 \seealso{

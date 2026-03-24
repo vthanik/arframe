@@ -63,7 +63,7 @@ tbl_demog |>
     fr_row_style(
       rows = fr_rows_matches("characteristic", pattern = "^p[- .]?value",
                               ignore.case = TRUE),
-      fg = "#CC0000", italic = TRUE
+      color = "#CC0000", italic = TRUE
     )
   )
 
@@ -73,9 +73,9 @@ tbl_ae_soc |>
   fr_table() |>
   fr_styles(
     # Shade every SOC header row
-    fr_row_style(rows = fr_rows_matches("row_type", "soc"), bg = "#F0F0F0", bold = TRUE),
+    fr_row_style(rows = fr_rows_matches("row_type", "soc"), background = "#F0F0F0", bold = TRUE),
     # Red text for all PT rows with a p-value pattern
-    fr_row_style(rows = fr_rows_matches("row_type", "pt"), fg = "#333333")
+    fr_row_style(rows = fr_rows_matches("row_type", "pt"), color = "#333333")
   )
 
 ## ── Alternation pattern: match "Total" or "Subtotal" ────────────────────
@@ -93,7 +93,7 @@ tbl_disp |>
   fr_styles(
     fr_row_style(
       rows = fr_rows_matches("category", pattern = "Completed|Discontinued"),
-      bold = TRUE, bg = "#F0F0F0"
+      bold = TRUE, background = "#F0F0F0"
     )
   )
 

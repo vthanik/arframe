@@ -16,13 +16,13 @@ are applied.
 \description{
 Extracts the list of cell style overrides applied via \code{\link[=fr_styles]{fr_styles()}}.
 Each element is an \code{fr_cell_style} object describing the target region,
-rows, columns, and style properties (bold, fg, bg, etc.).
+rows, columns, and style properties (bold, color, background, etc.).
 }
 \examples{
 spec <- tbl_demog |> fr_table() |>
   fr_styles(
     fr_row_style(rows = 1L, bold = TRUE),
-    fr_col_style(cols = "total", bg = "#EBF5FB")
+    fr_col_style(cols = "total", background = "#EBF5FB")
   )
 styles <- fr_get_styles(spec)
 length(styles)           # 2

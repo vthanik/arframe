@@ -11,8 +11,8 @@ fr_style_if(
   bold = NULL,
   italic = NULL,
   underline = NULL,
-  fg = NULL,
-  bg = NULL,
+  color = NULL,
+  background = NULL,
   font_size = NULL,
   align = NULL
 )
@@ -49,10 +49,10 @@ is applied via \code{\link[=fr_styles]{fr_styles()}}.}
 
 \item{bold, italic, underline}{Logical or \code{NULL} to leave unchanged.}
 
-\item{fg}{Foreground (text) colour: hex string or CSS named colour, or
+\item{color}{Foreground (text) colour: hex string or CSS named colour, or
 \code{NULL}.}
 
-\item{bg}{Background (fill) colour: hex string or CSS named colour, or
+\item{background}{Background (fill) colour: hex string or CSS named colour, or
 \code{NULL}.}
 
 \item{font_size}{Font size in points, or \code{NULL}.}
@@ -90,7 +90,7 @@ tbl_demog |>
   fr_styles(
     fr_style_if(
       condition = ~ (.x \%\% 2) == 0,
-      bg = "#F5F5F5",
+      background = "#F5F5F5",
       apply_to = "row"
     )
   )
@@ -113,7 +113,7 @@ pval_data |>
       cols = "pvalue",
       condition = ~ as.numeric(.x) < 0.05,
       apply_to = "row",
-      bold = TRUE, fg = "#CC0000"
+      bold = TRUE, color = "#CC0000"
     )
   )
 
@@ -126,7 +126,7 @@ tbl_ae_soc |>
       cols = "soc",
       condition = ~ grepl("SKIN|GASTROINTESTINAL", .x, ignore.case = TRUE),
       apply_to = "row",
-      bg = "#FFF3CD"
+      background = "#FFF3CD"
     )
   )
 
@@ -139,7 +139,7 @@ tbl_disp |>
       cols = c("placebo", "zom_50mg", "zom_100mg"),
       condition = ~ grepl("0", .x),
       apply_to = "cell",
-      fg = "#999999", italic = TRUE
+      color = "#999999", italic = TRUE
     )
   )
 
@@ -154,7 +154,7 @@ tbl_demog |>
       cols = "characteristic",
       condition = is_total,
       apply_to = "row",
-      bold = TRUE, bg = "#E8E8E8"
+      bold = TRUE, background = "#E8E8E8"
     )
   )
 
@@ -167,7 +167,7 @@ tbl_demog |>
       cols = c("placebo", "zom_50mg", "zom_100mg", "total"),
       condition = ~ grepl("^0", .x),
       apply_to = "cell",
-      fg = "#999999"
+      color = "#999999"
     )
   )
 

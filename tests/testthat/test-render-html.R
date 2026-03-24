@@ -148,7 +148,7 @@ test_that("bold cell style produces font-weight:bold", {
 test_that("background color produces background-color CSS", {
   spec <- data.frame(x = c("a", "b")) |>
     fr_table() |>
-    fr_styles(fr_row_style(rows = 1, bg = "#ff0000"))
+    fr_styles(fr_row_style(rows = 1, background = "#ff0000"))
 
   txt <- render_html_str(spec)
   expect_true(grepl("background-color:#FF0000", txt, fixed = TRUE))

@@ -17,7 +17,7 @@ fr_style_explain(spec, row, col)
 Invisibly returns a list with:
 \itemize{
 \item \verb{$final} — named list of resolved properties (\code{bold}, \code{italic},
-\code{fg}, \code{bg}, \code{align}, \code{valign}, \code{indent}, \code{font_size}).
+\code{color}, \code{background}, \code{align}, \code{valign}, \code{indent}, \code{font_size}).
 \item \verb{$layers} — ordered list of matching styles with their index
 in \code{spec$cell_styles}, type, and overridden properties.
 }
@@ -42,10 +42,10 @@ it shows exactly which style layers are active and how they combine.
 \if{html}{\out{<div class="sourceCode">}}\preformatted{-- Style explain: row 1, col "total" --
 Content: "135"
 2 matching styles:
-  [1] col: bg="#EBF5FB"
+  [1] col: background="#EBF5FB"
   [2] row: bold=TRUE
 
-Final: bold=TRUE, italic=FALSE, fg=#000000, bg=#EBF5FB, ...
+Final: bold=TRUE, italic=FALSE, color=#000000, background=#EBF5FB, ...
 }\if{html}{\out{</div>}}
 
 The \verb{[1]}, \verb{[2]} indices refer to the position in \code{spec$cell_styles}.
@@ -58,7 +58,7 @@ spec <- tbl_demog |>
   fr_table() |>
   fr_hlines("header") |>
   fr_styles(
-    fr_col_style(cols = "total", bg = "#EBF5FB"),
+    fr_col_style(cols = "total", background = "#EBF5FB"),
     fr_row_style(rows = 1L, bold = TRUE)
   )
 
@@ -68,21 +68,21 @@ fr_style_explain(spec, row = 1L, col = "total")
 # Programmatic access to the resolved properties
 result <- fr_style_explain(spec, row = 1L, col = "total")
 result$final$bold   # TRUE (from row style)
-result$final$bg     # "#EBF5FB" (from col style)
+result$final$background     # "#EBF5FB" (from col style)
 
 ## ── Multiple overlapping styles: see precedence in action ─────────────────
 
 spec2 <- tbl_demog |>
   fr_table() |>
   fr_styles(
-    fr_col_style(cols = "total", bg = "#EBF5FB"),
-    fr_row_style(rows = 1L, bg = "#FFF3CD", bold = TRUE),
+    fr_col_style(cols = "total", background = "#EBF5FB"),
+    fr_row_style(rows = 1L, background = "#FFF3CD", bold = TRUE),
     fr_style(region = "body", rows = 1L, cols = "total",
-             fg = "#CC0000", italic = TRUE)
+             color = "#CC0000", italic = TRUE)
   )
 
-# Cell (1, "total") has three overlapping layers — cell wins for fg/italic,
-# row wins for bg/bold (narrower scope), col style is overridden:
+# Cell (1, "total") has three overlapping layers — cell wins for color/italic,
+# row wins for background/bold (narrower scope), col style is overridden:
 fr_style_explain(spec2, row = 1L, col = "total")
 
 ## ── Inspect a header cell ─────────────────────────────────────────────────
@@ -90,8 +90,8 @@ fr_style_explain(spec2, row = 1L, col = "total")
 spec3 <- tbl_demog |>
   fr_table() |>
   fr_styles(
-    fr_style(region = "header", bold = TRUE, bg = "#E0E0E0"),
-    fr_style(region = "header", cols = "total", bg = "#D0E4FF")
+    fr_style(region = "header", bold = TRUE, background = "#E0E0E0"),
+    fr_style(region = "header", cols = "total", background = "#D0E4FF")
   )
 
 # Note: fr_style_explain inspects body cells. For header-region styles,

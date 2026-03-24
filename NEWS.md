@@ -4,7 +4,7 @@
 
 * `fr_wide_ard()` converts ARD (Analysis Results Data) from cards/cardx into wide summary data frames for `fr_table()`. Supports multi-row continuous output (named vector format specs), per-variable decimal precision, hierarchical SOC/PT structures, custom format functions (including `p.value < 0.001` threshold), and all 60+ cards/cardx stat types. Zero dependency on cards — duck-types on column names.
 
-* `fr_rows(group_bold = TRUE)` bolds group header rows injected by `group_label`. Also available via `fr_theme(group_bold = TRUE)` for study-wide defaults.
+* `fr_rows()` refactored from 14 params down to 9. `group_label` moves into `group_by` list form: `group_by = list(cols = "variable", label = "stat_label")`. `page_by_visible` moves into `page_by` list form: `page_by = list(cols = "PARAM", visible = FALSE)`. `page_by_bold`, `page_by_align`, `group_bold` removed — style via `fr_styles()` instead.
 
 ## Breaking changes
 
@@ -69,10 +69,10 @@
 
 ### Group label injection
 
-* `fr_rows(group_label = )` auto-injects a header row at each group boundary
-  using values from a specified column. This is the standard demographics
-  pattern where the group variable label appears as a bold row above indented
-  summary statistics, without requiring pre-formatted data.
+* `fr_rows(group_by = list(cols = ..., label = ...))` auto-injects a header
+  row at each group boundary using values from a specified column. This is the
+  standard demographics pattern where the group variable label appears as a row
+  above indented summary statistics, without requiring pre-formatted data.
 
 ### Multi-level indent_by
 
@@ -86,8 +86,8 @@
 * `fr_rows(group_keep = FALSE)` disables RTF `\keepn` for visual-only
   grouping (blank rows and indentation without page-keep constraints).
   Useful when groups are short and the default keep behaviour wastes space.
-* `fr_rows(page_by_visible = FALSE)` inserts page breaks at `page_by`
-  boundaries while hiding the label row itself.
+* `fr_rows(page_by = list(cols = ..., visible = FALSE))` inserts page breaks
+  at `page_by` boundaries while hiding the label row itself.
 * `fr_page(orphan_min = , widow_min = )` sets minimum body-row counts at
   the bottom and top of a page respectively, preventing isolated rows at
   page breaks.
@@ -95,7 +95,7 @@
 ### Wrap parameter
 
 * `fr_rows(wrap = )` controls whether long cell content wraps within its
-  column or is truncated, complementing the existing `repeat_cols` behaviour.
+  column or is truncated, complementing the existing `suppress` behaviour.
 
 ## Bug fixes
 
@@ -106,7 +106,7 @@
   index-out-of-bounds crashes on zero-row tables.
 * `escape_and_resolve()`: guard against malformed sentinel tokens with
   fewer than three capture groups (was a subscript-out-of-bounds crash).
-* `fr_rows()`: error when `group_label` is set without `group_by`.
+* `fr_rows()`: error when `group_by$label` is set without `group_by$cols`.
 * `fr_rows()`: warning when `page_by` and `group_by` share the same column.
 * LaTeX hline dedup regex anchored with `^` to prevent row 10 matching row 100.
 * Decimal alignment: `round()` replaces `as.integer()` for center-offset

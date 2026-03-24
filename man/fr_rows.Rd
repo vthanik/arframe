@@ -10,31 +10,53 @@ fr_rows(
   group_by = NULL,
   indent_by = NULL,
   blank_after = NULL,
-  page_by_bold = FALSE,
-  page_by_align = "left",
-  page_by_visible = TRUE,
-  group_label = NULL,
-  group_bold = FALSE,
   group_keep = TRUE,
   sort_by = NULL,
-  repeat_cols = NULL,
+  suppress = NULL,
   wrap = FALSE
 )
 }
 \arguments{
 \item{spec}{An \code{fr_spec} object from \code{\link[=fr_table]{fr_table()}}.}
 
-\item{page_by}{Character vector of column name(s). A new page begins
-whenever any of these columns change value. The column value is rendered
-as a group label above the column headers, and the column is
-\strong{automatically hidden} from the table body at render time. Use for
-multi-SOC tables that break by System Organ Class.}
+\item{page_by}{Page break specification. Accepts two forms:
 
-\item{group_by}{Character vector of column name(s). Rows sharing the same
-value are visually grouped (indented detail rows, kept together on the
-same page when possible). When a group spans pages, a "(continued)"
-header row repeats at the top of the next page. To add blank rows
-between groups, also set \code{blank_after} to the same column(s).}
+\strong{Simple (character)}: Character vector of column name(s). A new page
+begins whenever any of these columns change value. The column value is
+rendered as a group label above the column headers, and the column is
+\strong{automatically hidden} from the table body at render time.
+
+\strong{List form}: A named list with elements:
+\itemize{
+\item \code{cols} — character vector of column name(s) (required)
+\item \code{visible} — logical; whether the page-by label is displayed above the
+column headers (default \code{TRUE}). Set \code{FALSE} to get page breaks at group
+boundaries without a visible label.
+}
+
+Style page-by labels (bold, alignment) via \code{\link[=fr_styles]{fr_styles()}} by targeting
+page-by rows.}
+
+\item{group_by}{Group specification. Accepts two forms:
+
+\strong{Simple (character)}: Character vector of column name(s). Rows sharing
+the same value are visually grouped (kept together on the same page when
+possible). When a group spans pages, a "(continued)" header row repeats
+at the top of the next page.
+
+\strong{List form}: A named list with elements:
+\itemize{
+\item \code{cols} — character vector of column name(s) (required)
+\item \code{label} — character scalar; column name into which group header values
+are injected. A \strong{header row} is inserted at the start of each group.
+When \code{label} is set and \code{indent_by} is not, \code{indent_by} is
+\strong{automatically inferred} from \code{label}.
+\item \code{leaf} — character scalar; reserved for multi-level hierarchy (future).
+Must be one of the \code{cols} values.
+}
+
+Style group header rows (bold, etc.) via \code{\link[=fr_styles]{fr_styles()}} by targeting
+group header rows with \code{\link[=fr_rows_matches]{fr_rows_matches()}}.}
 
 \item{indent_by}{Row indentation specification. Accepts two forms:
 
@@ -57,39 +79,6 @@ Rows whose key value is not in \code{levels} receive no indent.}
 \item{blank_after}{Character vector of column name(s). A blank row is
 inserted after each group boundary in these columns.}
 
-\item{page_by_bold}{Logical. Whether the page-by label is rendered in
-bold. Default \code{FALSE}. Set \code{TRUE} to make the label stand out above
-the column headers.}
-
-\item{page_by_align}{Horizontal alignment for the page-by label. One of
-\code{"left"} (default), \code{"center"}, \code{"right"}, or \code{"decimal"}.}
-
-\item{page_by_visible}{Logical. Whether the page-by group label is
-displayed above the column headers. Default \code{TRUE}. Set \code{FALSE} to get
-page breaks at group boundaries without a visible label — useful when
-the grouping column already appears in the table body.}
-
-\item{group_label}{Character scalar. Column name into which group header
-values are injected. When \code{group_by} and \code{group_label} are both set,
-a \strong{header row} is inserted at the start of each group: the group's
-value (from \code{group_by}) appears in the \code{group_label} column, all other
-columns are empty, and detail rows are indented underneath.
-
-When \code{group_label} is set and \code{indent_by} is not, \code{indent_by} is
-\strong{automatically inferred} from \code{group_label} — so you only need:
-
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{fr_rows(group_by = "group", group_label = "stat")
-# indent_by = "stat" is implied — detail rows auto-indented
-}\if{html}{\out{</div>}}
-
-Use \code{group_bold = TRUE} to bold the injected header rows, or
-style them further via \code{\link[=fr_styles]{fr_styles()}}. Requires \code{group_by}.}
-
-\item{group_bold}{Logical. Whether group header rows injected by
-\code{group_label} are rendered in bold. Default \code{FALSE}. Set \code{TRUE} to
-make group headers visually distinct from detail rows. Only takes
-effect when \code{group_label} is set.}
-
 \item{group_keep}{Logical. Whether \code{group_by} groups are kept together
 on the same page via RTF \verb{\\keepn} / LaTeX keep-with-next. Default
 \code{TRUE}. Set \code{FALSE} for visual-only grouping (blank_after, indent)
@@ -101,7 +90,7 @@ columns before rendering. For listings, this controls the display order
 (e.g., \code{sort_by = c("USUBJID", "ASTDT")}). Sorting is applied in
 \code{finalize_spec()}.}
 
-\item{repeat_cols}{Character vector of column name(s). Suppresses repeated
+\item{suppress}{Character vector of column name(s). Suppresses repeated
 consecutive values in these columns — only the first occurrence in each
 run is displayed. Standard for listings where subject ID appears once per
 block. Suppression is applied in \code{finalize_spec()}.}
@@ -182,6 +171,8 @@ to appear in the table body. Override with
 but not necessarily start on a new page.
 \item \code{blank_after} is the simplest way to add visual group separation without
 bold headers.
+\item Style page-by labels and group header rows via \code{\link[=fr_styles]{fr_styles()}} for full
+control over bold, alignment, and other formatting.
 }
 }
 
@@ -219,6 +210,12 @@ tbl_ae_soc |>
     indent_by = "pt"
   )
 
+## ── page_by with hidden label (page breaks only, no visible label) ───────
+
+tbl_ae_soc |>
+  fr_table() |>
+  fr_rows(page_by = list(cols = "soc", visible = FALSE))
+
 ## ── Multi-level indent (SOC / HLT / PT hierarchy) ─────────────────────
 ## Uses a named list: key column determines indent level per row
 
@@ -243,8 +240,8 @@ spec <- data.frame(
     )
   )
 
-## ── group_label: auto-inject group headers ─────────────────────────
-## group_label creates header rows from group_by values.
+## ── group_by list form: auto-inject group headers ────────────────────
+## label injects header rows from group_by values into the named column.
 ## indent_by is auto-inferred — no need to specify both.
 ##
 ## Result:
@@ -267,8 +264,7 @@ data.frame(
   fr_table() |>
   fr_cols(group = fr_col(visible = FALSE)) |>
   fr_rows(
-    group_by    = "group",
-    group_label = "stat"
+    group_by = list(cols = "group", label = "stat")
   )
 
 ## ── sort_by: order a listing by subject and start date ────────────────
@@ -277,13 +273,13 @@ adae[1:20, c("USUBJID", "AEBODSYS", "AEDECOD", "ASTDT", "AESEV")] |>
   fr_table() |>
   fr_rows(sort_by = c("USUBJID", "ASTDT"))
 
-## ── repeat_cols: suppress repeated subject IDs in a listing ───────────
+## ── suppress: suppress repeated subject IDs in a listing ───────────
 
 adae[1:20, c("USUBJID", "AEBODSYS", "AEDECOD", "AESEV")] |>
   fr_table() |>
   fr_rows(
     sort_by     = c("USUBJID", "AEBODSYS"),
-    repeat_cols = "USUBJID"
+    suppress = "USUBJID"
   )
 
 ## ── wrap = TRUE: enable text wrapping for long verbatim terms ─────────
@@ -292,13 +288,13 @@ adae[1:10, c("USUBJID", "AEBODSYS", "AEDECOD", "AEOUT")] |>
   fr_table() |>
   fr_rows(wrap = TRUE)
 
-## ── Combined: sort_by + repeat_cols on adverse event listing ──────────
+## ── Combined: sort_by + suppress on adverse event listing ──────────
 
 adae[1:30, c("USUBJID", "AEBODSYS", "AEDECOD", "AESEV", "ASTDT")] |>
   fr_table() |>
   fr_rows(
     sort_by     = c("USUBJID", "AEBODSYS", "AEDECOD"),
-    repeat_cols = c("USUBJID", "AEBODSYS"),
+    suppress = c("USUBJID", "AEBODSYS"),
     wrap        = TRUE
   )
 

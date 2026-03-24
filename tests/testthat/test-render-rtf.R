@@ -1143,20 +1143,19 @@ test_that("rtf_page_by_rows produces merged \\trhdr row with group label", {
   expect_true(grepl("\\clmgf", result, fixed = TRUE))
 })
 
-test_that("page_by with bold = TRUE uses bold formatting", {
+test_that("page_by renders label without bold by default", {
   spec <- data.frame(
     grp = c("A", "B"),
     val = 1:2,
     stringsAsFactors = FALSE
   ) |>
     fr_table() |>
-    fr_rows(page_by = "grp", page_by_bold = TRUE)
+    fr_rows(page_by = "grp")
   spec <- arframe:::finalize_spec(spec)
 
   cellx <- arframe:::rtf_cellx_positions(spec$columns)
   result <- arframe:::rtf_page_by_rows(spec, spec$columns, cellx, "A")
-  expect_true(grepl("\\\\b ", result))
-  expect_true(grepl("\\\\b0", result))
+  expect_false(grepl("\\\\b ", result))
   expect_true(grepl("A", result, fixed = TRUE))
 })
 
@@ -1215,28 +1214,28 @@ test_that("rtf_col_header_row respects label_overrides", {
   expect_true(grepl("B (N=60)", result, fixed = TRUE))
 })
 
-test_that("fr_header(bg=) applies background color to column header", {
+test_that("fr_header(background=) applies background color to column header", {
   tmp <- tempfile(fileext = ".rtf")
   on.exit(unlink(tmp), add = TRUE)
 
   data.frame(x = 1, stringsAsFactors = FALSE) |>
     fr_table() |>
     fr_cols(.width = "equal") |>
-    fr_header(bg = "#CCCCCC") |>
+    fr_header(background = "#CCCCCC") |>
     fr_render(tmp)
 
   txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
   expect_true(grepl("\\clcbpat", txt, fixed = TRUE))
 })
 
-test_that("fr_header(fg=) applies foreground color to column header", {
+test_that("fr_header(color=) applies foreground color to column header", {
   tmp <- tempfile(fileext = ".rtf")
   on.exit(unlink(tmp), add = TRUE)
 
   data.frame(x = 1, stringsAsFactors = FALSE) |>
     fr_table() |>
     fr_cols(.width = "equal") |>
-    fr_header(fg = "#FF0000") |>
+    fr_header(color = "#FF0000") |>
     fr_render(tmp)
 
   txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
@@ -1276,7 +1275,7 @@ test_that("body rows with background color include \\clcbpat", {
   data.frame(x = "hello", stringsAsFactors = FALSE) |>
     fr_table() |>
     fr_cols(.width = "equal") |>
-    fr_styles(fr_row_style(rows = 1L, bg = "#EEEEEE")) |>
+    fr_styles(fr_row_style(rows = 1L, background = "#EEEEEE")) |>
     fr_render(tmp)
 
   txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
@@ -1290,7 +1289,7 @@ test_that("body rows with foreground color include \\cf", {
   data.frame(x = "hello", stringsAsFactors = FALSE) |>
     fr_table() |>
     fr_cols(.width = "equal") |>
-    fr_styles(fr_row_style(rows = 1L, fg = "#0000FF")) |>
+    fr_styles(fr_row_style(rows = 1L, color = "#0000FF")) |>
     fr_render(tmp)
 
   txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
@@ -2045,11 +2044,11 @@ test_that("fr_theme_set(header = list(bold = TRUE)) wires through to spec", {
   on.exit(fr_theme_reset(), add = TRUE)
   fr_theme_reset()
 
-  fr_theme(header = list(bold = TRUE, bg = "#F0F0F0"))
+  fr_theme(header = list(bold = TRUE, background = "#F0F0F0"))
   spec <- tbl_demog |> fr_table()
 
   expect_true(spec$header$bold)
-  expect_equal(spec$header$bg, "#F0F0F0")
+  expect_equal(spec$header$background, "#F0F0F0")
 })
 
 

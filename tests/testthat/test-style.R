@@ -108,7 +108,7 @@ test_that("fr_rows_matches resolves pattern in fr_styles pipeline", {
     fr_styles(
       fr_row_style(
         rows = fr_rows_matches("characteristic", pattern = "^(Age|Sex)"),
-        bg = "#F0F0F0"
+        background = "#F0F0F0"
       )
     )
   style <- spec$cell_styles[[1]]
@@ -156,8 +156,8 @@ test_that("fr_style stores all properties correctly", {
     bold = TRUE,
     italic = TRUE,
     underline = TRUE,
-    fg = "#CC0000",
-    bg = "#F0F0F0",
+    color = "#CC0000",
+    background = "#F0F0F0",
     font_size = 10,
     align = "center",
     valign = "middle",
@@ -173,8 +173,8 @@ test_that("fr_style stores all properties correctly", {
   expect_true(s$bold)
   expect_true(s$italic)
   expect_true(s$underline)
-  expect_equal(s$fg, "#CC0000")
-  expect_equal(s$bg, "#F0F0F0")
+  expect_equal(s$color, "#CC0000")
+  expect_equal(s$background, "#F0F0F0")
   expect_equal(s$font_size, 10)
   expect_equal(s$align, "center")
   expect_equal(s$valign, "middle")
@@ -232,8 +232,8 @@ test_that("fr_row_style stores all properties", {
     bold = TRUE,
     italic = TRUE,
     underline = TRUE,
-    fg = "#003366",
-    bg = "#EBF5FB",
+    color = "#003366",
+    background = "#EBF5FB",
     font_size = 8,
     align = "right",
     valign = "bottom",
@@ -245,8 +245,8 @@ test_that("fr_row_style stores all properties", {
   expect_true(rs$bold)
   expect_true(rs$italic)
   expect_true(rs$underline)
-  expect_equal(rs$fg, "#003366")
-  expect_equal(rs$bg, "#EBF5FB")
+  expect_equal(rs$color, "#003366")
+  expect_equal(rs$background, "#EBF5FB")
   expect_equal(rs$font_size, 8)
   expect_equal(rs$align, "right")
   expect_equal(rs$valign, "bottom")
@@ -278,8 +278,8 @@ test_that("fr_col_style stores all properties", {
     bold = TRUE,
     italic = TRUE,
     underline = TRUE,
-    fg = "#003366",
-    bg = "#EBF5FB",
+    color = "#003366",
+    background = "#EBF5FB",
     font_size = 11,
     align = "center",
     valign = "middle"
@@ -290,8 +290,8 @@ test_that("fr_col_style stores all properties", {
   expect_true(cs$bold)
   expect_true(cs$italic)
   expect_true(cs$underline)
-  expect_equal(cs$fg, "#003366")
-  expect_equal(cs$bg, "#EBF5FB")
+  expect_equal(cs$color, "#003366")
+  expect_equal(cs$background, "#EBF5FB")
   expect_equal(cs$font_size, 11)
   expect_equal(cs$align, "center")
   expect_equal(cs$valign, "middle")
@@ -381,7 +381,7 @@ test_that("fr_style_if with formula condition and apply_to='cell'", {
         cols = "characteristic",
         condition = ~ .x == "Total",
         apply_to = "cell",
-        fg = "#CC0000"
+        color = "#CC0000"
       )
     )
   expect_length(spec$cell_styles, 1L)
@@ -397,7 +397,7 @@ test_that("fr_style_if zebra striping (cols=NULL, row-index condition)", {
     fr_styles(
       fr_style_if(
         condition = ~ (.x %% 2) == 0,
-        bg = "#F5F5F5",
+        background = "#F5F5F5",
         apply_to = "row"
       )
     )
@@ -405,7 +405,7 @@ test_that("fr_style_if zebra striping (cols=NULL, row-index condition)", {
   style <- spec$cell_styles[[1]]
   expect_equal(style$type, "row")
   expect_equal(style$rows, c(2L, 4L))
-  expect_equal(style$bg, "#F5F5F5")
+  expect_equal(style$background, "#F5F5F5")
 })
 
 test_that("fr_style_if zebra with apply_to='cell' and cols=NULL", {
@@ -414,7 +414,7 @@ test_that("fr_style_if zebra with apply_to='cell' and cols=NULL", {
     fr_styles(
       fr_style_if(
         condition = ~ (.x %% 2) == 1,
-        bg = "#FFFFFF",
+        background = "#FFFFFF",
         apply_to = "cell"
       )
     )
@@ -434,13 +434,13 @@ test_that("fr_style_if with function (not formula)", {
         condition = is_total,
         apply_to = "row",
         bold = TRUE,
-        bg = "#E8E8E8"
+        background = "#E8E8E8"
       )
     )
   style <- spec$cell_styles[[1]]
   expect_equal(style$rows, 4L)
   expect_true(style$bold)
-  expect_equal(style$bg, "#E8E8E8")
+  expect_equal(style$background, "#E8E8E8")
 })
 
 test_that("fr_style_if with multiple cols evaluates each independently", {
@@ -451,7 +451,7 @@ test_that("fr_style_if with multiple cols evaluates each independently", {
         cols = c("treatment", "placebo"),
         condition = ~ grepl("^5", .x),
         apply_to = "cell",
-        fg = "#999999"
+        color = "#999999"
       )
     )
   # Should produce 2 styles (one per column), each targeting matching rows
@@ -497,7 +497,7 @@ test_that("fr_style_if no matches with cols=NULL produces empty cell_styles", {
     fr_styles(
       fr_style_if(
         condition = ~ .x > 100,
-        bg = "#FF0000",
+        background = "#FF0000",
         apply_to = "row"
       )
     )
@@ -535,9 +535,9 @@ test_that("fr_style_if with valid align stores it", {
 })
 
 test_that("fr_style_if resolves named colours", {
-  s <- fr_style_if(condition = ~TRUE, fg = "red", bg = "navy")
-  expect_equal(s$fg, "#FF0000")
-  expect_equal(s$bg, "#000080")
+  s <- fr_style_if(condition = ~TRUE, color = "red", background = "navy")
+  expect_equal(s$color, "#FF0000")
+  expect_equal(s$background, "#000080")
 })
 
 test_that("fr_style_if stores all style properties", {
@@ -548,8 +548,8 @@ test_that("fr_style_if stores all style properties", {
     bold = TRUE,
     italic = TRUE,
     underline = TRUE,
-    fg = "#CC0000",
-    bg = "#F0F0F0",
+    color = "#CC0000",
+    background = "#F0F0F0",
     font_size = 8,
     align = "right"
   )
@@ -558,8 +558,8 @@ test_that("fr_style_if stores all style properties", {
   expect_true(s$bold)
   expect_true(s$italic)
   expect_true(s$underline)
-  expect_equal(s$fg, "#CC0000")
-  expect_equal(s$bg, "#F0F0F0")
+  expect_equal(s$color, "#CC0000")
+  expect_equal(s$background, "#F0F0F0")
   expect_equal(s$font_size, 8)
   expect_equal(s$align, "right")
   expect_equal(s$cols, "x")
@@ -630,7 +630,7 @@ test_that("fr_style_if with grepl pattern matching", {
         cols = "characteristic",
         condition = ~ grepl("^(Age|Sex)", .x),
         apply_to = "row",
-        bg = "#F0F0F0"
+        background = "#F0F0F0"
       )
     )
   style <- spec$cell_styles[[1]]
@@ -650,33 +650,33 @@ test_that("fr_style_explain with no matching styles", {
   # Final should be defaults
   expect_false(result$final$bold)
   expect_false(result$final$italic)
-  expect_equal(result$final$fg, "#000000")
+  expect_equal(result$final$color, "#000000")
 })
 
 test_that("fr_style_explain with col_style and row_style overlap", {
   spec <- df_style |>
     fr_table() |>
     fr_styles(
-      fr_col_style(cols = "total", bg = "#EBF5FB"),
+      fr_col_style(cols = "total", background = "#EBF5FB"),
       fr_row_style(rows = 1L, bold = TRUE)
     )
   result <- fr_style_explain(spec, row = 1L, col = "total")
   expect_length(result$layers, 2L)
   expect_true(result$final$bold)
-  expect_equal(result$final$bg, "#EBF5FB")
+  expect_equal(result$final$background, "#EBF5FB")
 })
 
 test_that("fr_style_explain with cell style override", {
   spec <- df_style |>
     fr_table() |>
     fr_styles(
-      fr_col_style(cols = "total", bg = "#EBF5FB"),
-      fr_row_style(rows = 1L, bg = "#FFF3CD", bold = TRUE),
+      fr_col_style(cols = "total", background = "#EBF5FB"),
+      fr_row_style(rows = 1L, background = "#FFF3CD", bold = TRUE),
       fr_style(
         region = "body",
         rows = 1L,
         cols = "total",
-        fg = "#CC0000",
+        color = "#CC0000",
         italic = TRUE
       )
     )
@@ -684,10 +684,10 @@ test_that("fr_style_explain with cell style override", {
   expect_length(result$layers, 3L)
   expect_true(result$final$bold)
   expect_true(result$final$italic)
-  expect_equal(result$final$fg, "#CC0000")
-  # Row style overrides col style bg
+  expect_equal(result$final$color, "#CC0000")
+  # Row style overrides col style background
 
-  expect_equal(result$final$bg, "#FFF3CD")
+  expect_equal(result$final$background, "#FFF3CD")
 })
 
 test_that("fr_style_explain with numeric column index", {
@@ -743,23 +743,23 @@ test_that("fr_style_explain style with rows='all' matches any row", {
   spec <- df_style |>
     fr_table() |>
     fr_styles(
-      fr_row_style(rows = "all", bg = "#F5F5F5")
+      fr_row_style(rows = "all", background = "#F5F5F5")
     )
   result <- fr_style_explain(spec, row = 3L, col = "total")
   expect_length(result$layers, 1L)
-  expect_equal(result$final$bg, "#F5F5F5")
+  expect_equal(result$final$background, "#F5F5F5")
 })
 
 test_that("fr_style_explain style with rows=NULL matches any row", {
   spec <- df_style |>
     fr_table() |>
     fr_styles(
-      fr_col_style(cols = "total", bg = "#EBF5FB")
+      fr_col_style(cols = "total", background = "#EBF5FB")
     )
   # col_style has rows=NULL, should match any row
   result <- fr_style_explain(spec, row = 2L, col = "total")
   expect_length(result$layers, 1L)
-  expect_equal(result$final$bg, "#EBF5FB")
+  expect_equal(result$final$background, "#EBF5FB")
 })
 
 test_that("fr_style_explain row_style that doesn't match specific row", {
@@ -778,7 +778,7 @@ test_that("fr_style_explain col_style that doesn't match specific col", {
   spec <- df_style |>
     fr_table() |>
     fr_styles(
-      fr_col_style(cols = "total", bg = "#EBF5FB")
+      fr_col_style(cols = "total", background = "#EBF5FB")
     )
   result <- fr_style_explain(spec, row = 1L, col = "characteristic")
   expect_length(result$layers, 0L)
@@ -839,12 +839,12 @@ test_that("fr_style_if resolved styles are visible in fr_style_explain", {
         condition = ~ .x == "Total",
         apply_to = "row",
         bold = TRUE,
-        bg = "#FFF3CD"
+        background = "#FFF3CD"
       )
     )
   result <- fr_style_explain(spec, row = 4L, col = "total")
   expect_true(result$final$bold)
-  expect_equal(result$final$bg, "#FFF3CD")
+  expect_equal(result$final$background, "#FFF3CD")
 
   # Non-matching row should not have the style
   result2 <- fr_style_explain(spec, row = 1L, col = "total")
@@ -860,7 +860,7 @@ test_that("fr_styles handles mix of regular and conditional styles", {
   spec <- df_style |>
     fr_table() |>
     fr_styles(
-      fr_col_style(cols = "total", bg = "#EBF5FB"),
+      fr_col_style(cols = "total", background = "#EBF5FB"),
       fr_style_if(
         cols = "characteristic",
         condition = ~ .x == "Total",
@@ -888,7 +888,7 @@ test_that("fr_styles accumulates conditional styles across calls", {
       fr_style_if(
         cols = "characteristic",
         condition = ~ .x == "Total",
-        bg = "#F0F0F0",
+        background = "#F0F0F0",
         apply_to = "row"
       )
     )
@@ -901,7 +901,7 @@ test_that("multiple fr_rows_matches in one fr_styles call", {
     fr_styles(
       fr_row_style(
         rows = fr_rows_matches("characteristic", value = "Age"),
-        bg = "#E8F4FD"
+        background = "#E8F4FD"
       ),
       fr_row_style(
         rows = fr_rows_matches("characteristic", value = "Total"),
@@ -926,7 +926,7 @@ test_that("fr_style_if with numeric column condition", {
         cols = "value",
         condition = ~ .x > 40,
         apply_to = "cell",
-        fg = "#CC0000"
+        color = "#CC0000"
       )
     )
   expect_length(spec$cell_styles, 1L)
@@ -944,7 +944,7 @@ test_that("fr_col_style with starts_with() resolves in fr_styles", {
   spec <- df_style |>
     fr_table() |>
     fr_styles(
-      fr_col_style(cols = starts_with("zom_"), bg = "#EBF5FB")
+      fr_col_style(cols = starts_with("zom_"), background = "#EBF5FB")
     )
   expect_length(spec$cell_styles, 1L)
   expect_equal(spec$cell_styles[[1]]$cols, "zom_50mg")
@@ -978,7 +978,7 @@ test_that("fr_style_if with starts_with() resolves in fr_styles", {
         cols = starts_with("zom_"),
         condition = ~ grepl("36", .x),
         apply_to = "cell",
-        fg = "#CC0000"
+        color = "#CC0000"
       )
     )
   expect_length(spec$cell_styles, 1L)
@@ -989,7 +989,7 @@ test_that("fr_col_style with everything() resolves to all columns", {
   spec <- df_style |>
     fr_table() |>
     fr_styles(
-      fr_col_style(cols = everything(), bg = "#F5F5F5")
+      fr_col_style(cols = everything(), background = "#F5F5F5")
     )
   expect_length(spec$cell_styles, 1L)
   expect_equal(spec$cell_styles[[1]]$cols, names(df_style))
@@ -1007,7 +1007,7 @@ test_that("fr_col_style with matches() regex resolves in fr_styles", {
 
 test_that("tidyselect deferred: standalone style object resolves later", {
   # Create style outside pipeline (no data context)
-  my_style <- fr_col_style(cols = starts_with("zom_"), bg = "#EBF5FB")
+  my_style <- fr_col_style(cols = starts_with("zom_"), background = "#EBF5FB")
   # cols should be stored as a quosure
   expect_true(rlang::is_quosure(my_style$cols))
 
@@ -1022,13 +1022,13 @@ test_that("character cols still work as before (no regression)", {
   spec <- df_style |>
     fr_table() |>
     fr_styles(
-      fr_col_style(cols = c("placebo", "total"), bg = "#F0F0F0")
+      fr_col_style(cols = c("placebo", "total"), background = "#F0F0F0")
     )
   expect_length(spec$cell_styles, 1L)
   expect_equal(spec$cell_styles[[1]]$cols, c("placebo", "total"))
 })
 
 test_that("NULL cols still targets all columns (no regression)", {
-  style <- fr_col_style(bg = "#F0F0F0")
+  style <- fr_col_style(background = "#F0F0F0")
   expect_null(style$cols)
 })

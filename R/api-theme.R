@@ -65,19 +65,10 @@
 #' @param continuation Character scalar appended to column headers on
 #'   continuation pages (e.g. `"(continued)"`). `NULL` leaves unchanged.
 #'   See [fr_page()] for details.
-#' @param page_by_bold Logical. Whether `page_by` group labels are bold.
-#'   `NULL` leaves unchanged. See [fr_rows()] for details.
-#' @param page_by_align Alignment for `page_by` group labels. One of
-#'   `"left"`, `"center"`, `"right"`, or `"decimal"`. `NULL` leaves unchanged.
-#'   See [fr_rows()] for details.
-#' @param page_by_visible Logical. Whether `page_by` group labels are
-#'   displayed. `NULL` leaves unchanged. See [fr_rows()] for details.
-#' @param group_bold Logical. Whether group header rows (from `group_label`)
-#'   are bold. `NULL` leaves unchanged. See [fr_rows()] for details.
 #' @param group_keep Logical. Whether `group_by` groups are kept together
 #'   on the same page. `NULL` leaves unchanged. See [fr_rows()] for details.
 #' @param header Named list of header defaults. Supports all [fr_header()]
-#'   parameters: `bold`, `align`, `valign`, `bg`, `fg`, `font_size`,
+#'   parameters: `bold`, `align`, `valign`, `background`, `color`, `font_size`,
 #'   `repeat_on_page`, plus `span_gap` (logical, insert gap columns between
 #'   adjacent spans, default `TRUE`). `NULL` leaves unchanged.
 #' @param footnote_separator Logical. Whether to draw a separator above the
@@ -199,10 +190,6 @@ fr_theme <- function(
   spacing = NULL,
   n_format = NULL,
   continuation = NULL,
-  page_by_bold = NULL,
-  page_by_align = NULL,
-  page_by_visible = NULL,
-  group_bold = NULL,
   group_keep = NULL,
   header = NULL,
   footnote_separator = NULL
@@ -259,22 +246,6 @@ fr_theme <- function(
   if (!is.null(continuation)) {
     check_scalar_chr(continuation, arg = "continuation", call = call)
   }
-  if (!is.null(page_by_bold)) {
-    check_scalar_lgl(page_by_bold, arg = "page_by_bold", call = call)
-  }
-  if (!is.null(page_by_align)) {
-    page_by_align <- match_arg_fr(
-      page_by_align,
-      fr_env$valid_aligns,
-      call = call
-    )
-  }
-  if (!is.null(page_by_visible)) {
-    check_scalar_lgl(page_by_visible, arg = "page_by_visible", call = call)
-  }
-  if (!is.null(group_bold)) {
-    check_scalar_lgl(group_bold, arg = "group_bold", call = call)
-  }
   if (!is.null(group_keep)) {
     check_scalar_lgl(group_keep, arg = "group_keep", call = call)
   }
@@ -313,10 +284,6 @@ fr_theme <- function(
   set_if("header", header)
   set_if("n_format", n_format)
   set_if("continuation", continuation)
-  set_if("page_by_bold", page_by_bold)
-  set_if("page_by_align", page_by_align)
-  set_if("page_by_visible", page_by_visible)
-  set_if("group_bold", group_bold)
   set_if("group_keep", group_keep)
   set_if("footnote_separator", footnote_separator)
 
@@ -353,10 +320,6 @@ fr_theme_set <- fr_theme
 #'   * `col_gap` — integer (points)
 #'   * `split` — logical (`TRUE`/`FALSE`) column splitting
 #'   * `stub` — character vector (stub column names)
-#'   * `page_by_bold` — logical; whether page-by labels are bold
-#'   * `page_by_align` — character; alignment of page-by labels
-#'   * `page_by_visible` — logical; whether page-by labels are displayed
-#'   * `group_bold` — logical; whether group_label header rows are bold
 #'   * `group_keep` — logical; whether group_by groups are kept together
 #'   * `footnote_separator` — logical
 #'

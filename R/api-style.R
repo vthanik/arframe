@@ -60,7 +60,7 @@
 #'     fr_row_style(
 #'       rows = fr_rows_matches("characteristic", pattern = "^p[- .]?value",
 #'                               ignore.case = TRUE),
-#'       fg = "#CC0000", italic = TRUE
+#'       color = "#CC0000", italic = TRUE
 #'     )
 #'   )
 #'
@@ -70,9 +70,9 @@
 #'   fr_table() |>
 #'   fr_styles(
 #'     # Shade every SOC header row
-#'     fr_row_style(rows = fr_rows_matches("row_type", "soc"), bg = "#F0F0F0", bold = TRUE),
+#'     fr_row_style(rows = fr_rows_matches("row_type", "soc"), background = "#F0F0F0", bold = TRUE),
 #'     # Red text for all PT rows with a p-value pattern
-#'     fr_row_style(rows = fr_rows_matches("row_type", "pt"), fg = "#333333")
+#'     fr_row_style(rows = fr_rows_matches("row_type", "pt"), color = "#333333")
 #'   )
 #'
 #' ## ── Alternation pattern: match "Total" or "Subtotal" ────────────────────
@@ -90,7 +90,7 @@
 #'   fr_styles(
 #'     fr_row_style(
 #'       rows = fr_rows_matches("category", pattern = "Completed|Discontinued"),
-#'       bold = TRUE, bg = "#F0F0F0"
+#'       bold = TRUE, background = "#F0F0F0"
 #'     )
 #'   )
 #'
@@ -182,10 +182,10 @@ fr_rows_matches <- function(
 #'   [tidyselect::contains()], [tidyselect::matches()],
 #'   [tidyselect::everything()], [tidyselect::where()], and more.
 #' @param bold,italic,underline Logical or `NULL` to inherit.
-#' @param fg Foreground (text) colour: hex string (`"#003366"`) or any of the
+#' @param color Foreground (text) colour: hex string (`"#003366"`) or any of the
 #'   148 CSS named colours (`"navy"`, `"steelblue"`, `"tomato"`, etc.).
 #'   `NULL` to inherit.
-#' @param bg Background (fill) colour: hex string or CSS named colour.
+#' @param background Background (fill) colour: hex string or CSS named colour.
 #'   `NULL` to inherit.
 #' @param font_size Font size in points, or `NULL` to inherit.
 #' @param align Horizontal alignment override: `"left"`, `"center"`, `"right"`,
@@ -232,7 +232,7 @@ fr_rows_matches <- function(
 #'
 #' # Create style objects independently
 #' header_bold <- fr_style(region = "header", bold = TRUE)
-#' total_bg    <- fr_style(cols = "total", bg = "aliceblue")
+#' total_background    <- fr_style(cols = "total", background = "aliceblue")
 #'
 #' # Inspect the object
 #' str(header_bold)
@@ -253,15 +253,15 @@ fr_rows_matches <- function(
 #'
 #' ## ── Red text for specific body rows ──────────────────────────────────────
 #'
-#' fr_style(region = "body", rows = c(1L, 3L), fg = "#CC0000")
+#' fr_style(region = "body", rows = c(1L, 3L), color = "#CC0000")
 #'
 #' ## ── CSS named colour (148 colours available) ────────────────────────────
-#' fr_style(cols = "total", bg = "aliceblue")
-#' fr_style(region = "body", rows = 3L, fg = "crimson", bold = TRUE)
+#' fr_style(cols = "total", background = "aliceblue")
+#' fr_style(region = "body", rows = 3L, color = "crimson", bold = TRUE)
 #'
 #' ## ── Highlight the Total column header ────────────────────────────────────
 #'
-#' fr_style(region = "header", cols = "total", bg = "#D0E4FF", bold = TRUE)
+#' fr_style(region = "header", cols = "total", background = "#D0E4FF", bold = TRUE)
 #'
 #' ## ── Stub column: bold row labels ─────────────────────────────────────────
 #'
@@ -270,7 +270,7 @@ fr_rows_matches <- function(
 #' ## ── Tidyselect: style columns by pattern ───────────────────────────────────
 #'
 #' # Use tidyselect helpers instead of hard-coding column names:
-#' fr_style(cols = starts_with("zom_"), bg = "#F5F5F5")
+#' fr_style(cols = starts_with("zom_"), background = "#F5F5F5")
 #' fr_style(cols = contains("mg"), italic = TRUE)
 #'
 #' ## ── Multi-stub layout (e.g. multiple row-label columns) ──────────────────
@@ -283,7 +283,7 @@ fr_rows_matches <- function(
 #' ## ── Merged spanning title cell ────────────────────────────────────────────
 #'
 #' fr_style(region = "header", rows = 1L, cols = "characteristic",
-#'          colspan = 5L, bold = TRUE, bg = "#F0F0F0")
+#'          colspan = 5L, bold = TRUE, background = "#F0F0F0")
 #'
 #' @seealso [fr_row_style()] for row-level styling, [fr_col_style()] for
 #'   column-level styling, [fr_styles()] to apply styles to a spec.
@@ -296,8 +296,8 @@ fr_style <- function(
   bold = NULL,
   italic = NULL,
   underline = NULL,
-  fg = NULL,
-  bg = NULL,
+  color = NULL,
+  background = NULL,
   font_size = NULL,
   align = NULL,
   valign = NULL,
@@ -328,8 +328,8 @@ fr_style <- function(
     bold = bold,
     italic = italic,
     underline = underline,
-    fg = fg,
-    bg = bg,
+    color = color,
+    background = background,
     font_size = font_size,
     align = align,
     valign = valign,
@@ -351,8 +351,8 @@ fr_style <- function(
 #'   body rows). Row indices are 1-based. Multiple indices are supported:
 #'   `rows = c(1L, 3L, 5L)`.
 #' @param bold,italic,underline Logical or `NULL` to inherit.
-#' @param fg Foreground (text) colour, or `NULL`.
-#' @param bg Background (fill) colour, or `NULL`.
+#' @param color Foreground (text) colour, or `NULL`.
+#' @param background Background (fill) colour, or `NULL`.
 #' @param font_size Font size in points, or `NULL`.
 #' @param align Horizontal alignment: `"left"`, `"center"`, `"right"`,
 #'   `"decimal"`, or `NULL`. See [fr_style()] **Alignment model**.
@@ -374,7 +374,7 @@ fr_style <- function(
 #' because row styles are narrower than column styles.
 #'
 #' @section Tips:
-#' * Use `fr_row_style(rows = "all", bg = "#F5F5F5")` for a subtle
+#' * Use `fr_row_style(rows = "all", background = "#F5F5F5")` for a subtle
 #'   background on all body rows (zebra striping requires alternating calls:
 #'   rows of odd/even index).
 #' * Row height in regulatory tables is normally controlled by `fr_page(font_size = ...)`
@@ -394,16 +394,16 @@ fr_style <- function(
 #'
 #' ## ── Light grey background on all body rows ────────────────────────────────
 #'
-#' fr_row_style(rows = "all", bg = "#F5F5F5")
+#' fr_row_style(rows = "all", background = "#F5F5F5")
 #'
 #' ## ── Highlight multiple specific rows ──────────────────────────────────────
 #'
 #' # Pass a vector of row indices to style multiple disparate rows at once:
-#' fr_row_style(rows = c(2L, 4L, 6L), bg = "#E8F4FD")
+#' fr_row_style(rows = c(2L, 4L, 6L), background = "#E8F4FD")
 #'
 #' ## ── Highlight last row (totals) in a different colour ─────────────────────
 #'
-#' fr_row_style(rows = nrow(tbl_demog), bg = "#FFF3CD", bold = TRUE)
+#' fr_row_style(rows = nrow(tbl_demog), background = "#FFF3CD", bold = TRUE)
 #'
 #' ## ── Increase height of header-adjacent row ────────────────────────────────
 #'
@@ -415,8 +415,8 @@ fr_style <- function(
 #'   fr_table() |>
 #'   fr_hlines("header") |>
 #'   fr_styles(
-#'     fr_row_style(rows = "all", bg = "#FAFAFA"),
-#'     fr_style(region = "header", bold = TRUE, bg = "#E0E0E0")
+#'     fr_row_style(rows = "all", background = "#FAFAFA"),
+#'     fr_style(region = "header", bold = TRUE, background = "#E0E0E0")
 #'   )
 #'
 #' @seealso [fr_col_style()] for column-level styling, [fr_style()] for
@@ -428,8 +428,8 @@ fr_row_style <- function(
   bold = NULL,
   italic = NULL,
   underline = NULL,
-  fg = NULL,
-  bg = NULL,
+  color = NULL,
+  background = NULL,
   font_size = NULL,
   align = NULL,
   valign = NULL,
@@ -454,8 +454,8 @@ fr_row_style <- function(
     bold = bold,
     italic = italic,
     underline = underline,
-    fg = fg,
-    bg = bg,
+    color = color,
+    background = background,
     font_size = font_size,
     align = align,
     valign = valign,
@@ -482,8 +482,8 @@ fr_row_style <- function(
 #'   [tidyselect::contains()], [tidyselect::matches()],
 #'   [tidyselect::everything()], [tidyselect::where()], and more.
 #' @param bold,italic,underline Logical or `NULL` to inherit.
-#' @param fg Foreground (text) colour, or `NULL`.
-#' @param bg Background (fill) colour, or `NULL`.
+#' @param color Foreground (text) colour, or `NULL`.
+#' @param background Background (fill) colour, or `NULL`.
 #' @param font_size Font size in points, or `NULL`.
 #' @param align Horizontal alignment: `"left"`, `"center"`, `"right"`,
 #'   `"decimal"`, or `NULL`. See [fr_style()] **Alignment model**.
@@ -508,19 +508,19 @@ fr_row_style <- function(
 #' * Column alignment is usually set in [fr_cols()] via `fr_col(align = ...)`.
 #'   Use `fr_col_style()` only when you need to override alignment for
 #'   a subset of columns without reconfiguring the full column spec.
-#' * Use `fr_col_style(cols = "total", bg = "#EBF5FB")` to give the Total
+#' * Use `fr_col_style(cols = "total", background = "#EBF5FB")` to give the Total
 #'   column a distinct background — a common regulatory convention.
 #' * Column styles apply only to **body** cells. To style header cells,
 #'   use `fr_style(region = "header", cols = ...)` or [fr_header()].
 #'
 #' @examples
 #' ## ── Standalone: store and reuse ─────────────────────────────────────────
-#' total_highlight <- fr_col_style(cols = "total", bg = "aliceblue")
+#' total_highlight <- fr_col_style(cols = "total", background = "aliceblue")
 #' total_highlight  # inspect
 #'
 #' ## ── Total column with blue tint ──────────────────────────────────────────
 #'
-#' fr_col_style(cols = "total", bg = "#EBF5FB")
+#' fr_col_style(cols = "total", background = "#EBF5FB")
 #'
 #' ## ── Bold the row-label stub column ───────────────────────────────────────
 #'
@@ -541,11 +541,11 @@ fr_row_style <- function(
 #'
 #' ## ── Tidyselect: all columns containing "mg" ──────────────────────────────
 #'
-#' fr_col_style(cols = contains("mg"), bg = "#F5F5F5")
+#' fr_col_style(cols = contains("mg"), background = "#F5F5F5")
 #'
 #' ## ── Foreground + background combined ─────────────────────────────────────
 #'
-#' fr_col_style(cols = "total", fg = "#003366", bg = "#E8F4FD")
+#' fr_col_style(cols = "total", color = "#003366", background = "#E8F4FD")
 #'
 #' ## ── Full pipeline with column styles ─────────────────────────────────────
 #'
@@ -555,7 +555,7 @@ fr_row_style <- function(
 #'   fr_vlines("box") |>
 #'   fr_styles(
 #'     fr_style(region = "header", bold = TRUE),
-#'     fr_col_style(cols = "total", bg = "#EBF5FB")
+#'     fr_col_style(cols = "total", background = "#EBF5FB")
 #'   )
 #'
 #' @seealso [fr_row_style()] for row-level styling, [fr_style()] for
@@ -568,8 +568,8 @@ fr_col_style <- function(
   bold = NULL,
   italic = NULL,
   underline = NULL,
-  fg = NULL,
-  bg = NULL,
+  color = NULL,
+  background = NULL,
   font_size = NULL,
   align = NULL,
   valign = NULL
@@ -592,8 +592,8 @@ fr_col_style <- function(
     bold = bold,
     italic = italic,
     underline = underline,
-    fg = fg,
-    bg = bg,
+    color = color,
+    background = background,
     font_size = font_size,
     align = align,
     valign = valign
@@ -642,8 +642,8 @@ fr_col_style <- function(
 #'
 #' @examples
 #' ## ── Create reusable style objects, then apply ─────────────────────────────
-#' header_style <- fr_style(region = "header", bold = TRUE, bg = "lavender")
-#' total_col    <- fr_col_style(cols = "total", bg = "aliceblue")
+#' header_style <- fr_style(region = "header", bold = TRUE, background = "lavender")
+#' total_col    <- fr_col_style(cols = "total", background = "aliceblue")
 #' bold_totals  <- fr_row_style(
 #'   rows = fr_rows_matches("characteristic", "Total"),
 #'   bold = TRUE
@@ -660,7 +660,7 @@ fr_col_style <- function(
 #'   fr_hlines("header") |>
 #'   fr_styles(
 #'     fr_style(region = "header", bold = TRUE),
-#'     fr_col_style(cols = "total", bg = "#EBF5FB")
+#'     fr_col_style(cols = "total", background = "#EBF5FB")
 #'   )
 #'
 #' ## ── Zebra striping (alternating row shading) ─────────────────────────────
@@ -672,8 +672,8 @@ fr_col_style <- function(
 #' tbl_demog |>
 #'   fr_table() |>
 #'   fr_styles(
-#'     fr_row_style(rows = odd_rows,  bg = "#FFFFFF"),
-#'     fr_row_style(rows = even_rows, bg = "#F5F5F5")
+#'     fr_row_style(rows = odd_rows,  background = "#FFFFFF"),
+#'     fr_row_style(rows = even_rows, background = "#F5F5F5")
 #'   )
 #'
 #' ## ── Multi-layer: col → row → cell ────────────────────────────────────────
@@ -682,11 +682,11 @@ fr_col_style <- function(
 #'   fr_table() |>
 #'   fr_styles(
 #'     # Broad: light background for all data columns
-#'     fr_col_style(cols = c("zom_50mg", "zom_100mg", "placebo"), bg = "#FAFAFA"),
+#'     fr_col_style(cols = c("zom_50mg", "zom_100mg", "placebo"), background = "#FAFAFA"),
 #'     # Mid: bold entire header
 #'     fr_style(region = "header", bold = TRUE),
 #'     # Narrow: red text for high-risk row
-#'     fr_style(region = "body", rows = 3L, fg = "#CC0000", bold = TRUE)
+#'     fr_style(region = "body", rows = 3L, color = "#CC0000", bold = TRUE)
 #'   )
 #'
 #' ## ── Stub column bold + header background ─────────────────────────────────
@@ -696,7 +696,7 @@ fr_col_style <- function(
 #'   fr_hlines("header") |>
 #'   fr_vlines("box") |>
 #'   fr_styles(
-#'     fr_style(region = "header", bold = TRUE, bg = "#E8E8E8"),
+#'     fr_style(region = "header", bold = TRUE, background = "#E8E8E8"),
 #'     fr_style(region = "stub",   bold = TRUE)
 #'   )
 #'
@@ -708,7 +708,7 @@ fr_col_style <- function(
 #'
 #' # Later: add Total column highlight (accumulates, does not replace)
 #' spec <- spec |>
-#'   fr_styles(fr_col_style(cols = "total", bg = "#EBF5FB"))
+#'   fr_styles(fr_col_style(cols = "total", background = "#EBF5FB"))
 #'
 #' @seealso [fr_style()], [fr_row_style()], [fr_col_style()] for the style
 #'   constructors.
@@ -788,9 +788,9 @@ fr_styles <- function(spec, ...) {
 #'   * `"cell"` (default): style only the cells where the condition is TRUE.
 #'   * `"row"`: style **all** columns in rows where the condition is TRUE.
 #' @param bold,italic,underline Logical or `NULL` to leave unchanged.
-#' @param fg Foreground (text) colour: hex string or CSS named colour, or
+#' @param color Foreground (text) colour: hex string or CSS named colour, or
 #'   `NULL`.
-#' @param bg Background (fill) colour: hex string or CSS named colour, or
+#' @param background Background (fill) colour: hex string or CSS named colour, or
 #'   `NULL`.
 #' @param font_size Font size in points, or `NULL`.
 #' @param align Horizontal alignment (`"left"`, `"center"`, `"right"`,
@@ -819,7 +819,7 @@ fr_styles <- function(spec, ...) {
 #'   fr_styles(
 #'     fr_style_if(
 #'       condition = ~ (.x %% 2) == 0,
-#'       bg = "#F5F5F5",
+#'       background = "#F5F5F5",
 #'       apply_to = "row"
 #'     )
 #'   )
@@ -842,7 +842,7 @@ fr_styles <- function(spec, ...) {
 #'       cols = "pvalue",
 #'       condition = ~ as.numeric(.x) < 0.05,
 #'       apply_to = "row",
-#'       bold = TRUE, fg = "#CC0000"
+#'       bold = TRUE, color = "#CC0000"
 #'     )
 #'   )
 #'
@@ -855,7 +855,7 @@ fr_styles <- function(spec, ...) {
 #'       cols = "soc",
 #'       condition = ~ grepl("SKIN|GASTROINTESTINAL", .x, ignore.case = TRUE),
 #'       apply_to = "row",
-#'       bg = "#FFF3CD"
+#'       background = "#FFF3CD"
 #'     )
 #'   )
 #'
@@ -868,7 +868,7 @@ fr_styles <- function(spec, ...) {
 #'       cols = c("placebo", "zom_50mg", "zom_100mg"),
 #'       condition = ~ grepl("0", .x),
 #'       apply_to = "cell",
-#'       fg = "#999999", italic = TRUE
+#'       color = "#999999", italic = TRUE
 #'     )
 #'   )
 #'
@@ -883,7 +883,7 @@ fr_styles <- function(spec, ...) {
 #'       cols = "characteristic",
 #'       condition = is_total,
 #'       apply_to = "row",
-#'       bold = TRUE, bg = "#E8E8E8"
+#'       bold = TRUE, background = "#E8E8E8"
 #'     )
 #'   )
 #'
@@ -896,7 +896,7 @@ fr_styles <- function(spec, ...) {
 #'       cols = c("placebo", "zom_50mg", "zom_100mg", "total"),
 #'       condition = ~ grepl("^0", .x),
 #'       apply_to = "cell",
-#'       fg = "#999999"
+#'       color = "#999999"
 #'     )
 #'   )
 #'
@@ -909,8 +909,8 @@ fr_style_if <- function(
   bold = NULL,
   italic = NULL,
   underline = NULL,
-  fg = NULL,
-  bg = NULL,
+  color = NULL,
+  background = NULL,
   font_size = NULL,
   align = NULL
 ) {
@@ -940,8 +940,12 @@ fr_style_if <- function(
       bold = bold,
       italic = italic,
       underline = underline,
-      fg = if (!is.null(fg)) resolve_color(fg, call = call) else NULL,
-      bg = if (!is.null(bg)) resolve_color(bg, call = call) else NULL,
+      color = if (!is.null(color)) resolve_color(color, call = call) else NULL,
+      background = if (!is.null(background)) {
+        resolve_color(background, call = call)
+      } else {
+        NULL
+      },
       font_size = font_size,
       align = align
     ),
@@ -969,7 +973,7 @@ fr_style_if <- function(
 #'
 #' @return Invisibly returns a list with:
 #'   * `$final` — named list of resolved properties (`bold`, `italic`,
-#'     `fg`, `bg`, `align`, `valign`, `indent`, `font_size`).
+#'     `color`, `background`, `align`, `valign`, `indent`, `font_size`).
 #'   * `$layers` — ordered list of matching styles with their index
 #'     in `spec$cell_styles`, type, and overridden properties.
 #'
@@ -984,10 +988,10 @@ fr_style_if <- function(
 #' -- Style explain: row 1, col "total" --
 #' Content: "135"
 #' 2 matching styles:
-#'   [1] col: bg="#EBF5FB"
+#'   [1] col: background="#EBF5FB"
 #'   [2] row: bold=TRUE
 #'
-#' Final: bold=TRUE, italic=FALSE, fg=#000000, bg=#EBF5FB, ...
+#' Final: bold=TRUE, italic=FALSE, color=#000000, background=#EBF5FB, ...
 #' ```
 #' The `[1]`, `[2]` indices refer to the position in `spec$cell_styles`.
 #' Properties from later layers override earlier ones. In this example,
@@ -998,7 +1002,7 @@ fr_style_if <- function(
 #'   fr_table() |>
 #'   fr_hlines("header") |>
 #'   fr_styles(
-#'     fr_col_style(cols = "total", bg = "#EBF5FB"),
+#'     fr_col_style(cols = "total", background = "#EBF5FB"),
 #'     fr_row_style(rows = 1L, bold = TRUE)
 #'   )
 #'
@@ -1008,21 +1012,21 @@ fr_style_if <- function(
 #' # Programmatic access to the resolved properties
 #' result <- fr_style_explain(spec, row = 1L, col = "total")
 #' result$final$bold   # TRUE (from row style)
-#' result$final$bg     # "#EBF5FB" (from col style)
+#' result$final$background     # "#EBF5FB" (from col style)
 #'
 #' ## ── Multiple overlapping styles: see precedence in action ─────────────────
 #'
 #' spec2 <- tbl_demog |>
 #'   fr_table() |>
 #'   fr_styles(
-#'     fr_col_style(cols = "total", bg = "#EBF5FB"),
-#'     fr_row_style(rows = 1L, bg = "#FFF3CD", bold = TRUE),
+#'     fr_col_style(cols = "total", background = "#EBF5FB"),
+#'     fr_row_style(rows = 1L, background = "#FFF3CD", bold = TRUE),
 #'     fr_style(region = "body", rows = 1L, cols = "total",
-#'              fg = "#CC0000", italic = TRUE)
+#'              color = "#CC0000", italic = TRUE)
 #'   )
 #'
-#' # Cell (1, "total") has three overlapping layers — cell wins for fg/italic,
-#' # row wins for bg/bold (narrower scope), col style is overridden:
+#' # Cell (1, "total") has three overlapping layers — cell wins for color/italic,
+#' # row wins for background/bold (narrower scope), col style is overridden:
 #' fr_style_explain(spec2, row = 1L, col = "total")
 #'
 #' ## ── Inspect a header cell ─────────────────────────────────────────────────
@@ -1030,8 +1034,8 @@ fr_style_if <- function(
 #' spec3 <- tbl_demog |>
 #'   fr_table() |>
 #'   fr_styles(
-#'     fr_style(region = "header", bold = TRUE, bg = "#E0E0E0"),
-#'     fr_style(region = "header", cols = "total", bg = "#D0E4FF")
+#'     fr_style(region = "header", bold = TRUE, background = "#E0E0E0"),
+#'     fr_style(region = "header", cols = "total", background = "#D0E4FF")
 #'   )
 #'
 #' # Note: fr_style_explain inspects body cells. For header-region styles,
@@ -1073,8 +1077,8 @@ fr_style_explain <- function(spec, row, col) {
     bold = FALSE,
     italic = FALSE,
     underline = FALSE,
-    fg = "#000000",
-    bg = NA_character_,
+    color = "#000000",
+    background = NA_character_,
     indent = 0,
     font_size = spec$page$font_size,
     align = "left",
@@ -1123,8 +1127,8 @@ fr_style_explain <- function(spec, row, col) {
       "bold",
       "italic",
       "underline",
-      "fg",
-      "bg",
+      "color",
+      "background",
       "font_size",
       "align",
       "valign",
@@ -1157,7 +1161,7 @@ fr_style_explain <- function(spec, row, col) {
 
   cli::cli_text("")
   cli::cli_text(
-    "Final: bold={final$bold}, italic={final$italic}, fg={final$fg}, bg={final$bg}, align={final$align}, valign={final$valign}, indent={final$indent}"
+    "Final: bold={final$bold}, italic={final$italic}, color={final$color}, background={final$background}, align={final$align}, valign={final$valign}, indent={final$indent}"
   )
 
   invisible(list(final = final, layers = layers))
@@ -1217,8 +1221,8 @@ resolve_conditional_style <- function(cond_style, data, call = caller_env()) {
       bold = cond_style$bold,
       italic = cond_style$italic,
       underline = cond_style$underline,
-      fg = cond_style$fg,
-      bg = cond_style$bg,
+      color = cond_style$color,
+      background = cond_style$background,
       font_size = cond_style$font_size,
       align = cond_style$align
     )
@@ -1261,8 +1265,8 @@ resolve_conditional_style <- function(cond_style, data, call = caller_env()) {
           bold = cond_style$bold,
           italic = cond_style$italic,
           underline = cond_style$underline,
-          fg = cond_style$fg,
-          bg = cond_style$bg,
+          color = cond_style$color,
+          background = cond_style$background,
           font_size = cond_style$font_size,
           align = cond_style$align
         )
@@ -1277,8 +1281,8 @@ resolve_conditional_style <- function(cond_style, data, call = caller_env()) {
           bold = cond_style$bold,
           italic = cond_style$italic,
           underline = cond_style$underline,
-          fg = cond_style$fg,
-          bg = cond_style$bg,
+          color = cond_style$color,
+          background = cond_style$background,
           font_size = cond_style$font_size,
           align = cond_style$align
         )

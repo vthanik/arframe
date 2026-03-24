@@ -30,7 +30,7 @@
 #' 6. Column widths sum to printable area (warning if >110%)
 #' 7. Style row/col indices are in valid range
 #' 8. Font family is recognised
-#' 9. `sort_by` / `repeat_cols` columns exist (for listings)
+#' 9. `sort_by` / `suppress` columns exist (for listings)
 #'
 #' @examples
 #' ## ── Clean spec passes validation silently ──────────────────────────────────
@@ -116,7 +116,7 @@ fr_validate <- function(spec, strict = FALSE) {
         }
       }
     }
-    # sort_by / repeat_cols (listing params)
+    # sort_by / suppress (listing params)
     if (length(body$sort_by) > 0L) {
       bad <- setdiff(body$sort_by, data_names)
       if (length(bad) > 0L) {
@@ -128,13 +128,13 @@ fr_validate <- function(spec, strict = FALSE) {
         )
       }
     }
-    if (is.character(body$repeat_cols) && length(body$repeat_cols) > 0L) {
-      bad <- setdiff(body$repeat_cols, data_names)
+    if (is.character(body$suppress) && length(body$suppress) > 0L) {
+      bad <- setdiff(body$suppress, data_names)
       if (length(bad) > 0L) {
         issues <- c(
           issues,
           cli::format_inline(
-            "{.arg repeat_cols} column{?s} not found in data: {.val {bad}}."
+            "{.arg suppress} column{?s} not found in data: {.val {bad}}."
           )
         )
       }

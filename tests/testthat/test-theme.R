@@ -504,29 +504,17 @@ test_that("fr_theme full study workflow sets everything correctly", {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# fr_theme — page_by_bold / page_by_align wiring into spec$body
+# fr_theme — group_keep wiring into spec$body
 # ══════════════════════════════════════════════════════════════════════════════
 
-test_that("fr_theme wires page_by_bold and page_by_align into spec$body", {
+test_that("fr_theme wires group_keep into spec$body", {
   withr::defer(fr_theme_reset())
   fr_theme_reset()
-  fr_theme(page_by_bold = TRUE, page_by_align = "center")
+  fr_theme(group_keep = FALSE)
 
   spec <- tbl_demog |> fr_table()
 
-  expect_true(spec$body$page_by_bold)
-  expect_equal(spec$body$page_by_align, "center")
-})
-
-test_that("fr_theme page_by_bold FALSE is wired into spec$body", {
-  withr::defer(fr_theme_reset())
-  fr_theme_reset()
-  fr_theme(page_by_bold = FALSE, page_by_align = "right")
-
-  spec <- tbl_demog |> fr_table()
-
-  expect_false(spec$body$page_by_bold)
-  expect_equal(spec$body$page_by_align, "right")
+  expect_false(spec$body$group_keep)
 })
 
 

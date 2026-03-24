@@ -11,8 +11,8 @@ fr_style(
   bold = NULL,
   italic = NULL,
   underline = NULL,
-  fg = NULL,
-  bg = NULL,
+  color = NULL,
+  background = NULL,
   font_size = NULL,
   align = NULL,
   valign = NULL,
@@ -51,11 +51,11 @@ Supported helpers: \code{\link[tidyselect:starts_with]{tidyselect::starts_with()
 
 \item{bold, italic, underline}{Logical or \code{NULL} to inherit.}
 
-\item{fg}{Foreground (text) colour: hex string (\code{"#003366"}) or any of the
+\item{color}{Foreground (text) colour: hex string (\code{"#003366"}) or any of the
 148 CSS named colours (\code{"navy"}, \code{"steelblue"}, \code{"tomato"}, etc.).
 \code{NULL} to inherit.}
 
-\item{bg}{Background (fill) colour: hex string or CSS named colour.
+\item{background}{Background (fill) colour: hex string or CSS named colour.
 \code{NULL} to inherit.}
 
 \item{font_size}{Font size in points, or \code{NULL} to inherit.}
@@ -121,7 +121,7 @@ They combine freely: a cell can be \verb{align = "right", valign = "bottom"}
 
 # Create style objects independently
 header_bold <- fr_style(region = "header", bold = TRUE)
-total_bg    <- fr_style(cols = "total", bg = "aliceblue")
+total_background    <- fr_style(cols = "total", background = "aliceblue")
 
 # Inspect the object
 str(header_bold)
@@ -142,15 +142,15 @@ fr_style(region = "header", bold = TRUE)
 
 ## ── Red text for specific body rows ──────────────────────────────────────
 
-fr_style(region = "body", rows = c(1L, 3L), fg = "#CC0000")
+fr_style(region = "body", rows = c(1L, 3L), color = "#CC0000")
 
 ## ── CSS named colour (148 colours available) ────────────────────────────
-fr_style(cols = "total", bg = "aliceblue")
-fr_style(region = "body", rows = 3L, fg = "crimson", bold = TRUE)
+fr_style(cols = "total", background = "aliceblue")
+fr_style(region = "body", rows = 3L, color = "crimson", bold = TRUE)
 
 ## ── Highlight the Total column header ────────────────────────────────────
 
-fr_style(region = "header", cols = "total", bg = "#D0E4FF", bold = TRUE)
+fr_style(region = "header", cols = "total", background = "#D0E4FF", bold = TRUE)
 
 ## ── Stub column: bold row labels ─────────────────────────────────────────
 
@@ -159,7 +159,7 @@ fr_style(region = "stub", bold = TRUE)
 ## ── Tidyselect: style columns by pattern ───────────────────────────────────
 
 # Use tidyselect helpers instead of hard-coding column names:
-fr_style(cols = starts_with("zom_"), bg = "#F5F5F5")
+fr_style(cols = starts_with("zom_"), background = "#F5F5F5")
 fr_style(cols = contains("mg"), italic = TRUE)
 
 ## ── Multi-stub layout (e.g. multiple row-label columns) ──────────────────
@@ -172,7 +172,7 @@ fr_style(region = "body", cols = c("soc", "pt"), align = "left", bold = TRUE)
 ## ── Merged spanning title cell ────────────────────────────────────────────
 
 fr_style(region = "header", rows = 1L, cols = "characteristic",
-         colspan = 5L, bold = TRUE, bg = "#F0F0F0")
+         colspan = 5L, bold = TRUE, background = "#F0F0F0")
 
 }
 \seealso{

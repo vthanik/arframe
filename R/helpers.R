@@ -382,25 +382,21 @@ apply_fr_theme <- function(spec) {
     spec,
     setup[["header"]],
     fr_header,
-    c("align", "valign", "bold", "bg", "fg", "font_size", "repeat_on_page")
+    c(
+      "align",
+      "valign",
+      "bold",
+      "background",
+      "color",
+      "font_size",
+      "repeat_on_page"
+    )
   )
   if (!is.null(setup[["header"]]$span_gap)) {
     spec$header$span_gap <- setup[["header"]]$span_gap
   }
 
-  # Row defaults: page_by_bold, page_by_align, page_by_visible
-  if (!is.null(setup[["page_by_bold"]])) {
-    spec$body$page_by_bold <- setup[["page_by_bold"]]
-  }
-  if (!is.null(setup[["page_by_align"]])) {
-    spec$body$page_by_align <- setup[["page_by_align"]]
-  }
-  if (!is.null(setup[["page_by_visible"]])) {
-    spec$body$page_by_visible <- setup[["page_by_visible"]]
-  }
-  if (!is.null(setup[["group_bold"]])) {
-    spec$body$group_bold <- setup[["group_bold"]]
-  }
+  # Row defaults: group_keep
   if (!is.null(setup[["group_keep"]])) {
     spec$body$group_keep <- setup[["group_keep"]]
   }

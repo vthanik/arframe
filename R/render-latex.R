@@ -648,9 +648,9 @@ latex_head_template <- function(spec, group_label = NULL, panel_idx = 1L) {
   ) {
     lf <- fr_env$latex_leading_factor
     fs <- spec$page$font_size
-    pb_bold_on <- if (isTRUE(spec$body$page_by_bold)) "\\textbf{" else ""
-    pb_bold_off <- if (isTRUE(spec$body$page_by_bold)) "}" else ""
-    pb_align <- spec$body$page_by_align %||% "left"
+    pb_bold_on <- ""
+    pb_bold_off <- ""
+    pb_align <- "left"
     if (pb_align == "left") {
       gl_line <- paste0(
         "\\noindent{\\fontsize{",
@@ -978,7 +978,7 @@ latex_table <- function(
   # Hlines from borders
   inner_keys <- c(inner_keys, latex_border_specs(borders, nr, nc, nrow_header))
 
-  # Cell-level styles (bold, italic, bg, fg) from cell_grid
+  # Cell-level styles (bold, italic, background, color) from cell_grid
   inner_keys <- c(
     inner_keys,
     latex_cell_style_specs(cell_grid, nr, nc, nrow_header)
@@ -1256,11 +1256,11 @@ latex_cell_style_specs <- function(cell_grid, nr, nc, nrow_header) {
     if (isTRUE(g$italic)) {
       parts <- c(parts, "font=\\itshape")
     }
-    if (!is.na(g$bg) && nzchar(g$bg)) {
-      parts <- c(parts, paste0("bg=", hex_to_tblr_color(g$bg)))
+    if (!is.na(g$background) && nzchar(g$background)) {
+      parts <- c(parts, paste0("bg=", hex_to_tblr_color(g$background)))
     }
-    if (!is.na(g$fg) && g$fg != "#000000") {
-      parts <- c(parts, paste0("fg=", hex_to_tblr_color(g$fg)))
+    if (!is.na(g$color) && g$color != "#000000") {
+      parts <- c(parts, paste0("fg=", hex_to_tblr_color(g$color)))
     }
     # Note: indent is handled in latex_body_rows() via \hspace in content,
     # not via tabularray preto= (which is unreliable with Q[l,wd=X] columns)
@@ -1308,11 +1308,11 @@ latex_header_style_specs <- function(
     if (isTRUE(g$italic)) {
       parts <- c(parts, "font=\\itshape")
     }
-    if (!is.na(g$bg) && nzchar(g$bg)) {
-      parts <- c(parts, paste0("bg=", hex_to_tblr_color(g$bg)))
+    if (!is.na(g$background) && nzchar(g$background)) {
+      parts <- c(parts, paste0("bg=", hex_to_tblr_color(g$background)))
     }
-    if (!is.na(g$fg) && g$fg != "#000000") {
-      parts <- c(parts, paste0("fg=", hex_to_tblr_color(g$fg)))
+    if (!is.na(g$color) && g$color != "#000000") {
+      parts <- c(parts, paste0("fg=", hex_to_tblr_color(g$color)))
     }
 
     # Header alignment override: per-column header_align or global header align

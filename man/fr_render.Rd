@@ -104,7 +104,7 @@ adae |>
     AESEV   = fr_col("Severity", width = 1.0)
   ) |>
   fr_rows(sort_by = c("USUBJID", "ASTDT"),
-          repeat_cols = "USUBJID") |>
+          suppress = "USUBJID") |>
   fr_titles("Listing 16.2.7", "Adverse Events") |>
   fr_footnotes("Source: ADAE") |>
   fr_render(out)

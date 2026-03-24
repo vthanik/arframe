@@ -1246,9 +1246,11 @@ pad_float_part <- function(sign, int, dec, w_si, w_dec, has_dec) {
 #' Build a percentage part: prefix + int \[.dec\] + sign
 #' @noRd
 pad_pct_part <- function(pct_prefix, pct_int, pct_dec, pct_sign, widths) {
-  padded_pfx <- stringi::stri_pad_left(pct_prefix, widths$w_pct_prefix)
-  padded_int <- stringi::stri_pad_left(pct_int, widths$w_pct_int)
-  pct <- paste0(padded_pfx, padded_int)
+  # Combine prefix and int before padding so symbols like < > stick to the number
+  pct <- stringi::stri_pad_left(
+    paste0(pct_prefix, pct_int),
+    widths$w_pct_prefix + widths$w_pct_int
+  )
   if (isTRUE(widths$has_dec)) {
     pct <- paste0(pct, ".", stringi::stri_pad_right(pct_dec, widths$w_pct_dec))
   }

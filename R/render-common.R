@@ -60,7 +60,7 @@ n_spanner_levels <- function(spans) {
 #' @param cell_styles List of fr_cell_style objects.
 #' @param page fr_page object for defaults.
 #' @return A data frame with columns: row_idx, col_idx, col_name, content,
-#'   align, bold, italic, underline, fg, bg, indent, font_size.
+#'   align, bold, italic, underline, color, background, indent, font_size.
 #' @noRd
 build_cell_grid <- function(data, columns, cell_styles, page) {
   col_names <- names(columns)
@@ -78,8 +78,8 @@ build_cell_grid <- function(data, columns, cell_styles, page) {
       bold = logical(0),
       italic = logical(0),
       underline = logical(0),
-      fg = character(0),
-      bg = character(0),
+      color = character(0),
+      background = character(0),
       indent = numeric(0),
       font_size = numeric(0)
     )))
@@ -111,8 +111,8 @@ build_cell_grid <- function(data, columns, cell_styles, page) {
   grid$bold <- FALSE
   grid$italic <- FALSE
   grid$underline <- FALSE
-  grid$fg <- "#000000"
-  grid$bg <- NA_character_
+  grid$color <- "#000000"
+  grid$background <- NA_character_
   grid$valign <- "top"
   grid$indent <- 0
   grid$font_size <- page$font_size
@@ -136,11 +136,11 @@ build_cell_grid <- function(data, columns, cell_styles, page) {
     if (!is.null(style$underline)) {
       grid$underline[affected] <- style$underline
     }
-    if (!is.null(style$fg)) {
-      grid$fg[affected] <- style$fg
+    if (!is.null(style$color)) {
+      grid$color[affected] <- style$color
     }
-    if (!is.null(style$bg)) {
-      grid$bg[affected] <- style$bg
+    if (!is.null(style$background)) {
+      grid$background[affected] <- style$background
     }
     if (!is.null(style$indent)) {
       grid$indent[affected] <- style$indent
@@ -260,11 +260,11 @@ apply_styles_to_grid <- function(
     if (!is.null(style$underline)) {
       grid$underline[affected] <- style$underline
     }
-    if (!is.null(style$fg)) {
-      grid$fg[affected] <- style$fg
+    if (!is.null(style$color)) {
+      grid$color[affected] <- style$color
     }
-    if (!is.null(style$bg)) {
-      grid$bg[affected] <- style$bg
+    if (!is.null(style$background)) {
+      grid$background[affected] <- style$background
     }
     if (!is.null(style$font_size)) {
       grid$font_size[affected] <- style$font_size
@@ -313,8 +313,12 @@ build_header_cell_grid <- function(
 
   # Use header_cfg for defaults when available
   default_bold <- if (!is.null(header_cfg$bold)) header_cfg$bold else FALSE
-  default_fg <- if (!is.null(header_cfg$fg)) header_cfg$fg else "#000000"
-  default_bg <- if (!is.null(header_cfg$bg)) header_cfg$bg else NA_character_
+  default_fg <- if (!is.null(header_cfg$color)) header_cfg$color else "#000000"
+  default_bg <- if (!is.null(header_cfg$background)) {
+    header_cfg$background
+  } else {
+    NA_character_
+  }
   default_fs <- if (!is.null(header_cfg$font_size)) {
     header_cfg$font_size
   } else {
@@ -333,8 +337,8 @@ build_header_cell_grid <- function(
     bold = rep(default_bold, nc),
     italic = rep(FALSE, nc),
     underline = rep(FALSE, nc),
-    fg = rep(default_fg, nc),
-    bg = rep(default_bg, nc),
+    color = rep(default_fg, nc),
+    background = rep(default_bg, nc),
     font_size = rep(default_fs, nc)
   ))
 
@@ -737,6 +741,167 @@ apply_indent_by_levels <- function(spec, indent_spec, base_indent) {
       spec$cell_styles <- c(spec$cell_styles, list(indent_style))
     }
   }
+
+  spec
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 1f-b. Multi-Level Hierarchy Collapse
+#
+# Collapses multiple hierarchy columns into a single display column with
+# injected header rows for non-leaf levels and auto-set indentation.
+# ══════════════════════════════════════════════════════════════════════════════
+
+#' Collapse multi-level hierarchy columns into a single display column
+#'
+#' When `group_by = list(cols = c("phase", "visit", "pct"), leaf = "pct")`,
+#' this function:
+#' 1. Creates `__display__` and `__row_level__` columns
+#' 2. Injects header-only rows for non-leaf levels at group boundaries
+#' 3. Auto-hides source hierarchy columns
+#' 4. Rewrites `indent_by` to use the new columns
+#'
+#' Must run BEFORE `finalize_columns()` so the new columns exist for width
+#' estimation and source columns can be hidden before visibility resolution.
+#'
+#' @param spec fr_spec object.
+#' @return Modified fr_spec, or unchanged if not in hierarchy mode.
+#' @noRd
+collapse_hierarchy <- function(spec) {
+  hierarchy_cols <- spec$body$group_hierarchy_cols
+  leaf <- spec$body$group_leaf
+
+  if (is.null(hierarchy_cols) || is.null(leaf)) {
+    return(spec)
+  }
+
+  data <- spec$data
+  nr <- nrow(data)
+  if (nr == 0L) {
+    return(spec)
+  }
+
+  # Non-leaf levels (top to bottom)
+  non_leaf <- setdiff(hierarchy_cols, leaf)
+  # Build depth map: first col = depth 0, second = depth 1, etc.
+  depth_map <- stats::setNames(
+    seq_along(hierarchy_cols) - 1L,
+    hierarchy_cols
+  )
+
+  # Build composite keys for each non-leaf level to detect boundaries
+  # For level k, the key is paste(cols[1], ..., cols[k])
+  page_by_cols <- spec$body$page_by
+
+  # Pre-compute: for each row, what's the display value and level
+  leaf_values <- as.character(data[[leaf]])
+
+  # Add __display__ and __row_level__ columns to data first so types are
+
+  # consistent across header and data rows when combined with vec_rbind().
+  data[["__display__"]] <- NA_character_
+  data[["__row_level__"]] <- NA_character_
+
+  # We'll build the result by walking through the data and inserting
+  # header rows at boundaries of each non-leaf level.
+  prev_values <- stats::setNames(
+    rep(NA_character_, length(non_leaf)),
+    non_leaf
+  )
+
+  result_chunks <- vector("list", nr * (1L + length(non_leaf)))
+  chunk_idx <- 0L
+
+  # Template for header rows: typed NA for each column, not ""
+  hdr_template <- vctrs::vec_init(data, 1L)
+  # Set character columns to "" (for display), leave numeric as NA
+  for (cn in names(hdr_template)) {
+    if (is.character(hdr_template[[cn]])) {
+      hdr_template[[cn]] <- ""
+    }
+  }
+
+  # Columns to preserve on header rows (page_by for pagination)
+  preserve_cols <- intersect(page_by_cols, names(data))
+
+  for (i in seq_len(nr)) {
+    # Check each non-leaf level for boundary changes
+    for (lvl in non_leaf) {
+      cur_val <- as.character(data[[lvl]][i])
+      if (is.na(prev_values[lvl]) || cur_val != prev_values[lvl]) {
+        # Boundary at this level — inject header row
+        hdr <- hdr_template
+        hdr[["__display__"]] <- cur_val
+        hdr[["__row_level__"]] <- lvl
+        # Preserve page_by columns for downstream pagination
+        for (pc in preserve_cols) {
+          hdr[[pc]] <- as.character(data[[pc]][i])
+        }
+        # Preserve hierarchy columns for blank_after detection
+        for (hc in hierarchy_cols) {
+          hdr[[hc]] <- as.character(data[[hc]][i])
+        }
+        chunk_idx <- chunk_idx + 1L
+        result_chunks[[chunk_idx]] <- hdr
+        # header row injected
+        prev_values[lvl] <- cur_val
+
+        # Reset deeper non-leaf levels so they re-emit headers
+        lvl_idx <- which(non_leaf == lvl)
+        if (lvl_idx < length(non_leaf)) {
+          deeper <- non_leaf[seq(lvl_idx + 1L, length(non_leaf))]
+          prev_values[deeper] <- NA_character_
+        }
+      }
+    }
+
+    # Add the data row itself
+    row <- vctrs::vec_slice(data, i)
+    row[["__display__"]] <- leaf_values[i]
+    row[["__row_level__"]] <- leaf
+    chunk_idx <- chunk_idx + 1L
+    result_chunks[[chunk_idx]] <- row
+  }
+
+  # Trim unused slots and combine
+  result_chunks <- result_chunks[seq_len(chunk_idx)]
+  new_data <- vctrs::vec_rbind(!!!result_chunks)
+  rownames(new_data) <- NULL
+
+  spec$data <- new_data
+
+  # Auto-hide source hierarchy columns
+  for (col in hierarchy_cols) {
+    if (!is.null(spec$columns[[col]])) {
+      # Only auto-hide if user hasn't explicitly set visible
+      if (is.null(spec$columns[[col]]$visible)) {
+        spec$columns[[col]]$visible <- FALSE
+      }
+    }
+  }
+
+  # Store columns to auto-hide during finalize_columns
+  # (for hierarchy columns that don't have column specs yet)
+  spec$body$.auto_hide_cols <- hierarchy_cols
+
+  # Auto-set indent_by to use __row_level__ and __display__
+  levels_vec <- stats::setNames(
+    as.numeric(depth_map[hierarchy_cols]),
+    hierarchy_cols
+  )
+  spec$body$indent_by <- list(
+    key = "__row_level__",
+    col = "__display__",
+    levels = levels_vec
+  )
+
+  # Set group_by to the top-level column for group boundary detection
+  # (used by blank_after, group_keep, etc.)
+  spec$body$group_by <- hierarchy_cols[1L]
+
+  # Clear hierarchy fields so collapse doesn't run again
+  spec$body$group_hierarchy_cols <- NULL
 
   spec
 }
@@ -1443,19 +1608,19 @@ collect_colors <- function(spec) {
   }
 
   # From header styling
-  if (!is.null(spec$header$bg)) {
-    colors <- c(colors, spec$header$bg)
+  if (!is.null(spec$header$background)) {
+    colors <- c(colors, spec$header$background)
   }
-  if (!is.null(spec$header$fg)) {
-    colors <- c(colors, spec$header$fg)
+  if (!is.null(spec$header$color)) {
+    colors <- c(colors, spec$header$color)
   }
 
   # From cell_styles
   for (style in spec$cell_styles) {
-    if (!is.null(style$fg)) {
-      colors <- c(colors, style$fg)
+    if (!is.null(style$color)) {
+      colors <- c(colors, style$color)
     }
-    if (!is.null(style$bg)) colors <- c(colors, style$bg)
+    if (!is.null(style$background)) colors <- c(colors, style$background)
   }
 
   unique(colors)
