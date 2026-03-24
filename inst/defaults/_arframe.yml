@@ -22,7 +22,7 @@ page:
 columns:
   split: false
   space_mode: indent
-  n_format: ~
+  n_format: "{label}\n(N={n})"
 
 header:
   align: ~

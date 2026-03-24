@@ -20,3 +20,6 @@
 ^ARFRAME-PLAN\.txt$
 ^ARBUILDER-PLAN\.md$
 ^fr_wide_ard_blueprint\.md$
+^\.claudeignore$
+^\.local$
+^feature-todo\.md$

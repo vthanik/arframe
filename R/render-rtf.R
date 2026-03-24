@@ -103,8 +103,8 @@ rtf_col_gap_str <- function(spec) {
   if (gap_pt <= 0L) {
     return("")
   }
-  # Half on each side, convert pt → twips (1 pt = 20 twips)
-  pad_twips <- as.integer(round(gap_pt / 2 * 20))
+  # Half on each side, convert pt → twips
+  pad_twips <- pt_to_twips(gap_pt / 2)
   paste0("\\clpadt", pad_twips, "\\clpadr", pad_twips, "\\clpadft3\\clpadfr3")
 }
 
@@ -443,7 +443,9 @@ rtf_section_def <- function(spec, is_last = FALSE, body_footnotes = FALSE) {
   headery_str <- ""
   if (!is.null(spec$pagehead)) {
     chrome_fs <- spec$pagehead$font_size %||% (page$font_size - 1)
-    line_twips <- as.integer(round(chrome_fs * 20 * fr_env$rtf_leading_factor))
+    line_twips <- as.integer(round(
+      pt_to_twips(chrome_fs) * fr_env$rtf_leading_factor
+    ))
     headery_str <- paste0(
       "\\headery",
       max(as.integer(mt - line_twips), fr_env$rtf_min_headery)
@@ -604,7 +606,7 @@ rtf_footer_group <- function(
   if (!skip_footnotes) {
     bottom_rule <- find_bottom_rule(spec)
     if (!is.null(bottom_rule)) {
-      bw <- as.integer(round(bottom_rule$width * 20)) # pt to twips
+      bw <- pt_to_twips(bottom_rule$width)
       parts <- c(
         parts,
         paste0(
@@ -673,7 +675,7 @@ rtf_footer_group <- function(
     # 1/4 baselineskip gap between footnotes and pagefoot
     gap_twips <- if (has_footnotes) {
       chrome_fs <- spec$pagefoot$font_size %||% (spec$page$font_size - 1)
-      as.integer(round(chrome_fs * 20 * fr_env$rtf_leading_factor / 4))
+      as.integer(round(pt_to_twips(chrome_fs) * fr_env$rtf_leading_factor / 4))
     } else {
       0L
     }

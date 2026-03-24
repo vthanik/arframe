@@ -141,8 +141,10 @@ Per-column \code{fr_col(n = ...)} always takes highest priority.}
 
 \item{.n_format}{A \link[glue:glue]{glue}-style format string for N-count
 labels. Available tokens: \code{{label}} (column display label) and
-\code{{n}} (count). Default \code{NULL} inherits from config YAML
-\code{columns.n_format} or theme. Example: \code{"{label}\\\\n(N={n})"}.}
+\code{{n}} (count). Default \code{NULL} inherits from config
+(default: \code{"{label}\\\\n(N={n})"}). Override at project level via
+\code{columns.n_format} in \verb{_arframe.yml}, session level via
+\code{fr_theme(n_format = ...)}, or per-table here.}
 }
 \value{
 A modified \code{fr_spec}. Column specs stored in \code{spec$columns},

@@ -30,8 +30,8 @@ new_fr_page <- function(
   margins = 1,
   font_family = NULL,
   font_size = 9,
-  orphan_min = 3L,
-  widow_min = 3L,
+  orphan_min = fr_env$default_orphan_min,
+  widow_min = fr_env$default_widow_min,
   continuation = NULL,
   col_gap = 4L,
   tokens = list(),
@@ -1100,7 +1100,8 @@ new_fr_spec <- function(
   columns_meta = list(
     split = FALSE,
     width_mode = "auto",
-    space_mode = "indent"
+    space_mode = "indent",
+    n_format = fr_env$default_n_format
   ),
   header = new_fr_header(),
   body = new_fr_body(),

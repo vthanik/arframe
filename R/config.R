@@ -199,6 +199,7 @@ fr_config <- function(file = NULL) {
 
   fr_env$config <- cfg
   fr_env$config_file <- file
+  fr_env$config_reset <- FALSE
   invisible(cfg)
 }
 
@@ -288,6 +289,7 @@ fr_config_get <- function() {
 fr_config_reset <- function() {
   fr_env$config <- NULL
   fr_env$config_file <- NULL
+  fr_env$config_reset <- TRUE
   invisible(NULL)
 }
 
@@ -339,6 +341,9 @@ merge_config <- function(base, override) {
 #' @return Modified fr_spec.
 #' @noRd
 apply_config <- function(spec) {
+  if (is.null(fr_env$config) && !isTRUE(fr_env$config_reset)) {
+    fr_config()
+  }
   cfg <- fr_env$config
   if (is.null(cfg) || length(cfg) == 0L) {
     return(spec)
@@ -410,7 +415,7 @@ apply_config <- function(spec) {
       spec$header$span_gap <- header_cfg$span_gap
     }
     # n_format in header section → route to columns_meta for backward compat
-    if (!is.null(header_cfg$n_format) && is.null(spec$columns_meta$n_format)) {
+    if (!is.null(header_cfg$n_format) && is.character(header_cfg$n_format)) {
       spec$columns_meta$n_format <- header_cfg$n_format
     }
   }

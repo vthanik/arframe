@@ -112,8 +112,10 @@
 #'
 #' @param .n_format A [glue][glue::glue]-style format string for N-count
 #'   labels. Available tokens: `{label}` (column display label) and
-#'   `{n}` (count). Default `NULL` inherits from config YAML
-#'   `columns.n_format` or theme. Example: `"{label}\\n(N={n})"`.
+#'   `{n}` (count). Default `NULL` inherits from config
+#'   (default: `"{label}\\n(N={n})"`). Override at project level via
+#'   `columns.n_format` in `_arframe.yml`, session level via
+#'   `fr_theme(n_format = ...)`, or per-table here.
 #'
 #' @param .split Logical or `NULL`. Column splitting for wide tables that
 #'   exceed the printable page width:

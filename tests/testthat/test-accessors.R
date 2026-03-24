@@ -232,6 +232,8 @@ test_that("fr_get_styles errors on non-spec input", {
 # ── fr_get_rules ─────────────────────────────────────────────────────────────
 
 test_that("fr_get_rules returns empty list when no rules set", {
+  fr_config_reset()
+  withr::defer(fr_config_reset())
   spec <- tbl_demog |> fr_table()
   rules <- fr_get_rules(spec)
   expect_type(rules, "list")

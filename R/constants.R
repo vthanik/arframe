@@ -1126,6 +1126,8 @@ fr_env$valid_valigns <- c("top", "middle", "bottom")
 
 fr_env$valid_space_modes <- c("indent", "preserve")
 
+fr_env$default_n_format <- "{label}\n(N={n})"
+
 fr_env$valign_to_rtf <- c(
   top = "",
   middle = "\\clvertalc",

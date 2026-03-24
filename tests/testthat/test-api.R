@@ -29,6 +29,8 @@ test_that("fr_table creates fr_spec from data frame", {
 })
 
 test_that("fr_table spec has default meta, page, body, header", {
+  fr_config_reset()
+  withr::defer(fr_config_reset())
   spec <- fr_table(df_simple)
   expect_s3_class(spec$meta, "fr_meta")
   expect_s3_class(spec$page, "fr_page")
@@ -441,6 +443,8 @@ test_that("fr_pagehead sets left/center/right zones", {
 })
 
 test_that("fr_pagehead defaults: pagehead is NULL before being set", {
+  fr_config_reset()
+  withr::defer(fr_config_reset())
   spec <- fr_table(df_simple)
   expect_null(spec$pagehead)
 })
