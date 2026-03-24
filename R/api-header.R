@@ -21,29 +21,10 @@
 #' (except spans, which are managed by [fr_spans()]).
 #'
 #' @param spec An `fr_spec` object from [fr_table()].
-#' @param align Horizontal alignment for header cells. Accepts two forms:
-#'
-#'   * **Scalar string** — `"left"`, `"center"`, `"right"`, or `NULL`
-#'     (inherit from column). Applied to all header cells uniformly.
-#'
-#'   * **Named list + tidyselect** — per-column alignment using column
-#'     names and tidyselect helpers. Names are alignment values, values
-#'     are column selections:
-#'     ```r
-#'     fr_header(spec, align = list(
-#'       center = c(starts_with("zom"), "placebo"),
-#'       left   = "characteristic",
-#'       right  = "total"
-#'     ))
-#'     ```
-#'     Unmatched columns keep `fr_col(header_align = ...)` or fall back
-#'     to the body `align` setting.
-#'
-#'   **Precedence** (highest wins):
-#'   1. `fr_col(header_align = "right")` — per-column override
-#'   2. `fr_header(align = list(...))` — tidyselect targeting
-#'   3. `fr_header(align = "center")` — blanket scalar
-#'   4. Column body `align` — inherited default
+#' @param align Scalar horizontal alignment for all header cells. One of
+#'   `"left"`, `"center"`, `"right"`, or `NULL` (inherit from column body
+#'   alignment). For per-column header alignment, use
+#'   `fr_col(header_align = ...)` instead.
 #'
 #' @param valign Default vertical alignment. One of `"top"`, `"middle"`,
 #'   `"bottom"` (default). Relevant when header rows have unequal height.
@@ -80,14 +61,17 @@
 #'   fr_table() |>
 #'   fr_header(align = "center", valign = "bottom", bold = TRUE)
 #'
-#' ## ── Tidyselect alignment (per-column targeting) ──────────────────────────
+#' ## ── Per-column header alignment via fr_col ────────────────────────────────
 #'
 #' tbl_demog |>
 #'   fr_table() |>
-#'   fr_header(bold = TRUE, align = list(
-#'     left   = "characteristic",
-#'     center = c(starts_with("zom"), "placebo", "total")
-#'   ))
+#'   fr_cols(
+#'     characteristic = fr_col("Characteristic", header_align = "left"),
+#'     zom_50mg       = fr_col("Zomerane 50 mg", header_align = "center"),
+#'     placebo        = fr_col("Placebo",         header_align = "center"),
+#'     total          = fr_col("Total",           header_align = "right")
+#'   ) |>
+#'   fr_header(bold = TRUE)
 #'
 #' ## ── Header background colour (hex or CSS named colour) ──────────────────
 #'
@@ -113,6 +97,17 @@
 #'   ) |>
 #'   fr_header(bold = TRUE, align = "center")
 #'
+#' @section Precedence:
+#' Header alignment priority (last wins):
+#'
+#' `_arframe.yml` < `fr_theme(header=)` < `fr_header(align=)` <
+#' `fr_col(header_align=)` < `fr_style(region="header", align=)`
+#'
+#' Header font size priority:
+#'
+#' `fr_page(font_size=)` < `fr_header(font_size=)` <
+#' `fr_style(region="header", font_size=)`
+#'
 #' @seealso [fr_cols()] for column structure and N-counts, [fr_spans()] for
 #'   spanning headers, [fr_col()] for per-column `header_align` overrides,
 #'   [fr_style()] with `region = "header"` for cell-level overrides,
@@ -132,62 +127,19 @@ fr_header <- function(
   call <- caller_env()
   check_fr_spec(spec, call = call)
 
-  # ── Resolve align: scalar string or named list (tidyselect) ─────────────
+  # ── Resolve align: scalar string only ─────────────────────────────────────
 
-  align_expr <- rlang::enexpr(align)
-  align_map <- NULL
-
-  if (!is.null(align_expr)) {
-    # Detect named list form: align = list(center = ..., left = ...)
-    # Must capture unevaluated to preserve tidyselect helpers like starts_with()
-    is_list_call <- rlang::is_call(align_expr, "list")
-
-    if (is_list_call) {
-      # Extract the named elements from the unevaluated list(...) call
-      align_args <- rlang::call_args(align_expr)
-      align_names <- names(align_args)
-
-      valid_aligns <- fr_env$valid_aligns
-      bad_names <- setdiff(align_names, valid_aligns)
-      if (length(bad_names) > 0L) {
-        cli_abort(
-          c(
-            "{.arg align} list names must be valid alignments: {.val {valid_aligns}}.",
-            "x" = "Invalid name{?s}: {.val {bad_names}}."
-          ),
-          call = call
-        )
-      }
-
-      # Resolve each group via tidyselect
-      align_map <- list()
-      col_names <- names(spec$columns) %||% names(spec$data)
-      col_proxy <- set_names(seq_along(col_names), col_names)
-      for (i in seq_along(align_args)) {
-        a <- align_names[[i]]
-        sel_expr <- align_args[[i]]
-        sel <- resolve_tidyselect(
-          sel_expr,
-          data = col_proxy,
-          context = cli::format_inline(
-            "{.arg align} tidyselect for {.val {a}}"
-          ),
-          call = call
-        )
-        for (nm in names(sel)) {
-          align_map[[nm]] <- a
-        }
-      }
-      align <- NULL
-    } else {
-      # Scalar string form — evaluate the expression now
-      align <- rlang::eval_tidy(align_expr)
-      if (!is.null(align)) {
-        align <- match_arg_fr(align, fr_env$valid_aligns, call = call)
-      }
+  if (!is.null(align)) {
+    if (is.list(align)) {
+      cli_abort(
+        c(
+          "{.arg align} must be a scalar string, not a list.",
+          "i" = "For per-column header alignment, use {.code fr_col(header_align = ...)} instead."
+        ),
+        call = call
+      )
     }
-  } else {
-    align <- NULL
+    align <- match_arg_fr(align, fr_env$valid_aligns, call = call)
   }
 
   if (!is.null(valign)) {
@@ -221,7 +173,6 @@ fr_header <- function(
     },
     valign = if (!missing(valign)) valign else old$valign,
     align = if (!missing(align)) align else old$align,
-    align_map = if (!is.null(align_map)) align_map else old$align_map,
     bold = if (!missing(bold)) bold else old$bold,
     background = if (!missing(background)) background else old$background,
     color = if (!missing(color)) color else old$color,

@@ -49,6 +49,14 @@ engine applies them in a single pass over the cell grid.
 }
 }
 
+\section{Precedence}{
+
+When multiple styles target the same cell, later styles in the
+\code{\link[=fr_styles]{fr_styles()}} call override earlier ones. Scope precedence:
+
+\code{fr_col_style()} < \code{fr_row_style()} < \code{fr_style()} (cell-level)
+}
+
 \examples{
 ## ── Create reusable style objects, then apply ─────────────────────────────
 header_style <- fr_style(region = "header", bold = TRUE, background = "lavender")

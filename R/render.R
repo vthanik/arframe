@@ -1101,14 +1101,13 @@ build_span_label_overrides <- function(n_counts, fmt, spans) {
 
 #' Apply header-level styling defaults to columns
 #'
-#' Propagates fr_header(align = ...) and fr_header(align = list(...))
-#' to columns that don't have a per-column header_align set.
+#' Propagates fr_header(align = ...) scalar alignment to columns that
+#' don't have a per-column header_align set.
 #'
 #' Precedence (highest wins):
 #'   1. fr_col(header_align = ...)  — per-column override
-#'   2. align_map (tidyselect)      — applied here
-#'   3. scalar align                — blanket default applied here
-#'   4. column body align           — inherited (default)
+#'   2. scalar align                — blanket default applied here
+#'   3. column body align           — inherited (default)
 #'
 #' @noRd
 apply_header_defaults <- function(spec) {
@@ -1131,19 +1130,6 @@ apply_header_defaults <- function(spec) {
     for (nm in names(spec$columns)) {
       if (!explicit_ha[nm]) {
         spec$columns[[nm]]$header_align <- h$align
-      }
-    }
-  }
-
-  # Step 2: Apply align_map (tidyselect) — overrides scalar but not fr_col
-  align_map <- h$align_map
-  if (!is.null(align_map) && length(align_map) > 0L) {
-    for (nm in names(align_map)) {
-      if (is.null(spec$columns[[nm]])) {
-        next
-      }
-      if (!explicit_ha[nm]) {
-        spec$columns[[nm]]$header_align <- align_map[[nm]]
       }
     }
   }

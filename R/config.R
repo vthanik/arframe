@@ -91,7 +91,7 @@ find_config <- function(dir = getwd()) {
 #'
 #' columns:
 #'   split: false           # column splitting for wide tables
-#'   spaces: indent         # indent | preserve — leading space handling
+#'   space_mode: indent     # indent | preserve — leading space handling
 #'
 #' header:
 #'   align: ~               # inherit from column (user decides)
@@ -372,18 +372,22 @@ apply_config <- function(spec) {
     if (!is.null(columns_cfg$stub) && is.character(columns_cfg$stub)) {
       spec$columns_meta$stub <- columns_cfg$stub
     }
-    if (!is.null(columns_cfg$spaces) && is.character(columns_cfg$spaces)) {
-      spaces_val <- tryCatch(
-        match_arg_fr(columns_cfg$spaces, fr_env$valid_spaces),
+    if (
+      !is.null(columns_cfg$space_mode) && is.character(columns_cfg$space_mode)
+    ) {
+      space_mode_val <- tryCatch(
+        match_arg_fr(columns_cfg$space_mode, fr_env$valid_space_modes),
         error = function(e) {
           cli_warn(
-            "Config {.field columns.spaces} ignored: {conditionMessage(e)}",
+            "Config {.field columns.space_mode} ignored: {conditionMessage(e)}",
             call = caller_env()
           )
           NULL
         }
       )
-      if (!is.null(spaces_val)) spec$columns_meta$spaces <- spaces_val
+      if (!is.null(space_mode_val)) {
+        spec$columns_meta$space_mode <- space_mode_val
+      }
     }
     if (!is.null(columns_cfg$n_format) && is.character(columns_cfg$n_format)) {
       spec$columns_meta$n_format <- columns_cfg$n_format

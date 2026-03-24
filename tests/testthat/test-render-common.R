@@ -1894,7 +1894,7 @@ test_that("apply_leading_indent strips spaces and creates indent styles", {
     NULL,
     spec$page
   )
-  spec$columns_meta$spaces <- "indent"
+  spec$columns_meta$space_mode <- "indent"
   result <- apply_leading_indent(spec)
   # Data should have spaces stripped
 
@@ -1922,8 +1922,8 @@ test_that("apply_leading_indent skips preserve mode columns", {
     NULL,
     spec$page
   )
-  spec$columns$a$spaces <- "preserve"
-  spec$columns_meta$spaces <- "indent"
+  spec$columns$a$space_mode <- "preserve"
+  spec$columns_meta$space_mode <- "indent"
   result <- apply_leading_indent(spec)
   # Data should NOT have spaces stripped
   expect_equal(result$data$a[1], "  indented")
@@ -1945,7 +1945,7 @@ test_that("apply_leading_indent skips columns with no leading spaces", {
     NULL,
     spec$page
   )
-  spec$columns_meta$spaces <- "indent"
+  spec$columns_meta$space_mode <- "indent"
   result <- apply_leading_indent(spec)
   expect_length(result$cell_styles, 0L)
 })
@@ -1965,7 +1965,7 @@ test_that("apply_leading_indent handles empty data", {
     NULL,
     spec$page
   )
-  spec$columns_meta$spaces <- "indent"
+  spec$columns_meta$space_mode <- "indent"
   result <- apply_leading_indent(spec)
   expect_length(result$cell_styles, 0L)
 })
@@ -1985,7 +1985,7 @@ test_that("apply_leading_indent global preserve mode skips all columns", {
     NULL,
     spec$page
   )
-  spec$columns_meta$spaces <- "preserve"
+  spec$columns_meta$space_mode <- "preserve"
   result <- apply_leading_indent(spec)
   expect_equal(result$data$a[1], "  indented")
   expect_length(result$cell_styles, 0L)

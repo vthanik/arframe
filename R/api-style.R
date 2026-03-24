@@ -710,6 +710,12 @@ fr_col_style <- function(
 #' spec <- spec |>
 #'   fr_styles(fr_col_style(cols = "total", background = "#EBF5FB"))
 #'
+#' @section Precedence:
+#' When multiple styles target the same cell, later styles in the
+#' [fr_styles()] call override earlier ones. Scope precedence:
+#'
+#' `fr_col_style()` < `fr_row_style()` < `fr_style()` (cell-level)
+#'
 #' @seealso [fr_style()], [fr_row_style()], [fr_col_style()] for the style
 #'   constructors.
 #'
@@ -795,6 +801,8 @@ fr_styles <- function(spec, ...) {
 #' @param font_size Font size in points, or `NULL`.
 #' @param align Horizontal alignment (`"left"`, `"center"`, `"right"`,
 #'   `"decimal"`), or `NULL`.
+#' @param valign Vertical alignment (`"top"`, `"middle"`, `"bottom"`), or
+#'   `NULL`. See [fr_style()] **Alignment model**.
 #'
 #' @return An `fr_conditional_style` object for use in [fr_styles()].
 #'
@@ -912,7 +920,8 @@ fr_style_if <- function(
   color = NULL,
   background = NULL,
   font_size = NULL,
-  align = NULL
+  align = NULL,
+  valign = NULL
 ) {
   call <- caller_env()
 
@@ -931,6 +940,9 @@ fr_style_if <- function(
   if (!is.null(align)) {
     align <- match_arg_fr(align, fr_env$valid_aligns, call = call)
   }
+  if (!is.null(valign)) {
+    valign <- match_arg_fr(valign, fr_env$valid_valigns, call = call)
+  }
 
   structure(
     list(
@@ -947,7 +959,8 @@ fr_style_if <- function(
         NULL
       },
       font_size = font_size,
-      align = align
+      align = align,
+      valign = valign
     ),
     class = c("fr_conditional_style", "fr_cell_style")
   )
@@ -1224,7 +1237,8 @@ resolve_conditional_style <- function(cond_style, data, call = caller_env()) {
       color = cond_style$color,
       background = cond_style$background,
       font_size = cond_style$font_size,
-      align = cond_style$align
+      align = cond_style$align,
+      valign = cond_style$valign
     )
     return(list(inject(new_fr_cell_style(!!!style_args))))
   } else {
@@ -1268,7 +1282,8 @@ resolve_conditional_style <- function(cond_style, data, call = caller_env()) {
           color = cond_style$color,
           background = cond_style$background,
           font_size = cond_style$font_size,
-          align = cond_style$align
+          align = cond_style$align,
+          valign = cond_style$valign
         )
         results <- c(results, list(style))
       } else {
@@ -1284,7 +1299,8 @@ resolve_conditional_style <- function(cond_style, data, call = caller_env()) {
           color = cond_style$color,
           background = cond_style$background,
           font_size = cond_style$font_size,
-          align = cond_style$align
+          align = cond_style$align,
+          valign = cond_style$valign
         )
         results <- c(results, list(style))
       }

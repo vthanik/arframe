@@ -56,7 +56,7 @@ page:
 
 columns:
   split: false           # column splitting for wide tables
-  spaces: indent         # indent | preserve — leading space handling
+  space_mode: indent     # indent | preserve — leading space handling
 
 header:
   align: ~               # inherit from column (user decides)

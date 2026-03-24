@@ -71,8 +71,8 @@
 #'   * `~ tools::toTitleCase(gsub("_", " ", .x))` — title case.
 #'   * `toupper` — all caps.
 #'
-#' @param .spaces How to handle leading spaces in cell data for all columns
-#'   that do not have an explicit `spaces` set in [fr_col()]. One of:
+#' @param .space_mode How to handle leading spaces in cell data for all columns
+#'   that do not have an explicit `space_mode` set in [fr_col()]. One of:
 #'   * `"indent"` (default) — convert leading spaces to paragraph-level
 #'     indent. The indent width is measured from the page font metrics,
 #'     so it renders correctly in both proportional and monospace fonts.
@@ -317,12 +317,12 @@
 #' ## ── Leading spaces → paragraph-level indent (default) ──────────────────
 #'
 #' # tbl_demog has leading spaces ("  Mean (SD)", "  <65", etc.)
-#' # Default .spaces = "indent" converts them to real paragraph indent
+#' # Default .space_mode = "indent" converts them to real paragraph indent
 #' tbl_demog |>
 #'   fr_table() |>
 #'   fr_cols(
 #'     characteristic = fr_col("Characteristic", width = 2.5),
-#'     .spaces = "indent"
+#'     .space_mode = "indent"
 #'   )
 #'
 #' ## ── Preserve leading spaces as literal characters ─────────────────────
@@ -332,7 +332,7 @@
 #'   fr_table() |>
 #'   fr_cols(
 #'     characteristic = fr_col("Characteristic", width = 2.5),
-#'     .spaces = "preserve"
+#'     .space_mode = "preserve"
 #'   )
 #'
 #' ## ── Per-column override: preserve one column, indent the rest ─────────
@@ -340,8 +340,8 @@
 #' tbl_demog |>
 #'   fr_table() |>
 #'   fr_cols(
-#'     characteristic = fr_col("Characteristic", width = 2.5, spaces = "preserve"),
-#'     .spaces = "indent"
+#'     characteristic = fr_col("Characteristic", width = 2.5, space_mode = "preserve"),
+#'     .space_mode = "indent"
 #'   )
 #'
 #' ## ── Column splitting: split + fit to fill page ─────────────────────────
@@ -373,7 +373,7 @@ fr_cols <- function(
   .width = NULL,
   .align = NULL,
   .label_fn = NULL,
-  .spaces = NULL,
+  .space_mode = NULL,
   .split = NULL,
   .n = NULL,
   .n_format = NULL
@@ -381,16 +381,55 @@ fr_cols <- function(
   call <- caller_env()
   check_fr_spec(spec, call = call)
 
+  # Validate .n input shape early (errors here, not at render time)
+  if (!missing(.n) && !is.null(.n)) {
+    if (is.data.frame(.n)) {
+      if (ncol(.n) < 2L || ncol(.n) > 3L) {
+        cli_abort(
+          c(
+            "{.arg .n} data frame must have 2 or 3 columns.",
+            "x" = "You supplied a data frame with {ncol(.n)} column{?s}.",
+            "i" = "Use {.code data.frame(label, n)} or {.code data.frame(page_group, label, n)}."
+          ),
+          call = call
+        )
+      }
+    } else if (is.numeric(.n)) {
+      if (is.null(names(.n))) {
+        cli_abort(
+          c(
+            "{.arg .n} numeric vector must be named.",
+            "x" = "You supplied an unnamed vector of length {length(.n)}.",
+            "i" = "Example: {.code .n = c(Placebo = 86, Drug = 72)}"
+          ),
+          call = call
+        )
+      }
+    } else if (!is.list(.n)) {
+      cli_abort(
+        c(
+          "{.arg .n} must be a named numeric vector, data frame, or named list.",
+          "x" = "You supplied {.obj_type_friendly {.n}}."
+        ),
+        call = call
+      )
+    }
+  }
+
   # Validate .split: NULL, TRUE, or FALSE
   if (!is.null(.split)) {
     check_scalar_lgl(.split, arg = ".split", call = call)
     spec$columns_meta$split <- .split
   }
 
-  # Validate .spaces: NULL, "indent", or "preserve"
-  if (!is.null(.spaces)) {
-    .spaces <- match_arg_fr(.spaces, fr_env$valid_spaces, call = call)
-    spec$columns_meta$spaces <- .spaces
+  # Validate .space_mode: NULL, "indent", or "preserve"
+  if (!is.null(.space_mode)) {
+    .space_mode <- match_arg_fr(
+      .space_mode,
+      fr_env$valid_space_modes,
+      call = call
+    )
+    spec$columns_meta$space_mode <- .space_mode
   }
 
   # Validate .width: NULL, numeric, "auto", "equal", "fit", or "N%"

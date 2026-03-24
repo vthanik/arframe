@@ -952,7 +952,7 @@ test_that("latex_body_rows preserves leading whitespace as hspace in preserve mo
   spec <- df |>
     fr_table() |>
     fr_cols(
-      a = fr_col("A", width = 3, spaces = "preserve"),
+      a = fr_col("A", width = 3, space_mode = "preserve"),
       b = fr_col("B", width = 2)
     )
   fspec <- finalize_spec(spec)

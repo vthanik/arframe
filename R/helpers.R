@@ -361,9 +361,9 @@ apply_fr_theme <- function(spec) {
     )
   )
 
-  # Column spaces/split/stub/n_format defaults (from theme)
-  if (!is.null(setup[["spaces"]])) {
-    spec$columns_meta$spaces <- setup[["spaces"]]
+  # Column space_mode/split/stub/n_format defaults (from theme)
+  if (!is.null(setup[["space_mode"]])) {
+    spec$columns_meta$space_mode <- setup[["space_mode"]]
   }
   if (!is.null(setup[["n_format"]])) {
     spec$columns_meta$n_format <- setup[["n_format"]]

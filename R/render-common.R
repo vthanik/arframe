@@ -928,7 +928,7 @@ collapse_hierarchy <- function(spec) {
 #' @return Modified fr_spec with stripped data and new cell_styles.
 #' @noRd
 apply_leading_indent <- function(spec) {
-  default_spaces <- spec$columns_meta$spaces %||% "indent"
+  default_spaces <- spec$columns_meta$space_mode %||% "indent"
   nr <- nrow(spec$data)
   if (nr == 0L) {
     return(spec)
@@ -945,7 +945,7 @@ apply_leading_indent <- function(spec) {
 
   for (nm in names(spec$columns)) {
     col <- spec$columns[[nm]]
-    col_spaces <- col$spaces %||% default_spaces
+    col_spaces <- col$space_mode %||% default_spaces
     if (col_spaces != "indent") {
       next
     }

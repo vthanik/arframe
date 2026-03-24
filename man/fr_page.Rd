@@ -129,6 +129,15 @@ of a page before a \code{group_by} group, move the group to the next page.
 }
 }
 
+\section{Precedence}{
+
+\code{font_size} applies to all table text unless overridden:
+
+\code{fr_page(font_size=)} < \code{fr_header(font_size=)} <
+\code{fr_pagehead(font_size=)} / \code{fr_pagefoot(font_size=)} <
+\code{fr_style(font_size=)}
+}
+
 \examples{
 ## ── Standard pharma RTF setup ────────────────────────────────────────────
 

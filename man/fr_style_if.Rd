@@ -14,7 +14,8 @@ fr_style_if(
   color = NULL,
   background = NULL,
   font_size = NULL,
-  align = NULL
+  align = NULL,
+  valign = NULL
 )
 }
 \arguments{
@@ -59,6 +60,9 @@ is applied via \code{\link[=fr_styles]{fr_styles()}}.}
 
 \item{align}{Horizontal alignment (\code{"left"}, \code{"center"}, \code{"right"},
 \code{"decimal"}), or \code{NULL}.}
+
+\item{valign}{Vertical alignment (\code{"top"}, \code{"middle"}, \code{"bottom"}), or
+\code{NULL}. See \code{\link[=fr_style]{fr_style()}} \strong{Alignment model}.}
 }
 \value{
 An \code{fr_conditional_style} object for use in \code{\link[=fr_styles]{fr_styles()}}.

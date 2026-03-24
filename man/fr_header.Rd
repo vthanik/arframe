@@ -18,32 +18,10 @@ fr_header(
 \arguments{
 \item{spec}{An \code{fr_spec} object from \code{\link[=fr_table]{fr_table()}}.}
 
-\item{align}{Horizontal alignment for header cells. Accepts two forms:
-\itemize{
-\item \strong{Scalar string} — \code{"left"}, \code{"center"}, \code{"right"}, or \code{NULL}
-(inherit from column). Applied to all header cells uniformly.
-\item \strong{Named list + tidyselect} — per-column alignment using column
-names and tidyselect helpers. Names are alignment values, values
-are column selections:
-
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{fr_header(spec, align = list(
-  center = c(starts_with("zom"), "placebo"),
-  left   = "characteristic",
-  right  = "total"
-))
-}\if{html}{\out{</div>}}
-
-Unmatched columns keep \code{fr_col(header_align = ...)} or fall back
-to the body \code{align} setting.
-}
-
-\strong{Precedence} (highest wins):
-\enumerate{
-\item \code{fr_col(header_align = "right")} — per-column override
-\item \code{fr_header(align = list(...))} — tidyselect targeting
-\item \code{fr_header(align = "center")} — blanket scalar
-\item Column body \code{align} — inherited default
-}}
+\item{align}{Scalar horizontal alignment for all header cells. One of
+\code{"left"}, \code{"center"}, \code{"right"}, or \code{NULL} (inherit from column body
+alignment). For per-column header alignment, use
+\code{fr_col(header_align = ...)} instead.}
 
 \item{valign}{Default vertical alignment. One of \code{"top"}, \code{"middle"},
 \code{"bottom"} (default). Relevant when header rows have unequal height.}
@@ -99,6 +77,19 @@ alignment from the column's \code{align} setting — use
 \code{fr_header(bold = TRUE, align = "center")} to opt in.
 }
 
+\section{Precedence}{
+
+Header alignment priority (last wins):
+
+\verb{_arframe.yml} < \code{fr_theme(header=)} < \code{fr_header(align=)} <
+\code{fr_col(header_align=)} < \code{fr_style(region="header", align=)}
+
+Header font size priority:
+
+\code{fr_page(font_size=)} < \code{fr_header(font_size=)} <
+\code{fr_style(region="header", font_size=)}
+}
+
 \examples{
 ## ── Center all headers with bottom valign ────────────────────────────────
 
@@ -106,14 +97,17 @@ tbl_demog |>
   fr_table() |>
   fr_header(align = "center", valign = "bottom", bold = TRUE)
 
-## ── Tidyselect alignment (per-column targeting) ──────────────────────────
+## ── Per-column header alignment via fr_col ────────────────────────────────
 
 tbl_demog |>
   fr_table() |>
-  fr_header(bold = TRUE, align = list(
-    left   = "characteristic",
-    center = c(starts_with("zom"), "placebo", "total")
-  ))
+  fr_cols(
+    characteristic = fr_col("Characteristic", header_align = "left"),
+    zom_50mg       = fr_col("Zomerane 50 mg", header_align = "center"),
+    placebo        = fr_col("Placebo",         header_align = "center"),
+    total          = fr_col("Total",           header_align = "right")
+  ) |>
+  fr_header(bold = TRUE)
 
 ## ── Header background colour (hex or CSS named colour) ──────────────────
 

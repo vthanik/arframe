@@ -34,10 +34,10 @@
 #'   unchanged. See [fr_page()] for details.
 #' @param font_family Font family name. `NULL` leaves unchanged.
 #' @param font_size Font size in points. `NULL` leaves unchanged.
-#' @param spaces How to handle leading spaces in cell data. One of
+#' @param space_mode How to handle leading spaces in cell data. One of
 #'   `"indent"` (convert to paragraph-level indent) or `"preserve"`
 #'   (keep literal spaces). `NULL` leaves unchanged. See [fr_cols()]
-#'   `.spaces` parameter for details.
+#'   `.space_mode` parameter for details.
 #' @param split Logical. `TRUE` to enable column splitting for wide tables,
 #'   `FALSE` to disable. `NULL` leaves unchanged. See [fr_cols()] `.split`
 #'   parameter for details.
@@ -143,11 +143,11 @@
 #' ## ── Theme with leading-space handling ────────────────────────────────────
 #'
 #' fr_theme_reset()
-#' fr_theme(spaces = "indent")   # default: leading spaces → paragraph indent
-#' fr_theme_get()$spaces         # "indent"
+#' fr_theme(space_mode = "indent")   # default: leading spaces → paragraph indent
+#' fr_theme_get()$space_mode         # "indent"
 #'
-#' fr_theme(spaces = "preserve") # keep leading spaces as literal characters
-#' fr_theme_get()$spaces         # "preserve"
+#' fr_theme(space_mode = "preserve") # keep leading spaces as literal characters
+#' fr_theme_get()$space_mode         # "preserve"
 #'
 #' ## ── Theme with footnote_separator ────────────────────────────────────────
 #'
@@ -179,7 +179,7 @@ fr_theme <- function(
   col_gap = NULL,
   font_family = NULL,
   font_size = NULL,
-  spaces = NULL,
+  space_mode = NULL,
   split = NULL,
   stub = NULL,
   pagehead = NULL,
@@ -212,8 +212,12 @@ fr_theme <- function(
   if (!is.null(n_format)) {
     check_scalar_chr(n_format, arg = "n_format", call = call)
   }
-  if (!is.null(spaces)) {
-    spaces <- match_arg_fr(spaces, fr_env$valid_spaces, call = call)
+  if (!is.null(space_mode)) {
+    space_mode <- match_arg_fr(
+      space_mode,
+      fr_env$valid_space_modes,
+      call = call
+    )
   }
   if (!is.null(split)) {
     check_scalar_lgl(split, arg = "split", call = call)
@@ -260,17 +264,18 @@ fr_theme <- function(
     )
   }
 
-  theme <- fr_env$theme %||% list()
+  current_theme <- fr_env$theme %||% list()
 
+  new_settings <- list()
   set_if <- function(key, value) {
-    if (!is.null(value)) theme[[key]] <<- value
+    if (!is.null(value)) new_settings[[key]] <<- value
   }
 
   set_if("orientation", orientation)
   set_if("paper", paper)
   set_if("margins", margins)
   set_if("col_gap", col_gap)
-  set_if("spaces", spaces)
+  set_if("space_mode", space_mode)
   set_if("split", split)
   set_if("stub", stub)
   set_if("font_family", font_family)
@@ -287,7 +292,18 @@ fr_theme <- function(
   set_if("group_keep", group_keep)
   set_if("footnote_separator", footnote_separator)
 
-  fr_env$theme <- theme
+  # For nested list params, merge recursively
+  nested_keys <- c("pagehead", "pagefoot", "header", "spacing")
+  for (key in nested_keys) {
+    if (!is.null(new_settings[[key]]) && is.list(new_settings[[key]])) {
+      existing <- current_theme[[key]]
+      if (is.list(existing)) {
+        new_settings[[key]] <- utils::modifyList(existing, new_settings[[key]])
+      }
+    }
+  }
+
+  fr_env$theme <- utils::modifyList(current_theme, new_settings)
   invisible(NULL)
 }
 

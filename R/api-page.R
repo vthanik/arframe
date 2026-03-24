@@ -160,6 +160,13 @@
 #' # XeLaTeX discovers them by name --- no system install needed.
 #' # Sys.setenv(ARFRAME_FONT_DIR = "/path/to/fonts")
 #'
+#' @section Precedence:
+#' `font_size` applies to all table text unless overridden:
+#'
+#' `fr_page(font_size=)` < `fr_header(font_size=)` <
+#' `fr_pagehead(font_size=)` / `fr_pagefoot(font_size=)` <
+#' `fr_style(font_size=)`
+#'
 #' @seealso [fr_pagehead()], [fr_pagefoot()] for running headers/footers,
 #'   [fr_rows()] for `page_by` / `group_by` row pagination,
 #'   [fr_cols()] with `.split` for column splitting.

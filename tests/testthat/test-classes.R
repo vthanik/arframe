@@ -598,14 +598,14 @@ test_that("check_fr_col errors on non-fr_col", {
   expect_error(check_fr_col("col"), class = "rlang_error")
 })
 
-test_that("fr_col accepts spaces parameter", {
-  col_indent <- fr_col("A", spaces = "indent")
-  expect_equal(col_indent$spaces, "indent")
-  col_preserve <- fr_col("A", spaces = "preserve")
-  expect_equal(col_preserve$spaces, "preserve")
+test_that("fr_col accepts space_mode parameter", {
+  col_indent <- fr_col("A", space_mode = "indent")
+  expect_equal(col_indent$space_mode, "indent")
+  col_preserve <- fr_col("A", space_mode = "preserve")
+  expect_equal(col_preserve$space_mode, "preserve")
   col_null <- fr_col("A")
-  expect_null(col_null$spaces)
-  expect_error(fr_col("A", spaces = "invalid"), class = "rlang_error")
+  expect_null(col_null$space_mode)
+  expect_error(fr_col("A", space_mode = "invalid"), class = "rlang_error")
 })
 
 
@@ -1261,11 +1261,13 @@ test_that("new_fr_header stores all optional parameters", {
   expect_false(h$span_gap)
 })
 
-test_that("new_fr_header stores align_map parameter", {
-  h <- new_fr_header(
-    align_map = list(a = "center", b = "right")
-  )
-  expect_equal(h$align_map, list(a = "center", b = "right"))
+test_that("new_fr_header no longer accepts align_map parameter", {
+  # align_map was removed — per-column header alignment now uses
+
+  # fr_col(header_align = ...) instead of fr_header(align = list(...))
+  h <- new_fr_header(align = "center")
+  expect_equal(h$align, "center")
+  expect_null(h$align_map)
 })
 
 test_that("new_fr_body stores all parameters", {

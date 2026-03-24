@@ -11,7 +11,7 @@ fr_cols(
   .width = NULL,
   .align = NULL,
   .label_fn = NULL,
-  .spaces = NULL,
+  .space_mode = NULL,
   .split = NULL,
   .n = NULL,
   .n_format = NULL
@@ -78,8 +78,8 @@ Common transforms:
 \item \code{toupper} — all caps.
 }}
 
-\item{.spaces}{How to handle leading spaces in cell data for all columns
-that do not have an explicit \code{spaces} set in \code{\link[=fr_col]{fr_col()}}. One of:
+\item{.space_mode}{How to handle leading spaces in cell data for all columns
+that do not have an explicit \code{space_mode} set in \code{\link[=fr_col]{fr_col()}}. One of:
 \itemize{
 \item \code{"indent"} (default) — convert leading spaces to paragraph-level
 indent. The indent width is measured from the page font metrics,
@@ -357,12 +357,12 @@ tbl_demog |>
 ## ── Leading spaces → paragraph-level indent (default) ──────────────────
 
 # tbl_demog has leading spaces ("  Mean (SD)", "  <65", etc.)
-# Default .spaces = "indent" converts them to real paragraph indent
+# Default .space_mode = "indent" converts them to real paragraph indent
 tbl_demog |>
   fr_table() |>
   fr_cols(
     characteristic = fr_col("Characteristic", width = 2.5),
-    .spaces = "indent"
+    .space_mode = "indent"
   )
 
 ## ── Preserve leading spaces as literal characters ─────────────────────
@@ -372,7 +372,7 @@ tbl_demog |>
   fr_table() |>
   fr_cols(
     characteristic = fr_col("Characteristic", width = 2.5),
-    .spaces = "preserve"
+    .space_mode = "preserve"
   )
 
 ## ── Per-column override: preserve one column, indent the rest ─────────
@@ -380,8 +380,8 @@ tbl_demog |>
 tbl_demog |>
   fr_table() |>
   fr_cols(
-    characteristic = fr_col("Characteristic", width = 2.5, spaces = "preserve"),
-    .spaces = "indent"
+    characteristic = fr_col("Characteristic", width = 2.5, space_mode = "preserve"),
+    .space_mode = "indent"
   )
 
 ## ── Column splitting: split + fit to fill page ─────────────────────────

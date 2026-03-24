@@ -700,59 +700,17 @@ test_that("bulk .n auto-routes to spans from group=", {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Named list align (tidyselect) in fr_header
+# fr_header(align = list(...)) is now an error
 # ══════════════════════════════════════════════════════════════════════════════
 
-test_that("fr_header align as named list resolves via tidyselect", {
-  spec <- tbl_demog |>
-    fr_table() |>
-    fr_cols(
-      characteristic = fr_col("Characteristic"),
-      zom_50mg = fr_col("Zomerane 50 mg"),
-      placebo = fr_col("Placebo"),
-      total = fr_col("Total")
-    ) |>
-    fr_header(
-      align = list(
-        left = "characteristic",
-        center = c(starts_with("zom"), "placebo"),
-        right = "total"
-      )
-    )
-
-  expect_null(spec$header$align)
-  expect_equal(spec$header$align_map[["characteristic"]], "left")
-  expect_equal(spec$header$align_map[["zom_50mg"]], "center")
-  expect_equal(spec$header$align_map[["placebo"]], "center")
-  expect_equal(spec$header$align_map[["total"]], "right")
-})
-
-test_that("align_map overrides scalar align but not fr_col header_align", {
-  spec <- tbl_demog |>
-    fr_table() |>
-    fr_cols(
-      characteristic = fr_col("Characteristic", header_align = "left"),
-      zom_50mg = fr_col("Zomerane 50 mg"),
-      placebo = fr_col("Placebo")
-    ) |>
-    fr_header(
-      align = list(
-        center = c("characteristic", "zom_50mg", "placebo")
-      )
-    )
-
-  fspec <- arframe:::finalize_spec(spec)
-
-  # characteristic has fr_col(header_align = "left") → must win
-  expect_equal(fspec$columns$characteristic$header_align, "left")
-  # zom_50mg has no per-column override → align_map applies
-  expect_equal(fspec$columns$zom_50mg$header_align, "center")
-})
-
-test_that("fr_header rejects invalid align list names", {
+test_that("fr_header rejects align as list with informative error", {
   spec <- tbl_demog |> fr_table()
   expect_error(
-    fr_header(spec, align = list(bad_name = "characteristic")),
-    "valid alignments"
+    fr_header(spec, align = list(center = "characteristic")),
+    "scalar string, not a list"
+  )
+  expect_error(
+    fr_header(spec, align = list(left = "characteristic", right = "total")),
+    "fr_col\\(header_align"
   )
 })

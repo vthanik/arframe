@@ -332,14 +332,14 @@ is_fr_pct <- function(x) inherits(x, "fr_pct")
 #'   provide context for each panel. When `.split` is enabled but no
 #'   columns have `stub = TRUE`, stubs are auto-inferred from
 #'   `group_by`/`indent_by` columns or the first column.
-#' @param spaces How to handle leading spaces in cell data. One of:
+#' @param space_mode How to handle leading spaces in cell data. One of:
 #'   * `"indent"` — convert leading spaces to paragraph-level indent
 #'     (RTF `\li`, LaTeX `\leftskip`). All lines (including wrapped)
 #'     maintain the same indent. This is the correct approach for
 #'     proportional fonts and pharma SOC/PT hierarchies.
 #'   * `"preserve"` — keep leading spaces as literal characters. Use
 #'     for pre-formatted content where exact spacing must be retained.
-#'   * `NULL` (default) — inherits from the `.spaces` argument of
+#'   * `NULL` (default) — inherits from the `.space_mode` argument of
 #'     [fr_cols()], which defaults to `"indent"`.
 #' @param n Per-column subject count. A non-negative integer scalar
 #'   (e.g. `n = 45`). Formatted into the column label at render time
@@ -360,7 +360,7 @@ is_fr_pct <- function(x) inherits(x, "fr_pct")
 #'   * `NULL` (default) means no spanning group.
 #'
 #' @return An S3 object of class `fr_col` with components `id`, `label`,
-#'   `width`, `align`, `header_align`, `visible`, `stub`, `spaces`, `n`,
+#'   `width`, `align`, `header_align`, `visible`, `stub`, `space_mode`, `n`,
 #'   and `group`.
 #'
 #' @section Width guidelines:
@@ -486,13 +486,20 @@ is_fr_pct <- function(x) inherits(x, "fr_pct")
 #'     .n_format = "{label}\n(N={n})"
 #'   )
 #'
-#' ## ── Spaces: preserve leading spaces as literal characters ──────────────
+#' ## ── Space mode: preserve leading spaces as literal characters ──────────
 #'
-#' fr_col("Statistic", spaces = "preserve")
+#' fr_col("Statistic", space_mode = "preserve")
 #'
-#' ## ── Spaces: explicit indent mode (default, but can be stated) ─────────
+#' ## ── Space mode: explicit indent mode (default, but can be stated) ─────
 #'
-#' fr_col("Characteristic", width = 2.5, spaces = "indent")
+#' fr_col("Characteristic", width = 2.5, space_mode = "indent")
+#'
+#' @section Precedence:
+#' Body alignment: `fr_cols(.align=)` < `fr_col(align=)` <
+#' `fr_col_style(align=)` < `fr_style(align=)`
+#'
+#' Header alignment: `fr_header(align=)` < `fr_col(header_align=)` <
+#' `fr_style(region="header", align=)`
 #'
 #' @seealso [fr_cols()] to apply column specs to a table (including
 #'   `.n`, `.n_format`, and `.split` for N-counts, formatting, and
@@ -509,7 +516,7 @@ fr_col <- function(
   header_align = NULL,
   visible = NULL,
   stub = FALSE,
-  spaces = NULL,
+  space_mode = NULL,
   n = NULL,
   group = NULL
 ) {
@@ -536,8 +543,8 @@ fr_col <- function(
     check_scalar_lgl(visible, arg = "visible")
   }
   check_scalar_lgl(stub, arg = "stub")
-  if (!is.null(spaces)) {
-    spaces <- match_arg_fr(spaces, fr_env$valid_spaces)
+  if (!is.null(space_mode)) {
+    space_mode <- match_arg_fr(space_mode, fr_env$valid_space_modes)
   }
   if (!is.null(n)) {
     n <- check_non_negative_int(n, arg = "n")
@@ -555,7 +562,7 @@ fr_col <- function(
       header_align = header_align,
       visible = visible,
       stub = stub,
-      spaces = spaces,
+      space_mode = space_mode,
       n = n,
       group = group
     ),
@@ -594,7 +601,6 @@ new_fr_header <- function(
   repeat_on_page = TRUE,
   valign = "bottom",
   align = NULL,
-  align_map = NULL,
   bold = NULL,
   background = NULL,
   color = NULL,
@@ -607,7 +613,6 @@ new_fr_header <- function(
       repeat_on_page = repeat_on_page,
       valign = valign,
       align = align,
-      align_map = align_map,
       bold = bold,
       background = background,
       color = color,
@@ -1092,7 +1097,11 @@ new_fr_spec <- function(
   data,
   meta = new_fr_meta(),
   columns = list(),
-  columns_meta = list(split = FALSE, width_mode = "auto", spaces = "indent"),
+  columns_meta = list(
+    split = FALSE,
+    width_mode = "auto",
+    space_mode = "indent"
+  ),
   header = new_fr_header(),
   body = new_fr_body(),
   rules = list(),
@@ -1286,9 +1295,6 @@ print.fr_spec <- function(x, ..., compact = FALSE) {
     }
     if (!is.null(h$align)) {
       parts <- c(parts, paste0("align=", h$align))
-    }
-    if (!is.null(h$align_map)) {
-      parts <- c(parts, "align_map")
     }
     if (length(parts) > 0L) {
       cli::cli_text("Header: {paste(parts, collapse = ', ')}")

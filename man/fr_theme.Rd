@@ -12,7 +12,7 @@ fr_theme(
   col_gap = NULL,
   font_family = NULL,
   font_size = NULL,
-  spaces = NULL,
+  space_mode = NULL,
   split = NULL,
   stub = NULL,
   pagehead = NULL,
@@ -43,10 +43,10 @@ unchanged. See \code{\link[=fr_page]{fr_page()}} for details.}
 
 \item{font_size}{Font size in points. \code{NULL} leaves unchanged.}
 
-\item{spaces}{How to handle leading spaces in cell data. One of
+\item{space_mode}{How to handle leading spaces in cell data. One of
 \code{"indent"} (convert to paragraph-level indent) or \code{"preserve"}
 (keep literal spaces). \code{NULL} leaves unchanged. See \code{\link[=fr_cols]{fr_cols()}}
-\code{.spaces} parameter for details.}
+\code{.space_mode} parameter for details.}
 
 \item{split}{Logical. \code{TRUE} to enable column splitting for wide tables,
 \code{FALSE} to disable. \code{NULL} leaves unchanged. See \code{\link[=fr_cols]{fr_cols()}} \code{.split}
@@ -183,11 +183,11 @@ fr_theme_get()$spacing   # check the spacing settings
 ## ── Theme with leading-space handling ────────────────────────────────────
 
 fr_theme_reset()
-fr_theme(spaces = "indent")   # default: leading spaces → paragraph indent
-fr_theme_get()$spaces         # "indent"
+fr_theme(space_mode = "indent")   # default: leading spaces → paragraph indent
+fr_theme_get()$space_mode         # "indent"
 
-fr_theme(spaces = "preserve") # keep leading spaces as literal characters
-fr_theme_get()$spaces         # "preserve"
+fr_theme(space_mode = "preserve") # keep leading spaces as literal characters
+fr_theme_get()$space_mode         # "preserve"
 
 ## ── Theme with footnote_separator ────────────────────────────────────────
 

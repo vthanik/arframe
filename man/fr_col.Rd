@@ -11,7 +11,7 @@ fr_col(
   header_align = NULL,
   visible = NULL,
   stub = FALSE,
-  spaces = NULL,
+  space_mode = NULL,
   n = NULL,
   group = NULL
 )
@@ -83,7 +83,7 @@ provide context for each panel. When \code{.split} is enabled but no
 columns have \code{stub = TRUE}, stubs are auto-inferred from
 \code{group_by}/\code{indent_by} columns or the first column.}
 
-\item{spaces}{How to handle leading spaces in cell data. One of:
+\item{space_mode}{How to handle leading spaces in cell data. One of:
 \itemize{
 \item \code{"indent"} — convert leading spaces to paragraph-level indent
 (RTF \verb{\\li}, LaTeX \verb{\\leftskip}). All lines (including wrapped)
@@ -91,7 +91,7 @@ maintain the same indent. This is the correct approach for
 proportional fonts and pharma SOC/PT hierarchies.
 \item \code{"preserve"} — keep leading spaces as literal characters. Use
 for pre-formatted content where exact spacing must be retained.
-\item \code{NULL} (default) — inherits from the \code{.spaces} argument of
+\item \code{NULL} (default) — inherits from the \code{.space_mode} argument of
 \code{\link[=fr_cols]{fr_cols()}}, which defaults to \code{"indent"}.
 }}
 
@@ -118,7 +118,7 @@ Rules:
 }
 \value{
 An S3 object of class \code{fr_col} with components \code{id}, \code{label},
-\code{width}, \code{align}, \code{header_align}, \code{visible}, \code{stub}, \code{spaces}, \code{n},
+\code{width}, \code{align}, \code{header_align}, \code{visible}, \code{stub}, \code{space_mode}, \code{n},
 and \code{group}.
 }
 \description{
@@ -185,6 +185,15 @@ grouped under a single spanning header:
   drg_val   = fr_col("Value",    group = "Zomerane")
 )
 }\if{html}{\out{</div>}}
+}
+
+\section{Precedence}{
+
+Body alignment: \code{fr_cols(.align=)} < \code{fr_col(align=)} <
+\code{fr_col_style(align=)} < \code{fr_style(align=)}
+
+Header alignment: \code{fr_header(align=)} < \code{fr_col(header_align=)} <
+\code{fr_style(region="header", align=)}
 }
 
 \examples{
@@ -263,13 +272,13 @@ tbl_demog |>
     .n_format = "{label}\n(N={n})"
   )
 
-## ── Spaces: preserve leading spaces as literal characters ──────────────
+## ── Space mode: preserve leading spaces as literal characters ──────────
 
-fr_col("Statistic", spaces = "preserve")
+fr_col("Statistic", space_mode = "preserve")
 
-## ── Spaces: explicit indent mode (default, but can be stated) ─────────
+## ── Space mode: explicit indent mode (default, but can be stated) ─────
 
-fr_col("Characteristic", width = 2.5, spaces = "indent")
+fr_col("Characteristic", width = 2.5, space_mode = "indent")
 
 }
 \seealso{

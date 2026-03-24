@@ -1528,7 +1528,7 @@ latex_body_rows <- function(
   col_spaces_vec <- vapply(
     col_names,
     function(nm) {
-      columns[[nm]]$spaces %||% "indent"
+      columns[[nm]]$space_mode %||% "indent"
     },
     character(1)
   )
