@@ -550,7 +550,7 @@ html_embedded_css <- function(spec, viewer = FALSE, knitr = FALSE) {
     "  display: table;\n",
     "  border-collapse: collapse;\n",
     "  table-layout: fixed;\n",
-    "  width: 100%;\n",
+    if (viewer || knitr) "  max-width: 100%;\n" else "",
     "  margin-bottom: 0;\n",
     "  font-variant-numeric: tabular-nums;\n",
     "  color: #1e293b;\n",
