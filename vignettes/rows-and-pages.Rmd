@@ -168,17 +168,17 @@ adae[1:30, c("USUBJID", "AEBODSYS", "AEDECOD", "AESEV", "ASTDT")] |>
   )
 ```
 
-## `page_by_visible`: hidden page breaks
+## Hidden page breaks
 
-Set `page_by_visible = FALSE` to get page breaks at group boundaries
-without a visible label above the headers:
+Use the list form of `page_by` with `visible = FALSE` to get page breaks
+at group boundaries without a visible label above the headers:
 
 ```{r pageby-hidden}
 spec <- tbl_ae_soc |>
   fr_table() |>
   fr_cols(soc = fr_col(visible = FALSE),
           row_type = fr_col(visible = FALSE)) |>
-  fr_rows(page_by = "soc", page_by_visible = FALSE)
+  fr_rows(page_by = list(cols = "soc", visible = FALSE))
 ```
 
 ## Combining row features
