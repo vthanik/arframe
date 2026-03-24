@@ -42,3 +42,4 @@ vignettes/*.R
 deploy-site.sh
 audit-findings.md
 fr_wide_ard_blueprint.md
+feature-todo.md
