@@ -1205,6 +1205,24 @@ resolve_conditional_style <- function(cond_style, data, call = caller_env()) {
     condition <- rlang::as_function(condition)
   }
 
+  # Helper: build cell style from cond_style properties (avoids 3x copy-paste)
+  make_cond_style <- function(type, rows, cols) {
+    new_fr_cell_style(
+      type = type,
+      region = "body",
+      rows = as.integer(rows),
+      cols = cols,
+      bold = cond_style$bold,
+      italic = cond_style$italic,
+      underline = cond_style$underline,
+      color = cond_style$color,
+      background = cond_style$background,
+      font_size = cond_style$font_size,
+      align = cond_style$align,
+      valign = cond_style$valign
+    )
+  }
+
   # Determine matching rows
   if (is.null(cols)) {
     # Row-index based condition (e.g., zebra striping)
@@ -1225,25 +1243,16 @@ resolve_conditional_style <- function(cond_style, data, call = caller_env()) {
       return(list())
     }
 
+    apply_to <- cond_style$apply_to
+    row_type <- if (apply_to == "row") "row" else "cell"
+
     # Build a single style with all matched rows
-    style_args <- list(
-      type = if (cond_style$apply_to == "row") "row" else "cell",
-      region = "body",
-      rows = as.integer(matched_rows),
-      cols = NULL,
-      bold = cond_style$bold,
-      italic = cond_style$italic,
-      underline = cond_style$underline,
-      color = cond_style$color,
-      background = cond_style$background,
-      font_size = cond_style$font_size,
-      align = cond_style$align,
-      valign = cond_style$valign
-    )
-    return(list(inject(new_fr_cell_style(!!!style_args))))
+    return(list(make_cond_style(row_type, matched_rows, NULL)))
   } else {
     # Column-based condition
     results <- list()
+    apply_to <- cond_style$apply_to
+
     for (col in cols) {
       if (!col %in% names(data)) {
         cli_abort(
@@ -1269,41 +1278,12 @@ resolve_conditional_style <- function(cond_style, data, call = caller_env()) {
         next
       }
 
-      if (cond_style$apply_to == "row") {
-        # Apply to all columns in matched rows
-        style <- new_fr_cell_style(
-          type = "row",
-          region = "body",
-          rows = as.integer(matched_rows),
-          cols = NULL,
-          bold = cond_style$bold,
-          italic = cond_style$italic,
-          underline = cond_style$underline,
-          color = cond_style$color,
-          background = cond_style$background,
-          font_size = cond_style$font_size,
-          align = cond_style$align,
-          valign = cond_style$valign
-        )
-        results <- c(results, list(style))
+      style <- if (apply_to == "row") {
+        make_cond_style("row", matched_rows, NULL)
       } else {
-        # Apply only to the specific column cells
-        style <- new_fr_cell_style(
-          type = "cell",
-          region = "body",
-          rows = as.integer(matched_rows),
-          cols = col,
-          bold = cond_style$bold,
-          italic = cond_style$italic,
-          underline = cond_style$underline,
-          color = cond_style$color,
-          background = cond_style$background,
-          font_size = cond_style$font_size,
-          align = cond_style$align,
-          valign = cond_style$valign
-        )
-        results <- c(results, list(style))
+        make_cond_style("cell", matched_rows, col)
       }
+      results <- c(results, list(style))
     }
     return(results)
   }
