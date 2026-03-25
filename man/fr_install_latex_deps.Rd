@@ -4,26 +4,48 @@
 \alias{fr_install_latex_deps}
 \title{Install Required LaTeX Packages}
 \usage{
-fr_install_latex_deps()
+fr_install_latex_deps(
+  timeout = 10L,
+  repository = "https://mirror.ctan.org/systems/texlive/tlnet"
+)
+}
+\arguments{
+\item{timeout}{Integer. Maximum seconds to wait for
+\code{\link[tinytex:tlmgr]{tinytex::tlmgr_install()}} before falling back to system \code{tlmgr}.
+Default \code{10L}.}
+
+\item{repository}{Character. CTAN mirror URL for the system \code{tlmgr}
+fallback. Default \code{"https://mirror.ctan.org/systems/texlive/tlnet"}.
+Change this if your network requires a specific mirror.}
 }
 \value{
 Invisible \code{NULL}. Called for its side effect of installing packages.
 }
 \description{
-Proactively installs all LaTeX packages needed by arframe's PDF backend
-via \code{\link[tinytex:tlmgr]{tinytex::tlmgr_install()}}. Call this once after
-\code{tinytex::install_tinytex()} to ensure \code{\link[=fr_render]{fr_render()}} can produce PDFs
-without interruption.
+Proactively installs all LaTeX packages needed by arframe's PDF backend.
+Checks which packages are missing via \code{kpsewhich}, then installs them.
 }
 \details{
-The \link[tinytex:tinytex-package]{tinytex} package must be installed. If it is not,
-\code{fr_install_latex_deps()} raises an error with installation instructions.
-
-Packages already present are silently skipped by \code{tlmgr}.
+The installation strategy uses a two-step approach:
+\enumerate{
+\item Try \code{\link[tinytex:tlmgr]{tinytex::tlmgr_install()}} with a timeout (default 10 seconds).
+\item If tinytex times out or fails (common on corporate networks where
+\code{tlmgr} is restricted), fall back to the system \code{tlmgr} with an
+explicit CTAN mirror repository URL.
+}
 }
 \examples{
-if (requireNamespace("tinytex", quietly = TRUE) && tinytex::is_tinytex()) {
-  fr_install_latex_deps()
+\dontrun{
+# Standard usage (tries tinytex first, falls back to system tlmgr)
+fr_install_latex_deps()
+
+# Corporate network with specific mirror
+fr_install_latex_deps(
+  repository = "https://ctan.mirror.garr.it/mirrors/ctan/systems/texlive/tlnet"
+)
+
+# Skip tinytex entirely (go straight to system tlmgr)
+fr_install_latex_deps(timeout = 0L)
 }
 
 }

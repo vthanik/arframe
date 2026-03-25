@@ -120,6 +120,7 @@ fr_env$required_latex_pkgs <- c(
   "fontspec",
   "geometry",
   "xcolor",
+  "colortbl",
   "fancyhdr",
   "lastpage",
   "booktabs"
