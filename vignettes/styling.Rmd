@@ -159,6 +159,7 @@ spec
 |------------|-------|----------|
 | `fr_row_style()` | Entire row(s) | `rows`, `bold`, `background`, `color`, `align`, `valign`, `height`, ... |
 | `fr_row_style(rows = "group_headers")` | Group header rows | `bold`, `background`, `color`, ... |
+| `fr_row_style(rows = "page_by")` | Page_by section labels | `bold`, `align`, `color`, `font_size`, ... |
 | `fr_col_style()` | Entire column(s) | `cols`, `bold`, `background`, `color`, `align`, `valign`, ... |
 | `fr_style()` | Row-column intersection | `region`, `rows`, `cols`, `bold`, `background`, `color`, `align`, `valign`, `colspan`, ... |
 | `fr_style_if()` | Data-driven (conditional) | `condition`, `cols`, `apply_to`, `bold`, `background`, `color`, `align`, ... |
@@ -213,6 +214,25 @@ spec |>
     fr_row_style(rows = "group_headers:hlt", italic = TRUE)
   )
 ```
+
+### Page_by label styling
+
+Page_by labels (`fr_rows(page_by = "param")`) are plain text by default
+across all backends. Style them with `rows = "page_by"`:
+
+```{r page-by-style}
+spec <- tbl_vs[tbl_vs$timepoint == "Week 24", ] |>
+  fr_table() |>
+  fr_cols(param = fr_col(visible = FALSE),
+          timepoint = fr_col(visible = FALSE)) |>
+  fr_rows(page_by = "param") |>
+  fr_styles(
+    fr_row_style(rows = "page_by", bold = TRUE)
+  )
+```
+
+Supported properties: `bold`, `italic`, `underline`, `color`,
+`background`, `font_size`, `align`. Consistent across RTF, HTML, and PDF.
 
 ### Content-based row selection
 

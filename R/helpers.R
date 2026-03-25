@@ -415,6 +415,9 @@ apply_fr_theme <- function(spec) {
   if (!is.null(setup[["group_style"]])) {
     spec$body$group_style <- setup[["group_style"]]
   }
+  if (!is.null(setup[["page_by_style"]])) {
+    spec$page_by_styles <- list(setup[["page_by_style"]])
+  }
 
   # Footnote separator default
   if (!is.null(setup[["footnote_separator"]])) {

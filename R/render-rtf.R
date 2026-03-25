@@ -895,13 +895,16 @@ rtf_title_rows <- function(spec, columns, cellx, color_info, panel_idx = 1L) {
 #' and repeats on continuation pages.
 #' @noRd
 rtf_page_by_rows <- function(spec, columns, cellx, group_label) {
-  fs <- pt_to_half_pt(spec$page$font_size)
-  pb_align <- fr_env$align_to_rtf[["left"]]
-  pb_bold_on <- ""
-  pb_bold_off <- ""
+  pb_style <- resolve_page_by_style(spec$page_by_styles %||% list())
+  pb_fs_pt <- pb_style$font_size %||% spec$page$font_size
+  fs <- pt_to_half_pt(pb_fs_pt)
+  pb_align <- fr_env$align_to_rtf[[pb_style$align %||% "left"]]
+  pb_bold_on <- if (isTRUE(pb_style$bold)) "\\b " else ""
+  pb_bold_off <- if (isTRUE(pb_style$bold)) "\\b0" else ""
+  pb_italic_on <- if (isTRUE(pb_style$italic)) "\\i " else ""
+  pb_italic_off <- if (isTRUE(pb_style$italic)) "\\i0" else ""
   content <- rtf_escape_and_resolve(group_label)
 
-  pb_fs_pt <- spec$page$font_size
   rh_str <- rtf_row_height_str(pb_fs_pt)
   sp_str <- rtf_cell_spacing_str()
 
@@ -913,7 +916,9 @@ rtf_page_by_rows <- function(spec, columns, cellx, group_label) {
     fs,
     " ",
     pb_bold_on,
+    pb_italic_on,
     content,
+    pb_italic_off,
     pb_bold_off
   )
   lines <- rtf_merged_row(cell_text, cellx, rh_str, trhdr = TRUE)

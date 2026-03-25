@@ -19,7 +19,7 @@ fr_row_style(
 }
 \arguments{
 \item{rows}{Integer vector of body row positions, \code{"all"}, \code{NULL} (all
-body rows), or a group header selector. Row indices are 1-based.
+body rows), or a special selector. Row indices are 1-based.
 Multiple indices are supported: \code{rows = c(1L, 3L, 5L)}.
 
 \strong{Group header selectors} (resolved at render time):
@@ -28,6 +28,15 @@ Multiple indices are supported: \code{rows = c(1L, 3L, 5L)}.
 \code{label} or \code{leaf}).
 \item \code{"group_headers:<level>"} — only headers at a specific hierarchy
 level (e.g., \code{"group_headers:soc"}). For \code{leaf} hierarchies only.
+}
+
+\strong{Page_by selector:}
+\itemize{
+\item \code{"page_by"} — page_by section labels (rendered above column headers
+for each page group). Page_by labels are plain text by default across
+all backends (RTF, HTML, PDF). Supports: \code{bold}, \code{italic}, \code{underline},
+\code{color}, \code{background}, \code{font_size}, \code{align}. Does not support \code{height}
+or \code{valign} (page_by labels are section headers, not table rows).
 }}
 
 \item{bold, italic, underline}{Logical or \code{NULL} to inherit.}
@@ -130,6 +139,17 @@ data.frame(
   fr_rows(group_by = list(cols = "variable", label = "stat")) |>
   fr_styles(
     fr_row_style(rows = "group_headers", bold = TRUE, background = "#E8E8E8")
+  )
+
+## ── Bold page_by labels ───────────────────────────────────────────────
+
+tbl_vs[tbl_vs$timepoint == "Week 24", ] |>
+  fr_table() |>
+  fr_cols(param = fr_col(visible = FALSE),
+          timepoint = fr_col(visible = FALSE)) |>
+  fr_rows(page_by = "param") |>
+  fr_styles(
+    fr_row_style(rows = "page_by", bold = TRUE)
   )
 
 }

@@ -35,8 +35,8 @@ column headers (default \code{TRUE}). Set \code{FALSE} to get page breaks at gro
 boundaries without a visible label.
 }
 
-Style page-by labels (bold, alignment) via \code{\link[=fr_styles]{fr_styles()}} by targeting
-page-by rows.}
+Style page-by labels (bold, alignment, colour) via \code{\link[=fr_styles]{fr_styles()}} with
+\code{rows = "page_by"}, or set defaults via \code{\link[=fr_theme]{fr_theme()}}.}
 
 \item{group_by}{Group specification. Accepts two forms:
 

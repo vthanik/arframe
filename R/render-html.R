@@ -564,7 +564,7 @@ html_embedded_css <- function(spec, viewer = FALSE, knitr = FALSE) {
     "  background: transparent;\n",
     "}\n",
     ".ar-table thead th {\n",
-    "  font-weight: 600;\n",
+    "  font-weight: normal;\n",
     "  vertical-align: bottom;\n",
     "  padding: 3px ",
     cell_pad_lr,
@@ -588,7 +588,7 @@ html_embedded_css <- function(spec, viewer = FALSE, knitr = FALSE) {
 
     # ── Page-by Labels ──
     ".ar-page-by {\n",
-    "  font-weight: 600;\n",
+    "  font-weight: normal;\n",
     "  padding: 2px 0;\n",
     "  margin-bottom: ",
     sp_page_by_after,
@@ -749,9 +749,10 @@ html_section <- function(
       isTRUE(spec$body$page_by_visible %||% TRUE)
   ) {
     content <- html_escape_and_resolve(group$group_label)
+    pb_inline <- build_page_by_inline_css(spec$page_by_styles %||% list())
     parts <- c(
       parts,
-      paste0("<div class=\"ar-page-by\">", content, "</div>")
+      paste0("<div class=\"ar-page-by\"", pb_inline, ">", content, "</div>")
     )
   }
 

@@ -37,8 +37,8 @@
 #'     column headers (default `TRUE`). Set `FALSE` to get page breaks at group
 #'     boundaries without a visible label.
 #'
-#'   Style page-by labels (bold, alignment) via [fr_styles()] by targeting
-#'   page-by rows.
+#'   Style page-by labels (bold, alignment, colour) via [fr_styles()] with
+#'   `rows = "page_by"`, or set defaults via [fr_theme()].
 #'
 #' @param group_by Group specification. Accepts two forms:
 #'

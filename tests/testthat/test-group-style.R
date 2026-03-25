@@ -272,3 +272,77 @@ test_that("per-table group_style overrides theme group_style", {
   # Per-table overrides theme
   expect_equal(spec$body$group_style$background, "#FFFFFF")
 })
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# page_by styling via fr_styles()
+# ══════════════════════════════════════════════════════════════════════════════
+
+test_that("fr_row_style rows=page_by stores in page_by_styles", {
+  spec <- tbl_vs[tbl_vs$timepoint == "Week 24", ] |>
+    fr_table() |>
+    fr_rows(page_by = "param") |>
+    fr_styles(fr_row_style(rows = "page_by", bold = TRUE))
+  expect_length(spec$page_by_styles, 1L)
+  expect_true(spec$page_by_styles[[1L]]$bold)
+})
+
+
+test_that("page_by bold renders in HTML output", {
+  spec <- tbl_vs[tbl_vs$timepoint == "Week 24", ] |>
+    fr_table() |>
+    fr_rows(page_by = "param") |>
+    fr_styles(fr_row_style(rows = "page_by", bold = TRUE))
+  tf <- tempfile(fileext = ".html")
+  on.exit(unlink(tf), add = TRUE)
+  fr_render(spec, tf)
+  content <- paste(readLines(tf), collapse = "\n")
+  expect_true(grepl("font-weight: bold", content))
+})
+
+
+test_that("HTML page_by label is not bold by default", {
+  spec <- tbl_vs[tbl_vs$timepoint == "Week 24", ] |>
+    fr_table() |>
+    fr_rows(page_by = "param")
+  tf <- tempfile(fileext = ".html")
+  on.exit(unlink(tf), add = TRUE)
+  fr_render(spec, tf)
+  content <- paste(readLines(tf), collapse = "\n")
+  # .ar-page-by CSS should have font-weight: normal
+  expect_true(grepl("ar-page-by.*font-weight: normal", content))
+  # page-by div should NOT have inline bold style
+  expect_false(grepl("ar-page-by.*font-weight: bold", content))
+})
+
+
+test_that("page_by bold renders in RTF output", {
+  spec <- tbl_vs[tbl_vs$timepoint == "Week 24", ] |>
+    fr_table() |>
+    fr_rows(page_by = "param") |>
+    fr_styles(fr_row_style(rows = "page_by", bold = TRUE))
+  tf <- tempfile(fileext = ".rtf")
+  on.exit(unlink(tf), add = TRUE)
+  fr_render(spec, tf)
+  content <- paste(readLines(tf, warn = FALSE), collapse = "\n")
+  expect_true(grepl("\\\\b ", content))
+})
+
+
+test_that("page_by style from fr_theme is inherited", {
+  fr_theme(page_by_style = list(bold = TRUE))
+  on.exit(fr_theme_reset(), add = TRUE)
+  spec <- tbl_vs[tbl_vs$timepoint == "Week 24", ] |>
+    fr_table() |>
+    fr_rows(page_by = "param")
+  expect_length(spec$page_by_styles, 1L)
+  expect_true(spec$page_by_styles[[1L]]$bold)
+})
+
+
+test_that("rows=page_by without page_by config is silently stored", {
+  spec <- tbl_demog |>
+    fr_table() |>
+    fr_styles(fr_row_style(rows = "page_by", bold = TRUE))
+  expect_length(spec$page_by_styles, 1L)
+})

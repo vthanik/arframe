@@ -25,6 +25,7 @@ fr_theme(
   continuation = NULL,
   group_keep = NULL,
   group_style = NULL,
+  page_by_style = NULL,
   header = NULL,
   footnote_separator = NULL
 )
@@ -49,6 +50,7 @@ fr_theme_set(
   continuation = NULL,
   group_keep = NULL,
   group_style = NULL,
+  page_by_style = NULL,
   header = NULL,
   footnote_separator = NULL
 )
@@ -116,6 +118,13 @@ on the same page. \code{NULL} leaves unchanged. See \code{\link[=fr_rows]{fr_row
 \item{group_style}{Named list of style properties for group header rows.
 Applied to all tables that use \code{group_by} with \code{label} or \code{leaf}.
 \code{NULL} leaves unchanged. See \code{\link[=fr_rows]{fr_rows()}} for details and examples.}
+
+\item{page_by_style}{Named list of style properties for page_by section
+labels. Applied to all tables that use \code{fr_rows(page_by = ...)}.
+Supports: \code{bold}, \code{italic}, \code{underline}, \code{color}, \code{background},
+\code{font_size}, \code{align}. \code{NULL} leaves unchanged. Page_by labels are
+plain text by default. Example:
+\code{page_by_style = list(bold = TRUE, align = "left")}.}
 
 \item{header}{Named list of header defaults. Supports all \code{\link[=fr_header]{fr_header()}}
 parameters: \code{bold}, \code{align}, \code{valign}, \code{background}, \code{color}, \code{font_size},

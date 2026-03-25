@@ -70,6 +70,12 @@
 #' @param group_style Named list of style properties for group header rows.
 #'   Applied to all tables that use `group_by` with `label` or `leaf`.
 #'   `NULL` leaves unchanged. See [fr_rows()] for details and examples.
+#' @param page_by_style Named list of style properties for page_by section
+#'   labels. Applied to all tables that use `fr_rows(page_by = ...)`.
+#'   Supports: `bold`, `italic`, `underline`, `color`, `background`,
+#'   `font_size`, `align`. `NULL` leaves unchanged. Page_by labels are
+#'   plain text by default. Example:
+#'   `page_by_style = list(bold = TRUE, align = "left")`.
 #' @param header Named list of header defaults. Supports all [fr_header()]
 #'   parameters: `bold`, `align`, `valign`, `background`, `color`, `font_size`,
 #'   `repeat_on_page`, plus `span_gap` (logical, insert gap columns between
@@ -195,6 +201,7 @@ fr_theme <- function(
   continuation = NULL,
   group_keep = NULL,
   group_style = NULL,
+  page_by_style = NULL,
   header = NULL,
   footnote_separator = NULL
 ) {
@@ -260,6 +267,13 @@ fr_theme <- function(
   if (!is.null(group_style)) {
     group_style <- validate_group_style(group_style, call = call)
   }
+  if (!is.null(page_by_style)) {
+    page_by_style <- validate_style_props(
+      page_by_style,
+      arg = "page_by_style",
+      call = call
+    )
+  }
   if (!is.null(hlines)) {
     hlines <- match_arg_fr(hlines, names(fr_env$hline_presets), call = call)
   }
@@ -298,6 +312,7 @@ fr_theme <- function(
   set_if("continuation", continuation)
   set_if("group_keep", group_keep)
   set_if("group_style", group_style)
+  set_if("page_by_style", page_by_style)
   set_if("footnote_separator", footnote_separator)
 
   # For nested list params, merge recursively
@@ -347,6 +362,7 @@ fr_theme_set <- fr_theme
 #'   * `stub` — character vector (stub column names)
 #'   * `group_keep` — logical; whether group_by groups are kept together
 #'   * `group_style` — named list; style properties for group header rows
+#'   * `page_by_style` — named list; style properties for page_by labels
 #'   * `footnote_separator` — logical
 #'
 #' @examples

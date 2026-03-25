@@ -28,6 +28,7 @@ blank lines)
 \item \code{stub} — character vector (stub column names)
 \item \code{group_keep} — logical; whether group_by groups are kept together
 \item \code{group_style} — named list; style properties for group header rows
+\item \code{page_by_style} — named list; style properties for page_by labels
 \item \code{footnote_separator} — logical
 }
 }

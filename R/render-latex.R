@@ -647,10 +647,13 @@ latex_head_template <- function(spec, group_label = NULL, panel_idx = 1L) {
       isTRUE(spec$body$page_by_visible %||% TRUE)
   ) {
     lf <- fr_env$latex_leading_factor
-    fs <- spec$page$font_size
-    pb_bold_on <- ""
-    pb_bold_off <- ""
-    pb_align <- "left"
+    pb_style <- resolve_page_by_style(spec$page_by_styles %||% list())
+    fs <- pb_style$font_size %||% spec$page$font_size
+    pb_bold_on <- if (isTRUE(pb_style$bold)) "\\textbf{" else ""
+    pb_bold_off <- if (isTRUE(pb_style$bold)) "}" else ""
+    pb_italic_on <- if (isTRUE(pb_style$italic)) "\\textit{" else ""
+    pb_italic_off <- if (isTRUE(pb_style$italic)) "}" else ""
+    pb_align <- pb_style$align %||% "left"
     if (pb_align == "left") {
       gl_line <- paste0(
         "\\noindent{\\fontsize{",
@@ -659,7 +662,9 @@ latex_head_template <- function(spec, group_label = NULL, panel_idx = 1L) {
         round(fs * lf, 1),
         "}\\selectfont ",
         pb_bold_on,
+        pb_italic_on,
         latex_escape(group_label),
+        pb_italic_off,
         pb_bold_off,
         "}\\par"
       )
@@ -674,7 +679,9 @@ latex_head_template <- function(spec, group_label = NULL, panel_idx = 1L) {
         round(fs * lf, 1),
         "}\\selectfont ",
         pb_bold_on,
+        pb_italic_on,
         latex_escape(group_label),
+        pb_italic_off,
         pb_bold_off,
         "\\par}"
       )

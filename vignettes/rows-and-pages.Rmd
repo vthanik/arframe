@@ -28,7 +28,28 @@ spec <- vs_wk24 |>
 ```
 
 Each unique value of `param` gets its own page section. The label appears
-as a header above each section. Style it (bold, alignment) via `fr_styles()`.
+as a header above each section.
+
+### Styling page_by labels
+
+Page_by labels are plain text by default. Style them with
+`rows = "page_by"`:
+
+```{r pageby-style}
+spec <- vs_wk24 |>
+  fr_table() |>
+  fr_cols(param = fr_col(visible = FALSE)) |>
+  fr_rows(page_by = "param") |>
+  fr_styles(
+    fr_row_style(rows = "page_by", bold = TRUE)
+  )
+```
+
+Set study-wide defaults via `fr_theme()`:
+
+```{r pageby-theme, eval = FALSE}
+fr_theme(page_by_style = list(bold = TRUE, align = "left"))
+```
 
 > **SAS:** `BY param;` in PROC REPORT with `#BYVAL` in titles.
 

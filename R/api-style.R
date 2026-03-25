@@ -348,7 +348,7 @@ fr_style <- function(
 #' uniformly across all cells in the targeted rows.
 #'
 #' @param rows Integer vector of body row positions, `"all"`, `NULL` (all
-#'   body rows), or a group header selector. Row indices are 1-based.
+#'   body rows), or a special selector. Row indices are 1-based.
 #'   Multiple indices are supported: `rows = c(1L, 3L, 5L)`.
 #'
 #'   **Group header selectors** (resolved at render time):
@@ -356,6 +356,13 @@ fr_style <- function(
 #'     `label` or `leaf`).
 #'   * `"group_headers:<level>"` — only headers at a specific hierarchy
 #'     level (e.g., `"group_headers:soc"`). For `leaf` hierarchies only.
+#'
+#'   **Page_by selector:**
+#'   * `"page_by"` — page_by section labels (rendered above column headers
+#'     for each page group). Page_by labels are plain text by default across
+#'     all backends (RTF, HTML, PDF). Supports: `bold`, `italic`, `underline`,
+#'     `color`, `background`, `font_size`, `align`. Does not support `height`
+#'     or `valign` (page_by labels are section headers, not table rows).
 #' @param bold,italic,underline Logical or `NULL` to inherit.
 #' @param color Foreground (text) colour, or `NULL`.
 #' @param background Background (fill) colour, or `NULL`.
@@ -438,6 +445,17 @@ fr_style <- function(
 #'   fr_rows(group_by = list(cols = "variable", label = "stat")) |>
 #'   fr_styles(
 #'     fr_row_style(rows = "group_headers", bold = TRUE, background = "#E8E8E8")
+#'   )
+#'
+#' ## ── Bold page_by labels ───────────────────────────────────────────────
+#'
+#' tbl_vs[tbl_vs$timepoint == "Week 24", ] |>
+#'   fr_table() |>
+#'   fr_cols(param = fr_col(visible = FALSE),
+#'           timepoint = fr_col(visible = FALSE)) |>
+#'   fr_rows(page_by = "param") |>
+#'   fr_styles(
+#'     fr_row_style(rows = "page_by", bold = TRUE)
 #'   )
 #'
 #' @seealso [fr_col_style()] for column-level styling, [fr_style()] for
@@ -764,23 +782,26 @@ fr_styles <- function(spec, ...) {
 
   # Eagerly resolve tidyselect cols, conditional styles, and row selectors.
   # Deferred selectors ("group_headers", "group_headers:<level>") are stored
-
   # as-is and resolved later in finalize_rows() after header injection.
+  # "page_by" selectors are routed to spec$page_by_styles (outside body grid).
   resolved <- list()
+  page_by_styles <- list()
   for (style in dots) {
     style <- resolve_style_cols(style, spec$data, call = call)
     if (inherits(style, "fr_conditional_style")) {
       resolved <- c(resolved, resolve_conditional_style(style, spec$data, call))
+    } else if (is.character(style$rows) && identical(style$rows, "page_by")) {
+      page_by_styles <- c(page_by_styles, list(style))
     } else {
       if (inherits(style$rows, "fr_rows_selector")) {
         style$rows <- resolve_rows_selector(style$rows, spec$data, call = call)
       }
-      # Skip eager resolution for deferred group_headers selectors
       resolved <- c(resolved, list(style))
     }
   }
 
   spec$cell_styles <- c(spec$cell_styles, resolved)
+  spec$page_by_styles <- c(spec$page_by_styles, page_by_styles)
   spec
 }
 

@@ -634,6 +634,54 @@ resolve_deferred_group_selectors <- function(cell_styles, positions) {
 }
 
 
+#' Merge page_by style objects into a single resolved style
+#'
+#' Later styles override earlier ones for the same property.
+#'
+#' @param styles List of style objects from `spec$page_by_styles`.
+#' @return Named list with resolved `bold`, `italic`, `underline`, `color`,
+#'   `background`, `font_size`, `align` values.
+#' @noRd
+resolve_page_by_style <- function(styles) {
+  result <- list(
+    bold = NULL, italic = NULL, underline = NULL,
+    color = NULL, background = NULL, font_size = NULL, align = NULL
+  )
+  for (s in styles) {
+    for (prop in names(result)) {
+      if (!is.null(s[[prop]])) result[[prop]] <- s[[prop]]
+    }
+  }
+  result
+}
+
+
+#' Build inline CSS style string for page_by labels
+#'
+#' @param styles List of page_by style objects.
+#' @return Character string like ` style="font-weight: bold; ..."` or `""`.
+#' @noRd
+build_page_by_inline_css <- function(styles) {
+  s <- resolve_page_by_style(styles)
+  props <- character(0)
+  if (isTRUE(s$bold)) props <- c(props, "font-weight: bold")
+  if (isTRUE(s$italic)) props <- c(props, "font-style: italic")
+  if (isTRUE(s$underline)) props <- c(props, "text-decoration: underline")
+  if (!is.null(s$color)) props <- c(props, paste0("color: ", s$color))
+  if (!is.null(s$background)) {
+    props <- c(props, paste0("background-color: ", s$background))
+  }
+  if (!is.null(s$font_size)) {
+    props <- c(props, paste0("font-size: ", s$font_size, "pt"))
+  }
+  if (!is.null(s$align)) {
+    props <- c(props, paste0("text-align: ", s$align))
+  }
+  if (length(props) == 0L) return("")
+  paste0(" style=\"", paste0(props, collapse = "; "), "\"")
+}
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # 1e. Blank-After Row Insertion
 #
