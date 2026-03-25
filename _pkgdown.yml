@@ -248,10 +248,12 @@ reference:
       with custom output formats.
     contents:
       - fr_render
+      - format.fr_spec
       - knit_print.fr_spec
       - fr_backends
       - fr_register_backend
       - fr_unregister_backend
+      - fr_register_stat_type
       - fr_latex_deps
       - fr_install_latex_deps
 
