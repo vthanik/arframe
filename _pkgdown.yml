@@ -314,6 +314,7 @@ articles:
   - title: "Advanced"
     navbar: Advanced
     contents:
+      - best-practices
       - fonts
       - automation
       - architecture
