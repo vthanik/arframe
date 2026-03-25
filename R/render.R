@@ -452,7 +452,7 @@ finalize_spec <- function(spec) {
     cli::cli_warn(c(
       "{.arg continuation} label is set but neither {.arg page_by} nor {.arg group_by} is configured.",
       "i" = "The continuation label only appears on multi-page tables with pagination via {.fn fr_rows}."
-    ))
+    ), call = caller_env())
   }
 
   # Pre-compute decimal alignment geometry (used by both RTF and LaTeX)
@@ -640,7 +640,14 @@ finalize_labels <- function(spec) {
         row_data <- list(label = base_label, n = col$n)
         spec$columns[[nm]]$label <- tryCatch(
           as.character(glue::glue_data(row_data, fmt)),
-          error = function(e) base_label
+          error = function(e) {
+            cli_warn(c(
+              "N-count label format failed; using default label.",
+              "x" = "Format: {.val {fmt}}",
+              "i" = "{conditionMessage(e)}"
+            ), call = caller_env())
+            base_label
+          }
         )
         cols_with_n <- c(cols_with_n, nm)
       }
@@ -657,7 +664,8 @@ finalize_labels <- function(spec) {
         c(
           "Column{?s} have {.arg n} set but no {.arg .n_format} is defined.",
           "i" = "Set {.arg .n_format} in {.fn fr_cols} or config YAML to display N-counts."
-        )
+        ),
+        call = caller_env()
       )
     }
   }
@@ -708,7 +716,8 @@ finalize_labels <- function(spec) {
       length(spec$body$page_by) == 0L
   ) {
     cli_warn(
-      "Per-group {.arg .n} requires {.fn fr_rows} with {.arg page_by}. N-counts ignored."
+      "Per-group {.arg .n} requires {.fn fr_rows} with {.arg page_by}. N-counts ignored.",
+      call = caller_env()
     )
   }
 
@@ -880,7 +889,7 @@ resolve_group_labels <- function(spec, group_data, group_label) {
         "No N-counts found for page group {.val {group_label}}.",
         "i" = "Available groups in {.arg .n}: {.val {unique(page_vals)}}.",
         "i" = "Ensure column 1 values match {.arg page_by} group values (case-insensitive)."
-      ))
+      ), call = caller_env())
       return(NULL)
     }
 
@@ -1069,7 +1078,14 @@ build_label_overrides <- function(n_counts, fmt, columns) {
     )
     overrides[nm] <- tryCatch(
       as.character(glue::glue_data(row_data, fmt)),
-      error = function(e) base_label
+      error = function(e) {
+        cli_warn(c(
+          "Column label format failed; using default label.",
+          "x" = "Format: {.val {fmt}}",
+          "i" = "{conditionMessage(e)}"
+        ), call = caller_env())
+        base_label
+      }
     )
   }
   if (length(overrides) == 0L) NULL else overrides
@@ -1092,7 +1108,14 @@ build_span_label_overrides <- function(n_counts, fmt, spans) {
     )
     overrides[span_label] <- tryCatch(
       as.character(glue::glue_data(row_data, fmt)),
-      error = function(e) span_label
+      error = function(e) {
+        cli_warn(c(
+          "Span label format failed; using default label.",
+          "x" = "Format: {.val {fmt}}",
+          "i" = "{conditionMessage(e)}"
+        ), call = caller_env())
+        span_label
+      }
     )
   }
   if (length(overrides) == 0L) NULL else overrides

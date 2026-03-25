@@ -118,7 +118,7 @@ resolve_rows_selector <- function(selector, data, call = caller_env()) {
       "{.fn fr_rows_matches}: no rows matched in column {.val {col}}.",
       "i" = "Selector: {pattern_desc}.",
       "i" = "Styles targeting these rows will have no effect."
-    ))
+    ), call = caller_env())
   }
 
   as.integer(matched)

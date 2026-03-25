@@ -189,7 +189,7 @@ resolve_style_mask <- function(style, grid, col_names) {
       "x" = "{.arg cols} has unexpected type {.obj_type_friendly {style$cols}}.",
       "i" = "Expected {.cls character}, {.cls numeric}, {.val all}, or {.val NULL}.",
       "i" = "Falling back to targeting all columns."
-    ))
+    ), call = caller_env())
     col_mask <- rep(TRUE, nrow(grid))
   }
 

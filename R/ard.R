@@ -59,7 +59,13 @@ normalize_ard_num <- function(col) {
         } else {
           tryCatch(
             as.numeric(s[[1L]]),
-            warning = function(w) NA_real_,
+            warning = function(w) {
+              cli_warn(c(
+                "Non-numeric value in ARD stat column.",
+                "i" = "Value {.val {s[[1L]]}} coerced to {.val NA}."
+              ), call = caller_env())
+              NA_real_
+            },
             error = function(e) NA_real_
           )
         }

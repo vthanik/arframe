@@ -300,7 +300,7 @@ scale_auto_columns <- function(columns, auto_names, remaining) {
         "Auto-width columns have zero estimated width.",
         "i" = "Columns {.val {auto_names}} may render with no visible width.",
         "i" = "Set explicit widths via {.fn fr_cols} if needed."
-      ))
+      ), call = caller_env())
     }
     return(columns)
   }

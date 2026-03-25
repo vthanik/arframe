@@ -1180,7 +1180,7 @@ print.fr_spec <- function(x, ..., compact = FALSE) {
         cli::cli_warn(c(
           "!" = "HTML preview failed.",
           "i" = conditionMessage(e)
-        ))
+        ), call = caller_env())
         NULL
       }
     )

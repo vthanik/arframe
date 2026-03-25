@@ -88,7 +88,7 @@ rtf_row_height_str <- function(font_size_pt) {
 #' @param font_size_pt Numeric. Font size in points.
 #' @return Character scalar. RTF paragraph spacing string.
 #' @noRd
-rtf_cell_spacing_str <- function(font_size_pt) {
+rtf_cell_spacing_str <- function() {
   "\\sb0\\sa0"
 }
 
@@ -855,7 +855,7 @@ rtf_title_rows <- function(spec, columns, cellx, color_info, panel_idx = 1L) {
       spec$meta$title_font_size %||%
       spec$page$font_size
     rh_str <- rtf_row_height_str(title_fs_pt)
-    sp_str <- rtf_cell_spacing_str(title_fs_pt)
+    sp_str <- rtf_cell_spacing_str()
 
     cell_text <- paste0(
       "\\pard\\intbl",
@@ -878,7 +878,7 @@ rtf_title_rows <- function(spec, columns, cellx, color_info, panel_idx = 1L) {
   if (n_after > 0L) {
     blank_fs <- pt_to_half_pt(spec$page$font_size)
     blank_rh <- rtf_row_height_str(spec$page$font_size)
-    blank_sp <- rtf_cell_spacing_str(spec$page$font_size)
+    blank_sp <- rtf_cell_spacing_str()
     blank_text <- paste0("\\pard\\intbl", blank_sp, "\\fs", blank_fs, " ")
     blank_row <- rtf_merged_row(blank_text, cellx, blank_rh, trhdr = TRUE)
     lines <- c(lines, rep(blank_row, n_after))
@@ -903,7 +903,7 @@ rtf_page_by_rows <- function(spec, columns, cellx, group_label) {
 
   pb_fs_pt <- spec$page$font_size
   rh_str <- rtf_row_height_str(pb_fs_pt)
-  sp_str <- rtf_cell_spacing_str(pb_fs_pt)
+  sp_str <- rtf_cell_spacing_str()
 
   cell_text <- paste0(
     "\\pard\\intbl",
@@ -956,7 +956,7 @@ rtf_spanner_rows <- function(
   levels <- sort(unique(vapply(spans, function(s) s$level, integer(1))))
 
   rh_str <- rtf_row_height_str(spec$page$font_size)
-  sp_str <- rtf_cell_spacing_str(spec$page$font_size)
+  sp_str <- rtf_cell_spacing_str()
 
   lines <- character(0)
   for (lvl in rev(levels)) {
@@ -1106,7 +1106,7 @@ rtf_col_header_row <- function(
 
   # \trowd\trhdr — marks row as header (repeats on each page)
   rh_str <- rtf_row_height_str(spec$page$font_size)
-  sp_str <- rtf_cell_spacing_str(spec$page$font_size)
+  sp_str <- rtf_cell_spacing_str()
   row_def <- paste0("\\trowd\\trhdr\\trqc", rh_str)
 
   pad_str <- rtf_col_gap_str(spec)
@@ -1260,7 +1260,7 @@ rtf_body_rows <- function(
 
   # Deterministic row height/spacing for body rows
   rh_str <- rtf_row_height_str(spec$page$font_size)
-  sp_str <- rtf_cell_spacing_str(spec$page$font_size)
+  sp_str <- rtf_cell_spacing_str()
 
   # Pre-extract cell_grid columns as vectors for O(1) indexed access.
   # Grid is column-major (build_cell_grid): cell (i, j) → index (j-1)*nr + i.
@@ -1523,7 +1523,7 @@ rtf_footnote_rows <- function(spec, columns, cellx, entries, color_info) {
   ncol <- length(columns)
   cum_widths <- cellx
   rh_str <- rtf_row_height_str(spec$page$font_size)
-  sp_str <- rtf_cell_spacing_str(spec$page$font_size)
+  sp_str <- rtf_cell_spacing_str()
 
   # Bottom rule and footnote separator — rendered as separate rows to match
 
@@ -1620,7 +1620,7 @@ rtf_footnote_rows <- function(spec, columns, cellx, entries, color_info) {
     fn_fs_pt <- fn$font_size %||% spec$page$font_size
     fs <- pt_to_half_pt(fn_fs_pt)
     fn_entry_rh <- rtf_row_height_str(fn_fs_pt)
-    fn_entry_sp <- rtf_cell_spacing_str(fn_fs_pt)
+    fn_entry_sp <- rtf_cell_spacing_str()
     align_rtf <- fr_env$align_to_rtf[[fn$align %||% "left"]]
     content <- rtf_escape_and_resolve(fn$content)
 

@@ -281,7 +281,7 @@ resolve_font <- function(font_name, fallback_hint) {
     "!" = "Font {.val {font_name}} not found on system.",
     "i" = "Install {.val {os_name}} (free, SIL OFL) or set {.envvar ARFRAME_FONT_DIR}.",
     "i" = fallback_hint
-  ))
+  ), call = caller_env())
 
   os_name
 }

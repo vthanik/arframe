@@ -1156,10 +1156,10 @@ test_that("character stat (method name) formats as-is, not blank", {
   # Replace the list stat for method with a character
   ard$stat[[2L]] <- "Welch Two Sample t-test"
 
-  wide <- fr_wide_ard(
+  wide <- suppressWarnings(fr_wide_ard(
     ard,
     statistic = list(continuous = "{p.value} ({method})")
-  )
+  ))
 
   expect_true(grepl("Welch", wide$Placebo[1L]))
 })
@@ -1595,7 +1595,10 @@ test_that("normalize_ard_num handles character column (non-numeric coercion)", {
 })
 
 test_that("normalize_ard_num handles list with non-coercible element", {
-  result <- arframe:::normalize_ard_num(list("abc"))
+  expect_warning(
+    result <- arframe:::normalize_ard_num(list("abc")),
+    "Non-numeric"
+  )
   expect_equal(result, NA_real_)
 })
 

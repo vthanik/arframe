@@ -266,7 +266,7 @@ fr_validate <- function(spec, strict = FALSE) {
     if (strict) {
       cli_abort(msg, call = call)
     } else {
-      cli_warn(msg)
+      cli_warn(msg, call = call)
     }
   }
 
