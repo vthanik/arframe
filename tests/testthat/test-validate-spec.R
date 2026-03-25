@@ -35,9 +35,9 @@ test_that("fr_validate is pipeline-friendly", {
 # ── Input validation ────────────────────────────────────────────────────────
 
 test_that("fr_validate rejects non-fr_spec input", {
-  expect_error(fr_validate(data.frame(x = 1)), class = "rlang_error")
-  expect_error(fr_validate("not a spec"), class = "rlang_error")
-  expect_error(fr_validate(NULL), class = "rlang_error")
+  expect_error(fr_validate(data.frame(x = 1)))
+  expect_error(fr_validate("not a spec"))
+  expect_error(fr_validate(NULL))
 })
 
 test_that("fr_validate validates strict parameter", {

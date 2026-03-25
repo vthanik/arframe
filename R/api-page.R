@@ -97,6 +97,11 @@
 #' * `orphan_min = 3` means: if fewer than 3 rows would remain at the bottom
 #'   of a page before a `group_by` group, move the group to the next page.
 #'
+#' @section Parameter Precedence:
+#' Settings resolve from four tiers (lowest to highest priority):
+#' package defaults < `_arframe.yml` < [fr_theme()] < this function.
+#' Only parameters you explicitly supply override previous tiers.
+#'
 #' @examples
 #' ## ── Standard pharma RTF setup ────────────────────────────────────────────
 #'
@@ -267,6 +272,11 @@ fr_page <- function(
 #' Date format in RTF submissions is `DDMONYYYY` (e.g. `"31DEC2024"`), not
 #' ISO 8601, to match SAS ODS date conventions.
 #'
+#' @section Parameter Precedence:
+#' Settings resolve from four tiers (lowest to highest priority):
+#' package defaults < `_arframe.yml` < [fr_theme()] < this function.
+#' Only parameters you explicitly supply override previous tiers.
+#'
 #' @examples
 #' ## ── Standard: Study/Protocol + Database Cutoff Date ──────────────────────
 #'
@@ -427,6 +437,11 @@ fr_pagehead <- function(
 #'
 #' The `{datetime}` token resolves to `DDMONYYYY HH:MM:SS` at render time
 #' (e.g. `"05MAR2026 14:24:25"`).
+#'
+#' @section Parameter Precedence:
+#' Settings resolve from four tiers (lowest to highest priority):
+#' package defaults < `_arframe.yml` < [fr_theme()] < this function.
+#' Only parameters you explicitly supply override previous tiers.
 #'
 #' @examples
 #' ## ── Program path + run datetime (most common footer pattern) ─────────────
@@ -616,6 +631,11 @@ collapse_chrome_text <- function(x, arg = caller_arg(x), call = caller_env()) {
 #'   pagefoot_before: 0
 #'   page_by_after: 1
 #' ```
+#'
+#' @section Parameter Precedence:
+#' Settings resolve from four tiers (lowest to highest priority):
+#' package defaults < `_arframe.yml` < [fr_theme()] < this function.
+#' Only parameters you explicitly supply override previous tiers.
 #'
 #' @examples
 #' ## ── Default spacing (1 blank line at each gap) ───────────────────────────

@@ -77,6 +77,13 @@ alignment from the column's \code{align} setting — use
 \code{fr_header(bold = TRUE, align = "center")} to opt in.
 }
 
+\section{Parameter Precedence}{
+
+Settings resolve from four tiers (lowest to highest priority):
+package defaults < \verb{_arframe.yml} < \code{\link[=fr_theme]{fr_theme()}} < this function.
+Only parameters you explicitly supply override previous tiers.
+}
+
 \section{Precedence}{
 
 Header alignment priority (last wins):

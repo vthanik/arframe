@@ -129,6 +129,13 @@ of a page before a \code{group_by} group, move the group to the next page.
 }
 }
 
+\section{Parameter Precedence}{
+
+Settings resolve from four tiers (lowest to highest priority):
+package defaults < \verb{_arframe.yml} < \code{\link[=fr_theme]{fr_theme()}} < this function.
+Only parameters you explicitly supply override previous tiers.
+}
+
 \section{Precedence}{
 
 \code{font_size} applies to all table text unless overridden:

@@ -130,6 +130,11 @@ normalize_content_entry <- function(
 #' * `fr_titles()` always **replaces** — chain multiple calls if you want to
 #'   progressively build a pipeline, but only the last call takes effect.
 #'
+#' @section Parameter Precedence:
+#' Settings resolve from four tiers (lowest to highest priority):
+#' package defaults < `_arframe.yml` < [fr_theme()] < this function.
+#' Only parameters you explicitly supply override previous tiers.
+#'
 #' @examples
 #' ## ── Standard two-line ICH E3 title ──────────────────────────────────────
 #'
@@ -312,6 +317,11 @@ fr_titles <- function(
 #'   every page). In RTF, all footnotes appear on every page regardless of
 #'   placement. A warning is emitted when rendering to RTF with
 #'   `placement = "last"` footnotes.
+#'
+#' @section Parameter Precedence:
+#' Settings resolve from four tiers (lowest to highest priority):
+#' package defaults < `_arframe.yml` < [fr_theme()] < this function.
+#' Only parameters you explicitly supply override previous tiers.
 #'
 #' @examples
 #' ## ── Demographics table: standard footnote set ─────────────────────────────

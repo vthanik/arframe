@@ -76,6 +76,13 @@ Date format in RTF submissions is \code{DDMONYYYY} (e.g. \code{"31DEC2024"}), no
 ISO 8601, to match SAS ODS date conventions.
 }
 
+\section{Parameter Precedence}{
+
+Settings resolve from four tiers (lowest to highest priority):
+package defaults < \verb{_arframe.yml} < \code{\link[=fr_theme]{fr_theme()}} < this function.
+Only parameters you explicitly supply override previous tiers.
+}
+
 \section{Spacing}{
 
 By default, \strong{no gap} is inserted after the page header. Add one with

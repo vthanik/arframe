@@ -175,6 +175,11 @@
 #'   that were not explicitly relabelled). This lets you set a baseline
 #'   transform and override specific columns as needed.
 #'
+#' @section Parameter Precedence:
+#' Settings resolve from four tiers (lowest to highest priority):
+#' package defaults < `_arframe.yml` < [fr_theme()] < this function.
+#' Only parameters you explicitly supply override previous tiers.
+#'
 #' @examples
 #' ## ── Per-column N-counts (80% case) ───────────────────────────────────────
 #'

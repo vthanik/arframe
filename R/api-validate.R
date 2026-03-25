@@ -13,7 +13,8 @@
 #' valid, making it pipeline-friendly. In strict mode, any issue raises an
 #' error.
 #'
-#' @param spec An `fr_spec` object from [fr_table()].
+#' @param x An `fr_spec` object from [fr_table()].
+#' @param ... Additional arguments (currently unused).
 #' @param strict Logical. If `TRUE`, any validation issue raises an error.
 #'   If `FALSE` (default), issues are reported as warnings and the spec
 #'   is returned invisibly.
@@ -74,7 +75,14 @@
 #'
 #' @seealso [fr_render()], [fr_table()]
 #' @export
-fr_validate <- function(spec, strict = FALSE) {
+fr_validate <- function(x, ...) {
+  UseMethod("fr_validate")
+}
+
+#' @rdname fr_validate
+#' @export
+fr_validate.fr_spec <- function(x, ..., strict = FALSE) {
+  spec <- x
   call <- caller_env()
   check_fr_spec(spec, call = call)
   check_scalar_lgl(strict, arg = "strict", call = call)
@@ -240,7 +248,17 @@ fr_validate <- function(spec, strict = FALSE) {
     }
   }
 
-  # 8. Font family recognised
+  # 8. page_by_styles without page_by config
+  if (length(spec$page_by_styles) > 0L && length(body$page_by) == 0L) {
+    issues <- c(
+      issues,
+      cli::format_inline(
+        "Page-by styles are set but no {.arg page_by} column is configured in {.fn fr_rows}."
+      )
+    )
+  }
+
+  # 9. Font family recognised
   font <- spec$page$font_family
   if (!is.null(font)) {
     known <- unlist(

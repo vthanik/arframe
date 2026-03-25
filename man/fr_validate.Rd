@@ -2,12 +2,17 @@
 % Please edit documentation in R/api-validate.R
 \name{fr_validate}
 \alias{fr_validate}
+\alias{fr_validate.fr_spec}
 \title{Validate a Table Specification Before Rendering}
 \usage{
-fr_validate(spec, strict = FALSE)
+fr_validate(x, ...)
+
+\method{fr_validate}{fr_spec}(x, ..., strict = FALSE)
 }
 \arguments{
-\item{spec}{An \code{fr_spec} object from \code{\link[=fr_table]{fr_table()}}.}
+\item{x}{An \code{fr_spec} object from \code{\link[=fr_table]{fr_table()}}.}
+
+\item{...}{Additional arguments (currently unused).}
 
 \item{strict}{Logical. If \code{TRUE}, any validation issue raises an error.
 If \code{FALSE} (default), issues are reported as warnings and the spec

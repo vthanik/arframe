@@ -166,6 +166,11 @@
 #' * Style page-by labels and group header rows via [fr_styles()] for full
 #'   control over bold, alignment, and other formatting.
 #'
+#' @section Parameter Precedence:
+#' Settings resolve from four tiers (lowest to highest priority):
+#' package defaults < `_arframe.yml` < [fr_theme()] < this function.
+#' Only parameters you explicitly supply override previous tiers.
+#'
 #' @examples
 #' ## ── AE table paginated by System Organ Class ─────────────────────────────
 #'

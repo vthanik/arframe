@@ -81,7 +81,22 @@ normalise_text <- function(
 #' @param call Caller environment for error messages.
 #' @return Integer vector of matched row positions (1-based).
 #' @noRd
-resolve_rows_selector <- function(selector, data, call = caller_env()) {
+
+# S3 generic for row selector resolution.
+# Dispatches on selector class. Default method handles fr_rows_selector.
+# Custom selector classes can implement resolve_rows_selector.<class>()
+# for extensibility (e.g., fr_rows_between, fr_rows_where).
+resolve_rows_selector <- function(selector, ...) {
+  UseMethod("resolve_rows_selector")
+}
+
+#' @noRd
+resolve_rows_selector.fr_rows_selector <- function(
+  selector,
+  data,
+  ...,
+  call = caller_env()
+) {
   col <- selector$col
 
   if (!col %in% names(data)) {
@@ -97,14 +112,12 @@ resolve_rows_selector <- function(selector, data, call = caller_env()) {
   col_vec <- data[[col]]
 
   if (!is.null(selector$pattern)) {
-    # Regex pattern match
     matched <- grep(
       selector$pattern,
       as.character(col_vec),
       ignore.case = selector$ignore.case
     )
   } else {
-    # Exact value match
     matched <- which(col_vec == selector$value)
   }
 

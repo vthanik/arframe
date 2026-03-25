@@ -54,6 +54,11 @@
 #' alignment from the column's `align` setting — use
 #' `fr_header(bold = TRUE, align = "center")` to opt in.
 #'
+#' @section Parameter Precedence:
+#' Settings resolve from four tiers (lowest to highest priority):
+#' package defaults < `_arframe.yml` < [fr_theme()] < this function.
+#' Only parameters you explicitly supply override previous tiers.
+#'
 #' @examples
 #' ## ── Center all headers with bottom valign ────────────────────────────────
 #'

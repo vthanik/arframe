@@ -90,6 +90,13 @@ progressively build a pipeline, but only the last call takes effect.
 }
 }
 
+\section{Parameter Precedence}{
+
+Settings resolve from four tiers (lowest to highest priority):
+package defaults < \verb{_arframe.yml} < \code{\link[=fr_theme]{fr_theme()}} < this function.
+Only parameters you explicitly supply override previous tiers.
+}
+
 \examples{
 ## ── Standard two-line ICH E3 title ──────────────────────────────────────
 

@@ -69,6 +69,13 @@ The \code{{datetime}} token resolves to \verb{DDMONYYYY HH:MM:SS} at render time
 (e.g. \code{"05MAR2026 14:24:25"}).
 }
 
+\section{Parameter Precedence}{
+
+Settings resolve from four tiers (lowest to highest priority):
+package defaults < \verb{_arframe.yml} < \code{\link[=fr_theme]{fr_theme()}} < this function.
+Only parameters you explicitly supply override previous tiers.
+}
+
 \examples{
 ## ── Program path + run datetime (most common footer pattern) ─────────────
 

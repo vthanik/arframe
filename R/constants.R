@@ -1467,9 +1467,117 @@ fr_env$stat_family_priority <- c(
 )
 
 
+# Helper to rebuild derived stat type vectors from the registry.
+# Called once at package load and again after each fr_register_stat_type() call.
+rebuild_stat_type_vectors <- function() {
+  fr_env$stat_type_patterns <- vapply(
+    fr_env$stat_type_registry, `[[`, character(1), "pattern"
+  )
+  fr_env$stat_type_family <- vapply(
+    fr_env$stat_type_registry, `[[`, character(1), "family"
+  )
+  fr_env$stat_type_richness <- vapply(
+    fr_env$stat_type_registry, `[[`, integer(1), "richness"
+  )
+}
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # 12. RTF Rendering Constants (additional)
 # ══════════════════════════════════════════════════════════════════════════════
 
 # Zero top/bottom cell padding (eliminates Word's default ~29twips each side)
 fr_env$rtf_zero_cell_padding <- "\\trpaddt0\\trpaddft3\\trpaddb0\\trpaddfb3"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 13. Custom Stat Type Registration
+# ══════════════════════════════════════════════════════════════════════════════
+
+#' Register a Custom Decimal Alignment Stat Type
+#'
+#' Adds a custom statistical format type to the decimal alignment engine.
+#' Use this when your data contains formatted statistics that don't match
+#' any of the 18 built-in types (see `fr_env$stat_type_registry` for the
+#' full list).
+#'
+#' @param name Character scalar. Unique name for the type (e.g.,
+#'   `"ratio_ci"`). Must not conflict with built-in type names.
+#' @param pattern Character scalar. Perl-compatible regex that matches
+#'   the formatted string. Must match the **entire** string
+#'   (anchored with `^...$`).
+#' @param family Character scalar. Alignment family: `"compound"`,
+#'   `"estimate"`, `"range"`, `"count"`, `"float"`, or `"custom"`.
+#'   Determines how the type aligns relative to other types in the same
+#'   column. Default `"custom"`.
+#' @param richness Integer scalar. Component count (higher = more complex).
+#'   Used for tie-breaking when multiple types match. Default `3L`.
+#'
+#' @return Invisible `NULL`. Called for its side effect of registering the type.
+#'
+#' @examples
+#' # Register a custom "ratio (lower, upper)" format
+#' fr_register_stat_type(
+#'   name = "ratio_ci",
+#'   pattern = "^-?\\d+\\.?\\d*\\s*\\(-?\\d+\\.?\\d*,\\s*-?\\d+\\.?\\d*\\)$",
+#'   family = "compound",
+#'   richness = 4L
+#' )
+#'
+#' @seealso [fr_cols()] with `align = "decimal"` for decimal alignment.
+#'
+#' @export
+fr_register_stat_type <- function(
+  name,
+  pattern,
+  family = "custom",
+  richness = 3L
+) {
+  call <- caller_env()
+  check_scalar_chr(name, arg = "name", call = call)
+  check_scalar_chr(pattern, arg = "pattern", call = call)
+  check_scalar_chr(family, arg = "family", call = call)
+
+  # Validate name doesn't conflict
+  existing <- names(fr_env$stat_type_registry)
+  if (name %in% existing) {
+    cli_abort(
+      c(
+        "Stat type {.val {name}} already exists.",
+        "i" = "Choose a different name or use a unique prefix (e.g., {.val custom_{name}})."
+      ),
+      call = call
+    )
+  }
+
+  # Validate regex compiles
+  tryCatch(
+    grepl(pattern, "test"),
+    error = function(e) {
+      cli_abort(
+        c(
+          "Invalid regex {.arg pattern}: {conditionMessage(e)}",
+          "i" = "Pattern must be a valid Perl-compatible regex."
+        ),
+        call = call
+      )
+    }
+  )
+
+  # Register
+  fr_env$stat_type_registry[[name]] <- list(
+    pattern = pattern,
+    family = family,
+    richness = as.integer(richness)
+  )
+
+  # Add custom family to priority if new
+  if (!family %in% names(fr_env$stat_family_priority)) {
+    fr_env$stat_family_priority[[family]] <- 3L
+  }
+
+  # Rebuild derived vectors
+  rebuild_stat_type_vectors()
+
+  invisible(NULL)
+}

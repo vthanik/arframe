@@ -82,6 +82,13 @@ own rules. To set both at once, use \code{\link[=fr_grid]{fr_grid()}}.
 }
 }
 
+\section{Parameter Precedence}{
+
+Settings resolve from four tiers (lowest to highest priority):
+package defaults < \verb{_arframe.yml} < \code{\link[=fr_theme]{fr_theme()}} < this function.
+Only parameters you explicitly supply override previous tiers.
+}
+
 \examples{
 ## ── Common presets ────────────────────────────────────────────────────────
 

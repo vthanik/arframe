@@ -143,6 +143,11 @@ keep_horizontal_rules <- function(rules) {
 #'   by this preset call. For mixed widths (e.g. booktabs thick/thin), omit
 #'   `width` and let the preset define its own widths.
 #'
+#' @section Parameter Precedence:
+#' Settings resolve from four tiers (lowest to highest priority):
+#' package defaults < `_arframe.yml` < [fr_theme()] < this function.
+#' Only parameters you explicitly supply override previous tiers.
+#'
 #' @examples
 #' ## ── Common presets ────────────────────────────────────────────────────────
 #'
@@ -328,6 +333,11 @@ fr_hlines <- function(
 #'   useful for separating a stub column from data columns.
 #' * `fr_vlines()` and `fr_hlines()` are independent — each manages its
 #'   own rules. To set both at once, use [fr_grid()].
+#'
+#' @section Parameter Precedence:
+#' Settings resolve from four tiers (lowest to highest priority):
+#' package defaults < `_arframe.yml` < [fr_theme()] < this function.
+#' Only parameters you explicitly supply override previous tiers.
 #'
 #' @examples
 #' ## ── Common presets ────────────────────────────────────────────────────────

@@ -1238,8 +1238,12 @@ html_body_rows <- function(
             content,
             fixed = TRUE
           )
-          # Decimal-aligned cells use pre-formatted whitespace
-          style_parts <- c(style_parts, "white-space:pre")
+          # Decimal-aligned cells: monospace + pre-formatted whitespace
+          style_parts <- c(
+            style_parts,
+            "white-space:pre",
+            "font-family:'Source Code Pro','Courier New',monospace"
+          )
         } else {
           content <- ""
         }

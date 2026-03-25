@@ -1109,6 +1109,7 @@ new_fr_spec <- function(
   body = new_fr_body(),
   rules = list(),
   cell_styles = list(),
+  page_by_styles = list(),
   page = new_fr_page(),
   pagehead = NULL,
   pagefoot = NULL,
@@ -1146,6 +1147,7 @@ new_fr_spec <- function(
       body = body,
       rules = rules,
       cell_styles = cell_styles,
+      page_by_styles = page_by_styles,
       page = page,
       pagehead = pagehead,
       pagefoot = pagefoot,
@@ -1396,6 +1398,34 @@ print.fr_spec <- function(x, ..., compact = FALSE) {
   }
 
   invisible(x)
+}
+
+
+#' Format an fr_spec as a compact one-liner
+#'
+#' Returns a concise string summary useful for logging, debugging, or
+#' `sprintf()` interpolation.
+#'
+#' @param x An `fr_spec` object.
+#' @param ... Ignored.
+#' @return Character scalar describing the spec.
+#'
+#' @examples
+#' spec <- tbl_demog |> fr_table()
+#' format(spec)
+#' sprintf("Processing: %s", format(spec))
+#'
+#' @export
+format.fr_spec <- function(x, ...) {
+  nr <- nrow(x$data)
+  nc <- ncol(x$data)
+  type <- x$type %||% "table"
+  n_styles <- length(x$cell_styles)
+  n_titles <- length(x$meta$titles)
+  sprintf(
+    "<fr_spec> %s: %d rows x %d cols, %d style(s), %d title(s)",
+    type, nr, nc, n_styles, n_titles
+  )
 }
 
 
