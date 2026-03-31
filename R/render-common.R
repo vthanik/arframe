@@ -64,7 +64,7 @@ n_spanner_levels <- function(spans) {
 #' @noRd
 build_cell_grid <- function(data, columns, cell_styles, page) {
   col_names <- names(columns)
-  nr <- nrow(data)
+  nr <- vctrs::vec_size(data)
   nc <- length(col_names)
 
   if (nr == 0L || nc == 0L) {
@@ -168,7 +168,7 @@ resolve_style_mask <- function(style, grid, col_names) {
   nr_data <- max(grid$row_idx)
   # Row mask
   if (is.null(style$rows) || identical(style$rows, "all")) {
-    row_mask <- rep(TRUE, nrow(grid))
+    row_mask <- rep(TRUE, vctrs::vec_size(grid))
   } else {
     row_mask <- grid$row_idx %in% style$rows
   }
@@ -177,7 +177,7 @@ resolve_style_mask <- function(style, grid, col_names) {
   if (
     style$type == "row" || is.null(style$cols) || identical(style$cols, "all")
   ) {
-    col_mask <- rep(TRUE, nrow(grid))
+    col_mask <- rep(TRUE, vctrs::vec_size(grid))
   } else if (is.character(style$cols)) {
     col_mask <- grid$col_name %in% style$cols
   } else if (is.numeric(style$cols)) {
@@ -192,7 +192,7 @@ resolve_style_mask <- function(style, grid, col_names) {
       ),
       call = caller_env()
     )
-    col_mask <- rep(TRUE, nrow(grid))
+    col_mask <- rep(TRUE, vctrs::vec_size(grid))
   }
 
   # Stub region targets first column only
@@ -235,13 +235,13 @@ apply_styles_to_grid <- function(
           identical(style$cols, "all") ||
           identical(style$type, "row")
       ) {
-        rep(TRUE, nrow(grid))
+        rep(TRUE, vctrs::vec_size(grid))
       } else if (is.character(style$cols)) {
         grid$col_name %in% style$cols
       } else if (is.numeric(style$cols)) {
         grid$col_idx %in% style$cols
       } else {
-        rep(TRUE, nrow(grid))
+        rep(TRUE, vctrs::vec_size(grid))
       }
       if (!any(col_mask)) {
         next
@@ -416,7 +416,7 @@ inject_group_headers <- function(
   label_col,
   preserve_cols = NULL
 ) {
-  nr <- nrow(data)
+  nr <- vctrs::vec_size(data)
   if (nr == 0L || length(group_cols) == 0L || is.null(label_col)) {
     return(list(data = data, header_rows = integer(0)))
   }
@@ -472,7 +472,7 @@ inject_group_headers <- function(
 
     chunk <- vctrs::vec_slice(data, boundaries[k]:ends[k])
     result[[2L * k]] <- chunk
-    cumulative_rows <- cumulative_rows + nrow(chunk)
+    cumulative_rows <- cumulative_rows + vctrs::vec_size(chunk)
   }
 
   list(
@@ -731,7 +731,7 @@ build_page_by_inline_css <- function(styles) {
 #' @noRd
 insert_blank_after <- function(data, blank_cols, preserve_cols = NULL) {
   empty <- list(data = data, insert_positions = integer(0))
-  if (nrow(data) <= 1L || length(blank_cols) == 0L) {
+  if (vctrs::vec_size(data) <= 1L || length(blank_cols) == 0L) {
     return(empty)
   }
 
@@ -769,7 +769,7 @@ insert_blank_after <- function(data, blank_cols, preserve_cols = NULL) {
   }
   result[[2L * length(boundaries) + 1L]] <- vctrs::vec_slice(
     data,
-    prev:nrow(data)
+    prev:vctrs::vec_size(data)
   )
 
   list(data = vctrs::vec_rbind(!!!result), insert_positions = boundaries)
@@ -826,7 +826,7 @@ apply_indent_by <- function(spec) {
     return(spec)
   }
 
-  nr <- nrow(spec$data)
+  nr <- vctrs::vec_size(spec$data)
   if (nr == 0L) {
     return(spec)
   }
@@ -970,7 +970,7 @@ collapse_hierarchy <- function(spec) {
   }
 
   data <- spec$data
-  nr <- nrow(data)
+  nr <- vctrs::vec_size(data)
   if (nr == 0L) {
     return(spec)
   }
@@ -1137,7 +1137,7 @@ collapse_hierarchy <- function(spec) {
 #' @noRd
 apply_leading_indent <- function(spec) {
   default_spaces <- spec$columns_meta$space_mode %||% "indent"
-  nr <- nrow(spec$data)
+  nr <- vctrs::vec_size(spec$data)
   if (nr == 0L) {
     return(spec)
   }
@@ -1246,7 +1246,7 @@ build_keep_mask <- function(
   widow_min = 3L,
   page_rows = Inf
 ) {
-  nr <- nrow(data)
+  nr <- vctrs::vec_size(data)
   if (nr <= 1L || length(keep_cols) == 0L) {
     return(rep(FALSE, nr))
   }

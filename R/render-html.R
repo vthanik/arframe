@@ -150,7 +150,7 @@ render_html <- function(spec, page_groups, col_panels, path) {
       nrow_header <- 1L + n_spanner_levels(spec$header$spans)
       borders <- resolve_borders(
         spec$rules,
-        nrow(group$data),
+        vctrs::vec_size(group$data),
         length(vis_columns),
         nrow_header
       )
@@ -1068,7 +1068,7 @@ html_col_header_row <- function(spec, vis_columns, borders, label_overrides) {
   cells <- vapply(
     seq_len(ncol),
     function(j) {
-      g <- hgrid[j, ]
+      g <- vctrs::vec_slice(hgrid, j)
 
       label <- label_overrides[col_names[j]]
       if (is.na(label) || is.null(label)) {
@@ -1143,7 +1143,7 @@ html_body_rows <- function(
   spec,
   orig_rows = NULL
 ) {
-  nr <- nrow(data)
+  nr <- vctrs::vec_size(data)
   if (nr == 0L) {
     return("<tbody></tbody>")
   }

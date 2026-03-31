@@ -70,7 +70,7 @@ render_latex <- function(spec, page_groups, col_panels, path) {
       nrow_header <- 1L + n_spanner_levels(spec$header$spans)
       borders <- resolve_borders(
         spec$rules,
-        nrow(group$data),
+        vctrs::vec_size(group$data),
         length(vis_columns),
         nrow_header
       )
@@ -936,7 +936,7 @@ latex_table <- function(
 ) {
   col_names <- names(columns)
   nc <- length(col_names)
-  nr <- nrow(data)
+  nr <- vctrs::vec_size(data)
 
   # Build column spec for tabularray
   # Subtract leftsep + rightsep per column so total rendered width matches
@@ -1084,7 +1084,7 @@ latex_table <- function(
       page_rows = page_rows
     )
   } else {
-    keep_mask <- rep(FALSE, nrow(data))
+    keep_mask <- rep(FALSE, vctrs::vec_size(data))
   }
 
   # Body rows (uses pre-computed decimal geometry from spec)
@@ -1248,15 +1248,15 @@ latex_border_specs <- function(borders, nr, nc, nrow_header) {
 #' Generate tabularray cell style specs from cell_grid
 #' @noRd
 latex_cell_style_specs <- function(cell_grid, nr, nc, nrow_header) {
-  if (nrow(cell_grid) == 0L) {
+  if (vctrs::vec_size(cell_grid) == 0L) {
     return(character(0))
   }
-  n_cells <- nrow(cell_grid)
+  n_cells <- vctrs::vec_size(cell_grid)
   spec_list <- vector("list", n_cells)
   idx <- 0L
 
   for (k in seq_len(n_cells)) {
-    g <- cell_grid[k, ]
+    g <- vctrs::vec_slice(cell_grid, k)
     parts <- character(0)
 
     if (isTRUE(g$bold)) {
@@ -1307,7 +1307,7 @@ latex_header_style_specs <- function(
   idx <- 0L
 
   for (j in seq_len(nc)) {
-    g <- hgrid[j, ]
+    g <- vctrs::vec_slice(hgrid, j)
     parts <- character(0)
 
     if (isTRUE(g$bold)) {
@@ -1509,7 +1509,7 @@ latex_body_rows <- function(
   keep_mask = NULL,
   orig_rows = NULL
 ) {
-  nr <- nrow(data)
+  nr <- vctrs::vec_size(data)
   if (nr == 0L) {
     return(character(0))
   }

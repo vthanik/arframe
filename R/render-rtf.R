@@ -214,7 +214,7 @@ render_rtf <- function(spec, page_groups, col_panels, path) {
       nrow_header <- 1L + n_spanner_levels(spec$header$spans)
       borders <- resolve_borders(
         spec$rules,
-        nrow(group$data),
+        vctrs::vec_size(group$data),
         length(vis_columns),
         nrow_header
       )
@@ -236,7 +236,7 @@ render_rtf <- function(spec, page_groups, col_panels, path) {
           has_every_fn || has_last_body_fn || !is.null(spec$pagefoot)
         }
         if (suppress_bottom) {
-          nr <- nrow(group$data)
+          nr <- vctrs::vec_size(group$data)
           if (nr > 0L) {
             for (j in seq_along(vis_columns)) {
               borders$body$bottom[nr, j] <- list(NULL)
@@ -1119,7 +1119,7 @@ rtf_col_header_row <- function(
   cell_contents <- character(ncol)
 
   for (j in seq_len(ncol)) {
-    g <- hgrid[j, ]
+    g <- vctrs::vec_slice(hgrid, j)
 
     # Background color
     bg_str <- ""
@@ -1221,13 +1221,13 @@ rtf_body_rows <- function(
   color_info,
   orig_rows = NULL
 ) {
-  if (nrow(data) == 0L) {
+  if (vctrs::vec_size(data) == 0L) {
     return("")
   }
 
   col_names <- names(columns)
   ncol <- length(col_names)
-  nr <- nrow(data)
+  nr <- vctrs::vec_size(data)
   pad_str <- rtf_col_gap_str(spec)
 
   cum_widths <- cellx
@@ -1235,7 +1235,7 @@ rtf_body_rows <- function(
   # Use pre-computed decimal geometry from finalize_spec()
   dec_geom <- spec$decimal_geometry
   is_decimal_col <- col_names %in% names(dec_geom %||% list())
-  row_idx <- orig_rows %||% seq_len(nrow(data))
+  row_idx <- orig_rows %||% seq_len(vctrs::vec_size(data))
 
   empty_cell <- "\\pard\\intbl\\cell"
 
@@ -1445,7 +1445,7 @@ rtf_body_rows <- function(
 compute_single_page <- function(spec, group_data) {
   budget <- compute_page_budget(spec)
   one_row <- row_height_twips(spec$page$font_size)
-  total_body_twips <- nrow(group_data) * one_row
+  total_body_twips <- vctrs::vec_size(group_data) * one_row
   total_body_twips <= budget
 }
 

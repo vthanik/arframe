@@ -76,7 +76,7 @@ measure_cell_height <- function(text, char_width) {
 #' @return Integer vector of length `nrow(data)` — height in twips per row.
 #' @noRd
 compute_row_heights <- function(data, columns, page) {
-  nr <- nrow(data)
+  nr <- vctrs::vec_size(data)
   if (nr == 0L) {
     return(integer(0))
   }
