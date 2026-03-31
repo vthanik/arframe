@@ -175,20 +175,21 @@ reconstruct_renamed_ard <- function(df, column, call) {
   arm_col <- column
   var_cols <- setdiff(non_std, arm_col)
 
-  # Reconstruct variable and variable_level
+  # Reconstruct variable and variable_level (vectorized: find first non-NA col)
   n <- nrow(df)
   variable <- rep(NA_character_, n)
   var_level <- rep(NA_character_, n)
 
-  for (i in seq_len(n)) {
-    for (vc in var_cols) {
-      val <- df[[vc]][i]
-      if (!is.na(val) && nchar(as.character(val)) > 0L) {
-        variable[i] <- vc
-        var_level[i] <- as.character(val)
-        break
-      }
+  remaining <- rep(TRUE, n)
+  for (vc in var_cols) {
+    vals <- as.character(df[[vc]])
+    hit <- remaining & !is.na(vals) & nchar(vals) > 0L
+    if (any(hit)) {
+      variable[hit] <- vc
+      var_level[hit] <- vals[hit]
+      remaining[hit] <- FALSE
     }
+    if (!any(remaining)) break
   }
 
   # All-NA rows are continuous variables — assign to always-NA var_cols
@@ -753,23 +754,14 @@ fr_wide_ard <- function(
     }
   }
 
-  # ── Apply display labels ────────────────────────────────────────────────
+  # ── Apply display labels (vectorized via match) ──────────────────────────
   if (!is.null(label)) {
-    if ("variable" %in% names(wide)) {
-      for (v in names(label)) {
-        wide$variable[wide$variable == v] <- label[[v]]
-      }
-    }
-    # Also apply labels to soc and pt columns (hierarchical output)
-    if ("soc" %in% names(wide)) {
-      for (v in names(label)) {
-        wide$soc[wide$soc == v] <- label[[v]]
-      }
-    }
-    if ("pt" %in% names(wide)) {
-      for (v in names(label)) {
-        wide$pt[wide$pt == v] <- label[[v]]
-      }
+    label_from <- names(label)
+    label_to <- unname(unlist(label))
+    for (col in intersect(c("variable", "soc", "pt"), names(wide))) {
+      m <- match(wide[[col]], label_from)
+      has_match <- !is.na(m)
+      if (any(has_match)) wide[[col]][has_match] <- label_to[m[has_match]]
     }
   }
 
@@ -819,49 +811,44 @@ build_flat_wide <- function(
   }
 
   key_order <- unique(df$var_group_key)
-  result_rows <- list()
-  idx <- 0L
+  n_arms <- length(arm_levels)
+
+  # Accumulate as column vectors (avoid per-row data.frame overhead)
+  res_var <- character(0L)
+  res_label <- character(0L)
+  res_arm <- character(0L)
+  res_cell <- character(0L)
+  res_eg <- lapply(extra_group_cols, function(ec) character(0L))
+  names(res_eg) <- extra_group_cols
+
+  df_by_key <- split(df, df$var_group_key)
 
   for (key in key_order) {
-    key_df <- df[df$var_group_key == key, , drop = FALSE]
-    if (nrow(key_df) == 0L) {
-      next
-    }
+    key_df <- df_by_key[[key]]
+    if (is.null(key_df) || nrow(key_df) == 0L) next
 
     var_name <- key_df$variable[1L]
     ctx <- key_df$ctx[1L]
     fmt_spec <- resolve_ard_statistic(var_name, ctx, statistic)
 
-    # Validate format references against available stats for this variable
     available <- unique(key_df$stat_name)
     fmt_strs <- if (is_multirow_spec(fmt_spec)) fmt_spec else fmt_spec
     for (fs in fmt_strs) {
       validate_format_stats(fs, available, var_name, call)
     }
 
-    # Capture extra group values for this key
-    eg_values <- list()
-    for (ec in extra_group_cols) {
-      eg_values[[ec]] <- as.character(key_df[[ec]][1L])
-    }
+    eg_values <- lapply(extra_group_cols, function(ec) as.character(key_df[[ec]][1L]))
+    names(eg_values) <- extra_group_cols
 
     if (is_multirow_spec(fmt_spec)) {
       for (row_label in names(fmt_spec)) {
-        fmt_str <- fmt_spec[[row_label]]
-        for (arm_val in arm_levels) {
-          cell <- interpolate_stats(key_df, arm_val, fmt_str)
-          idx <- idx + 1L
-          row <- data.frame(
-            variable = var_name,
-            stat_label = row_label,
-            arm = arm_val,
-            cell_text = cell,
-            stringsAsFactors = FALSE
-          )
-          for (ec in extra_group_cols) {
-            row[[ec]] <- eg_values[[ec]]
-          }
-          result_rows[[idx]] <- row
+        cells <- interpolate_stats_all(key_df, arm_levels, fmt_spec[[row_label]])
+        res_var <- c(res_var, rep(var_name, n_arms))
+        res_label <- c(res_label, rep(row_label, n_arms))
+        res_arm <- c(res_arm, arm_levels)
+        res_cell <- c(res_cell, unname(cells))
+        for (ec in extra_group_cols) {
+          res_eg[[ec]] <- c(res_eg[[ec]], rep(eg_values[[ec]], n_arms))
         }
       }
     } else {
@@ -869,50 +856,34 @@ build_flat_wide <- function(
       levels <- unique(key_df$var_level)
 
       if (all(is.na(levels))) {
-        for (arm_val in arm_levels) {
-          cell <- interpolate_stats(key_df, arm_val, fmt_str)
-          idx <- idx + 1L
-          row <- data.frame(
-            variable = var_name,
-            stat_label = var_name,
-            arm = arm_val,
-            cell_text = cell,
-            stringsAsFactors = FALSE
-          )
-          for (ec in extra_group_cols) {
-            row[[ec]] <- eg_values[[ec]]
-          }
-          result_rows[[idx]] <- row
+        cells <- interpolate_stats_all(key_df, arm_levels, fmt_str)
+        res_var <- c(res_var, rep(var_name, n_arms))
+        res_label <- c(res_label, rep(var_name, n_arms))
+        res_arm <- c(res_arm, arm_levels)
+        res_cell <- c(res_cell, unname(cells))
+        for (ec in extra_group_cols) {
+          res_eg[[ec]] <- c(res_eg[[ec]], rep(eg_values[[ec]], n_arms))
         }
       } else {
         levels <- levels[!is.na(levels)]
         for (lvl in levels) {
-          for (arm_val in arm_levels) {
-            lvl_df <- key_df[
-              !is.na(key_df$var_level) & key_df$var_level == lvl,
-              ,
-              drop = FALSE
-            ]
-            cell <- interpolate_stats(lvl_df, arm_val, fmt_str)
-            idx <- idx + 1L
-            row <- data.frame(
-              variable = var_name,
-              stat_label = lvl,
-              arm = arm_val,
-              cell_text = cell,
-              stringsAsFactors = FALSE
-            )
-            for (ec in extra_group_cols) {
-              row[[ec]] <- eg_values[[ec]]
-            }
-            result_rows[[idx]] <- row
+          lvl_df <- key_df[
+            !is.na(key_df$var_level) & key_df$var_level == lvl, , drop = FALSE
+          ]
+          cells <- interpolate_stats_all(lvl_df, arm_levels, fmt_str)
+          res_var <- c(res_var, rep(var_name, n_arms))
+          res_label <- c(res_label, rep(lvl, n_arms))
+          res_arm <- c(res_arm, arm_levels)
+          res_cell <- c(res_cell, unname(cells))
+          for (ec in extra_group_cols) {
+            res_eg[[ec]] <- c(res_eg[[ec]], rep(eg_values[[ec]], n_arms))
           }
         }
       }
     }
   }
 
-  if (idx == 0L) {
+  if (length(res_arm) == 0L) {
     return(data.frame(
       variable = character(0L),
       stat_label = character(0L),
@@ -920,7 +891,12 @@ build_flat_wide <- function(
     ))
   }
 
-  long_df <- do.call(rbind, result_rows[seq_len(idx)])
+  long_df <- data.frame(
+    variable = res_var, stat_label = res_label,
+    arm = res_arm, cell_text = res_cell,
+    stringsAsFactors = FALSE
+  )
+  for (ec in extra_group_cols) long_df[[ec]] <- res_eg[[ec]]
   pivot_ard_wide(long_df, arm_levels, extra_group_cols)
 }
 
@@ -998,23 +974,38 @@ build_hierarchical_wide <- function(df, statistic, hierarchy, column, call) {
     out_cols <- c("soc", paste0("l", seq(2L, n_levels - 1L)), "pt")
   }
 
-  # Helper: make a row data.frame with hierarchy columns filled
-  make_row <- function(level_vals, row_type, arm_val, cell) {
-    row <- as.list(stats::setNames(
-      rep(NA_character_, n_levels), out_cols
-    ))
+  # Pre-split df by variable for O(1) lookups
+  df_by_var <- split(df, df$variable)
+
+  # Accumulate results as column vectors (avoid per-row data.frame overhead)
+  n_arms <- length(arm_levels)
+  res_cols <- vector("list", n_levels)
+  names(res_cols) <- out_cols
+  for (oc in out_cols) res_cols[[oc]] <- character(0L)
+  res_rtype <- character(0L)
+  res_arm <- character(0L)
+  res_cell <- character(0L)
+
+  # Append one batch of rows (one per arm) to the result vectors
+  append_rows <- function(level_vals, row_type, cells) {
+    n <- length(cells)
     for (i in seq_along(level_vals)) {
-      if (i <= n_levels) row[[out_cols[i]]] <- level_vals[i]
+      if (i <= n_levels) {
+        res_cols[[out_cols[i]]] <<- c(res_cols[[out_cols[i]]], rep(level_vals[i], n))
+      }
     }
-    row$row_type <- row_type
-    row$arm <- arm_val
-    row$cell_text <- cell
-    as.data.frame(row, stringsAsFactors = FALSE)
+    # Pad unfilled hierarchy columns
+    for (i in seq(from = length(level_vals) + 1L, length.out = max(0L, n_levels - length(level_vals)))) {
+      res_cols[[out_cols[i]]] <<- c(res_cols[[out_cols[i]]], rep(NA_character_, n))
+    }
+    res_rtype <<- c(res_rtype, rep(row_type, n))
+    res_arm <<- c(res_arm, names(cells))
+    res_cell <<- c(res_cell, unname(cells))
   }
 
   # ── Process ..ard_hierarchical_overall.. sentinel FIRST ──
-  overall_df <- df[df$variable == "..ard_hierarchical_overall..", , drop = FALSE]
-  if (nrow(overall_df) > 0L) {
+  overall_df <- df_by_var[["..ard_hierarchical_overall.."]]
+  if (!is.null(overall_df) && nrow(overall_df) > 0L) {
     fmt_str <- resolve_ard_statistic(
       "..ard_hierarchical_overall..", "categorical", statistic
     )
@@ -1024,19 +1015,11 @@ build_hierarchical_wide <- function(df, statistic, hierarchy, column, call) {
       "..ard_hierarchical_overall..", call
     )
     sentinel <- "..ard_hierarchical_overall.."
-    for (arm_val in arm_levels) {
-      cell <- interpolate_stats(overall_df, arm_val, fmt_str)
-      idx <- idx + 1L
-      result_rows[[idx]] <- make_row(
-        rep(sentinel, n_levels), "overall", arm_val, cell
-      )
-    }
+    cells <- interpolate_stats_all(overall_df, arm_levels, fmt_str)
+    append_rows(rep(sentinel, n_levels), "overall", cells)
   }
 
   # ── Process hierarchy levels recursively ──
-  # Pre-split df by variable for O(1) lookups in recursion
-  df_by_var <- split(df, df$variable)
-
   process_level <- function(level, parent_filters) {
     hv <- hier_vars[level]
     if (is.null(fmt_strs[[hv]])) return()
@@ -1044,43 +1027,36 @@ build_hierarchical_wide <- function(df, statistic, hierarchy, column, call) {
     if (is.null(lv_df) || nrow(lv_df) == 0L) return()
 
     for (pf in parent_filters) {
-      col <- pf$col
-      val <- pf$val
-      if (col %in% names(lv_df)) {
-        lv_df <- lv_df[!is.na(lv_df[[col]]) & lv_df[[col]] == val, , drop = FALSE]
+      if (pf$col %in% names(lv_df)) {
+        lv_df <- lv_df[!is.na(lv_df[[pf$col]]) & lv_df[[pf$col]] == pf$val, , drop = FALSE]
       }
     }
 
     lv_levels <- unique(lv_df$var_level[!is.na(lv_df$var_level)])
+    ancestors <- vapply(parent_filters, `[[`, character(1), "val")
+
+    rtype <- if (n_levels <= 2L && level == 1L) {
+      "soc"
+    } else if (n_levels <= 2L && level == 2L) {
+      "pt"
+    } else {
+      tolower(hv)
+    }
 
     for (lv_val in lv_levels) {
       lv_subset <- lv_df[
         !is.na(lv_df$var_level) & lv_df$var_level == lv_val, , drop = FALSE
       ]
 
-      ancestors <- vapply(parent_filters, function(pf) pf$val, character(1))
       level_vals <- c(ancestors, lv_val)
       while (length(level_vals) < n_levels) {
         level_vals <- c(level_vals, lv_val)
       }
 
-      rtype <- if (n_levels <= 2L && level == 1L) {
-        "soc"
-      } else if (n_levels <= 2L && level == 2L) {
-        "pt"
-      } else {
-        tolower(hv)
-      }
-
-      for (arm_val in arm_levels) {
-        cell <- interpolate_stats(lv_subset, arm_val, fmt_strs[[hv]])
-        idx <<- idx + 1L
-        result_rows[[idx]] <<- make_row(level_vals, rtype, arm_val, cell)
-      }
+      cells <- interpolate_stats_all(lv_subset, arm_levels, fmt_strs[[hv]])
+      append_rows(level_vals, rtype, cells)
 
       if (level < n_levels) {
-        # cards puts: group2=L1, group3=L2, etc. — child of level N
-        # looks for _g(N+1)_val matching the current level's value
         new_filters <- c(parent_filters, list(list(
           col = gval_col(level + 1L), val = lv_val
         )))
@@ -1091,7 +1067,7 @@ build_hierarchical_wide <- function(df, statistic, hierarchy, column, call) {
 
   process_level(1L, list())
 
-  if (idx == 0L) {
+  if (length(res_arm) == 0L) {
     empty <- as.data.frame(
       stats::setNames(
         replicate(n_levels, character(0L), simplify = FALSE),
@@ -1103,7 +1079,12 @@ build_hierarchical_wide <- function(df, statistic, hierarchy, column, call) {
     return(empty)
   }
 
-  long_df <- do.call(rbind, result_rows[seq_len(idx)])
+  # Build long_df from accumulated vectors (single data.frame allocation)
+  long_df <- res_cols
+  long_df$row_type <- res_rtype
+  long_df$arm <- res_arm
+  long_df$cell_text <- res_cell
+  long_df <- as.data.frame(long_df, stringsAsFactors = FALSE)
 
   # Build row key for pivoting
   meta_cols <- c(out_cols, "row_type")
@@ -1255,23 +1236,35 @@ is_multirow_spec <- function(fmt_spec) {
 # Internal: interpolate stats into a format string for a given arm
 # ══════════════════════════════════════════════════════════════════════════════
 
+#' Interpolate stats for a single arm value
 #' @noRd
 interpolate_stats <- function(var_df, arm_val, fmt_str) {
   subset <- var_df[var_df$arm == arm_val, , drop = FALSE]
-  if (nrow(subset) == 0L) {
-    return("")
-  }
-
+  if (nrow(subset) == 0L) return("")
   stat_vec <- stats::setNames(subset$stat_fmt, subset$stat_name)
   tryCatch(
     as.character(glue::glue_data(
-      as.list(stat_vec),
-      fmt_str,
-      .open = "{",
-      .close = "}"
+      as.list(stat_vec), fmt_str, .open = "{", .close = "}"
     )),
     error = function(e) ""
   )
+}
+
+#' Interpolate stats for ALL arms at once — returns named character vector
+#' @noRd
+interpolate_stats_all <- function(var_df, arm_levels, fmt_str) {
+  by_arm <- split(var_df, var_df$arm)
+  vapply(arm_levels, function(a) {
+    subset <- by_arm[[a]]
+    if (is.null(subset) || nrow(subset) == 0L) return("")
+    stat_vec <- stats::setNames(subset$stat_fmt, subset$stat_name)
+    tryCatch(
+      as.character(glue::glue_data(
+        as.list(stat_vec), fmt_str, .open = "{", .close = "}"
+      )),
+      error = function(e) ""
+    )
+  }, character(1L))
 }
 
 
