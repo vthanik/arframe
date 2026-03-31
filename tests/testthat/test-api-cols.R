@@ -487,8 +487,10 @@ test_that("fr_cols handles single-column data frame", {
 
 test_that("fr_cols with all NAs in a column gets auto width", {
   df <- data.frame(x = c(NA_character_, NA_character_), y = c("a", "b"))
-  spec <- fr_table(df) |>
-    fr_cols(.width = "auto")
+  expect_warning(
+    spec <- fr_table(df) |> fr_cols(.width = "auto"),
+    "all NA"
+  )
 
   expect_true(is.numeric(spec$columns[["x"]]$width))
   expect_true(spec$columns[["x"]]$width >= 0.5)

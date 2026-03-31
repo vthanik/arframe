@@ -1246,7 +1246,7 @@ test_that("fr_header(color=) applies foreground color to column header", {
 
 test_that("rtf_body_rows returns empty string for zero-row data", {
   spec <- data.frame(x = character(0), stringsAsFactors = FALSE) |> fr_table()
-  spec <- arframe:::finalize_spec(spec)
+  spec <- suppressWarnings(arframe:::finalize_spec(spec))
   colors <- arframe:::collect_colors(spec)
   color_info <- arframe:::build_rtf_colortbl(colors)
   cell_grid <- arframe:::build_cell_grid(
@@ -2060,9 +2060,11 @@ test_that("fr_render handles empty data frame without error", {
   tmp <- tempfile(fileext = ".rtf")
   on.exit(unlink(tmp), add = TRUE)
 
-  data.frame(x = character(0), stringsAsFactors = FALSE) |>
-    fr_table() |>
-    fr_render(tmp)
+  suppressWarnings(
+    data.frame(x = character(0), stringsAsFactors = FALSE) |>
+      fr_table() |>
+      fr_render(tmp)
+  )
 
   expect_true(file.exists(tmp))
   txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))
@@ -2152,7 +2154,7 @@ test_that("NA values in all columns render as empty strings in RTF", {
     stringsAsFactors = FALSE
   )
 
-  df |> fr_table() |> fr_render(tmp)
+  suppressWarnings(df |> fr_table() |> fr_render(tmp))
 
   expect_true(file.exists(tmp))
   txt <- rawToChar(readBin(tmp, "raw", file.info(tmp)$size))

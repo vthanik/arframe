@@ -32,7 +32,13 @@ normalize_ard_chr <- function(col) {
         if (is.null(x) || length(x) == 0L) {
           NA_character_
         } else {
-          tryCatch(as.character(x[[1L]]), error = function(e) NA_character_)
+          tryCatch(as.character(x[[1L]]), error = function(e) {
+            cli_warn(c(
+              "Column value could not be coerced to character.",
+              "i" = "Error: {conditionMessage(e)}"
+            ))
+            NA_character_
+          })
         }
       },
       character(1L)
@@ -1246,7 +1252,14 @@ interpolate_stats <- function(var_df, arm_val, fmt_str) {
     as.character(glue::glue_data(
       as.list(stat_vec), fmt_str, .open = "{", .close = "}"
     )),
-    error = function(e) ""
+    error = function(e) {
+      cli_warn(c(
+        "Format string interpolation failed.",
+        "x" = "Format: {.val {fmt_str}} for arm {.val {arm_val}}.",
+        "i" = "Error: {conditionMessage(e)}"
+      ))
+      ""
+    }
   )
 }
 
@@ -1262,7 +1275,14 @@ interpolate_stats_all <- function(var_df, arm_levels, fmt_str) {
       as.character(glue::glue_data(
         as.list(stat_vec), fmt_str, .open = "{", .close = "}"
       )),
-      error = function(e) ""
+      error = function(e) {
+        cli_warn(c(
+          "Format string interpolation failed.",
+          "x" = "Format: {.val {fmt_str}} for arm {.val {a}}.",
+          "i" = "Error: {conditionMessage(e)}"
+        ))
+        ""
+      }
     )
   }, character(1L))
 }

@@ -93,6 +93,23 @@ pagination controls. Only the arguments you \strong{explicitly supply} are
 changed — all others retain their current values. This allows incremental
 updates anywhere in a pipeline.
 }
+\section{Verb Behavior}{
+
+\code{fr_page()} uses \strong{replace} semantics: it rebuilds the entire page spec
+via \code{new_fr_page()}, carrying forward the current value for any argument
+you do not supply. The effect is that only your explicitly supplied
+arguments change — but internally the full page object is replaced.
+
+In contrast, \code{\link[=fr_pagehead]{fr_pagehead()}} and \code{\link[=fr_pagefoot]{fr_pagefoot()}} use \strong{merge} semantics:
+they read the existing pagehead/pagefoot object and update only the
+fields you supply, preserving all others from a previous call. This means
+you can call \code{fr_pagehead()} twice — once for \code{left} and once for
+\code{right} — and both values are retained.
+
+\code{\link[=fr_spacing]{fr_spacing()}} also merges: each call updates only the spacing fields
+you supply, leaving others unchanged.
+}
+
 \section{Regulatory conventions}{
 
 \strong{FDA/US submissions (eCTD):} landscape Letter (8.5 × 11 in),

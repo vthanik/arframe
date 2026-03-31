@@ -67,6 +67,21 @@
 #'
 #' @return A modified `fr_spec`. Page settings stored in `spec$page`.
 #'
+#' @section Verb Behavior:
+#' `fr_page()` uses **replace** semantics: it rebuilds the entire page spec
+#' via `new_fr_page()`, carrying forward the current value for any argument
+#' you do not supply. The effect is that only your explicitly supplied
+#' arguments change — but internally the full page object is replaced.
+#'
+#' In contrast, [fr_pagehead()] and [fr_pagefoot()] use **merge** semantics:
+#' they read the existing pagehead/pagefoot object and update only the
+#' fields you supply, preserving all others from a previous call. This means
+#' you can call `fr_pagehead()` twice — once for `left` and once for
+#' `right` — and both values are retained.
+#'
+#' [fr_spacing()] also merges: each call updates only the spacing fields
+#' you supply, leaving others unchanged.
+#'
 #' @section Regulatory conventions:
 #' **FDA/US submissions (eCTD):** landscape Letter (8.5 × 11 in),
 #' Times New Roman 9 pt, 1 in margins on all sides. This is the most common

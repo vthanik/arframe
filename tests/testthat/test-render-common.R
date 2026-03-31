@@ -1953,7 +1953,7 @@ test_that("apply_leading_indent handles empty data", {
     a = character(0),
     stringsAsFactors = FALSE
   ))
-  spec$columns <- build_default_columns(
+  spec$columns <- suppressWarnings(build_default_columns(
     spec$data,
     list(),
     NULL,
@@ -1962,7 +1962,7 @@ test_that("apply_leading_indent handles empty data", {
     NULL,
     NULL,
     spec$page
-  )
+  ))
   spec$columns_meta$space_mode <- "indent"
   result <- apply_leading_indent(spec)
   expect_length(result$cell_styles, 0L)

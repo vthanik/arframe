@@ -183,7 +183,12 @@ fr_spans <- function(spec, ..., .level = 1L, .hline = TRUE, .gap = NULL) {
   new_spans <- lapply(names(quos), function(label) {
     cols_quo <- quos[[label]]
 
-    # Try direct evaluation first (character vectors), fall back to tidyselect
+    # NOTE: This two-step pattern (eval_tidy → resolve_tidyselect fallback)
+
+    # differs from api-cols.R, which calls resolve_tidyselect() directly on
+    # formula LHS expressions. Here, span values can be either character
+    # vectors (e.g. c("col1", "col2")) or bare tidyselect expressions
+    # (e.g. starts_with("zom_")), so we must try literal evaluation first.
     cols <- tryCatch(
       {
         val <- eval_tidy(cols_quo)

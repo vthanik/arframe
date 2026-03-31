@@ -629,7 +629,7 @@ test_that("empty data frame renders empty tbody", {
   spec <- data.frame(x = character(0), y = character(0)) |>
     fr_table()
 
-  txt <- render_html_str(spec)
+  txt <- suppressWarnings(render_html_str(spec))
   expect_true(grepl("<tbody></tbody>", txt, fixed = TRUE))
 })
 
