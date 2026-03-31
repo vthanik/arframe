@@ -819,13 +819,9 @@ build_flat_wide <- function(
   key_order <- unique(df$var_group_key)
   n_arms <- length(arm_levels)
 
-  # Accumulate as column vectors (avoid per-row data.frame overhead)
-  res_var <- character(0L)
-  res_label <- character(0L)
-  res_arm <- character(0L)
-  res_cell <- character(0L)
-  res_eg <- lapply(extra_group_cols, function(ec) character(0L))
-  names(res_eg) <- extra_group_cols
+  # Accumulate as list-of-chunks (avoids O(n²) vector growing)
+  chunks <- list()
+  chunk_idx <- 0L
 
   df_by_key <- split(df, df$var_group_key)
 
@@ -846,16 +842,25 @@ build_flat_wide <- function(
     eg_values <- lapply(extra_group_cols, function(ec) as.character(key_df[[ec]][1L]))
     names(eg_values) <- extra_group_cols
 
+    # Helper: append a chunk with var/label/arm/cell + extra group cols
+    add_chunk <- function(var_name, label, cells) {
+      chunk <- list(
+        variable = rep(var_name, n_arms),
+        stat_label = rep(label, n_arms),
+        arm = arm_levels,
+        cell_text = unname(cells)
+      )
+      for (ec in extra_group_cols) {
+        chunk[[ec]] <- rep(eg_values[[ec]], n_arms)
+      }
+      chunk_idx <<- chunk_idx + 1L
+      chunks[[chunk_idx]] <<- chunk
+    }
+
     if (is_multirow_spec(fmt_spec)) {
       for (row_label in names(fmt_spec)) {
         cells <- interpolate_stats_all(key_df, arm_levels, fmt_spec[[row_label]])
-        res_var <- c(res_var, rep(var_name, n_arms))
-        res_label <- c(res_label, rep(row_label, n_arms))
-        res_arm <- c(res_arm, arm_levels)
-        res_cell <- c(res_cell, unname(cells))
-        for (ec in extra_group_cols) {
-          res_eg[[ec]] <- c(res_eg[[ec]], rep(eg_values[[ec]], n_arms))
-        }
+        add_chunk(var_name, row_label, cells)
       }
     } else {
       fmt_str <- fmt_spec
@@ -863,13 +868,7 @@ build_flat_wide <- function(
 
       if (all(is.na(levels))) {
         cells <- interpolate_stats_all(key_df, arm_levels, fmt_str)
-        res_var <- c(res_var, rep(var_name, n_arms))
-        res_label <- c(res_label, rep(var_name, n_arms))
-        res_arm <- c(res_arm, arm_levels)
-        res_cell <- c(res_cell, unname(cells))
-        for (ec in extra_group_cols) {
-          res_eg[[ec]] <- c(res_eg[[ec]], rep(eg_values[[ec]], n_arms))
-        }
+        add_chunk(var_name, var_name, cells)
       } else {
         levels <- levels[!is.na(levels)]
         for (lvl in levels) {
@@ -877,19 +876,13 @@ build_flat_wide <- function(
             !is.na(key_df$var_level) & key_df$var_level == lvl, , drop = FALSE
           ]
           cells <- interpolate_stats_all(lvl_df, arm_levels, fmt_str)
-          res_var <- c(res_var, rep(var_name, n_arms))
-          res_label <- c(res_label, rep(lvl, n_arms))
-          res_arm <- c(res_arm, arm_levels)
-          res_cell <- c(res_cell, unname(cells))
-          for (ec in extra_group_cols) {
-            res_eg[[ec]] <- c(res_eg[[ec]], rep(eg_values[[ec]], n_arms))
-          }
+          add_chunk(var_name, lvl, cells)
         }
       }
     }
   }
 
-  if (length(res_arm) == 0L) {
+  if (chunk_idx == 0L) {
     return(data.frame(
       variable = character(0L),
       stat_label = character(0L),
@@ -897,12 +890,15 @@ build_flat_wide <- function(
     ))
   }
 
-  long_df <- data.frame(
-    variable = res_var, stat_label = res_label,
-    arm = res_arm, cell_text = res_cell,
-    stringsAsFactors = FALSE
-  )
-  for (ec in extra_group_cols) long_df[[ec]] <- res_eg[[ec]]
+  # Combine chunks into single data.frame (one allocation, no O(n²) growing)
+  all_chunks <- chunks[seq_len(chunk_idx)]
+  col_names <- c("variable", "stat_label", "arm", "cell_text", extra_group_cols)
+  combined <- vector("list", length(col_names))
+  names(combined) <- col_names
+  for (cn in col_names) {
+    combined[[cn]] <- unlist(lapply(all_chunks, `[[`, cn), use.names = FALSE)
+  }
+  long_df <- as.data.frame(combined, stringsAsFactors = FALSE)
   pivot_ard_wide(long_df, arm_levels, extra_group_cols)
 }
 
@@ -983,30 +979,28 @@ build_hierarchical_wide <- function(df, statistic, hierarchy, column, call) {
   # Pre-split df by variable for O(1) lookups
   df_by_var <- split(df, df$variable)
 
-  # Accumulate results as column vectors (avoid per-row data.frame overhead)
+  # Accumulate results as list-of-chunks (avoids O(n²) vector growing)
   n_arms <- length(arm_levels)
-  res_cols <- vector("list", n_levels)
-  names(res_cols) <- out_cols
-  for (oc in out_cols) res_cols[[oc]] <- character(0L)
-  res_rtype <- character(0L)
-  res_arm <- character(0L)
-  res_cell <- character(0L)
+  chunks <- list()
+  chunk_idx <- 0L
 
-  # Append one batch of rows (one per arm) to the result vectors
+  # Append one batch of rows (one per arm) to the chunk list
   append_rows <- function(level_vals, row_type, cells) {
     n <- length(cells)
-    for (i in seq_along(level_vals)) {
-      if (i <= n_levels) {
-        res_cols[[out_cols[i]]] <<- c(res_cols[[out_cols[i]]], rep(level_vals[i], n))
+    chunk <- vector("list", n_levels + 3L)
+    names(chunk) <- c(out_cols, "row_type", "arm", "cell_text")
+    for (i in seq_len(n_levels)) {
+      chunk[[out_cols[i]]] <- if (i <= length(level_vals)) {
+        rep(level_vals[i], n)
+      } else {
+        rep(NA_character_, n)
       }
     }
-    # Pad unfilled hierarchy columns
-    for (i in seq(from = length(level_vals) + 1L, length.out = max(0L, n_levels - length(level_vals)))) {
-      res_cols[[out_cols[i]]] <<- c(res_cols[[out_cols[i]]], rep(NA_character_, n))
-    }
-    res_rtype <<- c(res_rtype, rep(row_type, n))
-    res_arm <<- c(res_arm, names(cells))
-    res_cell <<- c(res_cell, unname(cells))
+    chunk$row_type <- rep(row_type, n)
+    chunk$arm <- names(cells)
+    chunk$cell_text <- unname(cells)
+    chunk_idx <<- chunk_idx + 1L
+    chunks[[chunk_idx]] <<- chunk
   }
 
   # ── Process ..ard_hierarchical_overall.. sentinel FIRST ──
@@ -1073,7 +1067,7 @@ build_hierarchical_wide <- function(df, statistic, hierarchy, column, call) {
 
   process_level(1L, list())
 
-  if (length(res_arm) == 0L) {
+  if (chunk_idx == 0L) {
     empty <- as.data.frame(
       stats::setNames(
         replicate(n_levels, character(0L), simplify = FALSE),
@@ -1085,12 +1079,15 @@ build_hierarchical_wide <- function(df, statistic, hierarchy, column, call) {
     return(empty)
   }
 
-  # Build long_df from accumulated vectors (single data.frame allocation)
-  long_df <- res_cols
-  long_df$row_type <- res_rtype
-  long_df$arm <- res_arm
-  long_df$cell_text <- res_cell
-  long_df <- as.data.frame(long_df, stringsAsFactors = FALSE)
+  # Combine chunks into single data.frame (one allocation, no O(n²) growing)
+  all_chunks <- chunks[seq_len(chunk_idx)]
+  combined <- vector("list", n_levels + 3L)
+  col_names <- c(out_cols, "row_type", "arm", "cell_text")
+  names(combined) <- col_names
+  for (cn in col_names) {
+    combined[[cn]] <- unlist(lapply(all_chunks, `[[`, cn), use.names = FALSE)
+  }
+  long_df <- as.data.frame(combined, stringsAsFactors = FALSE)
 
   # Build row key for pivoting
   meta_cols <- c(out_cols, "row_type")
