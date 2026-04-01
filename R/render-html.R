@@ -1171,8 +1171,7 @@ html_body_rows <- function(
   is_decimal_col <- col_names %in% names(dec_geom %||% list())
   row_idx <- orig_rows %||% seq_len(nr)
   decimal_css <- c(
-    "white-space:pre",
-    "font-family:'Source Code Pro','Courier New',monospace"
+    "white-space:pre"
   )
 
   rows <- vector("list", nr)

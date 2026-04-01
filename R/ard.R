@@ -334,6 +334,20 @@ reconstruct_renamed_ard <- function(df, column, call) {
 #'   and attached as `attr(result, "n_counts")` — a named numeric vector
 #'   suitable for `fr_cols(.n =)`. Default: `NULL` (no extraction).
 #'
+#' @param pct_display Named list controlling percentage display rules.
+#'   Partial overrides supported — only supplied keys change, others keep
+#'   defaults. Keys:
+#'
+#'   - **zero** (logical): Display percentage when count is zero?
+#'     `FALSE` (default): n=0 shows "0" only.
+#'     `TRUE`: n=0 shows full format e.g. "0 (0.0%)".
+#'   - **threshold** (logical): Apply pharma threshold rules?
+#'     `TRUE` (default): extreme percentages display as "<0.1" / ">99.9"
+#'     (dynamic based on decimals precision).
+#'     `FALSE`: show exact rounded value.
+#'
+#'   Default: `NULL` (uses `list(zero = FALSE, threshold = TRUE)`).
+#'
 #' @return A data frame with columns:
 #'   \describe{
 #'     \item{Extra group columns (if multi-group)}{e.g., `SEX`, `PARAMCD`}
@@ -427,9 +441,48 @@ fr_wide_ard <- function(
   overall = "Total",
   decimals = NULL,
   fmt = NULL,
-  big_n = NULL
+  big_n = NULL,
+  pct_display = NULL
 ) {
   call <- caller_env()
+
+  # ── Resolve pct_display with defaults ─────────────────────────────────
+  pct_defaults <- list(zero = FALSE, threshold = TRUE)
+  if (!is.null(pct_display)) {
+    if (!is.list(pct_display) || is.null(names(pct_display))) {
+      cli_abort(
+        c(
+          "{.arg pct_display} must be a named list.",
+          "i" = "Example: {.code pct_display = list(zero = TRUE, threshold = FALSE)}"
+        ),
+        call = call
+      )
+    }
+    unknown <- setdiff(names(pct_display), names(pct_defaults))
+    if (length(unknown) > 0L) {
+      cli_abort(
+        c(
+          "Unknown {.arg pct_display} key{?s}: {.val {unknown}}.",
+          "i" = "Valid keys: {.val {names(pct_defaults)}}."
+        ),
+        call = call
+      )
+    }
+    for (k in names(pct_display)) {
+      if (!is.logical(pct_display[[k]]) || length(pct_display[[k]]) != 1L) {
+        cli_abort(
+          c(
+            "{.arg pct_display${k}} must be {.cls logical} scalar.",
+            "x" = "You supplied {.obj_type_friendly {pct_display[[k]]}}."
+          ),
+          call = call
+        )
+      }
+    }
+    pct_display <- modifyList(pct_defaults, pct_display)
+  } else {
+    pct_display <- pct_defaults
+  }
 
   # ── Validate inputs ──────────────────────────────────────────────────────
   if (!is.data.frame(data)) {
@@ -737,7 +790,8 @@ fr_wide_ard <- function(
         df$stat_name[i],
         decimals_resolved,
         df$variable[i],
-        fmt
+        fmt,
+        pct_display$threshold
       )
     },
     character(1L)
@@ -745,9 +799,11 @@ fr_wide_ard <- function(
 
   # ── Handle hierarchical vs flat output ──────────────────────────────────
   if (hierarchy$is_hierarchical) {
-    wide <- build_hierarchical_wide(df, statistic, hierarchy, column, call)
+    wide <- build_hierarchical_wide(
+      df, statistic, hierarchy, column, call, pct_display$zero
+    )
   } else {
-    wide <- build_flat_wide(df, statistic, extra_group_cols, call)
+    wide <- build_flat_wide(df, statistic, extra_group_cols, call, pct_display$zero)
   }
 
   # Arm levels for column ordering
@@ -799,7 +855,8 @@ build_flat_wide <- function(
   df,
   statistic,
   extra_group_cols = character(0L),
-  call = NULL
+  call = NULL,
+  pct_zero = FALSE
 ) {
   arm_levels <- unique(df$arm[!is.na(df$arm)])
 
@@ -859,7 +916,7 @@ build_flat_wide <- function(
 
     if (is_multirow_spec(fmt_spec)) {
       for (row_label in names(fmt_spec)) {
-        cells <- interpolate_stats_all(key_df, arm_levels, fmt_spec[[row_label]])
+        cells <- interpolate_stats_all(key_df, arm_levels, fmt_spec[[row_label]], pct_zero)
         add_chunk(var_name, row_label, cells)
       }
     } else {
@@ -867,7 +924,7 @@ build_flat_wide <- function(
       levels <- unique(key_df$var_level)
 
       if (all(is.na(levels))) {
-        cells <- interpolate_stats_all(key_df, arm_levels, fmt_str)
+        cells <- interpolate_stats_all(key_df, arm_levels, fmt_str, pct_zero)
         add_chunk(var_name, var_name, cells)
       } else {
         levels <- levels[!is.na(levels)]
@@ -875,7 +932,7 @@ build_flat_wide <- function(
           lvl_df <- key_df[
             !is.na(key_df$var_level) & key_df$var_level == lvl, , drop = FALSE
           ]
-          cells <- interpolate_stats_all(lvl_df, arm_levels, fmt_str)
+          cells <- interpolate_stats_all(lvl_df, arm_levels, fmt_str, pct_zero)
           add_chunk(var_name, lvl, cells)
         }
       }
@@ -908,7 +965,8 @@ build_flat_wide <- function(
 # ══════════════════════════════════════════════════════════════════════════════
 
 #' @noRd
-build_hierarchical_wide <- function(df, statistic, hierarchy, column, call) {
+build_hierarchical_wide <- function(df, statistic, hierarchy, column, call,
+                                   pct_zero = FALSE) {
   arm_levels <- unique(df$arm[!is.na(df$arm)])
   hier_vars <- hierarchy$hier_vars
   n_levels <- hierarchy$n_levels
@@ -1015,7 +1073,7 @@ build_hierarchical_wide <- function(df, statistic, hierarchy, column, call) {
       "..ard_hierarchical_overall..", call
     )
     sentinel <- "..ard_hierarchical_overall.."
-    cells <- interpolate_stats_all(overall_df, arm_levels, fmt_str)
+    cells <- interpolate_stats_all(overall_df, arm_levels, fmt_str, pct_zero)
     append_rows(rep(sentinel, n_levels), "overall", cells)
   }
 
@@ -1053,7 +1111,7 @@ build_hierarchical_wide <- function(df, statistic, hierarchy, column, call) {
         level_vals <- c(level_vals, lv_val)
       }
 
-      cells <- interpolate_stats_all(lv_subset, arm_levels, fmt_strs[[hv]])
+      cells <- interpolate_stats_all(lv_subset, arm_levels, fmt_strs[[hv]], pct_zero)
       append_rows(level_vals, rtype, cells)
 
       if (level < n_levels) {
@@ -1241,10 +1299,14 @@ is_multirow_spec <- function(fmt_spec) {
 
 #' Interpolate stats for a single arm value
 #' @noRd
-interpolate_stats <- function(var_df, arm_val, fmt_str) {
+interpolate_stats <- function(var_df, arm_val, fmt_str, pct_zero = FALSE) {
   subset <- var_df[var_df$arm == arm_val, , drop = FALSE]
   if (nrow(subset) == 0L) return("")
   stat_vec <- stats::setNames(subset$stat_fmt, subset$stat_name)
+  # Zero suppression: when n=0 and pct_zero=FALSE, return just "0"
+  if (!pct_zero && "n" %in% names(stat_vec) && stat_vec[["n"]] == "0") {
+    return("0")
+  }
   stat_list <- as.list(stat_vec)
   refs <- parse_glue_refs(fmt_str)
   if (all(refs %in% names(stat_list))) {
@@ -1273,7 +1335,8 @@ interpolate_stats <- function(var_df, arm_val, fmt_str) {
 #' is only a safety net. We skip it when stat names match to avoid the 18%
 #' overhead tryCatch adds in profiling.
 #' @noRd
-interpolate_stats_all <- function(var_df, arm_levels, fmt_str) {
+interpolate_stats_all <- function(var_df, arm_levels, fmt_str,
+                                  pct_zero = FALSE) {
   by_arm <- split(var_df, var_df$arm)
   # Extract required stat names from format string once
   refs <- parse_glue_refs(fmt_str)
@@ -1281,6 +1344,10 @@ interpolate_stats_all <- function(var_df, arm_levels, fmt_str) {
     subset <- by_arm[[a]]
     if (is.null(subset) || nrow(subset) == 0L) return("")
     stat_vec <- stats::setNames(subset$stat_fmt, subset$stat_name)
+    # Zero suppression: when n=0 and pct_zero=FALSE, return just "0"
+    if (!pct_zero && "n" %in% names(stat_vec) && stat_vec[["n"]] == "0") {
+      return("0")
+    }
     stat_list <- as.list(stat_vec)
     # Fast path: all referenced stats present — skip tryCatch overhead
     if (all(refs %in% names(stat_list))) {
@@ -1418,7 +1485,8 @@ format_ard_stat <- function(
   stat_name,
   decimals_resolved = NULL,
   variable = NULL,
-  fmt = NULL
+  fmt = NULL,
+  pct_threshold = TRUE
 ) {
   # Non-finite numeric → empty
   if (!is.na(value) && !is.finite(value)) {
@@ -1456,7 +1524,7 @@ format_ard_stat <- function(
       var_dec <- per_var[[variable]]
       if (stat_name %in% names(var_dec)) {
         d <- as.integer(var_dec[[stat_name]])
-        return(format_stat_with_decimals(value, stat_name, d))
+        return(format_stat_with_decimals(value, stat_name, d, pct_threshold))
       }
     }
   }
@@ -1466,7 +1534,7 @@ format_ard_stat <- function(
     global <- decimals_resolved$global
     if (!is.null(global) && stat_name %in% names(global)) {
       d <- as.integer(global[[stat_name]])
-      return(format_stat_with_decimals(value, stat_name, d))
+      return(format_stat_with_decimals(value, stat_name, d, pct_threshold))
     }
   }
 
@@ -1511,19 +1579,23 @@ format_ard_stat <- function(
 # ── Internal: format with explicit decimal count, respecting p-scale ──────
 
 #' @noRd
-format_stat_with_decimals <- function(value, stat_name, d) {
+format_stat_with_decimals <- function(value, stat_name, d,
+                                     pct_threshold = TRUE) {
   is_pct <- stat_name %in% c("p", "p_miss", "p_nonmiss", "p_cum")
   if (is_pct) {
     value <- value * 100
   }
-  # Pharma boundary rules for integer percentages (d == 0):
-  #   >0 and <1   -> "<1"    (not "0" — subjects exist)
-  #   >99 and <100 -> ">99"   (not "100" — not all subjects)
-  if (is_pct && d == 0L) {
-    if (value > 0 && value < 1) {
-      return("<1")
+  # Dynamic pharma threshold: 10^(-d) as lower bound, 100 - 10^(-d) as upper
+  # dec=0 → <1/>99, dec=1 → <0.1/>99.9, dec=2 → <0.01/>99.99
+  if (is_pct && pct_threshold) {
+    lo <- 10^(-d)
+    hi <- 100 - lo
+    if (value > 0 && value < lo) {
+      return(paste0("<", sprintf(paste0("%.", d, "f"), lo)))
     }
-    if (value > 99 && value < 100) return(">99")
+    if (value > hi && value < 100) {
+      return(paste0(">", sprintf(paste0("%.", d, "f"), hi)))
+    }
   }
   sprintf(paste0("%.", d, "f"), value)
 }

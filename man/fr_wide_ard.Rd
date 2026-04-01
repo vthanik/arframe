@@ -12,7 +12,8 @@ fr_wide_ard(
   overall = "Total",
   decimals = NULL,
   fmt = NULL,
-  big_n = NULL
+  big_n = NULL,
+  pct_display = NULL
 )
 }
 \arguments{
@@ -96,6 +97,21 @@ counts (BigN) in the ARD (e.g., \code{"BigN"}, \code{"bigN"}, \code{"popn"}).
 When specified, rows with this \code{stat_name} are extracted from the body
 and attached as \code{attr(result, "n_counts")} — a named numeric vector
 suitable for \code{fr_cols(.n =)}. Default: \code{NULL} (no extraction).}
+
+\item{pct_display}{Named list controlling percentage display rules.
+Partial overrides supported — only supplied keys change, others keep
+defaults. Keys:
+\itemize{
+\item \strong{zero} (logical): Display percentage when count is zero?
+\code{FALSE} (default): n=0 shows "0" only.
+\code{TRUE}: n=0 shows full format e.g. "0 (0.0\%)".
+\item \strong{threshold} (logical): Apply pharma threshold rules?
+\code{TRUE} (default): extreme percentages display as "<0.1" / ">99.9"
+(dynamic based on decimals precision).
+\code{FALSE}: show exact rounded value.
+}
+
+Default: \code{NULL} (uses \code{list(zero = FALSE, threshold = TRUE)}).}
 }
 \value{
 A data frame with columns:
