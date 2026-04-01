@@ -800,10 +800,12 @@ fr_wide_ard <- function(
   # ── Handle hierarchical vs flat output ──────────────────────────────────
   if (hierarchy$is_hierarchical) {
     wide <- build_hierarchical_wide(
-      df, statistic, hierarchy, column, call, pct_display$zero
+      df, statistic, hierarchy, column, call, pct_zero = pct_display$zero
     )
   } else {
-    wide <- build_flat_wide(df, statistic, extra_group_cols, call, pct_display$zero)
+    wide <- build_flat_wide(
+      df, statistic, extra_group_cols, call, pct_zero = pct_display$zero
+    )
   }
 
   # Arm levels for column ordering
@@ -916,7 +918,7 @@ build_flat_wide <- function(
 
     if (is_multirow_spec(fmt_spec)) {
       for (row_label in names(fmt_spec)) {
-        cells <- interpolate_stats_all(key_df, arm_levels, fmt_spec[[row_label]], pct_zero)
+        cells <- interpolate_stats_all(key_df, arm_levels, fmt_spec[[row_label]], pct_zero = pct_zero)
         add_chunk(var_name, row_label, cells)
       }
     } else {
@@ -924,7 +926,7 @@ build_flat_wide <- function(
       levels <- unique(key_df$var_level)
 
       if (all(is.na(levels))) {
-        cells <- interpolate_stats_all(key_df, arm_levels, fmt_str, pct_zero)
+        cells <- interpolate_stats_all(key_df, arm_levels, fmt_str, pct_zero = pct_zero)
         add_chunk(var_name, var_name, cells)
       } else {
         levels <- levels[!is.na(levels)]
@@ -932,7 +934,7 @@ build_flat_wide <- function(
           lvl_df <- key_df[
             !is.na(key_df$var_level) & key_df$var_level == lvl, , drop = FALSE
           ]
-          cells <- interpolate_stats_all(lvl_df, arm_levels, fmt_str, pct_zero)
+          cells <- interpolate_stats_all(lvl_df, arm_levels, fmt_str, pct_zero = pct_zero)
           add_chunk(var_name, lvl, cells)
         }
       }
@@ -1073,7 +1075,7 @@ build_hierarchical_wide <- function(df, statistic, hierarchy, column, call,
       "..ard_hierarchical_overall..", call
     )
     sentinel <- "..ard_hierarchical_overall.."
-    cells <- interpolate_stats_all(overall_df, arm_levels, fmt_str, pct_zero)
+    cells <- interpolate_stats_all(overall_df, arm_levels, fmt_str, pct_zero = pct_zero)
     append_rows(rep(sentinel, n_levels), "overall", cells)
   }
 
@@ -1111,7 +1113,7 @@ build_hierarchical_wide <- function(df, statistic, hierarchy, column, call,
         level_vals <- c(level_vals, lv_val)
       }
 
-      cells <- interpolate_stats_all(lv_subset, arm_levels, fmt_strs[[hv]], pct_zero)
+      cells <- interpolate_stats_all(lv_subset, arm_levels, fmt_strs[[hv]], pct_zero = pct_zero)
       append_rows(level_vals, rtype, cells)
 
       if (level < n_levels) {
@@ -1303,9 +1305,10 @@ interpolate_stats <- function(var_df, arm_val, fmt_str, pct_zero = FALSE) {
   subset <- var_df[var_df$arm == arm_val, , drop = FALSE]
   if (nrow(subset) == 0L) return("")
   stat_vec <- stats::setNames(subset$stat_fmt, subset$stat_name)
-  # Zero suppression: when n=0 and pct_zero=FALSE, return just "0"
-  if (!pct_zero && "n" %in% names(stat_vec) && stat_vec[["n"]] == "0") {
-    return("0")
+  # Zero suppression: when n=0 and pct_zero=FALSE, return just the n value
+  if (!pct_zero && "n" %in% names(stat_vec)) {
+    n_num <- suppressWarnings(as.numeric(stat_vec[["n"]]))
+    if (!is.na(n_num) && n_num == 0) return(stat_vec[["n"]])
   }
   stat_list <- as.list(stat_vec)
   refs <- parse_glue_refs(fmt_str)
@@ -1585,19 +1588,16 @@ format_stat_with_decimals <- function(value, stat_name, d,
   if (is_pct) {
     value <- value * 100
   }
+  fmt <- paste0("%.", d, "f")
   # Dynamic pharma threshold: 10^(-d) as lower bound, 100 - 10^(-d) as upper
   # dec=0 → <1/>99, dec=1 → <0.1/>99.9, dec=2 → <0.01/>99.99
   if (is_pct && pct_threshold) {
     lo <- 10^(-d)
     hi <- 100 - lo
-    if (value > 0 && value < lo) {
-      return(paste0("<", sprintf(paste0("%.", d, "f"), lo)))
-    }
-    if (value > hi && value < 100) {
-      return(paste0(">", sprintf(paste0("%.", d, "f"), hi)))
-    }
+    if (value > 0 && value < lo) return(paste0("<", sprintf(fmt, lo)))
+    if (value > hi && value < 100) return(paste0(">", sprintf(fmt, hi)))
   }
-  sprintf(paste0("%.", d, "f"), value)
+  sprintf(fmt, value)
 }
 
 
