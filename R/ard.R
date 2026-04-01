@@ -479,7 +479,9 @@ fr_wide_ard <- function(
         )
       }
     }
-    pct_display <- modifyList(pct_defaults, pct_display)
+    merged <- pct_defaults
+    for (k in names(pct_display)) merged[[k]] <- pct_display[[k]]
+    pct_display <- merged
   } else {
     pct_display <- pct_defaults
   }
