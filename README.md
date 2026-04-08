@@ -29,17 +29,27 @@ tbl_demog |>
 
 ## Why arframe?
 
-The pharmaverse has excellent tools for data derivation (admiral), analysis (Tplyr, rtables, tern), and table decoration (docorator, r2rtf). **arframe occupies a different position**: it is a native rendering engine that writes RTF control words directly (from the RTF 1.9.1 spec) and generates LaTeX/tabularray natively, so both formats are first-class outputs.
+The pharmaverse has excellent tools for data derivation (admiral), analysis (Tplyr, rtables, tern), and summarisation (gtsummary, tfrmt). But no single package closes the **last mile**: taking a finished analysis table and producing submission-grade RTF, PDF, and HTML from the same specification.
+
+- **r2rtf** produces RTF only. Zero PDF.
+- **tfrmt + docorator** produces good PDF. RTF is documented as experimental/lossy.
+- **gt / gtsummary** produces HTML-first output. RTF page headers are not field-code-based.
+- **None** produce all three formats from one spec with running page headers, decimal alignment, and study-wide font control.
+
+arframe is a native rendering engine — it writes RTF 1.9.1 control words and tabularray/LaTeX directly. There is no intermediate gt or pandoc layer. Both RTF and PDF are first-class outputs, produced from the same `fr_spec` without a format-specific pipeline.
 
 | Capability | arframe |
 |---|---|
 | Native RTF rendering | Direct RTF 1.9.1 — no intermediate HTML or gt layer |
 | Native PDF rendering | Direct tabularray/XeLaTeX — no RMarkdown/Quarto pipeline |
 | HTML preview | Self-contained HTML with paper simulation and viewer integration |
-| Single spec, any format | Same `fr_spec` object renders to `.rtf`, `.pdf`, or `.html` |
-| Group-aware pagination | Keeps groups together, repeats headers, adds continuation text |
-| Decimal alignment | 15-type stat display engine (n/%, mean (SD), CI, p-values, ranges) |
-| Page headers/footers | 3-slot layout with tokens: `{thepage}`, `{total_pages}`, `{program}` |
+| **Single spec → RTF + PDF + HTML** | Same `fr_spec` renders to `.rtf`, `.pdf`, or `.html` |
+| **Font family** (Courier New, Times New Roman) | `fr_page(font_family = "Courier New")` — first-class parameter via fontspec |
+| **Automatic decimal alignment** | AFM font metrics for 15 stat types — no manual markers |
+| **Auto column width** | Physical width from AFM metrics for 12 font variants |
+| Group-aware pagination | Keeps SOC groups together, repeats headers, adds continuation text |
+| Page headers/footers | 3-slot layout with live field tokens: `{thepage}`, `{total_pages}`, `{program}` |
+| **Study-wide config** | `_arframe.yml` auto-discovered — one file sets font, margins, headers for all programs |
 | Inline markup | `fr_super()`, `fr_bold()`, `fr_italic()`, `fr_dagger()` in any cell |
 | Dependencies | 7 imports — no dplyr, tidyr, purrr, or gt |
 
@@ -272,12 +282,17 @@ fr_spec → finalize_spec() → RTF backend  → .rtf file
 
 ## Related packages
 
-arframe is designed to complement the pharmaverse ecosystem:
+arframe sits at the **output layer** of the pharmaverse — it receives whatever the analysis layer produces and renders it to files. It does not replace upstream packages; it completes them.
 
-- **[admiral](https://pharmaverse.github.io/admiral/)** — ADaM dataset creation
-- **[Tplyr](https://atorus-research.github.io/Tplyr/)** / **[rtables](https://insightsengineering.github.io/rtables/)** — Analysis table summarization (upstream of arframe)
-- **[r2rtf](https://merck.github.io/r2rtf/)** — RTF-focused table rendering
-- **[docorator](https://gsk-biostatistics.github.io/docorator/)** — gt-based document decoration
+| Package | Role | Relationship to arframe |
+|---|---|---|
+| [admiral](https://pharmaverse.github.io/admiral/) | ADaM dataset creation | Upstream — arframe renders admiral outputs |
+| [Tplyr](https://atorus-research.github.io/Tplyr/) / [rtables](https://insightsengineering.github.io/rtables/) | Table summarisation | Upstream — arframe renders their wide-format output |
+| [cards / cardx](https://insightsengineering.github.io/cards/) | ARD creation | Upstream — `fr_wide_ard()` converts ARD to arframe input |
+| [gtsummary](https://www.danieldsjoberg.com/gtsummary/) | High-level summaries | Upstream — arframe renders the same data gtsummary summarises |
+| [tfrmt](https://gsk-biostatistics.github.io/tfrmt/) | ARD display spec + mock shells | Complementary — tfrmt for SAP-phase shell review; arframe for production output |
+| [r2rtf](https://merck.github.io/r2rtf/) | RTF-only rendering | Parallel — r2rtf is RTF-specialist; arframe adds PDF + HTML from the same spec |
+| [docorator](https://gsk-biostatistics.github.io/docorator/) | gt-based PDF decoration | Parallel — docorator wraps gt objects; arframe is a native engine without a gt layer |
 
 ## License
 
