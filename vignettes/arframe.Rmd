@@ -148,6 +148,32 @@ data |>
   fr_render("out.rtf")  # produce output
 ```
 
+## How arframe compares
+
+The pharmaverse output layer has several packages. This table covers the
+capabilities most relevant to submission-grade TFL production.
+
+| Capability | gt | r2rtf | rtables | Tplyr | tfrmt | docorator | arframe |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| RTF output | ✅ | ✅ | ✅ | ❌ | ⚠️ exp. | ✅ | ✅ |
+| PDF output | ⚠️ Chrome | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| HTML output | ✅ | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Single spec → RTF + PDF + HTML | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Page headers/footers (field codes) | ❌ | ⚠️ static | ⚠️ static | ❌ | ❌ | ❌ | ✅ |
+| Inline markup (super/bold/italic) | ✅ | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Study-wide YAML config | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Decimal alignment (automatic) | ⚠️ viewer-dep. | ❌ | ❌ | ❌ | ⚠️ manual | ⚠️ space-pad | ✅ AFM |
+| Auto column width (font metrics) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Group-keep / NOWIDOW | ❌ | ⚠️ partial | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Column splitting (wide tables) | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Orphan / widow control | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Continuation "(continued)" | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| N-counts auto-routed in headers | ❌ | ❌ | ❌ | ⚠️ manual | ❌ | ❌ | ✅ |
+| ARD input (cards/cardx) | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ |
+
+⚠️ = partial or manual. tfrmt + docorator form a complementary pipeline (SAP
+mock shells → PDF); arframe is the production rendering engine for the same data.
+
 ## What's next
 
 | I want to... | Read |
