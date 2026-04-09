@@ -68,6 +68,16 @@ new_style_registry <- function() {
   env$records <- list()
   env$n <- 0L
   env$hash_to_id <- new.env(hash = TRUE, parent = emptyenv())
+  # Pre-built column vectors: indexed by style ID for O(1) materialization
+  env$v_align <- character(0)
+  env$v_valign <- character(0)
+  env$v_bold <- logical(0)
+  env$v_italic <- logical(0)
+  env$v_underline <- logical(0)
+  env$v_color <- character(0)
+  env$v_background <- character(0)
+  env$v_indent <- numeric(0)
+  env$v_font_size <- numeric(0)
   env
 }
 
@@ -86,6 +96,16 @@ register_style <- function(reg, rec) {
   reg$n <- id
   reg$records[[id]] <- rec
   reg$hash_to_id[[key]] <- id
+  # Append to column vectors for fast batch materialization
+  reg$v_align[id] <- rec$align
+  reg$v_valign[id] <- rec$valign
+  reg$v_bold[id] <- rec$bold
+  reg$v_italic[id] <- rec$italic
+  reg$v_underline[id] <- rec$underline
+  reg$v_color[id] <- rec$color
+  reg$v_background[id] <- rec$background %||% NA_character_
+  reg$v_indent[id] <- rec$indent
+  reg$v_font_size[id] <- rec$font_size
   id
 }
 
@@ -113,19 +133,19 @@ register_style <- function(reg, rec) {
 }
 
 # Expand style_ids + registry back to one column per property.
-# Used as a backward-compat shim so backends need no changes.
+# Uses pre-built column vectors (set in register_style) for vector indexing
+# instead of 9 vapply calls — 9 vector subsets vs 9×n list element extractions.
 .materialize_style <- function(style_ids, registry) {
-  records <- registry$records[style_ids]
   list(
-    align = vapply(records, `[[`, character(1), "align"),
-    valign = vapply(records, `[[`, character(1), "valign"),
-    bold = vapply(records, `[[`, logical(1), "bold"),
-    italic = vapply(records, `[[`, logical(1), "italic"),
-    underline = vapply(records, `[[`, logical(1), "underline"),
-    color = vapply(records, `[[`, character(1), "color"),
-    background = vapply(records, `[[`, character(1), "background"),
-    indent = vapply(records, `[[`, numeric(1), "indent"),
-    font_size = vapply(records, `[[`, numeric(1), "font_size")
+    align = registry$v_align[style_ids],
+    valign = registry$v_valign[style_ids],
+    bold = registry$v_bold[style_ids],
+    italic = registry$v_italic[style_ids],
+    underline = registry$v_underline[style_ids],
+    color = registry$v_color[style_ids],
+    background = registry$v_background[style_ids],
+    indent = registry$v_indent[style_ids],
+    font_size = registry$v_font_size[style_ids]
   )
 }
 
@@ -1466,22 +1486,21 @@ resolve_borders <- function(rules, nrow_body, ncol, nrow_header = 1L) {
 
       h_rows <- seq_len(nrow_header)
       b_rows <- seq_len(nrow_body)
-      for (g in gaps) {
-        if (g == 0L) {
-          # Left edge
-          h_left[h_rows, 1L] <- bs_id
-          b_left[b_rows, 1L] <- bs_id
-        } else if (g == ncol) {
-          # Right edge
-          h_right[h_rows, ncol] <- bs_id
-          b_right[b_rows, ncol] <- bs_id
-        } else {
-          # Between columns g and g+1
-          h_right[h_rows, g] <- bs_id
-          h_left[h_rows, g + 1L] <- bs_id
-          b_right[b_rows, g] <- bs_id
-          b_left[b_rows, g + 1L] <- bs_id
-        }
+      # Vectorized gap assignment: handle edge cases separately, inner in batch
+      if (0L %in% gaps) {
+        h_left[h_rows, 1L] <- bs_id
+        b_left[b_rows, 1L] <- bs_id
+      }
+      if (ncol %in% gaps) {
+        h_right[h_rows, ncol] <- bs_id
+        b_right[b_rows, ncol] <- bs_id
+      }
+      inner_gaps <- gaps[gaps > 0L & gaps < ncol]
+      if (length(inner_gaps) > 0L) {
+        h_right[h_rows, inner_gaps] <- bs_id
+        h_left[h_rows, inner_gaps + 1L] <- bs_id
+        b_right[b_rows, inner_gaps] <- bs_id
+        b_left[b_rows, inner_gaps + 1L] <- bs_id
       }
       next
     }
