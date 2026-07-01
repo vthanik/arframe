@@ -161,6 +161,118 @@ dict of 7 strings). `arframe` uses a **structured** store (the document model, n
 flat dict) and a **module hierarchy** (rail -> pane -> widget), not 3 flat modules.
 Take the principles, scale the mechanics.
 
+## 5.2 Reactivity & performance discipline (engineering-shiny, binding)
+
+From *Engineering Production-Grade Shiny Apps* (Fay et al.).
+
+- **Logic in `arpillar`, modules only wire.** No `DBI`/`cards`/`ggplot2`/`tabular`
+  call ever runs inside an `arframe` `render*`/`observe`/`reactive`. Every heavy
+  computation is a pure `arpillar` function the server assigns to `output$*`.
+- **`observeEvent` with an explicit event list, never a monolithic `observe()`.**
+  Each right-rail control fires one store mutation via its own `observeEvent`; a role
+  commit is `observeEvent(input$roles_commit, ...)`, not an `observe()` that re-reads
+  the whole properties panel on any change.
+- **Gate heavy reactivity with explicit trigger/watch flags (gargoyle pattern).**
+  `data_loaded` / `ard_ready` / `render_ready` flags are set by the `arpillar` call
+  that finishes each stage; the shell-preview render and the export button *watch*
+  `render_ready`, so a filter change `trigger()`s a recompute instead of cascading
+  through implicit dependencies.
+- **Update in place; do not `renderUI()` whole components.** The shell preview and the
+  properties rail are stable DOM rendered once; cells/labels update via
+  `update*Input` / `insertUI` / `removeUI` / a small JS handler. Assigning a role must
+  not regenerate the shell (preserves the selection stripe, no flicker).
+- **Guard every `arpillar` call with `req()`/`validate()`** (`req(active_output(),
+  roles_complete())`) so a half-configured output never renders or exports.
+- **File organization.** `arframe`: `mod_<region>.R` (one module per screen region,
+  numbered by layout position, `ns()`-namespaced; one output tab = one parameterized
+  `mod_output_*` instance) + `utils_ui_*`. `arpillar`: `fct_*.R` (SQL-compile / ARD /
+  render / export) + `utils_*`. One logical unit per file, one mirrored test file.
+
+## 5.3 Async execution model (mirai, binding)
+
+The four heavy operations — DuckDB pushdown query, `ggplot2`+`tabular` render,
+RTF/DOCX export, `cards` ARD — run OFF the Shiny main loop so the dual-rail UI (and
+every other session) never blocks.
+
+- **One `run_async(expr)` `arpillar` helper wrapping `mirai(...)`**, returning a
+  promise; every heavy op routes through it.
+- **Each output tab is backed by its own `shiny::ExtendedTask`.** Render/Export
+  controls use `bind_task_button` (auto-disable mid-run); `task$status()`
+  invoke->success drives the ghost-cells-fill animation.
+- **DuckDB connections (external pointers) CANNOT cross into a daemon.** Never capture
+  the app's live `con`. Send the compiled SQL string + the DuckDB file path into the
+  `mirai` expression, which opens its OWN connection
+  (`dbConnect(...); on.exit(dbDisconnect(...))`). The main-session read-only
+  connection is for the interactive grid only.
+- **Own an isolated, namespaced daemon pool.** `daemons(n, .compute = "arframe")` in
+  `app()` startup (NEVER at package load), torn down via
+  `onStop(function() daemons(0, .compute = "arframe"))`. Pre-warm with
+  `everywhere({ library(arpillar); library(tabular); library(ggplot2); library(cards) })`
+  + static reference data (shell templates, CT dictionaries). Never touch the default
+  profile.
+- **Batch progress.** "Render all / Export report" fans outputs with
+  `mirai_map(..., .promise = cb)`; per-item resolution ticks a progress bar
+  ("Rendered 7 of 22") and updates the Outline status dots.
+- **Cancellable.** Hold each `mirai` reference; a right-rail Cancel affordance
+  (visible while running) calls `stop_mirai()`.
+- **Observability + CRAN-safety.** Opt-in OpenTelemetry spans per stage
+  (query/render/export/ARD) locate the slow one before optimizing. Async
+  tests/examples use `daemons(1, dispatcher = FALSE, .compute = "arframe")` + teardown
+  + `Sys.sleep(1)` to stay within the 2-core CRAN ceiling. Default runtime pool modest
+  (2-4; `app(daemons = )` for power users).
+
+## 5.4 Accessible component foundation (GOV.UK, binding)
+
+- **`fieldset` + `legend`** wraps every grouped control (a role's radios, a filter's
+  operator radios, the Ranks toggle); the uppercase micro-label IS the legend, so
+  screen readers announce the group's question.
+- **Focus != selection.** Keyboard focus is a high-visibility two-tone indicator
+  (yellow `#ffdd00` + a thick black border) meeting WCAG 2.2 non-text-contrast; the
+  2px blue stripe is reserved for the *selected/active* state only.
+- **Never colour alone.** Every colour signal pairs with text/icon/shape; all
+  ink/paper pairs hold WCAG AA 4.5:1 (a contrast check lives in the token file). Ghost
+  cells = dashed border + "unassigned" text (not just tint); type chips encode type by
+  glyph, not just hue; errors carry red + a message + an icon.
+- **Error summary.** On a configure/render failure a `role=alert` "There is a problem"
+  summary renders at the top of the canvas, moves focus to itself, and jump-links to
+  each offending control; inline messages are worded identically and ordered to match
+  the controls. `arpillar` validation emits structured `{control_id, message,
+  order_index}` objects so summary + inline come from ONE source (no duplicated
+  strings).
+- **Control by cardinality.** Radios for small mutually-exclusive sets (never
+  pre-selected; always an explicit None/Any), checkboxes for multi, native select only
+  when space is tight. Hints are one short sentence, no full stop, no links, via
+  `aria-describedby`. Numeric inputs: content-width, `inputmode="numeric"/"decimal"`,
+  `type="text"` (not `number`), visible `<label for>`.
+- **One spacing scale** (e.g. 4/8/12/16/24/32 px) via tokens for all rail/panel/canvas
+  padding. **Locked colour semantics** in `design.md`: blue = selection/primary, red =
+  error, yellow = focus — reserved, never repurposed; uniform form-input border weights
+  across Data and Report modes.
+
+## 5.5 Dashboard UX rules (Jumping Rivers / Litmus, binding)
+
+- **Never hang.** Every long op is non-blocking (§5.3) with a per-output inline
+  skeleton/spinner scoped to the canvas paper (not a full-screen block); export
+  completion toasts via a non-modal notification.
+- **Top-down hierarchy.** The white paper is the visual hero (largest, highest-contrast
+  zone); an empty canvas shows a one-line orientation + a single **Add output** CTA,
+  never blank grey.
+- **Tabs as lenses over one focus.** Data mode = Grid / Variable profile / Query tabs
+  over the *one selected dataset* (not separate rail destinations); the Report canvas =
+  output tabs over the one report.
+- **Presets over the common case.** The Filters/Ranks pane leads with named intent
+  presets (Safety population, Treated only, Completers, Full set) that write the config
+  in one click; the manual builder serves the long tail.
+- **Column visibility.** The Data grid and the shell preview offer visibility toggles
+  that push a SELECT-column list into DuckDB (hidden columns are never fetched).
+- **Expectations upfront.** Ghost zones name the next step ("Drag a treatment variable
+  here"); deferred output types show disabled with a "coming" tag, not omitted.
+- **Responsive to width extremes.** Below a breakpoint the left rail collapses to an
+  icon strip and the right rail becomes an overlay drawer so the paper never squeezes
+  to unreadable; verify reflow (not clip) at ultrawide and laptop widths via
+  `shinytest2` viewport captures.
+- **Persistent visible labels** on every input — never placeholder-as-label.
+
 ## 6. Left activity rail (what you add / navigate)
 
 - **Data** — rich variable picker (type chip + name + label) scoped to the output's
@@ -208,11 +320,17 @@ won't offer a numeric).
 
 Two complementary saves; both matter and are not either/or.
 
-- **JSON project (the reopenable build).** The S7 document model
-  (`report → page → output → role → dataitem`) serialises to **JSON with a
-  `schema_version`**, with forward **migrators**. Save, close, reopen later, keep
-  working. Never `saveRDS` the live S7 tree. The whole set of outputs persists as one
-  project.
+- **JSON project (the reopenable build).** The S7 document model — as built in
+  `arpillar` (slice 1a) — is `report → page → object → role → data_item` (the `object`
+  class is one TLF output; **roles-only, no block duality**). Each `object` **binds its
+  source `dataset`** so a saved report is self-contained and re-renders without
+  threading a dataset id (the hardening fix). It serialises to **JSON with a
+  `schema_version` (starts at `1L`)**; because this is greenfield there is **no legacy
+  migration burden** — `.migrate_doc()` is an identity stub kept as the single seam for
+  future non-additive schema changes. A shared named-vector value codec preserves the
+  names of every `format`/`options`/`filters`/`theme` vector across the round-trip.
+  Save, close, reopen later, keep working. Never `saveRDS` the live S7 tree. The whole
+  set of outputs persists as one project.
 - **Reproducible code (the deliverable).** Every output — and the whole report —
   emits **runnable R** (the `render_plan`/emit seam). Generated *from* the model so it
   can never drift from what is shown. This is the artifact for the submission and for
