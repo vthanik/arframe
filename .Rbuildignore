@@ -1,0 +1,10 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^LICENSE\.md$
+^\.github$
+^\.git$
+^docs$
+^cran-comments\.md$
+^CLAUDE\.md$
+^CLAUDE\.local\.md$
+^\.local$

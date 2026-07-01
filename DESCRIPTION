@@ -1,0 +1,24 @@
+Package: arframe
+Title: A Submission-Native Clinical Report Builder
+Version: 0.0.0.9000
+Authors@R:
+    person("Vignesh", "Thanikachalam", , "about.vignesh@gmail.com", role = c("aut", "cre"))
+Description: A local-first Shiny application for building clinical tables, listings,
+    and figures against analysis-ready data, previewing them as submission-style
+    output, and exporting reproducible reports. The interactive front end over the
+    'arpillar' engine.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Imports:
+    arpillar,
+    bslib,
+    cli,
+    rlang,
+    shiny
+Suggests:
+    shinytest2,
+    testthat (>= 3.0.0)
+Remotes:
+    vthanik/arpillar
+Config/testthat/edition: 3
