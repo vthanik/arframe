@@ -107,6 +107,60 @@ structure for this audience and it holds everything already designed.
 The width cost of two rails + two panes is real; the mitigation is the same as SAS
 Viya's — both rails and both panes collapse, giving a focused wide canvas on demand.
 
+## 5.1 UI module architecture (binding)
+
+Grounded in ThinkR's `signature.py` (2024 Shiny Contest winner) — a reference for
+*clean* Shiny craft, not complexity. These are binding rules for how `arframe` is
+built. They exist to prevent regressing into the old `explorer` app-layer debt the
+codebase audit flagged (`setup_pane.R` = 7085-line monolith, ~30 `draft_*` reactive
+vals, two conflicting "is configured" checks, and `suspendWhenHidden`-driven config
+loss).
+
+1. **Uniform module contract.** Every UI surface is a Shiny module — a
+   `<surface>_ui(id)` + `<surface>_server(id, store, ...)` pair, one file per module
+   (`mod_<surface>.R`). This applies to each left-rail activity, the canvas, each
+   right-rail properties pane, and each Data-mode panel. No monoliths: if a module
+   file grows large, it is doing too much and must be split. This is the direct
+   antidote to the 942-line `do_commit`.
+
+2. **One structured state store, injected — the ONLY inter-module channel.**
+   `signature.py` threads a single `reactive.Value` into every module server; modules
+   communicate solely through it, never with each other. `arframe` does the same,
+   scaled up: **one structured store** (the S7 `report` document + a `selected`
+   pointer + the catalog handle) is created once and injected into every module's
+   server. The Outline reads `report`; the editor writes the `selected` object's
+   roles/options; the canvas reads it. Modules never reach into one another.
+   **All draft/edit state lives in this store, OUT of the DOM** — so a folded,
+   lazy-mounted, or unmounted pane can never silently drop configuration (the audit's
+   top data-loss risk). This replaces the `draft_*` sprawl and the two-sources-of-truth
+   entirely; `output_status(object)` in `arpillar` is the single "configured?" oracle.
+
+3. **Logic out of modules; render is a pure function of state.** `signature.py`
+   renders its preview from a template filled with state (data ≠ presentation). In
+   `arframe` **all business logic lives in `arpillar`**; modules only wire UI ↔ store,
+   and the canvas renders the model through the single `render_plan` seam. A module
+   never computes an ARD or shapes an output — it calls the engine.
+
+4. **Theme by variable override, not inline CSS.** One `bslib::bs_theme()` variable
+   layer + one SCSS file (the `signature.py` `$primary`/`$secondary` pattern). The
+   light SAS-blue default and the dark modern skin are a **variable swap**, not a
+   rewrite. No scattered inline styles or duplicated `addResourcePath` (an explorer
+   wart).
+
+5. **Test pyramid in CI from day one.** `testthat` for `arpillar` (engine, off-session,
+   >=95% per file) + `shinytest2` for `arframe` UI flows + the golden gates (RTF
+   byte-golden; figure round-trip), all wired to CI on every push — the `signature.py`
+   unit + E2E discipline.
+
+6. **Mockups are the module contract.** The committed mockups/spec define each
+   module's UI; build modules against them (the `signature.py` "mockup-first to
+   organize the code" lesson, which this redesign already followed).
+
+**Scaling caveat (do not cargo-cult):** `signature.py` is tiny (3 flat modules, a flat
+dict of 7 strings). `arframe` uses a **structured** store (the document model, not a
+flat dict) and a **module hierarchy** (rail -> pane -> widget), not 3 flat modules.
+Take the principles, scale the mechanics.
+
 ## 6. Left activity rail (what you add / navigate)
 
 - **Data** — rich variable picker (type chip + name + label) scoped to the output's
