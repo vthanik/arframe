@@ -343,6 +343,15 @@ mod_data_server <- function(id, store) {
         store$rv$grid_dataset
       )
 
+    # The Data body starts CSS-hidden (Report is the default mode), and the
+    # mode switch is a pure client-side class flip the server never sees --
+    # so Shiny would SUSPEND these outputs forever and Data mode would stay
+    # blank. Every mode body is always mounted (the "all mount, CSS picks
+    # one" frame contract), so rendering while hidden is correct. Set AFTER
+    # both outputs exist (outputOptions errors on an undefined output).
+    shiny::outputOptions(output, "sources", suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "explorer", suspendWhenHidden = FALSE)
+
     shiny::observeEvent(input$source, {
       store$rv$data_source <- if (nzchar(input$source)) input$source else NULL
       store$rv$grid_dataset <- NULL

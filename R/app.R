@@ -39,16 +39,6 @@ arframe <- function(project = NULL, data = NULL, folders = NULL) {
   report <- if (!is.null(project)) arpillar::report_from_json(project) else NULL
   store <- new_store(con, report = report)
 
-  # Folder mounts run through the store (they record source kinds and bump
-  # the catalog nonce), so they need a reactive context even at launch.
-  if (!is.null(folders)) {
-    shiny::isolate(
-      for (dir in folders) {
-        .mount_folder(store, dir)
-      }
-    )
-  }
-
   ui <- bslib::page_fillable(
     theme = ar_theme(),
     padding = 0,
@@ -78,6 +68,20 @@ arframe <- function(project = NULL, data = NULL, folders = NULL) {
   )
 
   server <- function(input, output, session) {
+    # Folder mounts run through the store (they read + bump the catalog
+    # nonce and append to the log), so they must fire inside a live session
+    # AND under `isolate()` -- the server body is not itself a reactive
+    # consumer, so a bare `rv$` read there aborts. Mounting once at session
+    # start is exactly right for a one-session-per-launch local app; the
+    # nonce bump invalidates Data mode's first render.
+    if (!is.null(folders)) {
+      shiny::isolate(
+        for (dir in folders) {
+          .mount_folder(store, dir)
+        }
+      )
+    }
+
     mod_frame_server("frame", store)
     mod_contents_server("contents", store)
     mod_paper_server("paper", store)

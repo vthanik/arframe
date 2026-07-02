@@ -166,7 +166,9 @@ mod_card_ui <- function(id) {
           class = "ar-insp-run action-button",
           .icon("play", 11),
           "Run",
-          shiny::span(class = "ar-insp-kbd ar-mono", "⌘↵")
+          # U+2318 PLACE OF INTEREST SIGN + U+21B5 CARRIAGE RETURN -- \u
+          # escapes keep R/ ASCII-clean (R CMD check portability rule).
+          shiny::span(class = "ar-insp-kbd ar-mono", "\u2318\u21b5")
         ),
         shiny::downloadLink(
           ns("rtf"),
@@ -297,7 +299,7 @@ mod_card_server <- function(id, store) {
         return(shiny::span(tolower(obj@dataset)))
       }
       shiny::span(sprintf(
-        "%s · %s of %s records",
+        "%s \u00b7 %s of %s records",
         tolower(obj@dataset),
         format(counts$matched, big.mark = ","),
         format(counts$total, big.mark = ",")

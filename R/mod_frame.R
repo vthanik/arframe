@@ -32,7 +32,7 @@ mod_frame_ui <- function(id, report_body, data_body, qc_body) {
   )
 }
 
-#' The 42px app bar (v5, decision #8): wordmark, the [Data | Report]
+#' The 42px app bar (v5, decision #8): wordmark, the Data/Report
 #' segmented toggle (top-LEFT -- modes are peers, state reads before
 #' actions), report title (click-to-edit), then the right action cluster:
 #' undo/redo, QC, the command-palette hint, Export package.
@@ -70,7 +70,7 @@ mod_frame_ui <- function(id, report_body, data_body, qc_body) {
   )
 }
 
-#' The [Data | Report] segmented toggle. Both segments are plain mode
+#' The Data/Report segmented toggle. Both segments are plain mode
 #' buttons under one `.ar-seg` border; the ACTIVE segment is styled by a
 #' pure CSS rule keyed off the workspace `ar-mode-*` class (see `.mode_btn`),
 #' so switching never round-trips just to restyle.

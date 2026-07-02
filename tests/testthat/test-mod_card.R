@@ -132,6 +132,55 @@ test_that(".output_slug: kind letter + number + title, filesystem-safe", {
   expect_identical(.output_slug(obj), "f-14-2-1-kaplan-meier-os")
 })
 
+test_that("mod_card_server: the .rtf download renders a FIGURE through the figure seam", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  id <- shiny::isolate(add_from_generator(store, "line", "ADVS"))
+  shiny::isolate(update_object(store, id, function(o) {
+    S7::set_props(
+      o,
+      title = "Mean Systolic BP by Visit",
+      options = list(number = "14.2.1", number_label = "Figure"),
+      roles = list(
+        arpillar::role(
+          slot = "x",
+          items = list(arpillar::data_item(name = "AVISIT"))
+        ),
+        arpillar::role(
+          slot = "y",
+          items = list(arpillar::data_item(
+            name = "AVAL",
+            role_type = "measure"
+          ))
+        ),
+        arpillar::role(
+          slot = "group",
+          items = list(arpillar::data_item(name = "TRT01P"))
+        )
+      )
+    )
+  }))
+  shiny::isolate(store$rv$selected <- id)
+
+  shiny::testServer(mod_card_server, args = list(store = store), {
+    path <- output$rtf
+    expect_match(basename(path), "^f-14-2-1")
+    expect_gt(file.size(path), 0)
+  })
+})
+
+test_that("mod_card_server: telemetry reports 'no output selected' when nothing is selected", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+
+  shiny::testServer(mod_card_server, args = list(store = store), {
+    html <- as.character(output$telemetry$html)
+    expect_match(html, "no output selected", fixed = TRUE)
+  })
+})
+
 test_that("mod_card_server: telemetry reports dataset and record counts", {
   fx <- .mc_ready_store()
   withr::defer(arpillar::engine_close(fx$con))

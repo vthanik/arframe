@@ -78,6 +78,17 @@ test_that(".fmt_bytes renders B / KB / MB", {
   expect_identical(.fmt_bytes(NA_real_), "--")
 })
 
+test_that(".explorer_grid and .explorer_table handle an empty catalog", {
+  con <- arpillar::engine_open()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+
+  grid <- .explorer_grid(store)
+  expect_equal(nrow(grid), 0L)
+  html <- as.character(.explorer_table(shiny::NS("data"), grid, NULL))
+  expect_match(html, "No datasets", fixed = TRUE)
+})
+
 # ---- UI --------------------------------------------------------------------
 
 test_that("mod_data_ui has the sources rail, filter, and the four toolbar actions", {
@@ -159,6 +170,17 @@ test_that("mod_data_server: focus, View data opens the grid, back closes it", {
   })
 })
 
+test_that("mod_data_server: the tree 'Add folder' CTA relays a click to the chooser", {
+  fx <- .md_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_data_server, args = list(store = fx$store), {
+    # The relay posts an ar-click message targeting the toolbar chooser --
+    # no store mutation, just a no-error passthrough.
+    expect_no_error(session$setInputs(import_folder_tree = 1))
+  })
+})
+
 test_that("mod_data_server: double-click opens the grid directly", {
   fx <- .md_store()
   withr::defer(arpillar::engine_close(fx$con))
@@ -186,4 +208,38 @@ test_that("mod_data_server: Delete unmounts the focused dataset", {
     expect_null(store$rv$data_focus)
     expect_gt(store$rv$catalog_nonce, before)
   })
+})
+
+# ---- end-to-end: the suspendWhenHidden regression --------------------------
+
+test_that("arframe() Data mode renders the explorer after a client-side mode switch", {
+  # REGRESSION: Data mode's `sources`/`explorer` uiOutputs sit in a body
+  # that starts CSS-hidden (Report is the default mode). Shiny suspends
+  # hidden outputs, and the mode switch is a pure client-side class flip
+  # the server never sees -- so without `suspendWhenHidden = FALSE` the
+  # explorer stays permanently blank. testServer cannot catch this (it does
+  # not model output suspension), so it needs a real browser.
+  skip_on_cran()
+  app <- shinytest2::AppDriver$new(
+    app_dir = testthat::test_path("apps/data"),
+    name = "data",
+    height = 900,
+    width = 1500,
+    load_timeout = 45000
+  )
+  withr::defer(app$stop())
+
+  # Switch to Data mode the way a click does: the delegated handler posts
+  # `frame-mode`, and the CSS class flips -- no server output changes, so
+  # drive it directly rather than via set_inputs (which waits for output).
+  app$run_js('Shiny.setInputValue("frame-mode","data",{priority:"event"})')
+  app$wait_for_idle(timeout = 8000)
+
+  rows <- app$get_js('document.querySelectorAll(".ar-dx-row").length')
+  expect_gt(as.numeric(rows), 0)
+  srcs <- app$get_js(
+    'Array.from(document.querySelectorAll("[data-ar-source]")).map(function(e){return e.getAttribute("data-ar-source")}).join("|")'
+  )
+  expect_match(srcs, "adam", fixed = TRUE)
+  expect_match(srcs, "sdtm", fixed = TRUE)
 })
