@@ -48,3 +48,44 @@ $(document).on("keydown", ".ar-title-wrap input[type=text]", function (e) {
 $(document).on("blur", ".ar-title-wrap input[type=text]", function () {
   $(this).closest(".ar-title-wrap").removeClass("ar-title-editing");
 });
+
+// The SortableJS bridge (Task 7): any container marked `data-ar-sortable`
+// gets a Sortable instance. On drag end, the container posts its current
+// item order (read off `data-ar-sortable-attr` on each item) to the input
+// named by `data-ar-sortable-input`, plus any extra JSON payload from
+// `data-ar-sortable-extra`. Re-run on every Shiny render (a fresh renderUI
+// replaces the DOM nodes, so a stale Sortable instance would still be bound
+// to detached elements) -- `_arSortable` guards against double-binding the
+// same live element twice within one render.
+function arInitSortables() {
+  document.querySelectorAll("[data-ar-sortable]").forEach(function (el) {
+    if (el._arSortable) return;
+    el._arSortable = new Sortable(el, {
+      animation: 150,
+      handle: el.getAttribute("data-ar-sortable-handle") || undefined,
+      draggable: el.getAttribute("data-ar-sortable-item"),
+      ghostClass: "ar-sortable-ghost",
+      chosenClass: "ar-sortable-chosen",
+      dragClass: "ar-sortable-drag",
+      onEnd: function () {
+        var attr = el.getAttribute("data-ar-sortable-attr");
+        var order = Array.prototype.map.call(
+          el.querySelectorAll(el.getAttribute("data-ar-sortable-item")),
+          function (it) {
+            return it.getAttribute(attr);
+          }
+        );
+        var extra = el.getAttribute("data-ar-sortable-extra");
+        var payload = { order: order, nonce: Date.now() };
+        if (extra) Object.assign(payload, JSON.parse(extra));
+        Shiny.setInputValue(el.getAttribute("data-ar-sortable-input"), payload, {
+          priority: "event",
+        });
+      },
+    });
+  });
+}
+$(document).on("shiny:value shiny:idle", function () {
+  setTimeout(arInitSortables, 50);
+});
+document.addEventListener("DOMContentLoaded", arInitSortables);

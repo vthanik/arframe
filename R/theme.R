@@ -62,6 +62,7 @@ ar_theme <- function() {
   htmltools::tags$head(
     htmltools::tags$link(rel = "stylesheet", href = "arwww/tokens.css"),
     htmltools::tags$link(rel = "stylesheet", href = "arwww/arframe.css"),
+    htmltools::tags$script(src = "arwww/Sortable.min.js"),
     htmltools::tags$script(src = "arwww/arframe.js")
   )
 }

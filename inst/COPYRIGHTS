@@ -4,4 +4,9 @@ Copyright IBM Corp.
 https://github.com/IBM/plex
 Bundled in inst/www/fonts/
 
-SortableJS (added in Task 7)
+SortableJS
+Version: 1.15.6
+License: MIT
+Copyright (c) All contributors to Sortable
+https://github.com/SortableJS/Sortable
+Bundled unmodified as inst/www/Sortable.min.js

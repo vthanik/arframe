@@ -275,3 +275,190 @@ input[type="radio"] {
 .ar-statusbar-spacer {
   flex: 1 1 auto;
 }
+
+/* ============ 03 contents ============ */
+/* The Contents column: 280px, set directly on the desk (no panel background
+   of its own -- see `.ar-body-report > :first-child` in 02 frame). The TOC
+   IS the output switcher (design spec #3/#7): no canvas tabs. */
+.ar-toc {
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--ar-space-4) var(--ar-space-3);
+  display: flex;
+  flex-direction: column;
+}
+.ar-toc-group-label {
+  color: var(--ar-ink-5);
+  margin-top: var(--ar-space-3);
+}
+.ar-toc-group-label:first-of-type {
+  margin-top: 0;
+}
+.ar-toc-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* -- one row: a 4-column grid [grip 14px] [number] [title 1fr] [stamp] --
+   per spec, plus a narrow 5th column for the hover-revealed kebab (opacity-
+   toggled, so its width is reserved even at rest -- the same "never shift
+   layout on hover/select" discipline as the pre-reserved active border).
+   A dense TOC row genuinely has five things competing for a 280px column
+   (drag handle, number, title, stamp, kebab); the gap is intentionally
+   tighter than the app's general `--ar-space-2` rhythm and the kebab uses
+   its own compact 18px control (not the general 26px `.ar-icon-btn`) so the
+   title -- the one column that must flex with real content -- keeps as much
+   of the row's width as the other four genuinely need. The title column is
+   `1fr` and holds a NESTED flex pair (title text + leader) so a long title
+   claims space first and the leader only ever fills the true leftover gap
+   -- a leader with an unconditional `flex: 1` in the SAME row as the title
+   would instead win most of the column and crush the title to its
+   min-content width regardless of how short the title actually is. */
+.ar-toc-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 14px auto 1fr auto 18px;
+  align-items: center;
+  gap: 6px;
+  padding: 5px var(--ar-space-1);
+  border-radius: var(--ar-radius);
+  border-left: 2px solid transparent; /* pre-reserved: active adds colour,
+                                          never layout, so selection never
+                                          shifts the row */
+  cursor: pointer;
+}
+.ar-toc-row:hover {
+  background: rgba(27, 31, 35, 0.03);
+}
+.ar-toc-row-active {
+  border-left-color: var(--ar-accent);
+  background: var(--ar-accent-weak);
+}
+.ar-toc-grip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ar-ink-4);
+  opacity: 0;
+  cursor: grab;
+}
+.ar-toc-row:hover .ar-toc-grip {
+  opacity: 1;
+}
+.ar-toc-number {
+  font-size: 11px;
+  color: var(--ar-ink-3);
+}
+.ar-toc-title-wrap {
+  display: flex;
+  align-items: baseline;
+  min-width: 0; /* lets the grid column -- not just the flex child -- shrink
+                    below its content size, the usual grid/flex overflow trap */
+}
+.ar-toc-title {
+  flex: 0 1 auto;
+  font-size: 12.5px;
+  color: var(--ar-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ar-toc-leader {
+  flex: 1;
+  border-bottom: 1px dotted var(--ar-ink-5);
+  margin: 0 5px 3px;
+  min-width: 6px;
+}
+
+/* -- hover-revealed kebab + its popovers -- */
+.ar-toc-kebab-wrap {
+  position: relative;
+  width: 18px;
+}
+.ar-toc-kebab {
+  width: 18px;
+  height: 18px;
+  opacity: 0;
+}
+.ar-toc-row:hover .ar-toc-kebab,
+.ar-toc-kebab-wrap.ar-pop-menu-open .ar-toc-kebab {
+  opacity: 1;
+}
+.ar-pop-menu,
+.ar-pop {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 20;
+  margin-top: 4px;
+  background: var(--ar-card);
+  border: 1px solid var(--ar-paper-edge);
+  border-radius: var(--ar-radius);
+  box-shadow: var(--ar-shadow-float);
+}
+.ar-pop-menu-open > .ar-pop-menu,
+.ar-pop-rename-open > .ar-pop-rename,
+.ar-pop-remove-open > .ar-pop-remove {
+  display: flex;
+}
+.ar-pop-menu {
+  flex-direction: column;
+  min-width: 130px;
+  padding: 4px;
+}
+.ar-pop-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 5px 8px;
+  border: none;
+  background: transparent;
+  border-radius: var(--ar-radius);
+  font-size: 12px;
+  color: var(--ar-ink);
+}
+.ar-pop-menu-item:hover {
+  background: rgba(27, 31, 35, 0.05);
+}
+.ar-pop-menu-item-danger {
+  color: var(--ar-error);
+}
+.ar-pop {
+  align-items: center;
+  gap: var(--ar-space-1);
+  padding: var(--ar-space-2);
+}
+.ar-pop-rename input {
+  width: 180px;
+  font-size: 12px;
+}
+.ar-pop-apply {
+  white-space: nowrap;
+}
+
+/* -- footer: + Add output -- */
+.ar-toc-add {
+  margin-top: var(--ar-space-3);
+  color: var(--ar-accent);
+  font-size: 12.5px;
+  text-decoration: none;
+  align-self: flex-start;
+  padding: 4px 0;
+}
+.ar-toc-add:hover {
+  text-decoration: underline;
+}
+
+/* -- SortableJS drag states -- */
+.ar-sortable-ghost {
+  opacity: 0.4;
+  background: var(--ar-accent-weak) !important;
+}
+.ar-sortable-chosen {
+  background: rgba(27, 31, 35, 0.04);
+}
+.ar-sortable-drag {
+  box-shadow: var(--ar-shadow-float);
+  background: var(--ar-card);
+}

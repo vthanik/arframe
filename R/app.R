@@ -41,7 +41,7 @@ arframe <- function(project = NULL, data = NULL) {
     mod_frame_ui(
       "frame",
       report_body = shiny::tagList(
-        shiny::div(class = "ar-slot-placeholder", "Contents"),
+        mod_contents_ui("contents"),
         shiny::div(class = "ar-slot-placeholder", "Paper"),
         shiny::div(class = "ar-slot-placeholder", "Card")
       ),
@@ -52,6 +52,7 @@ arframe <- function(project = NULL, data = NULL) {
 
   server <- function(input, output, session) {
     mod_frame_server("frame", store)
+    mod_contents_server("contents", store)
   }
 
   shiny::onStop(function() arpillar::engine_close(con))
