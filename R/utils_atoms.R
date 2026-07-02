@@ -150,7 +150,7 @@
 .TYPE_ICONS <- list(
   summary = '<circle cx="3" cy="4.3" r="0.7"/><path d="M5.5 4.3 H13"/><circle cx="3" cy="8" r="0.7"/><path d="M5.5 8 H13"/><circle cx="3" cy="11.7" r="0.7"/><path d="M5.5 11.7 H10.5"/>',
   crosstab = '<rect x="2" y="2.5" width="12" height="11" rx="1.4"/><path d="M6.3 2.5 V13.5 M10.1 2.5 V13.5 M2 6.2 H14 M2 9.8 H14"/>',
-  occurrence = '<path d="M2.4 3.4 H13.6"/><path d="M4 4.6 V11.4"/><path d="M4 7.6 H6.4 M7.2 7.6 H13.6"/><path d="M4 11 H6.4 M7.2 11 H13.6"/>',
+  occurrence = '<path d="M2.6 3.2 H9"/><path d="M3.8 3.2 V11.3"/><path d="M3.8 7.25 H5.4"/><path d="M6.6 7.25 H13.4"/><path d="M3.8 11.3 H5.4"/><path d="M6.6 11.3 H13.4"/>',
   km = '<path d="M2.4 2 V13.6 H14"/><path d="M3 3.6 H6 V7 H9.2 V10.3 H12.8"/>',
   line = '<path d="M2.4 2 V13.6 H14"/><path d="M3.4 11.2 L6.6 6.6 L9.6 9 L13 4.4"/><circle cx="6.6" cy="6.6" r="0.5" fill="currentColor" stroke="none"/><circle cx="13" cy="4.4" r="0.5" fill="currentColor" stroke="none"/>',
   box = '<rect x="5.4" y="5" width="5.2" height="6" rx="0.8"/><path d="M5.4 8 H10.6"/><path d="M8 5 V2.6 M6.6 2.6 H9.4"/><path d="M8 11 V13.4 M6.6 13.4 H9.4"/>'

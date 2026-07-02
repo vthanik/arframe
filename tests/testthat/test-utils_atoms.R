@@ -32,7 +32,7 @@ test_that(".action_btn is Shiny-bindable without btn-default", {
 
 test_that(".type_icon renders a distinct glyph per generator type, with a safe fallback", {
   occ <- as.character(.type_icon("occurrence"))
-  expect_match(occ, "M4 4.6", fixed = TRUE)
+  expect_match(occ, "M3.8 3.2 V11.3", fixed = TRUE)
   expect_false(identical(
     as.character(.type_icon("km")),
     as.character(.type_icon("box"))
