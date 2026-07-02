@@ -703,6 +703,62 @@ input[type="radio"] {
   flex-direction: column;
   align-items: center;
 }
+/* v5 code view (decision #8): the desk holds both the artifact and the
+   reproduction-script panel; `ar-showing-code` (flipped by the
+   ar-code-view message) swaps which shows. Neither remounts. */
+.ar-showing-code > .ar-paper {
+  display: none;
+}
+.ar-code {
+  display: none;
+  width: 100%;
+  max-width: 720px;
+  margin: var(--ar-space-5) auto;
+  background: #20242a;
+  border-radius: var(--ar-radius);
+  overflow: hidden;
+}
+/* `.ar-code` sits inside the `code_slot` uiOutput wrapper, not directly on
+   the desk -- a descendant selector, not a child combinator. */
+.ar-showing-code .ar-code {
+  display: block;
+}
+.ar-code-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-2);
+  padding: var(--ar-space-2) var(--ar-space-3);
+  border-bottom: 1px solid #343a42;
+  color: #9aa3ab;
+  font-size: 10.5px;
+}
+.ar-code-name {
+  color: #c9d1d9;
+}
+.ar-code-act {
+  color: #9aa3ab;
+  background: transparent;
+  border: 1px solid #464d57;
+  border-radius: var(--ar-radius-sm);
+  padding: 2px 8px;
+  font-size: 10.5px;
+  cursor: pointer;
+  text-decoration: none;
+}
+.ar-code-act:hover {
+  color: #fff;
+  border-color: #6a7481;
+  text-decoration: none;
+}
+.ar-code-body {
+  margin: 0;
+  padding: var(--ar-space-4);
+  color: #c9d1d9;
+  font-size: 11px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
 .ar-paper {
   background: var(--ar-paper);
   border: 1px solid var(--ar-paper-edge);

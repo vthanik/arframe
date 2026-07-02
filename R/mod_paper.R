@@ -88,6 +88,52 @@
   )
 }
 
+# ---- code view (v5, decision #8) -----------------------------------------
+
+#' Build the code-view panel: a filename bar (Copy / Download .R / Close)
+#' above the `emit_code()` reproduction script in a mono `<pre>`. The
+#' script regenerates THIS output's RTF from bare arpillar -- the "R code
+#' to reproduce it" a regulator or independent QC programmer runs. Copy is
+#' pure client JS (`[data-ar-copy]` targets the `<pre>`'s id); Download and
+#' Close are server-wired in `mod_paper_server()`.
+#' @noRd
+.code_panel <- function(store, ns, object) {
+  script <- tryCatch(
+    arpillar::emit_code(store$con, object),
+    error = function(e) {
+      paste0("# Could not emit code:\n# ", conditionMessage(e))
+    }
+  )
+  pre_id <- ns("code_pre")
+  fname <- paste0(.output_slug(object), ".R")
+  shiny::tags$div(
+    class = "ar-code",
+    shiny::tags$div(
+      class = "ar-code-bar ar-mono",
+      shiny::tags$span(class = "ar-code-name", fname),
+      shiny::tags$div(class = "ar-bar-spacer"),
+      shiny::tags$button(
+        type = "button",
+        class = "ar-code-act",
+        `data-ar-copy` = pre_id,
+        "Copy"
+      ),
+      shiny::downloadLink(
+        ns("code_dl"),
+        label = "Download .R",
+        class = "ar-code-act"
+      ),
+      .action_btn(
+        ns("code_close"),
+        "Close",
+        variant = "link",
+        class = "ar-code-act"
+      )
+    ),
+    shiny::tags$pre(id = pre_id, class = "ar-code-body ar-mono", script)
+  )
+}
+
 # ---- error summary (GOV.UK pattern) --------------------------------------
 
 #' One jump link in the error summary: the `validate_output()` message,
@@ -183,6 +229,7 @@
 mod_paper_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::div(
+    id = ns("desk"),
     class = "ar-desk-col",
     shiny::div(
       id = ns("sheet"),
@@ -202,7 +249,13 @@ mod_paper_ui <- function(id) {
         # error, ready).
         shiny::plotOutput(ns("sheet_figure"), height = "460px")
       )
-    )
+    ),
+    # The code view (decision #8): an alternate desk surface holding the
+    # `emit_code()` reproduction script. Mounts alongside the sheet; the
+    # `ar-showing-code` class on the desk (flipped by `rv$code_view`)
+    # picks which shows -- no unmount, so returning to the artifact is a
+    # class toggle, not a re-render.
+    shiny::uiOutput(ns("code_slot"))
   )
 }
 
@@ -301,6 +354,49 @@ mod_paper_server <- function(id, store) {
     shiny::observeEvent(input$add_first, {
       store$rv$adding <- TRUE
     })
+
+    # ---- code view (v5) ----
+    # The panel content: the emit_code() script for the current selection.
+    # Rebuilt on a report edit (the roles/options that shape the script) or
+    # a selection change; empty when nothing is selected.
+    output$code_slot <- shiny::renderUI({
+      obj <- selected_object(store)
+      if (is.null(obj)) {
+        return(NULL)
+      }
+      .code_panel(store, ns, obj)
+    }) |>
+      shiny::bindEvent(store$rv$report, store$rv$selected)
+
+    # Flip the desk between artifact and code view on every code_view
+    # change -- a class toggle, so neither surface is remounted.
+    shiny::observe({
+      session$sendCustomMessage(
+        "ar-code-view",
+        list(id = ns("desk"), on = isTRUE(store$rv$code_view))
+      )
+    }) |>
+      shiny::bindEvent(store$rv$code_view)
+
+    shiny::observeEvent(input$code_close, {
+      store$rv$code_view <- FALSE
+    })
+
+    # Download the reproduction script -- the same emit_code() the panel
+    # shows, written to disk (path arg) so it is byte-identical to the view.
+    output$code_dl <- shiny::downloadHandler(
+      filename = function() {
+        obj <- selected_object(store)
+        if (is.null(obj)) "output.R" else paste0(.output_slug(obj), ".R")
+      },
+      content = function(file) {
+        obj <- selected_object(store)
+        if (is.null(obj)) {
+          .abort_app("No output is selected.")
+        }
+        arpillar::emit_code(store$con, obj, path = file)
+      }
+    )
 
     invisible(NULL)
   })

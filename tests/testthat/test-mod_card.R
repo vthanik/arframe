@@ -90,6 +90,19 @@ test_that("mod_card_server: Run drops the ARD memo and bumps run_nonce", {
   })
 })
 
+test_that("mod_card_server: the code button toggles rv$code_view (v5)", {
+  fx <- .mc_ready_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_server, args = list(store = fx$store), {
+    expect_false(store$rv$code_view)
+    session$setInputs(code = 1)
+    expect_true(store$rv$code_view)
+    session$setInputs(code = 2)
+    expect_false(store$rv$code_view)
+  })
+})
+
 test_that("mod_card_server: the .rtf download names and writes a non-empty RTF", {
   fx <- .mc_ready_store()
   withr::defer(arpillar::engine_close(fx$con))

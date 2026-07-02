@@ -254,6 +254,12 @@ mod_card_server <- function(id, store) {
       log_line(store, "run: re-typeset requested")
     })
 
+    # The code button toggles the desk's code view (mod_paper owns the
+    # panel DOM; this only flips the shared store flag).
+    shiny::observeEvent(input$code, {
+      store$rv$code_view <- !isTRUE(store$rv$code_view)
+    })
+
     # The per-output RTF -- the SAME render seam as export (decision #7's
     # one-spec rule): tables through render_rtf, figures through
     # render_figure_rtf.

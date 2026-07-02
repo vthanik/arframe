@@ -486,6 +486,60 @@ test_that("mod_paper_ui mounts both the html slot and the figure plot slot, clas
   expect_match(html, "ar-paper-figure-slot", fixed = TRUE)
   expect_match(html, 'id="paper-sheet_html_slot"', fixed = TRUE)
   expect_match(html, 'id="paper-sheet_figure"', fixed = TRUE)
+  # v5 (decision #8): the code-view surface mounts alongside the sheet in
+  # the desk column; a desk class picks which shows.
+  expect_match(html, 'id="paper-code_slot"', fixed = TRUE)
+})
+
+# ---- code view (v5, decision #8) -------------------------------------------
+
+test_that("mod_paper code view renders the emit_code script when rv$code_view is TRUE", {
+  fx <- .pp_ready_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_paper_server, args = list(store = fx$store), {
+    shiny::isolate(
+      fx$store$rv$selected <- .all_objects(fx$store$rv$report)[[1]]@id
+    )
+    store$rv$code_view <- TRUE
+    session$flushReact()
+    html <- output$code_slot$html
+    # The reproduction script: library, the assign, the emit, the filename
+    # bar, and the three actions.
+    expect_match(html, "library(arpillar)", fixed = TRUE)
+    expect_match(html, "engine_open()", fixed = TRUE)
+    expect_match(html, "14.1.1", fixed = TRUE)
+    expect_match(html, "-demographics", fixed = TRUE)
+    # Ids are namespaced by testServer's own proxy, so match the suffix.
+    expect_match(html, "data-ar-copy", fixed = TRUE)
+    expect_match(html, "code_dl", fixed = TRUE)
+    expect_match(html, "code_close", fixed = TRUE)
+  })
+})
+
+test_that("mod_paper: code_close returns to the artifact", {
+  fx <- .pp_ready_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_paper_server, args = list(store = fx$store), {
+    store$rv$code_view <- TRUE
+    session$setInputs(code_close = 1)
+    expect_false(store$rv$code_view)
+  })
+})
+
+test_that("mod_paper: the code download writes a parse()-clean .R", {
+  fx <- .pp_ready_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_paper_server, args = list(store = fx$store), {
+    shiny::isolate(
+      fx$store$rv$selected <- .all_objects(fx$store$rv$report)[[1]]@id
+    )
+    path <- output$code_dl
+    expect_match(basename(path), "\\.R$")
+    expect_silent(parse(path))
+  })
 })
 
 # ---- JS bridge smoke test ----------------------------------------------
@@ -507,6 +561,9 @@ test_that("arframe.js contains the region-click delegation and the drag-guard qu
   expect_no_match(txt, "ar-paper-width", fixed = TRUE)
   expect_match(txt, "shiny:value", fixed = TRUE)
   expect_match(txt, "tabular-table thead", fixed = TRUE)
+  # Code view (S4): the desk-swap handler and the clipboard Copy handler.
+  expect_match(txt, "ar-code-view", fixed = TRUE)
+  expect_match(txt, "data-ar-copy", fixed = TRUE)
   # a ghost slot's `role="button"` + `tabindex="0"` promise (utils_ghost.R)
   # needs a matching Enter/Space keydown handler -- a plain div does not
   # natively fire `click` on those keys the way a real <button> does.

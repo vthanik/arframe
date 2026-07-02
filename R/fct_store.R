@@ -49,7 +49,8 @@ new_store <- function(con, report = NULL) {
       rail_collapsed = FALSE,
       insp_collapsed = FALSE,
       insp_tab = "roles",
-      run_nonce = 0L
+      run_nonce = 0L,
+      code_view = FALSE
     ),
     undo = undo,
     cache = new.env(parent = emptyenv())

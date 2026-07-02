@@ -387,3 +387,29 @@ Shiny.addCustomMessageHandler("ar-insp-tab", function (m) {
     "ar-insp-tab-" + m.tab
   );
 });
+
+// The code view (v5): flip the desk between artifact and reproduction
+// script. A class toggle on the desk column, so neither surface remounts.
+Shiny.addCustomMessageHandler("ar-code-view", function (m) {
+  var el = document.getElementById(m.id);
+  if (el) el.classList.toggle("ar-showing-code", !!m.on);
+});
+
+// Copy the reproduction script: a [data-ar-copy] button whose value is the
+// id of the <pre> to copy. Falls back to a manual selection when the async
+// clipboard API is unavailable (older browsers / insecure origin).
+$(document).on("click", "[data-ar-copy]", function () {
+  var pre = document.getElementById(this.getAttribute("data-ar-copy"));
+  if (!pre) return;
+  var text = pre.textContent;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text);
+  } else {
+    var r = document.createRange();
+    r.selectNodeContents(pre);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(r);
+    document.execCommand("copy");
+  }
+});

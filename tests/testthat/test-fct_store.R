@@ -39,7 +39,8 @@ test_that("new_store returns con/rv/undo/cache with the full rv field set", {
     "rail_collapsed",
     "insp_collapsed",
     "insp_tab",
-    "run_nonce"
+    "run_nonce",
+    "code_view"
   )
   rv <- shiny::isolate(shiny::reactiveValuesToList(store$rv))
   expect_true(all(fields %in% names(rv)))
