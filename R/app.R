@@ -19,11 +19,17 @@
 #'   NULL`. A named vector/list of paths to `.parquet`/`.xpt`/`.json` files;
 #'   each name becomes the catalog-visible dataset name (e.g. `c(ADSL =
 #'   "adsl.parquet")`). `NULL` opens an empty catalog.
+#' @param folders *Study folders to mount before launch.* `<character>:
+#'   default NULL`. Paths to directories of dataset files; every recognized
+#'   file (`.parquet`/`.xpt`/`.json`) is registered under a library node
+#'   named for the folder, and appears in Data mode's SOURCES tree. This is
+#'   the folder-first on-ramp -- point at an ADaM directory and the whole
+#'   catalog populates.
 #'
 #' @return Called for its side effect of running the Shiny application; does
 #'   not return a value.
 #' @export
-arframe <- function(project = NULL, data = NULL) {
+arframe <- function(project = NULL, data = NULL, folders = NULL) {
   con <- arpillar::engine_open()
   if (!is.null(data)) {
     for (nm in names(data)) {
@@ -32,6 +38,16 @@ arframe <- function(project = NULL, data = NULL) {
   }
   report <- if (!is.null(project)) arpillar::report_from_json(project) else NULL
   store <- new_store(con, report = report)
+
+  # Folder mounts run through the store (they record source kinds and bump
+  # the catalog nonce), so they need a reactive context even at launch.
+  if (!is.null(folders)) {
+    shiny::isolate(
+      for (dir in folders) {
+        .mount_folder(store, dir)
+      }
+    )
+  }
 
   ui <- bslib::page_fillable(
     theme = ar_theme(),
@@ -54,7 +70,7 @@ arframe <- function(project = NULL, data = NULL) {
           mod_paper_ui("paper"),
           mod_card_ui("card")
         ),
-        data_body = shiny::div(class = "ar-slot-placeholder", "Data mode"),
+        data_body = mod_data_ui("data"),
         qc_body = shiny::div(class = "ar-slot-placeholder", "QC sheet")
       ),
       mod_add_output_ui("add_output")
@@ -67,6 +83,7 @@ arframe <- function(project = NULL, data = NULL) {
     mod_paper_server("paper", store)
     mod_card_server("card", store)
     mod_add_output_server("add_output", store)
+    mod_data_server("data", store)
   }
 
   shiny::onStop(function() arpillar::engine_close(con))

@@ -50,10 +50,19 @@ new_store <- function(con, report = NULL) {
       insp_collapsed = FALSE,
       insp_tab = "roles",
       run_nonce = 0L,
-      code_view = FALSE
+      code_view = FALSE,
+      data_source = NULL,
+      data_focus = NULL,
+      grid_dataset = NULL
     ),
     undo = undo,
-    cache = new.env(parent = emptyenv())
+    cache = new.env(parent = emptyenv()),
+    # Source-kind map for Data mode: "<library>::<name>" -> file extension
+    # (".parquet"/".xpt"/...). arframe records this at mount time because
+    # the catalog does not surface the original source's type. Kept as a
+    # plain env (not reactive) -- the explorer reads it under
+    # `catalog_nonce`, which every mount/delete already bumps.
+    kinds = new.env(parent = emptyenv())
   )
 }
 
@@ -259,6 +268,84 @@ cached_ard <- function(store, object) {
   ard <- arpillar::build_ard(store$con, object)
   store$cache[[key]] <- ard
   ard
+}
+
+# ---- data sources (v5, decision #8) --------------------------------------
+
+# The file extensions arframe will register from a folder -- the formats
+# arpillar::register_dataset() ingests (parquet directly; xpt/json via
+# artoo). Anything else in the folder is skipped.
+.DATA_EXTS <- c("parquet", "xpt", "json")
+
+#' The registerable dataset files in `dir` (non-recursive), as a named
+#' character vector `c(<name> = <path>)` where the name is the file stem
+#' uppercased (the catalog-visible name, e.g. `adsl.parquet` -> `"ADSL"`).
+#' @noRd
+.folder_datasets <- function(dir) {
+  files <- list.files(dir, full.names = TRUE)
+  ext <- tolower(tools::file_ext(files))
+  keep <- files[ext %in% .DATA_EXTS]
+  stats::setNames(keep, toupper(tools::file_path_sans_ext(basename(keep))))
+}
+
+#' Mount every registerable dataset in `dir` under a library node named
+#' for the folder, recording each source's extension in `store$kinds` and
+#' bumping `catalog_nonce`. A file whose name already exists in that
+#' library is skipped (not an error -- re-mounting a folder is idempotent).
+#' Returns the number of datasets newly registered.
+#' @noRd
+.mount_folder <- function(store, dir, library = basename(normalizePath(dir))) {
+  datasets <- .folder_datasets(dir)
+  n <- 0L
+  for (i in seq_along(datasets)) {
+    name <- names(datasets)[[i]]
+    path <- datasets[[i]]
+    ok <- tryCatch(
+      {
+        arpillar::register_dataset(store$con, name, path, library = library)
+        TRUE
+      },
+      arpillar_error_input = function(e) FALSE
+    )
+    if (isTRUE(ok)) {
+      store$kinds[[paste0(library, "::", name)]] <-
+        paste0(".", tolower(tools::file_ext(path)))
+      n <- n + 1L
+    }
+  }
+  store$rv$catalog_nonce <- store$rv$catalog_nonce + 1L
+  log_line(store, sprintf("mounted %d dataset(s) from %s", n, library))
+  n
+}
+
+#' Unmount the dataset `name` in `library`: drop it from the catalog, its
+#' kind entry, and clear a now-dangling focus/grid pointer. Bumps
+#' `catalog_nonce`.
+#' @noRd
+.unmount_dataset <- function(store, name, library) {
+  arpillar::unregister_dataset(store$con, name, library = library)
+  kind_key <- paste0(library, "::", name)
+  if (exists(kind_key, envir = store$kinds, inherits = FALSE)) {
+    rm(list = kind_key, envir = store$kinds)
+  }
+  gone <- list(name = name, library = library)
+  if (identical(store$rv$data_focus, gone)) {
+    store$rv$data_focus <- NULL
+  }
+  if (identical(store$rv$grid_dataset, gone)) {
+    store$rv$grid_dataset <- NULL
+  }
+  store$rv$catalog_nonce <- store$rv$catalog_nonce + 1L
+  log_line(store, sprintf("removed %s from %s", name, library))
+  invisible(NULL)
+}
+
+#' The source kind (file extension) recorded for a catalog row, or `NA`
+#' when arframe did not mount it (e.g. a test/demo catalog registered
+#' directly).
+#' @noRd
+.source_kind <- function(store, name, library) {
+  store$kinds[[paste0(library, "::", name)]] %||% NA_character_
 }
 
 # ---- logging ------------------------------------------------------------

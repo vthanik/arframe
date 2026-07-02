@@ -4,7 +4,7 @@
 \alias{arframe}
 \title{Launch the arframe report builder}
 \usage{
-arframe(project = NULL, data = NULL)
+arframe(project = NULL, data = NULL, folders = NULL)
 }
 \arguments{
 \item{project}{\emph{A saved project to reopen.} \verb{<character(1)> | NULL: default NULL}. A JSON file previously written by the app's Export/Save
@@ -13,6 +13,12 @@ arframe(project = NULL, data = NULL)
 
 \item{data}{\emph{Datasets to register before launch.} \verb{<character>: default NULL}. A named vector/list of paths to \code{.parquet}/\code{.xpt}/\code{.json} files;
 each name becomes the catalog-visible dataset name (e.g. \code{c(ADSL = "adsl.parquet")}). \code{NULL} opens an empty catalog.}
+
+\item{folders}{\emph{Study folders to mount before launch.} \verb{<character>: default NULL}. Paths to directories of dataset files; every recognized
+file (\code{.parquet}/\code{.xpt}/\code{.json}) is registered under a library node
+named for the folder, and appears in Data mode's SOURCES tree. This is
+the folder-first on-ramp -- point at an ADaM directory and the whole
+catalog populates.}
 }
 \value{
 Called for its side effect of running the Shiny application; does

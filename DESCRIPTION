@@ -21,6 +21,7 @@ Imports:
     rlang,
     S7,
     shiny,
+    shinyFiles,
     tabular
 Suggests:
     nanoparquet,

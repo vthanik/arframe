@@ -395,6 +395,51 @@ Shiny.addCustomMessageHandler("ar-code-view", function (m) {
   if (el) el.classList.toggle("ar-showing-code", !!m.on);
 });
 
+// Programmatic click relay: a server observer can trigger a hidden button
+// (e.g. the tree "Add folder" CTA firing the toolbar's shinyFiles chooser).
+Shiny.addCustomMessageHandler("ar-click", function (m) {
+  var el = document.getElementById(m.id);
+  if (el) el.click();
+});
+
+// Data mode (v5, decision #8): the SOURCES tree and the explorer rows post
+// through delegated handlers scoped to the data body, so no per-node/row
+// input is registered. Namespace is read off the mounted `.ar-data-main`
+// ancestor's own descendant ids -- the module id is a fixed "data".
+$(document).on("click", "[data-ar-source]", function () {
+  Shiny.setInputValue("data-source", this.getAttribute("data-ar-source"), {
+    priority: "event",
+  });
+});
+
+$(document).on("click", ".ar-dx-row", function () {
+  Shiny.setInputValue(
+    "data-focus",
+    { name: this.getAttribute("data-ar-name"), lib: this.getAttribute("data-ar-lib") },
+    { priority: "event" }
+  );
+});
+
+$(document).on("dblclick", ".ar-dx-row", function () {
+  Shiny.setInputValue(
+    "data-open",
+    { name: this.getAttribute("data-ar-name"), lib: this.getAttribute("data-ar-lib") },
+    { priority: "event" }
+  );
+});
+
+// Client-side dataset filter: hide explorer rows whose name/folder does not
+// contain the typed text. Kept in JS (no round-trip) since it is pure view.
+$(document).on("input", ".ar-dx-filter", function () {
+  var q = this.value.toLowerCase();
+  document.querySelectorAll(".ar-dx-row").forEach(function (tr) {
+    var hay = (
+      tr.getAttribute("data-ar-name") + " " + tr.getAttribute("data-ar-lib")
+    ).toLowerCase();
+    tr.style.display = hay.indexOf(q) === -1 ? "none" : "";
+  });
+});
+
 // Copy the reproduction script: a [data-ar-copy] button whose value is the
 // id of the <pre> to copy. Falls back to a manual selection when the async
 // clipboard API is unavailable (older browsers / insecure origin).
