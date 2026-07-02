@@ -61,7 +61,7 @@ arframe <- function(project = NULL, data = NULL, folders = NULL) {
           mod_card_ui("card")
         ),
         data_body = mod_data_ui("data"),
-        qc_body = shiny::div(class = "ar-slot-placeholder", "QC sheet")
+        qc_body = mod_qc_ui("qc")
       ),
       mod_add_output_ui("add_output")
     )
@@ -88,6 +88,7 @@ arframe <- function(project = NULL, data = NULL, folders = NULL) {
     mod_card_server("card", store)
     mod_add_output_server("add_output", store)
     mod_data_server("data", store)
+    mod_qc_server("qc", store)
   }
 
   shiny::onStop(function() arpillar::engine_close(con))
