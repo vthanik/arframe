@@ -111,3 +111,167 @@ input[type="radio"] {
   border-color: var(--ar-rule);
   color: var(--ar-ink);
 }
+
+/* ============ 02 frame ============ */
+/* One 100vh frame: 42px app bar, a body that mounts all three mode furniture
+   sets at once, 26px status bar. The `ar-mode-*` class on `.ar-workspace`
+   (set by arframe.js's "ar-mode" handler) selects which `.ar-body-*` shows;
+   the other two stay mounted (display: none), never unmounted. See
+   docs/superpowers/specs/2026-07-02-arframe-galley-design-system.md #3. */
+.ar-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* -- app bar -- */
+.ar-bar {
+  flex: 0 0 42px;
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-3);
+  padding: 0 var(--ar-space-4);
+  background: var(--ar-chrome);
+  border-bottom: 1px solid var(--ar-rule);
+}
+.ar-bar-mark {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ar-ink);
+}
+.ar-bar-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--ar-rule);
+}
+.ar-bar-spacer {
+  flex: 1 1 auto;
+}
+.ar-bar-hint {
+  font-size: 11px;
+  color: var(--ar-ink-4);
+}
+.ar-bar-mode {
+  color: var(--ar-ink-3);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  padding: 2px 0;
+  border-radius: 0;
+}
+.ar-bar-mode:hover {
+  color: var(--ar-ink);
+}
+/* Active mode is a pure CSS rule off the workspace's own mode class -- no
+   server round-trip is spent restyling the buttons on every mode switch. */
+.ar-mode-data .ar-bar-mode[data-ar-mode="data"],
+.ar-mode-qc .ar-bar-mode[data-ar-mode="qc"] {
+  color: var(--ar-accent);
+  border-bottom-color: var(--ar-accent);
+}
+.ar-btn-ink {
+  background: var(--ar-ink);
+  color: var(--ar-chrome);
+  border-radius: var(--ar-radius);
+  font-size: 11.5px;
+  padding: 5px 12px;
+  border: 1px solid var(--ar-ink);
+}
+.ar-btn-ink:hover {
+  background: var(--ar-ink-2);
+}
+
+/* -- report title (click-to-edit) -- */
+.ar-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-1);
+  cursor: text;
+  color: var(--ar-ink-3);
+}
+.ar-title {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ar-ink);
+}
+.ar-title-input {
+  display: none;
+}
+.ar-title-input .form-control {
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 2px 6px;
+  height: auto;
+  width: 220px;
+}
+.ar-title-editing .ar-title,
+.ar-title-editing svg {
+  display: none;
+}
+.ar-title-editing .ar-title-input {
+  display: block;
+}
+
+/* -- body: all three mode furniture sets mount at once -- */
+.ar-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+}
+.ar-body-report,
+.ar-body-data,
+.ar-body-qc {
+  display: none;
+  height: 100%;
+}
+.ar-mode-report .ar-body-report {
+  display: flex;
+}
+.ar-mode-data .ar-body-data {
+  display: flex;
+}
+.ar-mode-qc .ar-body-qc {
+  display: flex;
+}
+
+/* The report body is the three-region contents/desk/card row. Contents sits
+   directly on the desk (no panel chrome of its own); the desk centers the
+   paper slot and grows to fill the remaining width. */
+.ar-body-report {
+  background: var(--ar-desk);
+}
+.ar-body-report > :first-child {
+  flex: 0 0 280px;
+}
+.ar-body-report > :nth-child(2) {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* A stand-in for a mode body whose real module lands in a later task. */
+.ar-slot-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  color: var(--ar-ink-4);
+  font-size: 12px;
+}
+
+/* -- status bar -- */
+.ar-statusbar {
+  flex: 0 0 26px;
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-3);
+  padding: 0 var(--ar-space-4);
+  background: var(--ar-chrome);
+  border-top: 1px solid var(--ar-rule);
+  font-size: 11px;
+  color: var(--ar-ink-3);
+}
+.ar-statusbar-spacer {
+  flex: 1 1 auto;
+}

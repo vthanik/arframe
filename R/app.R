@@ -1,20 +1,59 @@
+# The real launcher: opens the arpillar catalog, registers any named data
+# paths, seeds the injected store (from a saved project when given), and
+# mounts the Galley frame. One store per launch -- this is a local-first,
+# single-session desktop app (design spec's "report-as-project" paradigm),
+# not a multi-user Shiny deployment.
+
 #' Launch the arframe report builder
 #'
-#' Opens the local-first Shiny application. This is the scaffold entry point; the
-#' submission-native dual-rail report builder is built out on top of it.
+#' Opens the local-first Shiny application: a submission-native report
+#' builder over the `arpillar` engine. Every module communicates only through
+#' one injected store (design spec 5.1); this function is the sole place that
+#' constructs it.
 #'
-#' @param ... Reserved for future launch options.
+#' @param project *A saved project to reopen.* `<character(1)> | NULL:
+#'   default NULL`. A JSON file previously written by the app's Export/Save
+#'   (read via [arpillar::report_from_json()]). `NULL` starts a fresh
+#'   "Untitled report".
+#' @param data *Datasets to register before launch.* `<character>: default
+#'   NULL`. A named vector/list of paths to `.parquet`/`.xpt`/`.json` files;
+#'   each name becomes the catalog-visible dataset name (e.g. `c(ADSL =
+#'   "adsl.parquet")`). `NULL` opens an empty catalog.
 #'
-#' @return Called for its side effect of running the Shiny application; does not
-#'   return a value.
+#' @return Called for its side effect of running the Shiny application; does
+#'   not return a value.
 #' @export
-arframe <- function(...) {
+arframe <- function(project = NULL, data = NULL) {
+  con <- arpillar::engine_open()
+  if (!is.null(data)) {
+    for (nm in names(data)) {
+      arpillar::register_dataset(con, nm, data[[nm]])
+    }
+  }
+  report <- if (!is.null(project)) arpillar::report_from_json(project) else NULL
+  store <- new_store(con, report = report)
+
   ui <- bslib::page_fillable(
-    bslib::card(
-      bslib::card_header("arframe"),
-      "Scaffold. The submission-native report builder lands here."
+    theme = ar_theme(),
+    padding = 0,
+    gap = 0,
+    .head_assets(),
+    mod_frame_ui(
+      "frame",
+      report_body = shiny::tagList(
+        shiny::div(class = "ar-slot-placeholder", "Contents"),
+        shiny::div(class = "ar-slot-placeholder", "Paper"),
+        shiny::div(class = "ar-slot-placeholder", "Card")
+      ),
+      data_body = shiny::div(class = "ar-slot-placeholder", "Data mode"),
+      qc_body = shiny::div(class = "ar-slot-placeholder", "QC sheet")
     )
   )
-  server <- function(input, output, session) {}
+
+  server <- function(input, output, session) {
+    mod_frame_server("frame", store)
+  }
+
+  shiny::onStop(function() arpillar::engine_close(con))
   shiny::shinyApp(ui, server)
 }

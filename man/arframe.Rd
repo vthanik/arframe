@@ -4,16 +4,23 @@
 \alias{arframe}
 \title{Launch the arframe report builder}
 \usage{
-arframe(...)
+arframe(project = NULL, data = NULL)
 }
 \arguments{
-\item{...}{Reserved for future launch options.}
+\item{project}{\emph{A saved project to reopen.} \verb{<character(1)> | NULL: default NULL}. A JSON file previously written by the app's Export/Save
+(read via \code{\link[arpillar:report_from_json]{arpillar::report_from_json()}}). \code{NULL} starts a fresh
+"Untitled report".}
+
+\item{data}{\emph{Datasets to register before launch.} \verb{<character>: default NULL}. A named vector/list of paths to \code{.parquet}/\code{.xpt}/\code{.json} files;
+each name becomes the catalog-visible dataset name (e.g. \code{c(ADSL = "adsl.parquet")}). \code{NULL} opens an empty catalog.}
 }
 \value{
-Called for its side effect of running the Shiny application; does not
-return a value.
+Called for its side effect of running the Shiny application; does
+not return a value.
 }
 \description{
-Opens the local-first Shiny application. This is the scaffold entry point; the
-submission-native dual-rail report builder is built out on top of it.
+Opens the local-first Shiny application: a submission-native report
+builder over the \code{arpillar} engine. Every module communicates only through
+one injected store (design spec 5.1); this function is the sole place that
+constructs it.
 }

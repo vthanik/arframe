@@ -47,10 +47,11 @@ ar_theme <- function() {
   system.file("www", file, package = "arframe")
 }
 
-#' The Galley chrome stylesheets, served from the package `www/` and linked
-#' into `<head>`. Linked (not inlined) so the `@font-face` rules' relative
-#' `url("fonts/...")` resolve against the stylesheet URL and the self-hosted
-#' IBM Plex files load. Registers the `arwww` resource path once per session.
+#' The Galley chrome stylesheets and the client bridge script, served from
+#' the package `www/` and linked into `<head>`. Linked (not inlined) so the
+#' `@font-face` rules' relative `url("fonts/...")` resolve against the
+#' stylesheet URL and the self-hosted IBM Plex files load. Registers the
+#' `arwww` resource path once per session.
 #' @noRd
 .head_assets <- function() {
   www <- system.file("www", package = "arframe")
@@ -60,6 +61,7 @@ ar_theme <- function() {
   shiny::addResourcePath("arwww", www)
   htmltools::tags$head(
     htmltools::tags$link(rel = "stylesheet", href = "arwww/tokens.css"),
-    htmltools::tags$link(rel = "stylesheet", href = "arwww/arframe.css")
+    htmltools::tags$link(rel = "stylesheet", href = "arwww/arframe.css"),
+    htmltools::tags$script(src = "arwww/arframe.js")
   )
 }

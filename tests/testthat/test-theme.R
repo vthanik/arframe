@@ -7,17 +7,19 @@ test_that("ar_theme is Bootstrap brand variables only, Galley values", {
   )
 })
 
-test_that("head assets link both stylesheets from one resource path", {
-  # .head_assets() wraps its <link> tags in tags$head() (verified against a
-  # live-served Shiny app: an UNwrapped <link> stays in <body>, which is
-  # non-standard placement). htmltools::renderTags() correspondingly splits
-  # head-destined content into $head, separate from $html (the body stream)
-  # -- so a plain as.character(tagList(...)) can never see it; inspect $head.
+test_that("head assets link both stylesheets and the bridge script from one resource path", {
+  # .head_assets() wraps its <link>/<script> tags in tags$head() (verified
+  # against a live-served Shiny app: an UNwrapped <link> stays in <body>,
+  # which is non-standard placement). htmltools::renderTags() correspondingly
+  # splits head-destined content into $head, separate from $html (the body
+  # stream) -- so a plain as.character(tagList(...)) can never see it;
+  # inspect $head.
   head <- as.character(
     htmltools::renderTags(htmltools::tagList(.head_assets()))$head
   )
   expect_match(head, "arwww/tokens.css", fixed = TRUE)
   expect_match(head, "arwww/arframe.css", fixed = TRUE)
+  expect_match(head, "arwww/arframe.js", fixed = TRUE)
 })
 
 test_that("Galley ink/paper pairs hold WCAG AA", {
