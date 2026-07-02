@@ -96,9 +96,10 @@ test_that("a category row commits SEX %in% F and the live count matches filter_c
 
   shiny::testServer(mod_card_filters_server, args = list(store = fx$store), {
     session$setInputs(f_add = 1)
-    # The column picker posts the packed NAME\x1fTYPE choice (the same
-    # rich-picker contract as the Roles pane).
-    session$setInputs(f_col_1 = "SEX\x1fcategory")
+    # The column picker posts the packed NAME\x1fSQL_TYPE choice (the
+    # same rich-picker contract as the Roles pane; the type half is the
+    # RAW SQL type -- only the name half drives the commit).
+    session$setInputs(f_col_1 = "SEX\x1fVARCHAR")
     session$setInputs(f_val_1 = "F")
 
     filters <- shiny::isolate(selected_object(store))@filters
@@ -125,7 +126,7 @@ test_that("include-missing folds into the committed predicate", {
 
   shiny::testServer(mod_card_filters_server, args = list(store = fx$store), {
     session$setInputs(f_add = 1)
-    session$setInputs(f_col_1 = "SEX\x1fcategory")
+    session$setInputs(f_col_1 = "SEX\x1fVARCHAR")
     session$setInputs(f_val_1 = "F")
     session$setInputs(f_miss_1 = TRUE)
 
@@ -145,7 +146,7 @@ test_that("is.na hides the value control and commits value-less", {
 
   shiny::testServer(mod_card_filters_server, args = list(store = fx$store), {
     session$setInputs(f_add = 1)
-    session$setInputs(f_col_1 = "SEX\x1fcategory")
+    session$setInputs(f_col_1 = "SEX\x1fVARCHAR")
     session$setInputs(f_op_1 = "is.na")
     session$flushReact()
 
@@ -166,7 +167,7 @@ test_that("a measure row parses the typed comparison value as numeric", {
 
   shiny::testServer(mod_card_filters_server, args = list(store = fx$store), {
     session$setInputs(f_add = 1)
-    session$setInputs(f_col_1 = "AGE\x1fmeasure")
+    session$setInputs(f_col_1 = "AGE\x1fDOUBLE")
     session$setInputs(f_op_1 = ">=")
     session$setInputs(f_val_1 = "65")
 
@@ -184,7 +185,7 @@ test_that("an incomplete row is NOT committed and shows the honest badge", {
 
   shiny::testServer(mod_card_filters_server, args = list(store = fx$store), {
     session$setInputs(f_add = 1)
-    session$setInputs(f_col_1 = "SEX\x1fcategory")
+    session$setInputs(f_col_1 = "SEX\x1fVARCHAR")
     session$flushReact()
 
     # Column + default op, but no value yet: the engine would silently
@@ -200,7 +201,7 @@ test_that("removing a row uncommits it", {
 
   shiny::testServer(mod_card_filters_server, args = list(store = fx$store), {
     session$setInputs(f_add = 1)
-    session$setInputs(f_col_1 = "SEX\x1fcategory")
+    session$setInputs(f_col_1 = "SEX\x1fVARCHAR")
     session$setInputs(f_val_1 = "F")
     expect_length(shiny::isolate(selected_object(store))@filters, 1L)
 
@@ -236,5 +237,43 @@ test_that("the draft seeds from object@filters on selection change", {
     store$rv$selected <- id_b
     session$flushReact()
     expect_identical(shiny::isolate(store$rv$filter_draft), list())
+  })
+})
+
+test_that("REGRESSION: the pane computes while hidden (tab flip is client-only)", {
+  # Same mod_data lesson as the Options pane -- see that test's note.
+  src <- paste(deparse(body(mod_card_filters_server)), collapse = "\n")
+  expect_match(
+    src,
+    'outputOptions(output, "pane", suspendWhenHidden = FALSE)',
+    fixed = TRUE
+  )
+  expect_match(
+    src,
+    'outputOptions(output, "count", suspendWhenHidden = FALSE)',
+    fixed = TRUE
+  )
+})
+
+test_that("REGRESSION: a committed row re-seeds its picker with a REAL choice value", {
+  # The picker's choices are packed NAME\x1fSQL_TYPE; seeding the selection
+  # with the ROLE type ("SAFFL\x1fcategory") matches nothing, so selectize
+  # falls back to the first column and its bind-post RESETS the freshly
+  # committed row (seen on the real CDISC pilot mount).
+  fx <- .mcf_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_filters_server, args = list(store = fx$store), {
+    session$setInputs(preset_safety = 1)
+    session$flushReact()
+    html <- output$pane$html
+    opt <- regmatches(
+      html,
+      regexpr("<option[^>]*value=\"SAFFL[^\"]*\"[^>]*>", html)
+    )
+    expect_length(opt, 1L)
+    # Packed with the SQL type (matches a choice) and actually selected.
+    expect_match(opt, "SAFFL\x1fVARCHAR", fixed = TRUE)
+    expect_match(opt, "selected", fixed = TRUE)
   })
 })

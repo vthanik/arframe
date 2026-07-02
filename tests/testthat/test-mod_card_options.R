@@ -334,3 +334,21 @@ test_that("the pane renders empty (no crash) with no selection", {
     expect_no_match(output$pane$html %||% "", "ar-opt-sec")
   })
 })
+
+test_that("REGRESSION: the pane computes while hidden (tab flip is client-only)", {
+  # The inspector tab flip never reaches the server (a pure class change),
+  # so a suspended output leaves the Options tab blank until an unrelated
+  # re-layout. outputOptions() is not introspectable under testServer's
+  # mock session, so pin the call in the server body instead.
+  src <- paste(deparse(body(mod_card_options_server)), collapse = "\n")
+  expect_match(
+    src,
+    'outputOptions(output, "pane", suspendWhenHidden = FALSE)',
+    fixed = TRUE
+  )
+  expect_match(
+    src,
+    'outputOptions(output, "opt_msg", suspendWhenHidden = FALSE)',
+    fixed = TRUE
+  )
+})

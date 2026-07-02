@@ -146,7 +146,16 @@
   } else {
     "category"
   }
-  selected <- if (has_col) .pack_item_choice(row$column, type) else character(0)
+  # The picker's choices are packed with the raw SQL type (that is what
+  # `.eligible_picker()` builds and what search matches on) -- the
+  # re-seeded selection must be packed the SAME way or selectize ignores
+  # it and the bind-post resets the row to the first column.
+  selected <- if (has_col) {
+    sql_hit <- items$sql_type[items$name == row$column]
+    .pack_item_choice(row$column, if (length(sql_hit) == 1L) sql_hit else "")
+  } else {
+    character(0)
+  }
 
   shiny::tags$div(
     class = "ar-flt-row",
@@ -330,6 +339,12 @@ mod_card_filters_server <- function(id, store) {
       )
     })
 
+    # The inspector tab flip is a pure client-side class change the server
+    # never sees (the mod_data lesson): a hidden pane's outputs must keep
+    # computing or the Filters tab opens blank.
+    shiny::outputOptions(output, "pane", suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "count", suspendWhenHidden = FALSE)
+
     # ---- presets ----
     shiny::observeEvent(input$preset_safety, {
       store$rv$filter_draft <- .seed_draft(list(.SAFETY_FILTER))
@@ -370,7 +385,15 @@ mod_card_filters_server <- function(id, store) {
           if (identical(row$column, name)) {
             return()
           }
-          type <- strsplit(choice, "\x1f", fixed = TRUE)[[1]][2]
+          # The packed half is the raw SQL type; the op default needs the
+          # ROLE type (measure vs category/date) -- look it up.
+          obj <- selected_object(store)
+          if (is.null(obj)) {
+            return()
+          }
+          items <- arpillar::data_items(store$con, obj@dataset)
+          hit <- items$type[items$name == name]
+          type <- if (length(hit) == 1L) hit else "category"
           row$column <- name
           # The op default follows the column's shape: set-membership for
           # category/date, comparison for a measure.

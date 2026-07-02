@@ -459,6 +459,12 @@ mod_card_options_server <- function(id, store) {
       )
     })
 
+    # The inspector tab flip is a pure client-side class change the server
+    # never sees (the mod_data lesson): a hidden pane's outputs must keep
+    # computing or the Options tab opens blank.
+    shiny::outputOptions(output, "pane", suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "opt_msg", suspendWhenHidden = FALSE)
+
     # ---- title section commits ----
     shiny::observeEvent(input$title, {
       obj <- selected_object(store)

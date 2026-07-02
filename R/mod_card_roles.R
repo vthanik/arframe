@@ -160,6 +160,11 @@
     "    '</div>' +",
     "    '<div class=\"ar-picker-option-type ar-mono\">' + ty + '</div>' +",
     "    '</div>';",
+    "}, item: function(item, escape) {",
+    # The SELECTED display (closed control) shows the bare name -- the
+    # two-line option template overflows a closed, card-width control.
+    "  var nm = escape(item.value.split('\\u001f')[0]);",
+    "  return '<div class=\"ar-picker-item\">' + nm + '</div>';",
     "} }"
   ))
   opts <- list(

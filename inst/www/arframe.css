@@ -1665,8 +1665,15 @@ input[type="radio"] {
 }
 .ar-flt-row-main {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+}
+/* The column picker takes its own full line; op + value + remove wrap
+   below -- a 260px card cannot seat all four inline. */
+.ar-flt-row-main > .form-group:first-child,
+.ar-flt-row-main > .shiny-input-container:first-child {
+  flex: 1 1 100%;
 }
 .ar-flt-row-main .form-group,
 .ar-flt-row-main .shiny-input-container {
@@ -1719,5 +1726,11 @@ input[type="radio"] {
 }
 .ar-paper-filtertag:hover {
   border-color: var(--ar-accent);
+  color: var(--ar-ink);
+}
+
+/* The picker's closed/selected display (filters column picker). */
+.ar-picker-item {
+  font-size: 12px;
   color: var(--ar-ink);
 }
