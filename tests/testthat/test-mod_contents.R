@@ -482,3 +482,40 @@ test_that("a stale id stamps STALE in the TOC; broken still wins over stale", {
     }
   )
 })
+
+# ---- keyboard navigation (Task 17) -----------------------------------------
+
+test_that("mod_contents_server: Up/Down move the TOC selection and clamp at the ends", {
+  tc <- .tc_store()
+  withr::defer(arpillar::engine_close(tc$con))
+  shiny::testServer(mod_contents_server, args = list(store = tc$store), {
+    down <- function(n) session$setInputs(nav = list(dir = "down", nonce = n))
+    up <- function(n) session$setInputs(nav = list(dir = "up", nonce = n))
+    # The fixture leaves the last-added output selected; start from nothing so
+    # the first arrow's "pick the first output" branch is exercised.
+    store$rv$selected <- NULL
+    down(1)
+    expect_identical(store$rv$selected, tc$id1)
+    down(2)
+    expect_identical(store$rv$selected, tc$id2)
+    down(3)
+    expect_identical(store$rv$selected, tc$id3)
+    # Clamp at the bottom.
+    down(4)
+    expect_identical(store$rv$selected, tc$id3)
+    up(5)
+    expect_identical(store$rv$selected, tc$id2)
+  })
+})
+
+test_that("mod_contents_server: Enter opens the inspector on the selected output's first gap", {
+  tc <- .tc_store()
+  withr::defer(arpillar::engine_close(tc$con))
+  shiny::testServer(mod_contents_server, args = list(store = tc$store), {
+    store$rv$selected <- tc$id2 # the draft crosstab, roles unfilled
+    session$setInputs(activate = 1)
+    expect_true(store$rv$card)
+    expect_false(store$rv$insp_collapsed)
+    expect_true(store$rv$insp_tab %in% c("roles", "options", "filters"))
+  })
+})

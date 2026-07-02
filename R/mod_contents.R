@@ -397,6 +397,50 @@ mod_contents_server <- function(id, store) {
       store$rv$adding <- TRUE
     })
 
+    # Keyboard nav (Task 17): Up/Down walk the TOC selection through the
+    # ordered ids (posted by arframe.js's document keydown map); the first
+    # arrow with nothing selected picks the first output. The payload carries
+    # a nonce so a repeated same-direction press is a fresh event (both under
+    # the browser's `priority: event` and a testServer `setInputs`).
+    shiny::observeEvent(input$nav, {
+      dir <- input$nav$dir
+      ids <- vapply(
+        .all_objects(store$rv$report),
+        function(o) o@id,
+        character(1)
+      )
+      if (length(ids) == 0L) {
+        return()
+      }
+      if (is.null(store$rv$selected)) {
+        store$rv$selected <- ids[[1]]
+        return()
+      }
+      cur <- match(store$rv$selected, ids)
+      if (is.na(cur)) {
+        cur <- 1L
+      }
+      nxt <- if (identical(dir, "up")) {
+        max(1L, cur - 1L)
+      } else {
+        min(length(ids), cur + 1L)
+      }
+      store$rv$selected <- ids[[nxt]]
+    })
+
+    # Enter opens the inspector on the selected output's FIRST unmet region
+    # (a ready output opens on the title block) -- the keyboard twin of
+    # clicking a ghost slot / the error-summary jump link.
+    shiny::observeEvent(input$activate, {
+      obj <- selected_object(store)
+      if (is.null(obj)) {
+        return()
+      }
+      v <- arpillar::validate_output(obj)
+      region <- if (nrow(v) > 0L) .ghost_region(v$control_id[[1]]) else "title"
+      open_card(store, region)
+    })
+
     invisible(NULL)
   })
 }

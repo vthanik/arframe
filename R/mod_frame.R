@@ -45,17 +45,23 @@ mod_frame_ui <- function(id, report_body, data_body, qc_body) {
     shiny::div(class = "ar-bar-divider"),
     .frame_title(ns),
     shiny::div(class = "ar-bar-spacer"),
-    .action_btn(
-      ns("undo_btn"),
-      .icon("undo", 14),
-      variant = "link",
-      class = "ar-icon-btn"
+    shiny::tagAppendAttributes(
+      .action_btn(
+        ns("undo_btn"),
+        .icon("undo", 14),
+        variant = "link",
+        class = "ar-icon-btn"
+      ),
+      `aria-label` = "Undo"
     ),
-    .action_btn(
-      ns("redo_btn"),
-      .icon("redo", 14),
-      variant = "link",
-      class = "ar-icon-btn"
+    shiny::tagAppendAttributes(
+      .action_btn(
+        ns("redo_btn"),
+        .icon("redo", 14),
+        variant = "link",
+        class = "ar-icon-btn"
+      ),
+      `aria-label` = "Redo"
     ),
     .mode_btn(ns("mode_qc"), "qc", "QC"),
     # Empty on the server -- arframe.js fills it per the CLIENT's OS
@@ -72,7 +78,15 @@ mod_frame_ui <- function(id, report_body, data_body, qc_body) {
       class = "ar-btn-ink action-button",
       "Export package"
     ),
-    shiny::downloadLink(ns("export_dl"), label = NULL, class = "ar-hidden-dl")
+    shiny::tagAppendAttributes(
+      shiny::downloadLink(
+        ns("export_dl"),
+        label = NULL,
+        class = "ar-hidden-dl"
+      ),
+      `aria-hidden` = "true",
+      tabindex = "-1"
+    )
   )
 }
 

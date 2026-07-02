@@ -244,6 +244,41 @@ $(document).on("keydown", function (e) {
   Shiny.setInputValue(ns + "-dismiss", Date.now(), { priority: "event" });
 });
 
+// Keyboard navigation (Task 17): in Report mode, Up/Down walk the TOC
+// selection and Enter opens the inspector on the selected output's first gap.
+// Suppressed while focus is in a form field, a button, or a link, so typing
+// and native activation are never hijacked -- the map only acts when focus is
+// on the page chrome itself. Namespaced to the fixed "contents" module id,
+// matching the data-mode delegated handlers' convention.
+$(document).on("keydown", function (e) {
+  if (e.key !== "ArrowUp" && e.key !== "ArrowDown" && e.key !== "Enter") {
+    return;
+  }
+  var ws = document.querySelector(".ar-workspace");
+  if (!ws || !ws.classList.contains("ar-mode-report")) return;
+  // `e.target` is normally the focused Element; guard `.closest` in case it is
+  // the document/documentElement (which lack it) so the handler never throws.
+  if (
+    e.target &&
+    typeof e.target.closest === "function" &&
+    e.target.closest(
+      "input, textarea, select, button, a, [contenteditable], .selectize-input"
+    )
+  ) {
+    return;
+  }
+  if (e.key === "Enter") {
+    Shiny.setInputValue("contents-activate", Date.now(), { priority: "event" });
+  } else {
+    e.preventDefault();
+    Shiny.setInputValue(
+      "contents-nav",
+      { dir: e.key === "ArrowUp" ? "up" : "down", nonce: Date.now() },
+      { priority: "event" }
+    );
+  }
+});
+
 // Move focus into the dialog the moment it appears (design spec #6's
 // "focus != selection" rule). Client-driven, NOT a server "ar-focus"
 // message: `output$overlay`'s first mount of the search box triggers

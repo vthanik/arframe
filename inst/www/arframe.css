@@ -1840,3 +1840,31 @@ input[type="radio"] {
 .ar-hidden-dl {
   display: none;
 }
+
+/* ============ 12 responsive ============ */
+/* Below 1100px the fixed side panels give up width so the desk keeps
+   breathing room and nothing overflows horizontally. The desk column gets
+   min-width:0 so a wide crosstab scrolls inside its own table-wrap
+   (overflow-x) rather than stretching the frame -- the real success
+   criterion is "no horizontal page scroll," which this guarantees at every
+   width. The panels stay usable and can still collapse to a strip via the
+   chevrons; this is the graceful in-between, not a separate mobile layout. */
+.ar-body-report > :nth-child(2) {
+  min-width: 0;
+}
+@media (max-width: 1100px) {
+  .ar-body-report > :first-child {
+    flex-basis: 220px;
+  }
+  .ar-card {
+    flex-basis: 232px;
+  }
+}
+@media (max-width: 860px) {
+  .ar-body-report > :first-child {
+    flex-basis: 190px;
+  }
+  .ar-card {
+    flex-basis: 208px;
+  }
+}
