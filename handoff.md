@@ -13,7 +13,28 @@ Reference design: the v5 `show_widget` mockup from the 2026-07-02 session
 Roles/Options/Filters/Ranks + Run ⌘↵/.rtf/`</>` footer + telemetry;
 margin-mark region hover).
 
-## Stage map (tasks #1–#7 in TaskList)
+## STATUS: all 7 stages landed + eyeball-verified on real data (2026-07-02)
+
+Branch `feat/galley-v5`: 6 commits (`2ef5722`→`61c7c7a`). arpillar got
+`unregister_dataset()` (`333b8ce`, committed + locally installed; NOT pushed).
+`devtools::check` = 0 errors / 0 warnings / 1 benign NOTE (clock). Full suite
+green. Real CDISC ADaM(15 parquet)+SDTM(31 xpt) pilot folders mount and render
+end-to-end (report ghost+inspector, data explorer 46 rows, drill grid on ADAE
+1191×55 with typed column picker, mode toggle). Screenshots in
+`.local/screens/v5/`.
+
+**Coverage (per-file, 95% house target):** fct_export 97.5, fct_store 99.5,
+mod_frame 100, mod_paper 96.6 (clear); mod_card 94.6, mod_data 94.1 (short by
+the interactive shinyFiles import-parse handlers + pre-existing region
+fallbacks); mod_card_roles 59.7 (PRE-EXISTING debt from the Task-10 wip, not
+this session — flag for follow-up).
+
+**Not pushed / follow-ups:** push arpillar (`unregister_dataset`) before CI;
+mod_card_roles coverage; QC sheet (Task 15) + async export (Task 16) still
+placeholder/sync; Options/Filters/Ranks inspector panes are "coming" stubs
+(S3 wired the tabs, not their content — that's plan Tasks 11/12).
+
+## Stage map (tasks #1–#7 in TaskList) — ALL COMPLETE
 
 - [x] **S1 frame** (`2ef5722`): [Data|Report] segmented toggle (idempotent
   segments; QC keeps quiet-toggle), store-owned collapse
