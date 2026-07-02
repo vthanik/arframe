@@ -339,3 +339,28 @@ Shiny.addCustomMessageHandler("ar-paper-width", function (m) {
   el.classList.remove("ar-paper--fit", "ar-paper--page");
   el.classList.add(m.mode === "page" ? "ar-paper--page" : "ar-paper--fit");
 });
+
+// The galley card (Task 10): the floating/pinned class flip, and Esc-to-
+// close when unpinned. `ar-card-pin`'s `pinned` flag ALSO drives whether
+// Esc should act -- both read off `.ar-card`'s own current class rather
+// than a second server-tracked flag, so the two can never disagree about
+// what "currently pinned" means.
+Shiny.addCustomMessageHandler("ar-card-pin", function (m) {
+  var el = document.getElementById(m.id);
+  if (!el) return;
+  el.classList.toggle("ar-pinned", !!m.pinned);
+});
+
+// Esc closes the card, same as the Add-output overlay's own Esc handler
+// (mirroring its "read the namespace off the mounted element's own id"
+// technique) -- but ONLY when the card is not pinned, matching
+// `close_card()`'s own no-op-while-pinned contract server-side (this is a
+// CLIENT-side mirror of that rule so an unnecessary round-trip never
+// fires for a keypress that would be dropped anyway).
+$(document).on("keydown", function (e) {
+  if (e.key !== "Escape") return;
+  var card = document.querySelector(".ar-card");
+  if (!card || card.classList.contains("ar-pinned")) return;
+  var ns = card.id.replace(/-card$/, "");
+  Shiny.setInputValue(ns + "-close", Date.now(), { priority: "event" });
+});

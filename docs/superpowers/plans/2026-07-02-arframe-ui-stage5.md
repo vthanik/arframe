@@ -691,6 +691,65 @@ registers the `as.tags` S3 method).
 
 ---
 
+## ADDENDUM (2026-07-02) — Outputs model reframe: generators + presets + the occurrence engine
+
+The Outputs catalog is **generators (reusable engine macros) + presets (named configs)**, not template-per-table (decided with the user; see memory [[arframe-outputs-model]]). Two new arpillar tasks (Task E1, Task E2) reopen `feat/ui-prereqs` and run BEFORE resuming arframe. Task 8 (Add-output) is reframed to a generator-picker + preset-library + Save-as-preset. Everything else (Tasks 4–7, 9–17) stands; the store's `add_output` gains a preset path.
+
+### TLF numbering model (decided with the user 2026-07-02)
+
+TLF numbers (`14.1.1`, `14.3.1`, ...) are **editable output metadata, preset-seeded** — NOT auto-derived from output type (real numbering is domain/SAP-shell driven per ICH E3: 14.1 demographics, 14.2 efficacy, 14.3 safety, 16.2 listings; figures follow their domain, not "all 14.2"). Model:
+- Store on the output as **`options$number`** (chr, e.g. `"14.3.1"`) + **`options$number_label`** (chr: `"Table"`/`"Figure"`/`"Listing"`). No S7 change (lives in `options`, like population/subject_id).
+- **Presets seed it** (E2): each preset carries a canonical `number` + `number_label` in its options prefill (Demographics -> Table 14.1.1, AE incidence -> Table 14.3.1, KM -> Figure 14.2.1...).
+- **`add_output` (store)**: from a preset -> copy its number; from a bare generator -> auto-suggest the next free number within that kind group (next `14.1.x` for a table) as a starting value. Always editable after.
+- **Editable** in the Options pane title region (Task 11): a text field for the number + a label-word select.
+- **Displayed** from `options$number`, never re-derived: the **TOC groups by kind (Tables/Figures/Listings) but shows `options$number`** (Task 7 RETROFIT — replace the current auto `14.1.n` index with `options$number %||% <auto-suggest>`), and the **paper title block** (Task 9) shows `"<number_label> <number>"` above the title.
+- **Retrofit note (Task 7 is already built):** its TOC auto-derives the number by kind today; when Task 9 (title block) lands, retrofit both display surfaces to read `options$number`. Small, tracked in the ledger.
+
+### Task E1: arpillar — the occurrence generator (AE / SOC▸PT)
+
+**Repo:** `/Users/vignesh/projects/r/arpillar` (branch `feat/ui-prereqs`)
+
+**Files:**
+- Create: `R/fct_render_occurrence.R` (the occurrence ARD + display legs) — or extend `fct_render_ard.R`/`fct_render_table.R` if that fits the existing structure better; implementer decides after reading them.
+- Modify: `R/fct_render_ard.R` (`build_ard` dispatch: add `"occurrence"`), `R/fct_render_table.R` (`render_display`/`render_spec` handle the hierarchy shape), `R/fct_status.R` (`.SLOT_REQS$occurrence`), `R/fct_templates.R` (`option_schema("occurrence")`)
+- Test: `tests/testthat/test-render_occurrence.R`, `tests/testthat/test-golden-occurrence.R` (byte-golden)
+
+**Grounding — DONE.** Full source-grounded brief (explorer pattern + cards 0.8.0 API verified + exact arpillar change-sites + a hand-checkable ADAE fixture) is in the grounding agent's output file: `/private/tmp/claude-501/-Users-vignesh-projects-r-explorer/358cef77-6981-4ea5-b5c4-2a64d5aca11b/tasks/a1614031dfa971963.output` (read it first — it is your implementation brief). Key verified facts: `cards::ard_stack_hierarchical(data, variables, by, id, denominator, ...)` — `id`+`denominator` REQUIRED; first `variables` entry = top level; subject-level dedup is automatic (last-row-per-group); `pivot_across` on the result gives `soc, label, row_type, <arms>` columns.
+
+**DECISIONS (locked — do not re-litigate):**
+1. **Hierarchy role = a dedicated `"hierarchy"` slot** (ordered list of category items, first = top/SOC), read by a new `.hierarchy_items(object)` via the existing `.find_role` — NOT role_type-gated, so `aaa_class.R` `data_item`/validator is UNTOUCHED.
+2. **Two-dataset (the critical finding):** `object@dataset` = the event frame (ADAE). The subject-level denominator comes from a SECOND registered dataset named by **`object@options$population`** (a dataset id string), pulled via its own `.collect_filtered` — reusing `data` as the denominator gives wrong (event-count) N's (verified). Subject id = **`object@options$subject_id %||% "USUBJID"`**. Keep `object`'s S7 class unchanged (population/subject_id live in `options`, matching the explorer) — no new S7 property.
+3. **v1 scope = 1 or 2 hierarchy levels** (PT-only, or SOC▸PT — the canonical AE table). `validate_output` rejects >2 with a clear "3+ levels coming" message; the cards call is N-capable for free, but the display walk is built for ≤2 now (N-level display is a fast-follow, noted, not built).
+4. **Render = indent-via-label-text** (arpillar's existing contract): SOC header row (`label="GI"`) + `"  "`-indented PT rows (`label="  Nausea"`, cells `"n (pct)"`, population-N base), reusing `.row`/`.arm_levels`/`.fmt_count_cell`. Do NOT port tabular's `col_spec(usage="group")` machinery — the leading-space idiom is arpillar's way and is simpler.
+
+**Contract:**
+- `object@type == "occurrence"`. Roles: `treatment`/`group` (exactly 1 arm) + **`hierarchy`** (an ORDERED ≥1 list of classification variables, e.g. AEBODSYS ▸ AEDECOD; 1 level = flat PT-only, 2 = SOC▸PT, N generalizes). Population denominator = the filtered subject frame (incidence % base = population N per arm, matching the header N).
+- `build_ard(con, occurrence_obj)` → cards ARD via `ard_stack_hierarchical` over the ordered hierarchy vars, `.by = arm`, subject-level (distinct-subject incidence, not event rows). `render_display` → SOC header rows + indented PT rows, `n (pct)` per arm (pct 1dp, population-N base); ordered by descending leaf frequency by default (`options$hier_sort`). `render_spec`/`render_rtf` emit it (indentation via the stub column). An occurrence RTF **byte-golden** (frozen, deterministic — like demographics).
+- `option_schema("occurrence")`: at least `hier_sort` (choice: freq/alpha, default freq), `cutoff` (numeric incidence % threshold on the leaf, default 0), `top_n` (int, leaf, default 0 = all), `overall_row` (flag, an "any event" row). Match whatever the render leg actually reads (pin keys = the byte-golden contract, per the option_schema discipline).
+- `.SLOT_REQS$occurrence`: `roles-treatment` (treatment|group, exactly 1) + `roles-hierarchy` (hierarchy, ≥1). `output_status` "ready" ⟺ build_ard accepts (the oracle property extends to occurrence).
+
+**Steps (TDD):** ground → failing tests (ARD shape: SOC/PT rows, incidence counts hand-checked on a small ADAE fixture; display rows; the golden) → run to fail → implement → document + `devtools::test()` (prior 326 + new; ALL goldens incl. the new occurrence one byte-stable) → `devtools::check(args="--no-manual")` 0/0 (known time NOTE only) → `air format` → commit `feat(occurrence): SOC▸PT adverse-event generator + byte-golden`.
+
+**Check:** a 2-level SOC▸PT occurrence table renders to a deterministic RTF byte-golden; incidence %s use the population-N base per arm; `output_status` predicts render acceptance for occurrence objects.
+
+### Task E2: arpillar — reframe `templates()` into `generators()` + `presets()`
+
+**Repo:** `/Users/vignesh/projects/r/arpillar` (branch `feat/ui-prereqs`)
+
+**Files:**
+- Modify/replace: `R/fct_templates.R` → `R/fct_generators.R` (`generators()`, `generator(id)`) + `R/fct_presets.R` (`presets()`, `preset(id)`); keep `option_schema()` (add occurrence). Update `NAMESPACE`, the `.Rd`, and `tests/testthat/test-templates.R` → `test-generators.R` + `test-presets.R`.
+
+**Interfaces:**
+- `generators()` → named list of the engine macros; each: `id` (= the engine `type`: `summary`/`crosstab`/`occurrence`/`km`/`line`/`box`), `label`, `kind` (`table`/`figure`), `description`, `slots` (`list(slot, label, accepts, min, max)`). This is the current `templates()` content REPURPOSED as generators, PLUS the occurrence generator (slots: treatment + hierarchy [min 1, max Inf, accepts category]).
+- `presets()` → named list of the STARTER library; each: `id`, `label`, `domain` (`"Safety"`/`"Efficacy"`/`"PK"`/`"General"`), `generator` (a `generators()` id), `roles` (prefill: slot → variable names, using CDISC-canonical names as sensible defaults, e.g. TRT01P/AGE/SEX/AEBODSYS/AEDECOD/AVAL/AVISIT/CNSR), `options`, `filters`, `title`, `footnotes`. Ship ~15–20 across domains: demographics, disposition, AE overall summary, AE by SOC/PT, SAE, deaths, exposure, vital signs by visit, labs by visit, KM (OS), mean-over-time, box-by-visit, a categorical crosstab, etc. `preset(id)` aborts `arpillar_error_input` on unknown id.
+- `option_schema(type)` gains `"occurrence"` (from Task E1).
+
+**Steps (TDD):** failing tests (generators keyed by the 6 engine types with correct slots incl. occurrence's hierarchy slot; presets each reference a real generator id and only fill slots that generator exposes; every preset's `domain` in the known set; `preset("nope")` aborts) → implement → document + test + `air format` → commit `feat(catalog): generators + presets replace the templates registry`.
+
+**Check:** every preset's `generator` is a real `generators()` id and its prefilled `roles` slots are a subset of that generator's slots; `generators()` includes `occurrence`.
+
+---
+
 ### Task 4: arframe — Galley tokens, fonts, theme, atoms
 
 **Repo:** `/Users/vignesh/projects/r/arframe`
