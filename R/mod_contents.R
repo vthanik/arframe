@@ -296,12 +296,21 @@ mod_contents_server <- function(id, store) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # Keyed on membership/titles/statuses ONLY, never on order -- reactively
-    # recomputing rows already achieves this (row order here always
-    # reflects the ONE order that exists, `.all_objects()`'s document
-    # order); SortableJS, not this renderUI, owns the DOM order between
-    # drags, and a reorder never re-derives from the DOM, only from the
-    # store's own object list after `move_output()` has already applied.
+    # This DOES re-render on order change: `.toc_rows()` reads
+    # `store$rv$report`, and `move_output()`/`commit()` reassign that
+    # reactive on every reorder, so a drop always re-derives rows fresh from
+    # the store's own object list (never from the DOM) and re-numbers them.
+    # That is correct, not merely tolerated -- SortableJS only owns the DOM
+    # order WHILE a drag is physically in progress (`onEnd` posts the order
+    # once, on drop), and `arInitSortables()`'s `_arSortable` guard cleanly
+    # re-binds a fresh Sortable instance to the replaced rows after this
+    # renderUI runs, so numbering stays correct across repeated drags. The
+    # one residual risk is a DIFFERENT module committing to `rv$report`
+    # while a drag is physically mid-gesture (a renderUI mid-drag would
+    # swap out the very DOM nodes the user's mouse is dragging) -- today
+    # nothing else can commit to this store concurrently, so it cannot
+    # happen; Task 9/10 introduces the first concurrent mutator and should
+    # revisit this (see `document.body.dataset.arDragging` in arframe.js).
     output$toc <- shiny::renderUI({
       rows <- .toc_rows(store$rv$report, store$rv$broken)
       groups <- .toc_groups(rows)

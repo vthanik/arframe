@@ -384,14 +384,19 @@ input[type="radio"] {
 .ar-toc-kebab-wrap.ar-pop-menu-open .ar-toc-kebab {
   opacity: 1;
 }
+/* `.ar-toc` scrolls (`overflow-y: auto`), which clips any absolutely-
+   positioned descendant to its own box -- a kebab popover opened on a row
+   near the bottom of a scrolled list would be cut off regardless of
+   z-index. `position: fixed` escapes that ancestor's clipping/scroll
+   context entirely (fixed is relative to the viewport, not any scrollable
+   ancestor), so arPositionPopover() in arframe.js computes top/left from
+   the trigger's getBoundingClientRect() on open and keeps it pinned as
+   the list scrolls under it. */
 .ar-pop-menu,
 .ar-pop {
   display: none;
-  position: absolute;
-  top: 100%;
-  right: 0;
+  position: fixed;
   z-index: 20;
-  margin-top: 4px;
   background: var(--ar-card);
   border: 1px solid var(--ar-paper-edge);
   border-radius: var(--ar-radius);

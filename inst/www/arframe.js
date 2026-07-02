@@ -67,7 +67,19 @@ function arInitSortables() {
       ghostClass: "ar-sortable-ghost",
       chosenClass: "ar-sortable-chosen",
       dragClass: "ar-sortable-drag",
+      // `document.body.dataset.arDragging` is a cheap "a drag is physically
+      // in progress" flag, set here and cleared in onEnd below. Nothing
+      // reads it today -- no re-render suppression is wired up, because
+      // nothing in the app can currently commit to a store's `rv$report`
+      // concurrently with a drag (see the renderUI comment in
+      // mod_contents.R). It is left here so the first concurrent-mutator
+      // task (Task 9/10) has a ready-made signal to defer its re-render on,
+      // instead of having to rediscover the need for one.
+      onStart: function () {
+        document.body.dataset.arDragging = "true";
+      },
       onEnd: function () {
+        delete document.body.dataset.arDragging;
         var attr = el.getAttribute("data-ar-sortable-attr");
         var order = Array.prototype.map.call(
           el.querySelectorAll(el.getAttribute("data-ar-sortable-item")),
@@ -89,6 +101,84 @@ $(document).on("shiny:value shiny:idle", function () {
   setTimeout(arInitSortables, 50);
 });
 document.addEventListener("DOMContentLoaded", arInitSortables);
+
+// The kebab popover portal: `.ar-toc` scrolls (`overflow-y: auto`), which
+// clips an absolutely-positioned popover opened on a row near the bottom of
+// a scrolled list regardless of z-index. The three popovers
+// (`.ar-pop-menu`, `.ar-pop-rename`, `.ar-pop-remove`) are `position: fixed`
+// in CSS -- relative to the viewport, so no scrollable ancestor can clip
+// them -- and this MutationObserver computes their on-screen position from
+// the trigger's own `getBoundingClientRect()` whenever mod_contents.R's
+// inline onclick handlers toggle one of the three `-open` classes onto its
+// `.ar-toc-kebab-wrap`. Watching the class attribute (rather than adding a
+// second click handler) needs no change to those onclick strings and reacts
+// identically whichever of the three popovers just opened. Right-aligned to
+// the wrap's right edge (matching the old `right: 0` layout); flips to open
+// upward, above the trigger, when there is not enough room below it in the
+// viewport.
+function arPositionPopover(wrap) {
+  // Which of the three popovers is open is read straight off which `-open`
+  // class `wrap` currently carries -- at most one is ever set at a time
+  // (every onclick that adds one first removes the other two).
+  var active = null;
+  if (wrap.classList.contains("ar-pop-menu-open")) {
+    active = wrap.querySelector(".ar-pop-menu");
+  } else if (wrap.classList.contains("ar-pop-rename-open")) {
+    active = wrap.querySelector(".ar-pop-rename");
+  } else if (wrap.classList.contains("ar-pop-remove-open")) {
+    active = wrap.querySelector(".ar-pop-remove");
+  }
+  if (!active) return;
+  var rect = wrap.getBoundingClientRect();
+  var margin = 4;
+  active.style.top = "";
+  active.style.bottom = "";
+  active.style.right = window.innerWidth - rect.right + "px";
+  active.style.left = "auto";
+  // Measure after display:flex is applied (the -open class is already on
+  // wrap by the time the observer callback runs) so offsetHeight reflects
+  // the real popover, not the display:none 0-height default.
+  var popHeight = active.offsetHeight;
+  var spaceBelow = window.innerHeight - rect.bottom;
+  if (spaceBelow < popHeight + margin && rect.top > popHeight + margin) {
+    active.style.bottom = window.innerHeight - rect.top + margin + "px";
+  } else {
+    active.style.top = rect.bottom + margin + "px";
+  }
+}
+var arPopoverObserver = new MutationObserver(function (mutations) {
+  mutations.forEach(function (m) {
+    if (m.target.classList.contains("ar-toc-kebab-wrap")) {
+      arPositionPopover(m.target);
+    }
+  });
+});
+// Unlike arInitSortables, this observer is attached ONCE and never needs
+// re-attaching on renderUI: `.ar-toc` is the OUTER static wrapper div from
+// mod_contents_ui() (see arframe.css #03), and Shiny's renderUI only ever
+// replaces the INNER `uiOutput("toc")` div's contents -- the `.ar-toc` node
+// itself is never removed or replaced, so `subtree: true` keeps observing
+// every row's kebab wrap across every reorder/rename/duplicate/remove.
+document.addEventListener("DOMContentLoaded", function () {
+  var toc = document.querySelector(".ar-toc");
+  if (!toc) return;
+  arPopoverObserver.observe(toc, {
+    attributes: true,
+    attributeFilter: ["class"],
+    subtree: true,
+  });
+});
+// Reposition an already-open popover if the window resizes under it (the
+// TOC's own scroll never needs this: `position: fixed` does not move with
+// scroll of a non-fixed ancestor, so the row can scroll away while the
+// popover stays put, exactly like a native OS context menu).
+window.addEventListener("resize", function () {
+  document
+    .querySelectorAll(
+      ".ar-toc-kebab-wrap.ar-pop-menu-open, .ar-toc-kebab-wrap.ar-pop-rename-open, .ar-toc-kebab-wrap.ar-pop-remove-open"
+    )
+    .forEach(arPositionPopover);
+});
 
 // The command-palette hint is platform-specific and can only be resolved in
 // the browser -- the server's OS is not the client's. Mac shows the Command
