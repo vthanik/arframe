@@ -40,14 +40,14 @@
 }
 
 #' One recommendation row: `preset_id`, `dataset`, and the display `label`
-#' ("<preset label> -- from <DATASET>").
+#' ("<preset label> \u2014 from <DATASET>").
 #' @noRd
 .rec_row <- function(preset_id, dataset) {
   pr <- arpillar::preset(preset_id)
   list(
     preset_id = preset_id,
     dataset = dataset,
-    label = paste0(pr$label, " -- from ", dataset)
+    label = paste0(pr$label, " \u2014 from ", dataset)
   )
 }
 

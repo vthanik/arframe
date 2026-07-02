@@ -70,7 +70,7 @@ test_that(".recommendations: one row per (dataset, preset) pair that will actual
   expect_true("mean_over_time ADVS" %in% pairs)
 })
 
-test_that(".recommendations: label is '<preset label> -- from <DATASET>'", {
+test_that(".recommendations: label is '<preset label> \u2014 from <DATASET>'", {
   fx <- .ao_store()
   withr::defer(arpillar::engine_close(fx$con))
 
@@ -84,7 +84,7 @@ test_that(".recommendations: label is '<preset label> -- from <DATASET>'", {
   expect_length(hit, 1L)
   expect_identical(
     hit[[1]]$label,
-    "Overall Summary of Adverse Events -- from ADAE"
+    "Overall Summary of Adverse Events \u2014 from ADAE"
   )
 })
 
@@ -357,22 +357,22 @@ test_that("recommendations include only fully-covered pairs; Demographics-from-A
       html <- output$overlay$html
       expect_match(
         html,
-        "Overall Summary of Adverse Events -- from ADAE",
+        "Overall Summary of Adverse Events \u2014 from ADAE",
         fixed = TRUE
       )
       expect_match(
         html,
-        "Adverse Events by System Organ Class and Preferred Term -- from ADAE",
+        "Adverse Events by System Organ Class and Preferred Term \u2014 from ADAE",
         fixed = TRUE
       )
       expect_match(
         html,
-        "Kaplan-Meier: Overall Survival -- from ADTTE",
+        "Kaplan-Meier: Overall Survival \u2014 from ADTTE",
         fixed = TRUE
       )
       expect_match(
         html,
-        "Distribution of Response by Visit -- from ADVS",
+        "Distribution of Response by Visit \u2014 from ADVS",
         fixed = TRUE
       )
 
@@ -382,17 +382,17 @@ test_that("recommendations include only fully-covered pairs; Demographics-from-A
       # cover demographics/mean_over_time, so those two are recommended.
       expect_no_match(
         html,
-        "Demographics and Baseline Characteristics -- from ADTTE",
+        "Demographics and Baseline Characteristics \u2014 from ADTTE",
         fixed = TRUE
       )
       expect_match(
         html,
-        "Demographics and Baseline Characteristics -- from ADSL",
+        "Demographics and Baseline Characteristics \u2014 from ADSL",
         fixed = TRUE
       )
       expect_match(
         html,
-        "Mean Change from Baseline Over Time -- from ADVS",
+        "Mean Change from Baseline Over Time \u2014 from ADVS",
         fixed = TRUE
       )
     }
