@@ -16,4 +16,4 @@ library(arframe)
 )
 arpillar::engine_close(.con)
 
-arframe(data = .paths)
+arframe(data = .paths, daemons = 0)

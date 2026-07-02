@@ -4,7 +4,7 @@
 \alias{arframe}
 \title{Launch the arframe report builder}
 \usage{
-arframe(project = NULL, data = NULL, folders = NULL)
+arframe(project = NULL, data = NULL, folders = NULL, daemons = 2L)
 }
 \arguments{
 \item{project}{\emph{A saved project to reopen.} \verb{<character(1)> | NULL: default NULL}. A JSON file previously written by the app's Export/Save
@@ -19,6 +19,11 @@ file (\code{.parquet}/\code{.xpt}/\code{.json}) is registered under a library no
 named for the folder, and appears in Data mode's SOURCES tree. This is
 the folder-first on-ramp -- point at an ADaM directory and the whole
 catalog populates.}
+
+\item{daemons}{\emph{Background render workers for async export.} \verb{<integer(1)>: default 2}. The size of the mirai daemon pool the Export package button
+renders on, so a multi-output export never freezes the galley (Task 16).
+Set to \code{0} to disable the pool entirely (export then requires the pool,
+so it is only useful for headless/test launches that never export).}
 }
 \value{
 Called for its side effect of running the Shiny application; does

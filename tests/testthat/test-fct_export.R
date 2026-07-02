@@ -136,18 +136,8 @@ test_that(".zip_export produces a readable archive containing the tree", {
   expect_true(any(grepl("programs/run-all.R", entries)))
 })
 
-test_that("mod_frame export downloadHandler zips a named package", {
-  fx <- .ex_store()
-  withr::defer(arpillar::engine_close(fx$con))
-  shiny::isolate(store <- fx$store)
-
-  shiny::testServer(mod_frame_server, args = list(store = fx$store), {
-    path <- output$export_btn
-    expect_match(basename(path), "\\.zip$")
-    expect_true(file.exists(path))
-    entries <- zip::zip_list(path)$filename
-    expect_true(any(grepl("report.json", entries)))
-    # The export is logged (the QC/incompleteness trail).
-    expect_match(store$rv$log[[length(store$rv$log)]], "export", fixed = TRUE)
-  })
-})
+# The Shiny wiring of the export button is async now (Task 16): it invokes an
+# ExtendedTask on the daemon pool and delivers via a hidden download link.
+# That reactive glue is browser-only; the render + package assembly are
+# covered in test-fct_async.R (daemon byte-identical + `.build_export_package(
+# rendered=)`), and the button/hidden-link affordances in test-mod_frame.R.

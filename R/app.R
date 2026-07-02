@@ -25,11 +25,16 @@
 #'   named for the folder, and appears in Data mode's SOURCES tree. This is
 #'   the folder-first on-ramp -- point at an ADaM directory and the whole
 #'   catalog populates.
+#' @param daemons *Background render workers for async export.* `<integer(1)>:
+#'   default 2`. The size of the mirai daemon pool the Export package button
+#'   renders on, so a multi-output export never freezes the galley (Task 16).
+#'   Set to `0` to disable the pool entirely (export then requires the pool,
+#'   so it is only useful for headless/test launches that never export).
 #'
 #' @return Called for its side effect of running the Shiny application; does
 #'   not return a value.
 #' @export
-arframe <- function(project = NULL, data = NULL, folders = NULL) {
+arframe <- function(project = NULL, data = NULL, folders = NULL, daemons = 2L) {
   con <- arpillar::engine_open()
   if (!is.null(data)) {
     for (nm in names(data)) {
@@ -38,6 +43,14 @@ arframe <- function(project = NULL, data = NULL, folders = NULL) {
   }
   report <- if (!is.null(project)) arpillar::report_from_json(project) else NULL
   store <- new_store(con, report = report)
+
+  # The async-export daemon pool (Task 16): a per-launch, named compute
+  # profile (NEVER set at package load -- that would spawn processes on
+  # `library(arframe)`). Torn down in `onStop()` below so a closed session
+  # leaves no orphan daemons.
+  if (daemons > 0L) {
+    mirai::daemons(daemons, .compute = "arframe")
+  }
 
   ui <- bslib::page_fillable(
     theme = ar_theme(),
@@ -91,6 +104,11 @@ arframe <- function(project = NULL, data = NULL, folders = NULL) {
     mod_qc_server("qc", store)
   }
 
-  shiny::onStop(function() arpillar::engine_close(con))
+  shiny::onStop(function() {
+    if (daemons > 0L) {
+      mirai::daemons(0, .compute = "arframe")
+    }
+    arpillar::engine_close(con)
+  })
   shiny::shinyApp(ui, server)
 }

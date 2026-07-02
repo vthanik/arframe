@@ -23,6 +23,11 @@ test_that("mod_frame_ui HTML contains the bar, mode buttons, statusbar, and all 
   expect_match(html, "ar-body-report", fixed = TRUE)
   expect_match(html, "ar-body-data", fixed = TRUE)
   expect_match(html, "ar-body-qc", fixed = TRUE)
+  # Async export (Task 16): a plain action button (not a download link) plus a
+  # hidden download link the server clicks once the zip is ready.
+  expect_match(html, 'id="frame-export_btn"', fixed = TRUE)
+  expect_match(html, 'id="frame-export_dl"', fixed = TRUE)
+  expect_match(html, "ar-hidden-dl", fixed = TRUE)
 })
 
 test_that("mod_frame_server: segmented mode is idempotent; QC toggles back (v5)", {

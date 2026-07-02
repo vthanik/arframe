@@ -110,4 +110,4 @@ library(arframe)
 arpillar::report_to_json(.report, path = .project)
 arpillar::engine_close(.con)
 
-arframe(project = .project, data = .paths)
+arframe(project = .project, data = .paths, daemons = 0)

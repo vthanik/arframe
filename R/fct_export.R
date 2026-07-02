@@ -61,8 +61,17 @@
 #' a summary `list(ready, skipped, dir, manifest)`. `stamp` is the ISO
 #' timestamp written into the manifest -- passed in (never `Sys.time()`
 #' inside) so a test can pin it.
+#'
+#' `rendered` selects the render leg. `NULL` (the default) renders every
+#' ready output synchronously here (the standalone/download path). A named
+#' `list(<id> = <path>)` -- the result of the async daemon task
+#' (`export_mirai()`) -- means the RTFs are ALREADY written into `outputs/`;
+#' this function then only classifies (present in the map -> ready, absent ->
+#' skipped/error) and assembles the cheap parts (programs, report.json,
+#' manifest). Either way the outputs/ filenames are the `.output_slug()`
+#' slugs, so the manifest linkage is identical.
 #' @noRd
-.build_export_package <- function(store, dir, stamp) {
+.build_export_package <- function(store, dir, stamp, rendered = NULL) {
   report <- store$rv$report
   out_dir <- file.path(dir, "outputs")
   prog_dir <- file.path(dir, "programs")
@@ -87,7 +96,14 @@
       ),
       error = function(e) NULL
     )
-    if (identical(status, "ready") && .export_render_one(store, obj, out_dir)) {
+    # Sync leg renders here; async leg trusts the daemon's already-written
+    # file (present in `rendered` -> it rendered ok).
+    render_ok <- if (is.null(rendered)) {
+      identical(status, "ready") && .export_render_one(store, obj, out_dir)
+    } else {
+      obj@id %in% names(rendered)
+    }
+    if (render_ok) {
       ready <- c(ready, obj@id)
       rows[[length(rows) + 1L]] <- .manifest_row(
         obj,

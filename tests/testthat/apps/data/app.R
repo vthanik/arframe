@@ -21,4 +21,4 @@ library(arframe)
 .adam <- .mk("adam", c("adsl", "adae"))
 .sdtm <- .mk("sdtm", "dm")
 
-arframe(folders = c(.adam, .sdtm))
+arframe(folders = c(.adam, .sdtm), daemons = 0)

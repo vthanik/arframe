@@ -62,11 +62,17 @@ mod_frame_ui <- function(id, report_body, data_body, qc_body) {
     # (navigator.platform: Mac -> the Command glyph, else "Ctrl K"). The server
     # cannot know the browser's OS, so this cannot be decided in R.
     shiny::span(class = "ar-bar-hint ar-mono"),
-    shiny::downloadLink(
-      ns("export_btn"),
-      "Export package",
-      class = "ar-btn-ink"
-    )
+    # Async export (Task 16): a plain action button kicks the render onto the
+    # daemon pool; the hidden download link beside it is clicked by the server
+    # (`ar-click`) once the zip is assembled -- a browser download must be
+    # initiated by an <a>, but the render must NOT block the request.
+    shiny::tags$button(
+      id = ns("export_btn"),
+      type = "button",
+      class = "ar-btn-ink action-button",
+      "Export package"
+    ),
+    shiny::downloadLink(ns("export_dl"), label = NULL, class = "ar-hidden-dl")
   )
 }
 
@@ -199,20 +205,50 @@ mod_frame_server <- function(id, store) {
     shiny::observeEvent(input$undo_btn, undo(store))
     shiny::observeEvent(input$redo_btn, redo(store))
 
-    # Export package (decision #8): render every ready output through the
-    # export-identical seam, assemble outputs/ + programs/ + report.json +
-    # manifest.csv, and hand back the zip. Draft/query and render-failed
-    # outputs are skipped and reported in the log (the honest-incompleteness
-    # rule); the QC sheet is the pre-flight for this action.
-    output$export_btn <- shiny::downloadHandler(
-      filename = function() paste0(.report_slug(store$rv$report), ".zip"),
-      content = function(file) {
-        dir <- file.path(tempdir(), .report_slug(store$rv$report))
-        unlink(dir, recursive = TRUE)
-        dir.create(dir, recursive = TRUE, showWarnings = FALSE)
+    # Export package (decision #8, async per Task 16): render every ready
+    # output on the daemon pool through the export-identical seam, then
+    # assemble outputs/ + programs/ + report.json + manifest.csv on the main
+    # process and hand back the zip. Draft/query and render-failed outputs are
+    # skipped and reported in the log (the honest-incompleteness rule); the QC
+    # sheet is the pre-flight for this action. The button stays non-blocking:
+    # the render runs off-process, the galley stays live, and the completed
+    # zip is delivered by clicking the hidden download link.
+    export <- export_task()
+    # The in-flight export's staging dir + assembled zip path. A plain env
+    # (not reactive) -- only the click and status observers touch them, in
+    # order, and neither should invalidate anything downstream.
+    ex <- new.env(parent = emptyenv())
+
+    shiny::observeEvent(input$export_btn, {
+      report <- store$rv$report
+      ex$dir <- file.path(tempdir(), .report_slug(report))
+      unlink(ex$dir, recursive = TRUE)
+      dir.create(
+        file.path(ex$dir, "outputs"),
+        recursive = TRUE,
+        showWarnings = FALSE
+      )
+      log_line(store, "export: rendering outputs...")
+      session$sendCustomMessage(
+        "ar-disable",
+        list(id = session$ns("export_btn"), disabled = TRUE)
+      )
+      export$invoke(
+        arpillar::report_to_json(report),
+        .export_dataset_paths(store, report),
+        file.path(ex$dir, "outputs"),
+        .export_names(report)
+      )
+    })
+
+    shiny::observeEvent(export$status(), {
+      st <- export$status()
+      if (identical(st, "success")) {
+        rendered <- as.list(export$result())
         stamp <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
-        res <- .build_export_package(store, dir, stamp)
-        .zip_export(dir, file)
+        res <- .build_export_package(store, ex$dir, stamp, rendered = rendered)
+        ex$zip <- file.path(tempdir(), paste0(basename(ex$dir), ".zip"))
+        .zip_export(ex$dir, ex$zip)
         log_line(
           store,
           sprintf(
@@ -221,7 +257,38 @@ mod_frame_server <- function(id, store) {
             length(res$skipped)
           )
         )
+        session$sendCustomMessage(
+          "ar-disable",
+          list(id = session$ns("export_btn"), disabled = FALSE)
+        )
+        session$sendCustomMessage(
+          "ar-click",
+          list(id = session$ns("export_dl"))
+        )
+        shiny::showNotification(
+          sprintf("Export ready: %d output(s).", length(res$ready)),
+          type = "message"
+        )
+      } else if (identical(st, "error")) {
+        emsg <- tryCatch(
+          {
+            export$result()
+            "unknown error"
+          },
+          error = function(e) conditionMessage(e)
+        )
+        log_line(store, paste0("export failed: ", emsg))
+        session$sendCustomMessage(
+          "ar-disable",
+          list(id = session$ns("export_btn"), disabled = FALSE)
+        )
+        shiny::showNotification("Export failed.", type = "error")
       }
+    })
+
+    output$export_dl <- shiny::downloadHandler(
+      filename = function() paste0(.report_slug(store$rv$report), ".zip"),
+      content = function(file) file.copy(ex$zip, file, overwrite = TRUE)
     )
 
     # store$undo is a plain (non-reactive) environment; store$rv$report is

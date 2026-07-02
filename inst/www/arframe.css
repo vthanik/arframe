@@ -1833,3 +1833,10 @@ input[type="radio"] {
 .ar-qc-log-line {
   white-space: pre-wrap;
 }
+
+/* The server-triggered download link (async export, Task 16) lives in the
+   bar but is never seen -- the server clicks it (`ar-click`) once the zip is
+   assembled; the browser download starts from a real <a>, off the render. */
+.ar-hidden-dl {
+  display: none;
+}
