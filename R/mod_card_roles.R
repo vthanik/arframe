@@ -20,6 +20,13 @@
 #' open land on the identical slot set.
 #' @noRd
 .region_slots <- function(region, slots) {
+  # v5: the docked Roles TAB is shown with no region focus (`region` NULL) --
+  # `switch()` aborts on a length-0 EXPR, and the right content there is the
+  # FULL role-slot editor, not a region-filtered subset. Only an explicit
+  # role-region (columns/rows/axes) narrows the set.
+  if (is.null(region) || length(region) != 1L) {
+    return(slots)
+  }
   ids <- vapply(slots, `[[`, "", "slot")
   keep <- switch(
     region,

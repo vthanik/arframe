@@ -413,19 +413,15 @@ $(document).on("click", "[data-ar-source]", function () {
 });
 
 $(document).on("click", ".ar-dx-row", function () {
-  Shiny.setInputValue(
-    "data-focus",
-    { name: this.getAttribute("data-ar-name"), lib: this.getAttribute("data-ar-lib") },
-    { priority: "event" }
-  );
+  Shiny.setInputValue("data-focus", this.getAttribute("data-ar-name"), {
+    priority: "event",
+  });
 });
 
 $(document).on("dblclick", ".ar-dx-row", function () {
-  Shiny.setInputValue(
-    "data-open",
-    { name: this.getAttribute("data-ar-name"), lib: this.getAttribute("data-ar-lib") },
-    { priority: "event" }
-  );
+  Shiny.setInputValue("data-open", this.getAttribute("data-ar-name"), {
+    priority: "event",
+  });
 });
 
 // Client-side dataset filter: hide explorer rows whose name/folder does not

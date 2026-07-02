@@ -47,18 +47,18 @@ test_that(".folder_datasets lists only registerable files, name = uppercased ste
   expect_true(all(grepl("\\.parquet$", ds)))
 })
 
-test_that(".mount_folder registers under the folder library, records kinds, bumps nonce", {
+test_that(".mount_folder registers into WORK, records folder + kind by name, bumps nonce", {
   fx <- .md_store()
   withr::defer(arpillar::engine_close(fx$con))
 
   grid <- arpillar::catalog_grid(fx$con)
   expect_equal(nrow(grid), 3L)
-  expect_setequal(unique(grid$library), c("adam", "sdtm"))
-  # Kind recorded at mount time (the catalog does not surface it).
-  expect_identical(
-    shiny::isolate(.source_kind(fx$store, "ADSL", "adam")),
-    ".parquet"
-  )
+  # Every dataset lives in the single WORK library (the engine resolves an
+  # output's @dataset there) -- the source FOLDER is arframe-side provenance.
+  expect_identical(unique(grid$library), "WORK")
+  expect_identical(shiny::isolate(.source_folder(fx$store, "ADSL")), "adam")
+  expect_identical(shiny::isolate(.source_folder(fx$store, "DM")), "sdtm")
+  expect_identical(shiny::isolate(.source_kind(fx$store, "ADSL")), ".parquet")
   expect_gt(shiny::isolate(fx$store$rv$catalog_nonce), 0L)
 })
 
@@ -152,14 +152,11 @@ test_that("mod_data_server: focus, View data opens the grid, back closes it", {
   withr::defer(arpillar::engine_close(fx$con))
 
   shiny::testServer(mod_data_server, args = list(store = fx$store), {
-    session$setInputs(focus = list(name = "ADSL", lib = "adam"))
-    expect_identical(store$rv$data_focus, list(name = "ADSL", library = "adam"))
+    session$setInputs(focus = "ADSL")
+    expect_identical(store$rv$data_focus, "ADSL")
 
     session$setInputs(view = 1)
-    expect_identical(
-      store$rv$grid_dataset,
-      list(name = "ADSL", library = "adam")
-    )
+    expect_identical(store$rv$grid_dataset, "ADSL")
     grid_html <- as.character(output$explorer$html)
     expect_match(grid_html, "ar-dx-grid", fixed = TRUE)
     expect_match(grid_html, "USUBJID", fixed = TRUE)
@@ -186,11 +183,8 @@ test_that("mod_data_server: double-click opens the grid directly", {
   withr::defer(arpillar::engine_close(fx$con))
 
   shiny::testServer(mod_data_server, args = list(store = fx$store), {
-    session$setInputs(open = list(name = "ADAE", lib = "adam"))
-    expect_identical(
-      store$rv$grid_dataset,
-      list(name = "ADAE", library = "adam")
-    )
+    session$setInputs(open = "ADAE")
+    expect_identical(store$rv$grid_dataset, "ADAE")
   })
 })
 
@@ -199,7 +193,7 @@ test_that("mod_data_server: Delete unmounts the focused dataset", {
   withr::defer(arpillar::engine_close(fx$con))
 
   shiny::testServer(mod_data_server, args = list(store = fx$store), {
-    session$setInputs(focus = list(name = "DM", lib = "sdtm"))
+    session$setInputs(focus = "DM")
     before <- store$rv$catalog_nonce
     session$setInputs(delete = 1)
 

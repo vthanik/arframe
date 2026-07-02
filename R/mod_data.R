@@ -26,21 +26,29 @@
 }
 
 #' The catalog grid enriched for the explorer: the arpillar
-#' `catalog_grid()` columns plus arframe's recorded `kind`, filtered to
-#' `source` (a library node, or `NULL`/`"*"` for all).
+#' `catalog_grid()` columns plus arframe's recorded source `folder` and
+#' `kind` (all datasets live in WORK; the folder is UI provenance), filtered
+#' to `source` (a folder node, or `NULL`/`"*"` for all).
 #' @noRd
 .explorer_grid <- function(store, source = NULL) {
   grid <- arpillar::catalog_grid(store$con)
   if (nrow(grid) == 0L) {
+    grid$folder <- character(0)
+    grid$kind <- character(0)
     return(grid)
   }
+  grid$folder <- vapply(
+    grid$name,
+    function(n) .source_folder(store, n),
+    character(1)
+  )
   grid$kind <- vapply(
-    seq_len(nrow(grid)),
-    function(i) .source_kind(store, grid$name[[i]], grid$library[[i]]),
+    grid$name,
+    function(n) .source_kind(store, n),
     character(1)
   )
   if (!is.null(source) && !identical(source, "*")) {
-    grid <- grid[grid$library == source, , drop = FALSE]
+    grid <- grid[!is.na(grid$folder) & grid$folder == source, , drop = FALSE]
   }
   grid
 }
@@ -48,22 +56,26 @@
 # ---- sources tree ---------------------------------------------------------
 
 #' The SOURCES tree: an "In-memory data" root (the whole catalog) plus one
-#' node per distinct library, each carrying its dataset count. The active
-#' node (`store$rv$data_source`, `NULL` = the root) gets the selected
-#' class. A node posts `input$source` (its library, or `""` for the root)
+#' node per distinct source folder, each carrying its dataset count. The
+#' active node (`store$rv$data_source`, `NULL` = the root) gets the selected
+#' class. A node posts `input$source` (its folder, or `""` for the root)
 #' through the delegated `[data-ar-source]` handler.
 #' @noRd
 .sources_tree <- function(ns, grid, active) {
-  libs <- if (nrow(grid) == 0L) character(0) else sort(unique(grid$library))
+  folders <- if (nrow(grid) == 0L) {
+    character(0)
+  } else {
+    sort(unique(grid$folder[!is.na(grid$folder)]))
+  }
   root_sel <- if (is.null(active)) "ar-toc-row-sel" else NULL
-  nodes <- lapply(libs, function(lib) {
-    n <- sum(grid$library == lib)
-    sel <- if (identical(active, lib)) "ar-toc-row-sel" else NULL
+  nodes <- lapply(folders, function(fol) {
+    n <- sum(!is.na(grid$folder) & grid$folder == fol)
+    sel <- if (identical(active, fol)) "ar-toc-row-sel" else NULL
     shiny::tags$div(
       class = paste("ar-data-src ar-toc-row", sel),
-      `data-ar-source` = lib,
+      `data-ar-source` = fol,
       .icon("open", 14),
-      shiny::tags$span(class = "ar-mono ar-data-src-name", lib),
+      shiny::tags$span(class = "ar-mono ar-data-src-name", fol),
       shiny::tags$span(class = "ar-mono ar-data-src-n", n)
     )
   })
@@ -89,21 +101,18 @@
 # ---- explorer table -------------------------------------------------------
 
 #' One explorer row. Clicking selects (posts `input$focus`); double-click
-#' opens the grid (`input$open`). The focused row carries the selected
-#' class. `data-ar-name`/`data-ar-lib` let the delegated handlers name the
-#' row without a per-row input.
+#' opens the grid (`input$open`). The focused row (matched by dataset name)
+#' carries the selected class. `data-ar-name` lets the delegated handlers
+#' name the row without a per-row input.
 #' @noRd
 .explorer_row <- function(row, focus) {
-  is_focus <- !is.null(focus) &&
-    identical(focus$name, row$name) &&
-    identical(focus$library, row$library)
+  is_focus <- !is.null(focus) && identical(focus, row$name)
   status <- if (isTRUE(row$loaded)) "LOADED" else "LAZY"
   shiny::tags$tr(
     class = paste("ar-dx-row", if (is_focus) "ar-dx-row-sel"),
     `data-ar-name` = row$name,
-    `data-ar-lib` = row$library,
     shiny::tags$td(class = "ar-mono ar-dx-name", row$name),
-    shiny::tags$td(class = "ar-dx-dim", row$library),
+    shiny::tags$td(class = "ar-dx-dim", row$folder %||% "--"),
     shiny::tags$td(class = "ar-mono ar-dx-dim", row$kind %||% "--"),
     shiny::tags$td(
       class = "ar-mono ar-dx-num",
@@ -159,12 +168,11 @@
 #' <name>`), a column picker (typed badges, all checked), and a sample of
 #' rows. `sample_rows()` caps the pull -- the parquet is never fully read.
 #' @noRd
-.data_grid <- function(ns, store, dataset) {
-  name <- dataset$name
-  lib <- dataset$library
-  sample <- arpillar::sample_rows(store$con, name, n = 100L, library = lib)
-  items <- arpillar::data_items(store$con, name, library = lib)
-  grid <- .explorer_grid(store, lib)
+.data_grid <- function(ns, store, name) {
+  folder <- .source_folder(store, name)
+  sample <- arpillar::sample_rows(store$con, name, n = 100L)
+  items <- arpillar::data_items(store$con, name)
+  grid <- arpillar::catalog_grid(store$con)
   total <- grid$rows[grid$name == name][[1]]
   shiny::tags$div(
     class = "ar-dx-grid",
@@ -177,7 +185,10 @@
         class = "ar-dx-bk"
       ),
       shiny::tags$span(" / "),
-      shiny::tags$span(class = "ar-dx-dim", lib),
+      shiny::tags$span(
+        class = "ar-dx-dim",
+        if (is.na(folder)) "WORK" else folder
+      ),
       shiny::tags$span(" / "),
       shiny::tags$span(class = "ar-dx-name", name),
       shiny::tags$span(
@@ -357,20 +368,14 @@ mod_data_server <- function(id, store) {
       store$rv$grid_dataset <- NULL
     })
 
-    # `input$focus`/`input$open` carry `list(name=, lib=)` from the
-    # delegated row handlers (single vs double click).
+    # `input$focus`/`input$open` carry the dataset name from the delegated
+    # row handlers (single vs double click).
     shiny::observeEvent(input$focus, {
-      store$rv$data_focus <- list(
-        name = input$focus$name,
-        library = input$focus$lib
-      )
+      store$rv$data_focus <- input$focus
     })
 
     shiny::observeEvent(input$open, {
-      store$rv$grid_dataset <- list(
-        name = input$open$name,
-        library = input$open$lib
-      )
+      store$rv$grid_dataset <- input$open
     })
 
     shiny::observeEvent(input$view, {
@@ -384,9 +389,8 @@ mod_data_server <- function(id, store) {
     })
 
     shiny::observeEvent(input$delete, {
-      f <- store$rv$data_focus
-      if (!is.null(f)) {
-        .unmount_dataset(store, f$name, f$library)
+      if (!is.null(store$rv$data_focus)) {
+        .unmount_dataset(store, store$rv$data_focus)
       }
     })
 
@@ -416,14 +420,14 @@ mod_data_server <- function(id, store) {
         name <- toupper(tools::file_path_sans_ext(basename(path)))
         ok <- tryCatch(
           {
-            arpillar::register_dataset(store$con, name, path, library = "WORK")
+            arpillar::register_dataset(store$con, name, path)
             TRUE
           },
           arpillar_error_input = function(e) FALSE
         )
         if (isTRUE(ok)) {
-          store$kinds[[paste0("WORK::", name)]] <-
-            paste0(".", tolower(tools::file_ext(path)))
+          store$sources[[name]] <- "imported"
+          store$kinds[[name]] <- paste0(".", tolower(tools::file_ext(path)))
           store$rv$catalog_nonce <- store$rv$catalog_nonce + 1L
         }
       }

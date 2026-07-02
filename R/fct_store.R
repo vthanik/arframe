@@ -57,11 +57,14 @@ new_store <- function(con, report = NULL) {
     ),
     undo = undo,
     cache = new.env(parent = emptyenv()),
-    # Source-kind map for Data mode: "<library>::<name>" -> file extension
-    # (".parquet"/".xpt"/...). arframe records this at mount time because
-    # the catalog does not surface the original source's type. Kept as a
-    # plain env (not reactive) -- the explorer reads it under
-    # `catalog_nonce`, which every mount/delete already bumps.
+    # Data-mode provenance maps, keyed by dataset name. arframe mounts every
+    # dataset into arpillar's single WORK library (the engine resolves an
+    # output's `@dataset` there and has no per-object library), so the
+    # SOURCE FOLDER a dataset came from and its original file KIND are
+    # arframe-side UI concepts the catalog does not carry. Plain envs (not
+    # reactive) -- the explorer reads them under `catalog_nonce`, which
+    # every mount/delete bumps.
+    sources = new.env(parent = emptyenv()),
     kinds = new.env(parent = emptyenv())
   )
 }
@@ -288,13 +291,14 @@ cached_ard <- function(store, object) {
   stats::setNames(keep, toupper(tools::file_path_sans_ext(basename(keep))))
 }
 
-#' Mount every registerable dataset in `dir` under a library node named
-#' for the folder, recording each source's extension in `store$kinds` and
-#' bumping `catalog_nonce`. A file whose name already exists in that
-#' library is skipped (not an error -- re-mounting a folder is idempotent).
-#' Returns the number of datasets newly registered.
+#' Mount every registerable dataset in `dir` into the WORK library,
+#' recording each dataset's source folder and file kind (keyed by name) and
+#' bumping `catalog_nonce`. A name already registered is skipped (not an
+#' error) -- re-mounting a folder is idempotent, and a same-named dataset in
+#' a second folder keeps the first (a WORK-flat namespace has one binding
+#' per name). Returns the number of datasets newly registered.
 #' @noRd
-.mount_folder <- function(store, dir, library = basename(normalizePath(dir))) {
+.mount_folder <- function(store, dir, folder = basename(normalizePath(dir))) {
   datasets <- .folder_datasets(dir)
   n <- 0L
   for (i in seq_along(datasets)) {
@@ -302,50 +306,55 @@ cached_ard <- function(store, object) {
     path <- datasets[[i]]
     ok <- tryCatch(
       {
-        arpillar::register_dataset(store$con, name, path, library = library)
+        arpillar::register_dataset(store$con, name, path)
         TRUE
       },
       arpillar_error_input = function(e) FALSE
     )
     if (isTRUE(ok)) {
-      store$kinds[[paste0(library, "::", name)]] <-
-        paste0(".", tolower(tools::file_ext(path)))
+      store$sources[[name]] <- folder
+      store$kinds[[name]] <- paste0(".", tolower(tools::file_ext(path)))
       n <- n + 1L
     }
   }
   store$rv$catalog_nonce <- store$rv$catalog_nonce + 1L
-  log_line(store, sprintf("mounted %d dataset(s) from %s", n, library))
+  log_line(store, sprintf("mounted %d dataset(s) from %s", n, folder))
   n
 }
 
-#' Unmount the dataset `name` in `library`: drop it from the catalog, its
-#' kind entry, and clear a now-dangling focus/grid pointer. Bumps
-#' `catalog_nonce`.
+#' Unmount the dataset `name` from WORK: drop it from the catalog, clear its
+#' source-folder and kind entries, and clear a now-dangling focus/grid
+#' pointer. Bumps `catalog_nonce`.
 #' @noRd
-.unmount_dataset <- function(store, name, library) {
-  arpillar::unregister_dataset(store$con, name, library = library)
-  kind_key <- paste0(library, "::", name)
-  if (exists(kind_key, envir = store$kinds, inherits = FALSE)) {
-    rm(list = kind_key, envir = store$kinds)
+.unmount_dataset <- function(store, name) {
+  arpillar::unregister_dataset(store$con, name)
+  for (env in list(store$sources, store$kinds)) {
+    if (exists(name, envir = env, inherits = FALSE)) {
+      rm(list = name, envir = env)
+    }
   }
-  gone <- list(name = name, library = library)
-  if (identical(store$rv$data_focus, gone)) {
+  if (identical(store$rv$data_focus, name)) {
     store$rv$data_focus <- NULL
   }
-  if (identical(store$rv$grid_dataset, gone)) {
+  if (identical(store$rv$grid_dataset, name)) {
     store$rv$grid_dataset <- NULL
   }
   store$rv$catalog_nonce <- store$rv$catalog_nonce + 1L
-  log_line(store, sprintf("removed %s from %s", name, library))
+  log_line(store, sprintf("removed %s", name))
   invisible(NULL)
 }
 
-#' The source kind (file extension) recorded for a catalog row, or `NA`
-#' when arframe did not mount it (e.g. a test/demo catalog registered
-#' directly).
+#' The source folder a dataset was mounted from, or `NA` when arframe did
+#' not mount it (a test/demo catalog registered directly).
 #' @noRd
-.source_kind <- function(store, name, library) {
-  store$kinds[[paste0(library, "::", name)]] %||% NA_character_
+.source_folder <- function(store, name) {
+  store$sources[[name]] %||% NA_character_
+}
+
+#' The source kind (file extension) recorded for a dataset, or `NA`.
+#' @noRd
+.source_kind <- function(store, name) {
+  store$kinds[[name]] %||% NA_character_
 }
 
 # ---- logging ------------------------------------------------------------
