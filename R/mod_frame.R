@@ -56,7 +56,10 @@ mod_frame_ui <- function(id, report_body, data_body, qc_body) {
     ),
     .mode_btn(ns("mode_data"), "data", "Data"),
     .mode_btn(ns("mode_qc"), "qc", "QC"),
-    shiny::span(class = "ar-bar-hint ar-mono", "\u2318K"),
+    # Empty on the server -- arframe.js fills it per the CLIENT's OS
+    # (navigator.platform: Mac -> the Command glyph, else "Ctrl K"). The server
+    # cannot know the browser's OS, so this cannot be decided in R.
+    shiny::span(class = "ar-bar-hint ar-mono"),
     .action_btn(
       ns("export_btn"),
       "Export package",

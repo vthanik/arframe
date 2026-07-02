@@ -89,3 +89,19 @@ $(document).on("shiny:value shiny:idle", function () {
   setTimeout(arInitSortables, 50);
 });
 document.addEventListener("DOMContentLoaded", arInitSortables);
+
+// The command-palette hint is platform-specific and can only be resolved in
+// the browser -- the server's OS is not the client's. Mac shows the Command
+// glyph (U+2318); every other platform shows "Ctrl K".
+function arSetShortcutHint() {
+  var plat =
+    (navigator.userAgentData && navigator.userAgentData.platform) ||
+    navigator.platform ||
+    "";
+  var mac = /mac|iphone|ipad|ipod/i.test(plat);
+  document.querySelectorAll(".ar-bar-hint").forEach(function (el) {
+    el.textContent = mac ? "⌘K" : "Ctrl K";
+  });
+}
+document.addEventListener("DOMContentLoaded", arSetShortcutHint);
+$(document).on("shiny:idle", arSetShortcutHint);
