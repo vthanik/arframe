@@ -87,7 +87,11 @@
 #' @noRd
 .PRESET_DOMAINS <- c("Safety", "Efficacy", "PK", "General")
 
-#' One preset library row: id/label/domain/kind/generator label/number.
+#' One preset library row: id/label/domain/kind/generator id/generator
+#' label/number. `generator` is the row glyph key (`.type_icon()`) -- every
+#' preset sharing a generator (e.g. every AE occurrence preset) reads the
+#' same icon, distinct from `kind` ("table"/"figure") which only splits
+#' presets into the two coarse TOC groups.
 #' @noRd
 .library_rows <- function() {
   gens <- arpillar::generators()
@@ -100,6 +104,7 @@
       label = p$label,
       domain = p$domain,
       kind = gen$kind,
+      generator = p$generator,
       generator_label = gen$label,
       number = p$options$number %||% ""
     )
@@ -228,7 +233,7 @@ mod_add_output_ui <- function(id) {
       if (active) "ar-add-lib-row-active" else NULL
     ),
     onclick = click_js,
-    .icon(row$kind, 13),
+    .type_icon(row$generator, 13),
     shiny::tags$span(class = "ar-add-lib-label", row$label),
     shiny::tags$span(class = "ar-add-lib-caption", row$generator_label)
   )
@@ -250,7 +255,7 @@ mod_add_output_ui <- function(id) {
       if (active) "ar-add-lib-row-active" else NULL
     ),
     onclick = click_js,
-    .icon(gen$kind, 13),
+    .type_icon(gen$id, 13),
     shiny::tags$div(
       shiny::tags$span(class = "ar-add-lib-label", gen$label),
       shiny::tags$div(class = "ar-add-gen-desc", gen$description)

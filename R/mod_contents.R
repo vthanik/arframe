@@ -44,8 +44,8 @@
 
 # ---- row model ----------------------------------------------------------
 
-#' Build one row per object: id, title, kind, group label, TLF number, and
-#' status.
+#' Build one row per object: id, title, kind, type, group label, TLF
+#' number, and status.
 #'
 #' `number` prefers `obj@options$number` -- the number a preset seeded or
 #' `add_from_generator()` auto-suggested -- falling back to the old
@@ -54,7 +54,9 @@
 #' path). `status` folds in `rv$broken` ahead of the oracle -- a broken id
 #' always shows ERROR regardless of what `output_status()` would otherwise
 #' report, matching the stamp table's "app-side render-failed flag"
-#' precedence.
+#' precedence. `type` is `obj@type` verbatim (the render TYPE, e.g.
+#' `"occurrence"`) -- the `.type_icon()` glyph key, distinct from `kind`
+#' which only splits rows into the coarse TABLES/FIGURES/LISTINGS groups.
 #' @noRd
 .toc_rows <- function(report, broken) {
   objs <- .all_objects(report)
@@ -84,6 +86,7 @@
       id = obj@id,
       title = obj@title,
       kind = kind,
+      type = obj@type,
       group_label = grp$label,
       number = number,
       status = status
@@ -128,18 +131,19 @@ mod_contents_ui <- function(id) {
 
 # ---- row/group rendering ------------------------------------------------
 
-#' One TOC row: grip (drag handle) + mono number + sans title + dotted
-#' leader + status stamp + hover-revealed kebab. Laid out as a 4-column CSS
-#' grid (`[grip 14px] [number] [title 1fr] [stamp]`) -- the title's grid
-#' cell is itself a flex pair of the title text (fixed to its content,
-#' shrinking to ellipsis under real pressure) and the leader (`flex: 1`),
-#' so the leader always fills exactly the gap between a SHORT title and the
-#' stamp, while a long title still gets first claim on the shared `1fr`
-#' column instead of losing the space to a leader that grows unconditionally.
-#' The whole row is clickable (posts `row_click` via an inline `onclick`,
-#' namespaced through `ns` so this module never depends on a fixed,
-#' hardcoded module id) except the kebab and its popovers, which stop
-#' propagation so opening a menu never also re-selects the row underneath it.
+#' One TOC row: grip (drag handle) + type glyph + mono number + sans title +
+#' dotted leader + status stamp + hover-revealed kebab. Laid out as a
+#' 6-column CSS grid (`[grip 14px] [type icon 14px] [number] [title 1fr]
+#' [stamp] [kebab 18px]`) -- the title's grid cell is itself a flex pair of
+#' the title text (fixed to its content, shrinking to ellipsis under real
+#' pressure) and the leader (`flex: 1`), so the leader always fills exactly
+#' the gap between a SHORT title and the stamp, while a long title still
+#' gets first claim on the shared `1fr` column instead of losing the space
+#' to a leader that grows unconditionally. The whole row is clickable
+#' (posts `row_click` via an inline `onclick`, namespaced through `ns` so
+#' this module never depends on a fixed, hardcoded module id) except the
+#' kebab and its popovers, which stop propagation so opening a menu never
+#' also re-selects the row underneath it.
 #' @noRd
 .toc_row <- function(ns, row, active) {
   click_js <- sprintf(
@@ -155,6 +159,7 @@ mod_contents_ui <- function(id) {
     `data-ar-id` = row$id,
     onclick = click_js,
     shiny::tags$span(class = "ar-toc-grip", .icon("grip", 12)),
+    .type_icon(row$type, 13),
     shiny::tags$span(class = "ar-toc-number ar-mono", row$number),
     shiny::tags$span(
       class = "ar-toc-title-wrap",

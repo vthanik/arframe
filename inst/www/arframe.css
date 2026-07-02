@@ -111,6 +111,13 @@ input[type="radio"] {
   border-color: var(--ar-rule);
   color: var(--ar-ink);
 }
+/* `.type_icon()`'s per-generator glyph (TOC rows, Add-output preset/
+   generator rows): muted so it reads as chrome, not content, and
+   non-shrinking so a tight flex/grid row never squeezes it. */
+.ar-type-icon {
+  color: var(--ar-ink-3);
+  flex: 0 0 auto;
+}
 
 /* ============ 02 frame ============ */
 /* One 100vh frame: 42px app bar, a body that mounts all three mode furniture
@@ -302,22 +309,24 @@ input[type="radio"] {
 /* -- one row: a 4-column grid [grip 14px] [number] [title 1fr] [stamp] --
    per spec, plus a narrow 5th column for the hover-revealed kebab (opacity-
    toggled, so its width is reserved even at rest -- the same "never shift
-   layout on hover/select" discipline as the pre-reserved active border).
-   A dense TOC row genuinely has five things competing for a 280px column
-   (drag handle, number, title, stamp, kebab); the gap is intentionally
-   tighter than the app's general `--ar-space-2` rhythm and the kebab uses
-   its own compact 18px control (not the general 26px `.ar-icon-btn`) so the
-   title -- the one column that must flex with real content -- keeps as much
-   of the row's width as the other four genuinely need. The title column is
-   `1fr` and holds a NESTED flex pair (title text + leader) so a long title
-   claims space first and the leader only ever fills the true leftover gap
-   -- a leader with an unconditional `flex: 1` in the SAME row as the title
-   would instead win most of the column and crush the title to its
-   min-content width regardless of how short the title actually is. */
+   layout on hover/select" discipline as the pre-reserved active border),
+   plus a 14px 6th column for the per-generator type glyph (`.type_icon()`)
+   right after the grip. A dense TOC row genuinely has six things competing
+   for a 280px column (drag handle, type glyph, number, title, stamp,
+   kebab); the gap is intentionally tighter than the app's general
+   `--ar-space-2` rhythm and the kebab uses its own compact 18px control
+   (not the general 26px `.ar-icon-btn`) so the title -- the one column
+   that must flex with real content -- keeps as much of the row's width as
+   the other five genuinely need. The title column is `1fr` and holds a
+   NESTED flex pair (title text + leader) so a long title claims space
+   first and the leader only ever fills the true leftover gap -- a leader
+   with an unconditional `flex: 1` in the SAME row as the title would
+   instead win most of the column and crush the title to its min-content
+   width regardless of how short the title actually is. */
 .ar-toc-row {
   position: relative;
   display: grid;
-  grid-template-columns: 14px auto 1fr auto 18px;
+  grid-template-columns: 14px 14px auto 1fr auto 18px;
   align-items: center;
   gap: 6px;
   padding: 5px var(--ar-space-1);

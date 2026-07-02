@@ -29,3 +29,25 @@ test_that(".action_btn is Shiny-bindable without btn-default", {
   expect_match(b, "action-button", fixed = TRUE)
   expect_no_match(b, "btn-default")
 })
+
+test_that(".type_icon renders a distinct glyph per generator type, with a safe fallback", {
+  occ <- as.character(.type_icon("occurrence"))
+  expect_match(occ, "M4 4.6", fixed = TRUE)
+  expect_false(identical(
+    as.character(.type_icon("km")),
+    as.character(.type_icon("box"))
+  ))
+  # Every registered generator type is distinct from every other.
+  types <- names(.TYPE_ICONS)
+  rendered <- vapply(
+    types,
+    function(t) as.character(.type_icon(t)),
+    character(1)
+  )
+  expect_length(unique(rendered), length(types))
+  # An unknown type falls back to the summary glyph rather than erroring.
+  expect_identical(
+    as.character(.type_icon("not-a-real-type")),
+    as.character(.type_icon("summary"))
+  )
+})
