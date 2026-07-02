@@ -46,7 +46,10 @@
   save = "floppy-disk",
   arrow_right = "arrow-right",
   calendar = "calendar",
-  eye = "eye"
+  eye = "eye",
+  chevrons_left = "angles-left",
+  chevrons_right = "angles-right",
+  play = "play"
 )
 
 #' An inline workspace icon by semantic name (HTML to drop into a label/button).

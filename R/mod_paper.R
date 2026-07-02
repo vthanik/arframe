@@ -249,7 +249,7 @@ mod_paper_server <- function(id, store) {
     output$sheet_html_slot <- shiny::renderUI({
       .render_sheet(store, session, ns)
     }) |>
-      shiny::bindEvent(store$rv$report, store$rv$selected)
+      shiny::bindEvent(store$rv$report, store$rv$selected, store$rv$run_nonce)
 
     output$sheet_figure <- shiny::renderPlot(
       {
@@ -267,7 +267,7 @@ mod_paper_server <- function(id, store) {
       },
       res = 96
     ) |>
-      shiny::bindEvent(store$rv$report, store$rv$selected)
+      shiny::bindEvent(store$rv$report, store$rv$selected, store$rv$run_nonce)
 
     # The class flip: table content shows the HTML slot, a figure shows the
     # plot slot, "not ready"/no-selection shows neither's real content

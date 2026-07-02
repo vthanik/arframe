@@ -61,39 +61,31 @@
   if (is.na(hit)) toupper(region) else hit
 }
 
-# ---- header ---------------------------------------------------------------
+# ---- inspector tabs (v5, decision #8) ---------------------------------------
 
-#' The card header: region micro-label, pin toggle (`aria-pressed`, no
-#' visible label change -- the icon + pressed state carry it), close.
-#' `pinned` is read fresh on every header render (server-rendered, see
-#' `mod_card_server()`) so the pin icon's pressed state never drifts from
-#' `rv$pinned`.
+#' The four inspector tabs, in display order. Ranks is a disabled-coming
+#' row per the plan (v1.1), but the tab exists so the frame never reflows
+#' when it arrives.
 #' @noRd
-.card_header <- function(ns, region, pinned) {
-  shiny::tags$div(
-    class = "ar-card-header",
-    shiny::tags$div(
-      class = "ar-label ar-card-region-label",
-      .region_label(region)
-    ),
-    shiny::tags$div(class = "ar-card-header-spacer"),
-    shiny::tags$button(
-      id = ns("pin"),
-      type = "button",
-      class = paste(
-        "ar-icon-btn ar-card-pin action-button",
-        if (isTRUE(pinned)) "ar-card-pin-active" else NULL
-      ),
-      `aria-pressed` = if (isTRUE(pinned)) "true" else "false",
-      `aria-label` = "Pin card open",
-      .icon("pin", 13)
-    ),
-    .action_btn(
-      ns("close"),
-      .icon("close", 13),
-      variant = "link",
-      class = "ar-icon-btn"
-    )
+.INSP_TABS <- c(
+  roles = "Roles",
+  options = "Options",
+  filters = "Filters",
+  ranks = "Ranks"
+)
+
+#' One inspector tab button. The ACTIVE tab is styled by a pure CSS rule
+#' keyed off the `ar-insp-tab-*` class on the card root (set by the
+#' "ar-insp-tab" message), mirroring the frame's mode-button pattern -- a
+#' tab switch never re-renders the panel body.
+#' @noRd
+.insp_tab_btn <- function(ns, tab) {
+  shiny::tags$button(
+    id = ns(paste0("tab_", tab)),
+    type = "button",
+    class = "ar-insp-tab action-button",
+    `data-ar-insp-tab` = tab,
+    .INSP_TABS[[tab]]
   )
 }
 
@@ -113,34 +105,118 @@
 
 # ---- UI ---------------------------------------------------------------
 
-#' The galley card UI: the `--ar-card` frame (header + a body slot hosting
-#' every region-content module, class-flipped by `rv$region`) plus the two
-#' not-yet-built region stubs (`options`/`filters`). `mod_card_roles_ui()`
-#' is mounted unconditionally -- CSS visibility, not conditional mounting,
-#' picks which content shows (matching `mod_frame_ui()`'s "all bodies
-#' mount, CSS picks one" pattern), so a role edit made, card closed, then
-#' reopened on a DIFFERENT region never loses its own state.
+#' The docked inspector UI (v5, decision #8): a fixed-width right panel --
+#' tab strip (Roles/Options/Filters/Ranks + collapse chevron), the pane
+#' stack (every pane mounts once, the `ar-insp-tab-*` class on the card
+#' root picks which shows -- matching `mod_frame_ui()`'s pattern, so a
+#' role edit made on one tab survives any amount of tab switching), the
+#' action footer (Run / .rtf / code), and the telemetry line. A second,
+#' slim strip renders when the workspace carries `ar-insp-collapsed`
+#' (frame-owned, see `toggle_insp()`).
 #' @param id *The module namespace.* `<character(1)>: required`.
 #' @noRd
 mod_card_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::div(
     id = ns("card"),
-    class = "ar-card",
-    shiny::uiOutput(ns("card_slot"))
+    class = "ar-card ar-insp-tab-roles",
+    shiny::div(
+      class = "ar-insp-full",
+      shiny::div(
+        class = "ar-insp-tabs",
+        lapply(names(.INSP_TABS), function(tab) .insp_tab_btn(ns, tab)),
+        shiny::tags$button(
+          type = "button",
+          class = "ar-icon-btn ar-insp-cv",
+          `data-ar-collapse` = "insp",
+          `aria-label` = "Collapse inspector",
+          .icon("chevrons_right", 13)
+        )
+      ),
+      shiny::div(
+        class = "ar-insp-body",
+        shiny::div(
+          class = "ar-insp-pane ar-insp-pane-roles",
+          mod_card_roles_ui(ns("roles"))
+        ),
+        shiny::div(
+          class = "ar-insp-pane ar-insp-pane-options",
+          .card_coming_stub(
+            "options",
+            "Title, footnotes, and display options arrive next."
+          )
+        ),
+        shiny::div(
+          class = "ar-insp-pane ar-insp-pane-filters",
+          .card_coming_stub(
+            "filters",
+            "Population and subset filters arrive next."
+          )
+        ),
+        shiny::div(
+          class = "ar-insp-pane ar-insp-pane-ranks",
+          .card_coming_stub("ranks", "Row ordering -- coming in v1.1.")
+        )
+      ),
+      shiny::div(
+        class = "ar-insp-act",
+        shiny::tags$button(
+          id = ns("run"),
+          type = "button",
+          class = "ar-insp-run action-button",
+          .icon("play", 11),
+          "Run",
+          shiny::span(class = "ar-insp-kbd ar-mono", "⌘↵")
+        ),
+        shiny::downloadLink(
+          ns("rtf"),
+          label = shiny::tagList(.icon("export", 12), ".rtf"),
+          class = "ar-insp-dl"
+        ),
+        shiny::tags$button(
+          id = ns("code"),
+          type = "button",
+          class = "ar-insp-dl action-button",
+          `aria-label` = "View reproduction code",
+          .icon("code", 12)
+        )
+      ),
+      shiny::uiOutput(ns("telemetry"), class = "ar-insp-tel ar-mono")
+    ),
+    shiny::div(
+      class = "ar-insp-slim",
+      shiny::tags$button(
+        type = "button",
+        class = "ar-icon-btn",
+        `data-ar-collapse` = "insp",
+        `aria-label` = "Expand inspector",
+        .icon("chevrons_left", 13)
+      )
+    )
   )
 }
 
 # ---- server -------------------------------------------------------------
 
-#' The galley card server: renders the frame (or nothing, when
-#' `rv$card` is `FALSE`) off `rv$card`/`rv$region`/`rv$pinned`, mounts
-#' `mod_card_roles_server()` once, and wires close/pin. The floating vs
-#' pinned CLASS flip is a `session$sendCustomMessage()`, not a `renderUI`
-#' dependency on `rv$pinned` alone -- re-rendering the whole card body on a
-#' pin toggle would remount (and so reset any in-progress picker state of)
-#' the roles editor for no reason; only the frame's outer CSS class needs
-#' to change.
+#' A filesystem-safe slug for the selected output's download filename:
+#' `t-14-1-1-demographics.rtf` -- kind letter + number + title, lowercased,
+#' non-alnum runs collapsed to `-`.
+#' @noRd
+.output_slug <- function(object) {
+  label <- object@options$number_label %||% "Table"
+  kind <- tolower(substr(label, 1, 1))
+  raw <- paste(kind, object@options$number %||% "", object@title)
+  slug <- tolower(gsub("[^a-zA-Z0-9]+", "-", trimws(raw)))
+  gsub("^-+|-+$", "", slug)
+}
+
+#' The docked inspector server (v5): mounts the roles editor once, routes
+#' tab clicks into `rv$insp_tab` (region clicks route via `open_card()`),
+#' mirrors the tab to the card root's `ar-insp-tab-*` class (a message,
+#' never a `renderUI` -- switching tabs must not remount pane state), and
+#' owns the action footer: Run (drops the ARD memo and bumps `run_nonce`
+#' so the paper re-typesets fresh), the per-output `.rtf` download, and
+#' the code-view toggle (S4).
 #' @param id *The module namespace, matching `mod_card_ui()`.*
 #'   `<character(1)>: required`.
 #' @param store *The injected structured store.* `<list>: required`. From
@@ -152,67 +228,76 @@ mod_card_server <- function(id, store) {
 
     mod_card_roles_server("roles", store)
 
-    # The whole card body: header + the one content group the CURRENT
-    # region maps to. Gated on the three pointers a summon/route/pin cycle
-    # actually touches -- `rv$report`/`rv$selected` are NOT read here (the
-    # roles submodule reads those itself for its own content), so a report
-    # edit never remounts this frame's header/chrome.
-    output$card_slot <- shiny::renderUI({
-      if (!isTRUE(store$rv$card)) {
-        return(NULL)
-      }
-      region <- store$rv$region
-      group <- .card_region_group(region)
-      shiny::tagList(
-        .card_header(ns, region, store$rv$pinned),
-        shiny::div(
-          class = "ar-card-body",
-          # `mod_card_roles_ui()` mounts unconditionally; `display: none`
-          # (via the `ar-card-group-hidden` class, not React-style
-          # conditional mounting) hides it when a non-roles region is
-          # active, so its own internal state (an open picker, say) is
-          # preserved across a region switch back and forth.
-          shiny::tagAppendAttributes(
-            mod_card_roles_ui(ns("roles")),
-            class = if (!identical(group, "roles")) "ar-card-group-hidden"
-          ),
-          if (identical(group, "options")) {
-            .card_coming_stub(
-              region,
-              "Title, footnotes, and display options arrive next."
-            )
-          },
-          if (identical(group, "filters")) {
-            .card_coming_stub(
-              region,
-              "Population and subset filters arrive next."
-            )
-          }
-        )
-      )
-    }) |>
-      shiny::bindEvent(store$rv$card, store$rv$region, store$rv$pinned)
-
-    shiny::observeEvent(input$close, {
-      close_card(store)
+    lapply(names(.INSP_TABS), function(tab) {
+      shiny::observeEvent(input[[paste0("tab_", tab)]], {
+        store$rv$insp_tab <- tab
+      })
     })
 
-    shiny::observeEvent(input$pin, {
-      toggle_pin(store)
-    })
-
-    # The floating/pinned class flip: `.ar-pinned` on the card root. Sent
-    # on every `rv$pinned` change (including the one this module's own
-    # `toggle_pin()` just made) so a future OTHER pin trigger (e.g. a
-    # keyboard shortcut, Task 17) stays correct without this observer
-    # needing to know who changed it.
+    # Tab -> class flip on the card root. Covers BOTH writers (a direct
+    # tab click above, and `open_card()`'s region routing).
     shiny::observe({
       session$sendCustomMessage(
-        "ar-card-pin",
-        list(id = ns("card"), pinned = isTRUE(store$rv$pinned))
+        "ar-insp-tab",
+        list(id = ns("card"), tab = store$rv$insp_tab)
       )
     }) |>
-      shiny::bindEvent(store$rv$pinned)
+      shiny::bindEvent(store$rv$insp_tab)
+
+    # Run: drop every memoized ARD so the rebuild is honest (a stale
+    # upstream parquet re-collects rather than replaying the memo), then
+    # bump the nonce the paper's renderers bind to.
+    shiny::observeEvent(input$run, {
+      keys <- grep("^ard::", ls(store$cache), value = TRUE)
+      rm(list = keys, envir = store$cache)
+      store$rv$run_nonce <- store$rv$run_nonce + 1L
+      log_line(store, "run: re-typeset requested")
+    })
+
+    # The per-output RTF -- the SAME render seam as export (decision #7's
+    # one-spec rule): tables through render_rtf, figures through
+    # render_figure_rtf.
+    output$rtf <- shiny::downloadHandler(
+      filename = function() {
+        obj <- selected_object(store)
+        if (is.null(obj)) "output.rtf" else paste0(.output_slug(obj), ".rtf")
+      },
+      content = function(file) {
+        obj <- selected_object(store)
+        if (is.null(obj)) {
+          .abort_app("No output is selected.")
+        }
+        if (.is_figure_type(obj@type)) {
+          arpillar::render_figure_rtf(store$con, obj, file)
+        } else {
+          ard <- cached_ard(store, obj)
+          arpillar::render_rtf(ard, obj, file)
+        }
+      }
+    )
+
+    # Telemetry (the teal steal): dataset + retained/total records through
+    # the engine's own count -- no DBI call lives in this module.
+    output$telemetry <- shiny::renderUI({
+      obj <- selected_object(store)
+      if (is.null(obj)) {
+        return(shiny::span("no output selected"))
+      }
+      counts <- tryCatch(
+        arpillar::filter_count(store$con, obj@dataset, obj@filters),
+        error = function(e) NULL
+      )
+      if (is.null(counts)) {
+        return(shiny::span(tolower(obj@dataset)))
+      }
+      shiny::span(sprintf(
+        "%s · %s of %s records",
+        tolower(obj@dataset),
+        format(counts$matched, big.mark = ","),
+        format(counts$total, big.mark = ",")
+      ))
+    }) |>
+      shiny::bindEvent(store$rv$report, store$rv$selected)
 
     invisible(NULL)
   })

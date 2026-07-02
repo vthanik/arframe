@@ -47,7 +47,9 @@ new_store <- function(con, report = NULL) {
       log = character(0),
       catalog_nonce = 0L,
       rail_collapsed = FALSE,
-      insp_collapsed = FALSE
+      insp_collapsed = FALSE,
+      insp_tab = "roles",
+      run_nonce = 0L
     ),
     undo = undo,
     cache = new.env(parent = emptyenv())
@@ -268,12 +270,18 @@ log_line <- function(store, msg) {
   invisible(NULL)
 }
 
-# ---- galley card -----------------------------------------------------
+# ---- galley card / docked inspector ------------------------------------
 
-#' Open the galley card on `region`.
+#' Route a region click into the docked inspector (v5): remember the
+#' region, switch the inspector to the tab that owns it, and expand a
+#' collapsed inspector so the routed click never lands on a folded panel.
+#' (`rv$card` stays TRUE for compatibility with the pre-dock float logic
+#' until every reader is migrated.)
 #' @noRd
 open_card <- function(store, region) {
   store$rv$region <- region
+  store$rv$insp_tab <- .card_region_group(region)
+  store$rv$insp_collapsed <- FALSE
   store$rv$card <- TRUE
   invisible(NULL)
 }

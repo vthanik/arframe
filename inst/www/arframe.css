@@ -942,73 +942,149 @@ input[type="radio"] {
 }
 
 /* ============ 07 card ============ */
-/* The galley card (design spec #4/#8): the summonable, pinnable
-   inspector. `.ar-body-report`'s 3rd child (`mod_card_ui()`'s output) --
-   floating by default (an absolutely-positioned overlay of the desk,
-   `.ar-body` is its `position: relative` ancestor), `.ar-pinned` docks it
-   as a flush right column instead. The class flip is set by the
-   "ar-card-pin" message (`mod_card.R`), never a `renderUI` dependency, so
-   pinning never remounts the region content underneath. */
+/* v5 (decision #8): the DOCKED inspector -- `.ar-body-report`'s 3rd child,
+   a fixed-width right column. The float/pin behavior is gone; collapse to
+   the icon strip is frame-owned (`ar-insp-collapsed` on the workspace,
+   see 02 frame). The active tab is the `ar-insp-tab-*` class on the card
+   root (the "ar-insp-tab" message) -- pure CSS pane flip, no remount. */
 .ar-card {
-  position: absolute;
-  right: 16px;
-  top: 64px;
-  width: 320px;
-  max-height: calc(100% - 96px);
-  overflow-y: auto;
-  background: var(--ar-card);
-  border: 1px solid var(--ar-paper-edge);
-  border-radius: var(--ar-radius);
-  box-shadow: var(--ar-shadow-float);
-  z-index: 20;
-}
-.ar-card:empty {
-  display: none;
-}
-.ar-card.ar-pinned {
-  position: static;
-  flex: 0 0 320px;
-  width: auto;
-  max-height: none;
+  flex: 0 0 260px;
   height: 100%;
-  border-radius: 0;
-  border: none;
-  border-left: 1px solid var(--ar-rule);
-  box-shadow: none;
-}
-
-/* -- header: region label, pin, close -- */
-.ar-card-header {
-  display: flex;
-  align-items: center;
-  gap: var(--ar-space-1);
-  padding: var(--ar-space-3) var(--ar-space-4) var(--ar-space-2);
-  border-bottom: 1px solid var(--ar-rule);
-  position: sticky;
-  top: 0;
   background: var(--ar-card);
-  z-index: 1;
-}
-.ar-card-region-label {
-  margin: 0;
-}
-.ar-card-header-spacer {
-  flex: 1 1 auto;
-}
-.ar-card-pin-active {
-  color: var(--ar-accent);
-  background: var(--ar-accent-weak);
-  border-color: var(--ar-accent-weak);
-}
-.ar-card-body {
-  padding: var(--ar-space-3) var(--ar-space-4) var(--ar-space-4);
+  border-left: 1px solid var(--ar-rule);
   display: flex;
   flex-direction: column;
-  gap: var(--ar-space-4);
+  min-width: 0;
+  transition: flex-basis var(--ar-motion-slow) var(--ar-motion-ease);
 }
-.ar-card-group-hidden {
+.ar-insp-collapsed .ar-card {
+  flex: 0 0 34px;
+}
+.ar-insp-full {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.ar-insp-collapsed .ar-insp-full {
   display: none;
 }
+.ar-insp-slim {
+  display: none;
+}
+.ar-insp-collapsed .ar-insp-slim {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: var(--ar-space-2);
+}
+
+/* -- tab strip -- */
+.ar-insp-tabs {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--ar-rule);
+  padding-right: 2px;
+}
+.ar-insp-tab {
+  flex: 1 1 auto;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 11.5px;
+  color: var(--ar-ink-4);
+  padding: 8px 0;
+  cursor: pointer;
+}
+.ar-insp-tab:hover {
+  color: var(--ar-ink);
+}
+.ar-insp-tab-roles .ar-insp-tab[data-ar-insp-tab="roles"],
+.ar-insp-tab-options .ar-insp-tab[data-ar-insp-tab="options"],
+.ar-insp-tab-filters .ar-insp-tab[data-ar-insp-tab="filters"],
+.ar-insp-tab-ranks .ar-insp-tab[data-ar-insp-tab="ranks"] {
+  color: var(--ar-ink);
+  border-bottom-color: var(--ar-accent);
+  font-weight: 500;
+}
+.ar-insp-cv {
+  flex: 0 0 auto;
+}
+
+/* -- pane stack: every pane mounts, the root tab class picks one -- */
+.ar-insp-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--ar-space-3) var(--ar-space-3) var(--ar-space-2);
+}
+.ar-insp-pane {
+  display: none;
+}
+.ar-insp-tab-roles .ar-insp-pane-roles,
+.ar-insp-tab-options .ar-insp-pane-options,
+.ar-insp-tab-filters .ar-insp-pane-filters,
+.ar-insp-tab-ranks .ar-insp-pane-ranks {
+  display: block;
+}
+
+/* -- action footer: Run / .rtf / code -- */
+.ar-insp-act {
+  display: flex;
+  gap: var(--ar-space-1);
+  padding: var(--ar-space-2) var(--ar-space-3);
+  border-top: 1px solid var(--ar-rule);
+}
+.ar-insp-run {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--ar-ink);
+  color: var(--ar-paper);
+  border: 1px solid var(--ar-ink);
+  border-radius: var(--ar-radius);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 7px 0;
+  cursor: pointer;
+}
+.ar-insp-run:hover {
+  background: var(--ar-ink-2);
+}
+.ar-insp-kbd {
+  font-size: 9.5px;
+  opacity: 0.55;
+  font-weight: 400;
+}
+.ar-insp-dl {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius);
+  background: transparent;
+  color: var(--ar-ink-2);
+  font-size: 11.5px;
+  padding: 0 9px;
+  cursor: pointer;
+  text-decoration: none;
+}
+.ar-insp-dl:hover {
+  border-color: var(--ar-ink-3);
+  color: var(--ar-ink);
+  text-decoration: none;
+}
+
+/* -- telemetry line -- */
+.ar-insp-tel {
+  padding: 6px var(--ar-space-3) 8px;
+  border-top: 1px solid var(--ar-rule);
+  font-size: 10.5px;
+  color: var(--ar-ink-4);
+}
+
 .ar-card-coming {
   color: var(--ar-ink-4);
   font-size: 11.5px;

@@ -37,10 +37,35 @@ test_that("new_store returns con/rv/undo/cache with the full rv field set", {
     "log",
     "catalog_nonce",
     "rail_collapsed",
-    "insp_collapsed"
+    "insp_collapsed",
+    "insp_tab",
+    "run_nonce"
   )
   rv <- shiny::isolate(shiny::reactiveValuesToList(store$rv))
   expect_true(all(fields %in% names(rv)))
+})
+
+test_that("open_card() routes the region to its inspector tab; tab clicks stand alone (v5)", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+
+  # Default tab is roles; open_card on a furniture region routes the tab.
+  expect_identical(shiny::isolate(store$rv$insp_tab), "roles")
+  shiny::isolate(open_card(store, "title"))
+  expect_identical(shiny::isolate(store$rv$region), "title")
+  expect_identical(shiny::isolate(store$rv$insp_tab), "options")
+  shiny::isolate(open_card(store, "columns"))
+  expect_identical(shiny::isolate(store$rv$insp_tab), "roles")
+  shiny::isolate(open_card(store, "filters"))
+  expect_identical(shiny::isolate(store$rv$insp_tab), "filters")
+
+  # Opening a card on a region always expands a collapsed inspector --
+  # a routed click must never land on a folded panel.
+  shiny::isolate(toggle_insp(store))
+  expect_true(shiny::isolate(store$rv$insp_collapsed))
+  shiny::isolate(open_card(store, "rows"))
+  expect_false(shiny::isolate(store$rv$insp_collapsed))
 })
 
 test_that("collapse defaults are FALSE; toggle_rail()/toggle_insp() flip them (v5)", {
