@@ -1,0 +1,113 @@
+/* arframe -- the Galley chrome. Built on top of inst/www/tokens.css (--ar-*
+   custom properties). See docs/superpowers/specs/2026-07-02-arframe-galley-
+   design-system.md. Sections grow as later Tasks add TOC/canvas/card CSS. */
+
+/* ============ 00 base ============ */
+body {
+  font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  color: var(--ar-ink);
+  background: var(--ar-desk);
+}
+.ar-mono {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.form-control,
+.form-select,
+.selectize-input {
+  font-size: 12px;
+  border-color: var(--ar-rule);
+  border-radius: var(--ar-radius);
+}
+.form-control:focus,
+.form-select:focus,
+.selectize-input.focus {
+  border-color: var(--ar-accent);
+  box-shadow: 0 0 0 3px var(--ar-accent-weak);
+}
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--ar-accent);
+}
+:focus-visible {
+  outline: 3px solid var(--ar-focus);
+  outline-offset: 0;
+  box-shadow: 0 0 0 5px #0b0c0c;
+}
+
+/* ============ 01 atoms ============ */
+.ar-label {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ar-ink-3); /* ink-3, not ink-4: AA on the desk */
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  margin: 2px 0 6px;
+}
+.ar-stamp {
+  display: inline-block;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  line-height: 1.4;
+  padding: 0 4px;
+  border: 1px solid currentColor;
+  border-radius: var(--ar-radius-sm);
+  background: transparent;
+}
+.ar-stamp-ready {
+  color: var(--ar-ready);
+}
+.ar-stamp-draft {
+  color: var(--ar-draft);
+  border-color: #c9a227;
+}
+.ar-stamp-needs_data {
+  color: var(--ar-ink-4);
+}
+.ar-stamp-broken {
+  color: var(--ar-error);
+}
+.ar-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--ar-radius);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 9.5px;
+  font-weight: 600;
+  line-height: 1;
+  margin-right: 6px;
+}
+.ar-chip-cat {
+  color: var(--ar-char-fg);
+  background: var(--ar-char-bg);
+}
+.ar-chip-meas {
+  color: var(--ar-num-fg);
+  background: var(--ar-num-bg);
+}
+.ar-chip-date {
+  color: var(--ar-date-fg);
+  background: var(--ar-date-bg);
+}
+.ar-icon-btn {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--ar-ink-3);
+  border: 1px solid transparent;
+  border-radius: var(--ar-radius);
+}
+.ar-icon-btn:hover {
+  background: rgba(27, 31, 35, 0.05);
+  border-color: var(--ar-rule);
+  color: var(--ar-ink);
+}

@@ -33,8 +33,8 @@
 | `--ar-ink-5` | `#9AA3AB` | **Decoration only** (leader dots) — NOT text |
 | `--ar-accent` | `#2D5FA8` | Ink-stamp blue: selection, active, links, focus-ring pair |
 | `--ar-accent-weak` | `rgba(45,95,168,0.07)` | Active washes |
-| `--ar-ready` | `#2E7D4F` | READY stamp |
-| `--ar-draft` | `#9A6B0B` (text) / `#C9A227` (border) | DRAFT stamp |
+| `--ar-ready` | `#257045` | READY stamp |
+| `--ar-draft` | `#7A5409` (text) / `#C9A227` (border) | DRAFT stamp |
 | `--ar-error` | `#B3261E` | ERROR stamp, error summary, destructive |
 | `--ar-focus` | `#FFDD00` | Keyboard focus (paired with `#0B0C0C` shadow — GOV.UK two-tone) |
 | chips | cat `#0369A1`/`#E0F2FE` · meas `#6D28D9`/`#EDE9FE` · date `#92400E`/`#FEF3C7` | Variable type chips (18×18, unchanged) |
@@ -53,9 +53,12 @@ run — micro-labels, TOC numbers, group headers, the status bar, the source lin
 stamp text — must clear **WCAG AA 4.5:1 against its background** (desk / paper /
 chrome). `--ar-ink-3 #5C6670` is the muted-gray floor for small text on the desk
 (4.88:1). `--ar-ink-4`/`--ar-ink-5` are for decoration (leader dots, hairlines)
-only. The stamp text hexes below are indicative mockup values; **tune them until
-they pass 4.5:1 on the desk** (the darkest background text sits on) — the Task-4
-contrast test is the gate, not these literals.
+only. The stamp text hexes in the token table are Task-4-reconciled against the
+desk: `--ar-ready #257045` (5.04:1), `--ar-draft #7A5409` (5.66:1, text only --
+the `#C9A227` border is non-text and only needs 3.0:1), `--ar-error #B3261E`
+(5.46:1, unchanged). The earlier indicative mockup values (`#2E7D4F` 4.21:1,
+`#9A6B0B` 3.91:1) both failed the floor and were replaced; the Task-4 contrast
+test (`test-theme.R`) is the gate these hexes are pinned against.
 
 ## 2. Type
 

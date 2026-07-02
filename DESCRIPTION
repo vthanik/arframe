@@ -14,6 +14,8 @@ Imports:
     arpillar,
     bslib,
     cli,
+    fontawesome,
+    htmltools,
     rlang,
     shiny
 Suggests:
@@ -22,3 +24,4 @@ Suggests:
 Remotes:
     vthanik/arpillar
 Config/testthat/edition: 3
+Config/roxygen2/version: 8.0.0

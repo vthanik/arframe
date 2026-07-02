@@ -6,3 +6,4 @@
 *.Rcheck
 CLAUDE.local.md
 .local/
+.DS_Store
