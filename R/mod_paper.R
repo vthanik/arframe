@@ -58,19 +58,13 @@
   )
 }
 
-# ---- running head / source line ----------------------------------------
+# ---- source line ---------------------------------------------------------
 
-#' The running head: report name left, `Page 1 of 1` right, hairline below.
-#' v1 is always single-page (`page_by` pagination is a later task), so the
-#' page count is a static "1 of 1" rather than derived from anything.
-#' @noRd
-.running_head <- function(report_name) {
-  shiny::tags$div(
-    class = "ar-paper-runninghead ar-mono",
-    shiny::tags$span(report_name),
-    shiny::tags$span("Page 1 of 1")
-  )
-}
+# v5 (decision #7): the running head ("Page 1 of 1") is GONE -- the galley
+# artifact never cosplays as a page; page chrome belongs to export/QC
+# preview. When arpillar's spec later grows pagehead/pagefoot bands for the
+# RTF leg, the screen leg suppresses them with tabular's
+# `chrome_onscreen = "off"` preset knob instead of re-adding markup here.
 
 #' The faint provenance line at the foot of the sheet: `Source: <dataset> -
 #' arframe <version> - <date>`. Wrapped in the `source` region so clicking
@@ -177,11 +171,13 @@
 
 # ---- UI ---------------------------------------------------------------
 
-#' The paper module UI: the fit/page toggle, and the sheet slot itself
-#' (server-rendered end to end via `uiOutput`) plus a mounted-but-hidden
-#' `plotOutput` for the figure leg -- both containers stay mounted, a class
-#' flip on the sheet root picks which one shows (mirrors `mod_frame.R`'s
-#' "all bodies mount, CSS picks one" pattern).
+#' The paper module UI (v5): the content-hugging galley artifact -- the
+#' sheet slot (server-rendered end to end via `uiOutput`) plus a
+#' mounted-but-hidden `plotOutput` for the figure leg -- both containers
+#' stay mounted, a class flip on the sheet root picks which one shows
+#' (mirrors `mod_frame.R`'s "all bodies mount, CSS picks one" pattern).
+#' No fit/page toolbar (decision #7): the artifact hugs its content; page
+#' width is export's business.
 #' @param id *The module namespace.* `<character(1)>: required`.
 #' @noRd
 mod_paper_ui <- function(id) {
@@ -189,26 +185,8 @@ mod_paper_ui <- function(id) {
   shiny::div(
     class = "ar-desk-col",
     shiny::div(
-      class = "ar-paper-toolbar",
-      shiny::tags$fieldset(
-        shiny::tags$legend(class = "ar-label", "Preview width"),
-        .action_btn(
-          ns("fit_btn"),
-          "Fit",
-          variant = "link",
-          class = "ar-icon-btn ar-paper-toggle-btn"
-        ),
-        .action_btn(
-          ns("page_btn"),
-          "Page",
-          variant = "link",
-          class = "ar-icon-btn ar-paper-toggle-btn"
-        )
-      )
-    ),
-    shiny::div(
       id = ns("sheet"),
-      class = "ar-paper ar-paper--fit",
+      class = "ar-paper",
       `data-ar-paper` = ns(NULL),
       shiny::uiOutput(ns("sheet_html_slot")),
       shiny::div(
@@ -324,19 +302,6 @@ mod_paper_server <- function(id, store) {
       store$rv$adding <- TRUE
     })
 
-    shiny::observeEvent(input$fit_btn, {
-      session$sendCustomMessage(
-        "ar-paper-width",
-        list(id = ns("sheet"), mode = "fit")
-      )
-    })
-    shiny::observeEvent(input$page_btn, {
-      session$sendCustomMessage(
-        "ar-paper-width",
-        list(id = ns("sheet"), mode = "page")
-      )
-    })
-
     invisible(NULL)
   })
 }
@@ -351,12 +316,10 @@ mod_paper_server <- function(id, store) {
 #' complete shell from the first second."
 #' @noRd
 .render_sheet <- function(store, session, ns) {
-  report_name <- store$rv$report@name
   obj <- selected_object(store)
 
   if (is.null(obj)) {
     return(shiny::tagList(
-      .running_head(report_name),
       .ghost_empty_report(ns)
     ))
   }
@@ -364,7 +327,6 @@ mod_paper_server <- function(id, store) {
   status <- arpillar::output_status(obj)
   if (!identical(status, "ready")) {
     return(shiny::tagList(
-      .running_head(report_name),
       ghost_shell(obj),
       .source_line(obj)
     ))
@@ -382,7 +344,6 @@ mod_paper_server <- function(id, store) {
     err_id <- ns("problem")
     session$sendCustomMessage("ar-focus", list(id = err_id))
     return(shiny::tagList(
-      .running_head(report_name),
       .error_summary(ns, err_id, obj, result$message),
       .title_block(obj),
       .source_line(obj)
@@ -391,7 +352,6 @@ mod_paper_server <- function(id, store) {
 
   store$rv$broken <- setdiff(store$rv$broken, obj@id)
   shiny::tagList(
-    .running_head(report_name),
     .title_block(obj),
     result$content,
     .source_line(obj)

@@ -355,11 +355,24 @@ Shiny.addCustomMessageHandler("ar-paper-kind", function (m) {
   if (m.kind === "figure") el.classList.add("ar-paper-kind-figure");
 });
 
-Shiny.addCustomMessageHandler("ar-paper-width", function (m) {
-  var el = document.getElementById(m.id);
-  if (!el) return;
-  el.classList.remove("ar-paper--fit", "ar-paper--page");
-  el.classList.add(m.mode === "page" ? "ar-paper--page" : "ar-paper--fit");
+// v5 galley regions (decision #8): after each sheet render, annotate the
+// ENGINE's own emitted structure so region hover/click binds to tabular's
+// classes -- arframe decorates the typography, it never re-typesets. The
+// hook fires on shiny:value for the paper's html slot; setTimeout(0) lets
+// Shiny finish swapping the DOM first.
+$(document).on("shiny:value", function (e) {
+  if (!e.name || e.name.indexOf("sheet_html_slot") === -1) return;
+  setTimeout(function () {
+    var root = document.querySelector(".ar-paper");
+    if (!root) return;
+    var thead = root.querySelector(".tabular-table thead");
+    if (thead) thead.setAttribute("data-ar-region", "columns");
+    var tbody = root.querySelector(".tabular-table tbody");
+    if (tbody) tbody.setAttribute("data-ar-region", "rows");
+    root.querySelectorAll(".tabular-footnote").forEach(function (f) {
+      f.setAttribute("data-ar-region", "footnotes");
+    });
+  }, 0);
 });
 
 // The galley card (Task 10): the floating/pinned class flip, and Esc-to-

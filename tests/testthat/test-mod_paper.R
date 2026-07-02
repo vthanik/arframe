@@ -165,8 +165,11 @@ test_that("a READY table's rendered content is inside the paper's table-wrap reg
     {
       html <- output$sheet_html_slot$html
       expect_match(html, "ar-paper-table-wrap", fixed = TRUE)
-      expect_match(html, "ar-paper-runninghead", fixed = TRUE)
       expect_match(html, "ar-paper-title-block", fixed = TRUE)
+      # v5 (decision #7): the galley artifact carries NO page cosplay --
+      # the running head ("Page 1 of 1") is gone from every render path.
+      expect_no_match(html, "ar-paper-runninghead", fixed = TRUE)
+      expect_no_match(html, "Page 1 of 1", fixed = TRUE)
     }
   )
 })
@@ -462,30 +465,15 @@ test_that("a role edit re-renders WITH a new ard:: cache entry (cache MISS)", {
   )
 })
 
-# ---- fit/page toggle -----------------------------------------------------
+# ---- galley artifact (v5, decision #7) -------------------------------------
 
-test_that("the fit/page toolbar buttons are present with the fieldset/legend grouping", {
+test_that("the paper UI has NO fit/page toolbar -- the artifact is content-hugging (v5)", {
   ui <- mod_paper_ui("paper")
   html <- as.character(ui)
-  expect_match(html, "Preview width", fixed = TRUE)
-  expect_match(html, "<fieldset", fixed = TRUE)
-  expect_match(html, "<legend", fixed = TRUE)
-  expect_match(html, 'id="paper-fit_btn"', fixed = TRUE)
-  expect_match(html, 'id="paper-page_btn"', fixed = TRUE)
-})
-
-test_that("clicking fit/page posts the ar-paper-width session message (no error)", {
-  fx <- .pp_ready_store()
-  withr::defer(arpillar::engine_close(fx$con))
-
-  shiny::testServer(
-    mod_paper_server,
-    args = list(store = fx$store),
-    {
-      expect_no_error(session$setInputs(page_btn = 1))
-      expect_no_error(session$setInputs(fit_btn = 1))
-    }
-  )
+  expect_no_match(html, "Preview width", fixed = TRUE)
+  expect_no_match(html, "ar-paper-toolbar", fixed = TRUE)
+  expect_no_match(html, "fit_btn", fixed = TRUE)
+  expect_no_match(html, "ar-paper--fit", fixed = TRUE)
 })
 
 # ---- UI shape --------------------------------------------------------------
@@ -513,7 +501,12 @@ test_that("arframe.js contains the region-click delegation and the drag-guard qu
   expect_match(txt, "arFlushDeferredRegionClicks", fixed = TRUE)
   expect_match(txt, "arDeferredRegionClicks", fixed = TRUE)
   expect_match(txt, "ar-paper-kind", fixed = TRUE)
-  expect_match(txt, "ar-paper-width", fixed = TRUE)
+  # v5 (decision #7/#8): the fit/page width handler is GONE; in its place
+  # the shiny:value hook annotates tabular's own emitted structure so the
+  # margin-mark regions bind to the engine's classes.
+  expect_no_match(txt, "ar-paper-width", fixed = TRUE)
+  expect_match(txt, "shiny:value", fixed = TRUE)
+  expect_match(txt, "tabular-table thead", fixed = TRUE)
   # a ghost slot's `role="button"` + `tabindex="0"` promise (utils_ghost.R)
   # needs a matching Enter/Space keydown handler -- a plain div does not
   # natively fire `click` on those keys the way a real <button> does.
@@ -583,11 +576,11 @@ test_that("arframe() paper: a focused ghost slot fires input$region on Enter (ke
   expect_identical(app$get_value(input = "paper-region"), "columns")
 })
 
-test_that("arframe() paper: the fit/page toolbar toggles the sheet width class live", {
+test_that("arframe() paper: a ready render annotates tabular's own structure as regions (v5)", {
   skip_on_cran()
   app <- shinytest2::AppDriver$new(
     app_dir = testthat::test_path("apps/paper"),
-    name = "paper-toggle",
+    name = "paper-galley",
     height = 900,
     width = 1440
   )
@@ -596,13 +589,19 @@ test_that("arframe() paper: the fit/page toolbar toggles the sheet width class l
   app$click(selector = '.ar-toc-row[data-ar-id="out001"]')
   app$wait_for_idle()
 
-  app$click(selector = "#paper-page_btn")
-  app$wait_for_idle()
-  page_class <- app$get_js("document.getElementById('paper-sheet').className")
-  expect_match(page_class, "ar-paper--page", fixed = TRUE)
+  # The margin-mark hit zones bind to the ENGINE's own emitted structure
+  # (decision #8) -- arframe annotates, it never re-typesets.
+  thead_region <- app$get_js(
+    "document.querySelector('.ar-paper .tabular-table thead')?.dataset.arRegion"
+  )
+  expect_identical(thead_region, "columns")
+  tbody_region <- app$get_js(
+    "document.querySelector('.ar-paper .tabular-table tbody')?.dataset.arRegion"
+  )
+  expect_identical(tbody_region, "rows")
 
-  app$click(selector = "#paper-fit_btn")
-  app$wait_for_idle()
-  fit_class <- app$get_js("document.getElementById('paper-sheet').className")
-  expect_match(fit_class, "ar-paper--fit", fixed = TRUE)
+  # No page cosplay anywhere in the artifact (decision #7).
+  sheet_html <- app$get_html("#paper-sheet", outer_html = TRUE)
+  expect_no_match(sheet_html, "runninghead", fixed = TRUE)
+  expect_no_match(sheet_html, "Page 1 of 1", fixed = TRUE)
 })

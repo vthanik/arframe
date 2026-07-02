@@ -703,69 +703,18 @@ input[type="radio"] {
   flex-direction: column;
   align-items: center;
 }
-.ar-paper-toolbar {
-  flex: 0 0 auto;
-  align-self: flex-end;
-  padding: var(--ar-space-3) var(--ar-space-5) 0;
-}
-.ar-paper-toolbar fieldset {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  border: none;
-  margin: 0;
-  padding: 0;
-}
-.ar-paper-toolbar legend {
-  /* visually hidden but still announced -- the two icon buttons carry
-     their own text labels ("Fit"/"Page"), so the legend need not be seen
-     to be meaningful; it exists for the `fieldset`/`legend` grouping
-     contract (design spec #6). */
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  margin: 0;
-}
-.ar-paper-toggle-btn {
-  width: auto;
-  padding: 3px 8px;
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 10.5px;
-  letter-spacing: 0.04em;
-  color: var(--ar-ink-4);
-}
-.ar-paper-toggle-btn:hover {
-  color: var(--ar-ink);
-}
-
-/* -- the sheet itself: white, bordered, running head + content + source -- */
 .ar-paper {
   background: var(--ar-paper);
   border: 1px solid var(--ar-paper-edge);
   margin: var(--ar-space-5) auto;
-  padding: var(--ar-space-6) var(--ar-space-6) var(--ar-space-4);
+  padding: var(--ar-space-5) var(--ar-space-6) var(--ar-space-4);
   flex: 0 0 auto;
-}
-.ar-paper--fit {
-  width: 100%;
-  max-width: 1100px;
-}
-.ar-paper--page {
-  width: 975px;
-  padding-left: 48px;
-  padding-right: 48px;
-}
-
-.ar-paper-runninghead {
-  display: flex;
-  justify-content: space-between;
-  font-size: 10.5px;
-  color: var(--ar-ink-4);
-  padding-bottom: var(--ar-space-2);
-  margin-bottom: var(--ar-space-4);
-  border-bottom: 1px solid var(--ar-rule-2);
+  /* v5 (decision #7): the artifact HUGS its content -- no page aspect, no
+     fit/page modes. Wide crosstabs scroll inside the table wrap instead of
+     stretching the surface. */
+  width: fit-content;
+  min-width: 380px;
+  max-width: min(1100px, 100%);
 }
 
 /* -- title block: number / title / population, all mono, centred -- */
@@ -827,13 +776,40 @@ input[type="radio"] {
 
 /* -- page regions: hover/select outline, per design spec #4/#6 -- */
 [data-ar-region] {
-  outline-offset: 1px;
+  outline-offset: 3px;
+  cursor: pointer;
 }
 [data-ar-region]:hover {
-  outline: 1px solid var(--ar-accent-weak);
+  outline: 1.5px solid var(--ar-accent);
+  background: var(--ar-accent-weak);
 }
 .ar-region-active {
   outline: 1.5px solid var(--ar-accent) !important;
+}
+/* v5 signature (decision #8): the proofreader MARGIN MARK. Hovering a
+   region stamps its name into the artifact's left margin -- pure CSS off
+   the data attribute, no JS, no extra markup. Regions inside the paper
+   only; the desk's padding provides the margin the chip sits in. */
+.ar-paper [data-ar-region] {
+  position: relative;
+}
+.ar-paper [data-ar-region]:hover::before,
+.ar-paper .ar-region-active::before {
+  content: attr(data-ar-region);
+  position: absolute;
+  left: -92px;
+  top: 2px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ar-accent);
+  border: 1px solid var(--ar-accent);
+  border-radius: var(--ar-radius-sm);
+  padding: 1px 6px;
+  background: var(--ar-paper);
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 /* -- the `.tabular-doc` override: maps the tabular HTML backend's own
@@ -851,8 +827,12 @@ input[type="radio"] {
   margin: 0 !important;
 }
 .tabular-doc .tabular-title {
-  font-family: "IBM Plex Sans", sans-serif !important;
-  font-weight: 600 !important;
+  /* v5 dup fix: the spec carries the title for the EXPORT leg, so
+     `as.tags()` emits a `.tabular-title` too -- but on screen the title
+     region is arframe's own `.ar-paper-title-block` (number + title +
+     population, the clickable region). Showing both printed the title
+     twice; the engine's copy is hidden on screen only. */
+  display: none !important;
 }
 .tabular-doc .tabular-table {
   font-size: 11px !important;
