@@ -1,92 +1,133 @@
-# handoff — arframe v5 galley build
+# handoff — arframe inspector panes (Tasks 11/12 + run semantics)
 
-**Branch state (2026-07-02, post-merge):** all v5 work consolidated onto
-`master`. `feat/galley-v5` (worktree) and `feat/galley-ui` were fully merged
-fast-forward and deleted; the worktree at `.claude/worktrees/galley-v5` is
-removed. Do NOT push without explicit approval.
+**Branch state (2026-07-02):** `feat/inspector-panes` (worktree
+`.claude/worktrees/inspector-panes`, branched off `master` @ f21be40)
+carries the complete inspector build: Options pane (Task 11), Filters pane
+(Task 12), and the locked STALE run semantics (decision #8). Four commits,
+staged test-first, real-data eyeball sweep done. Do NOT push without
+explicit approval.
 
-## Goal
+## STATUS: Tasks 11 + 12 + run semantics COMPLETE, gate green
 
-Implement the LOCKED v5 UI (CLAUDE.md binding decisions #7–#9): galley
-canvas (no page cosplay), docked inspector, explorer Data mode,
-Data|Report segmented toggle, real CDISC pilot data for all verification.
-Reference design: the v5 `show_widget` mockup from the 2026-07-02 session
-(sources tree + manage toolbar + explorer table; inspector with
-Roles/Options/Filters/Ranks + Run ⌘↵/.rtf/`</>` footer + telemetry;
-margin-mark region hover).
+Executes the prior handoff's directive ("build the remaining inspector
+panes the v5 way: worktree off master, staged, test-first, real-data
+sweep, merge back when green").
 
-## STATUS: all 7 stages landed, eyeball-verified on real data, MERGED
+- `devtools::check` = **0 errors / 0 warnings / 0 notes**; 763 tests pass.
+- Coverage (95% per-file house bar): mod_card_options **95.6**,
+  mod_card_filters **95.8**; fct_store 99.5, mod_paper 96.8,
+  mod_contents 99.2. Pre-existing debt unchanged: mod_card_roles 66.1
+  (chip `task_d10a434e` open), app.R 67.4, utils_atoms 75.4, mod_card 94.7.
+- Real-data sweep on the CDISC pilot mounts (decision #9): demographics
+  typeset (Placebo N=86 / High 84 / Low 84), cheap decimals edit re-renders
+  live, role edit → STALE panel + TOC stamp → Run re-typesets, km options
+  pane (AXES/SERIES/LEGEND, engine defaults preselected), Safety-population
+  preset → committed row + `254 of 254` live count + paper Population tag.
+  Screenshots: `.local/screens/v5/11-card-options.png`,
+  `12-card-filters.png`, `12b-filters-run.png`, `12c-filters-stale.png`,
+  `12d-stale-run-retypeset.png`.
 
-All stages (S1 frame → S7 gates) complete and green. Two post-merge bug
-fixes landed after the user exercised the report path on folder-mounted
-data (`5984c8e`): add-output errored because folder-library mounts
-conflicted with the engine's WORK-only `@dataset` resolution (fix: mount
-everything into WORK; folder = arframe-side provenance in
-`store$sources`), and the Roles pane crashed on `switch(NULL)` when no
-region was focused (fix: NULL/non-scalar guard in `.region_slots`).
-`c7b8333` fixed an ASCII `--` in the Add-output recommendation label to a
-`—` em-dash escape (R-CMD-check ASCII rule).
+## What landed (4 commits on feat/inspector-panes)
 
-arpillar got `unregister_dataset()` (`333b8ce`, committed + locally
-installed via `R CMD INSTALL`; **NOT pushed** — arframe CI cannot resolve
-`Remotes: vthanik/arpillar` until it is).
+1. **Options pane** (`R/mod_card_options.R` + mirror test): TITLE section
+   (editable TLF number + Table/Figure/Listing label select + title),
+   FOOTNOTES line editor (line 1 = population, tagged), option rows
+   generated from `arpillar::option_schema(type)` — int (numeric-text,
+   invalid input → inline message, never committed), choice (radios),
+   flag, text (empty removes), numvec (parsed + sorted), levels (sortable
+   x_order seeded from `distinct_values`, only when x is filled).
+   **Default-elision:** a value equal to the engine default REMOVES the
+   key. Ranks tab keeps the Task-11 placeholder text + `coming` tag.
+2. **Run semantics** (decision #8, `fct_store.R`/`mod_paper.R`/
+   `mod_card.R`/`mod_contents.R`/`utils_atoms.R`): `.ard_key()` factored
+   out of `cached_ard()` as the cheap/heavy oracle. `update_object()`
+   marks `rv$stale` when the key moves on an output that was READY before
+   the edit — the paper renders the STALE notice (full page shell kept),
+   the TOC stamps STALE (broken outranks), Run clears flags + memos and
+   re-typesets. Exempt: cheap edits (options/title/footnotes → live),
+   draft fills (ghost→table payoff), broken-output fixes (error→fixed).
+3. **Filters pane** (`R/mod_card_filters.R` + mirror test): Safety
+   population / Full set presets (safety only when SAFFL exists), builder
+   rows (column rich picker · exact engine op set · per-type value
+   controls · include-missing · remove) in store-side `rv$filter_draft`
+   seeded on selection change; only COMPLETE rows commit (incomplete rows
+   wear an honest badge — the engine is drop-tolerant); live
+   `filter_count` matched-of-total debounced 300ms; paper Population tag
+   (own `filters` region, innermost delegation wins).
+4. **Sweep fixes** (testServer-invisible, caught on real data):
+   `suspendWhenHidden = FALSE` for the pane outputs (tab flip is a pure
+   client-side class change — the mod_data lesson, now also pinned by
+   body-deparse regression tests); filter column picker re-seed packed
+   with SQL type (role-type packing matched nothing and the bind-post
+   reset the committed row); selectize `item` renderer (closed picker
+   shows the bare name); filter rows wrap.
 
-`devtools::check` = 0 errors / 0 warnings / 1 benign NOTE (clock). Full
-suite green. Real CDISC ADaM (15 parquet) + SDTM (31 xpt) pilot folders
-mount and render end-to-end: report ghost + inspector, data explorer 46
-rows, drill grid on ADAE 1191×55 with typed column picker, mode toggle,
-Add output → demographics typeset (Placebo N=86 / Xanomeline High Dose
-N=84), telemetry `adsl · 254 of 254 records`. Screenshots in
-`.local/screens/v5/`.
+## Plan deviations (deliberate, keep)
 
-**Coverage (per-file, 95% house target):** fct_export 97.5, fct_store 99.5,
-mod_frame 100, mod_paper 96.6 (clear); mod_card 94.6, mod_data 94.1 (short by
-the interactive shinyFiles import-parse handlers); mod_card_roles 59.7
-(PRE-EXISTING Task-10 debt — spawn_task chip `task_d10a434e` open for it).
+- **No separate Population input in the TITLE section** (plan line 1181):
+  it would alias footnotes[1] with the footnotes editor's first row in the
+  SAME pane; the footnotes editor's tagged line 1 is the single surface.
+- **Options pane never narrows on `rv$region`** (v5 tabs supersede the
+  floating-card model the plan predates); a `title` region click focuses
+  the Title input instead. Roles still narrows (its three regions name
+  slot subsets).
+- **Editable number+label** per the addendum (L704) supersedes the older
+  "read-only for v1" (L1181).
+- **`.filter_complete/.filter_normalize`** pin the committed predicate to
+  the engine's minimal shape so a hand-built safety row is `identical()`
+  to the preset's.
 
-## Next steps (user picked: Options + Filters panes)
+## Known ceilings (ponytail-noted, not bugs)
 
-1. **Inspector Options pane** (plan Task 11): edit `options$number` /
-   `number_label` / title / footnotes / decimals on the selected output;
-   writes go through the store (never DOM), cheap edits re-render live.
-2. **Inspector Filters pane** (plan Task 12): population/subset filters
-   with live `filter_count` telemetry; heavy changes mark the proof STALE,
-   Run re-typesets.
-3. Then: QC sheet (Task 15), async mirai export (Task 16, mirai not
-   installed), a11y/responsive sweep (Task 17), STALE-stamp run semantics,
-   ⌘K palette (v1.1).
-4. Integration when approved: push arpillar `333b8ce`, then arframe.
+- Undo/redo while the Options pane is open can leave control DISPLAY
+  values stale until the next redraw trigger (store stays authoritative).
+- Filters observer pool is a fixed 12-row registration; `+ Add filter`
+  hides at the cap.
+- The km_os/km_pfs presets name `TRT01P`; the pilot ADTTE carries
+  TRTP/TRTA, so a km preset on real ADTTE shows the error summary until
+  roles are re-assigned — the honest static-oracle-gap path, pre-existing.
+- `arframe()` builds ONE store at app construction (all browser sessions
+  share it) — fine for the single-user dev tool, noted while replaying
+  screenshots.
 
-## Key seams (verified, do not re-derive)
+## Next steps
 
-- `render_spec(ard, object)` → tabular spec (titles+footnotes at
-  fct_render_table.R:648); `as.tags()` = screen; `emit()`/`render_rtf` =
-  file. ONE spec, three surfaces.
-- `render_rtf(ard, object, path)`; `render_figure_rtf(con, object, path)`;
-  `emit_code(con, object, path=NULL)`; `emit_report_code(con, report,
-  path=NULL)`; `filter_count(con, name, filters, library)` →
-  `list(matched, total)`; `unregister_dataset(con, name)` (new).
-- Engine resolves an output's `@dataset` in WORK ONLY — never register
-  datasets into per-folder libraries; folder provenance lives in
-  `store$sources` / `store$kinds` (keyed by dataset NAME).
-- tabular emits stable classes: tabular-title/-caption/-table/-footnote/
-  -doc; per-render `#tabular-<hash>` scoped style → arframe.css overrides
-  need `!important` (settled, don't churn).
-- Data-mode outputs need `outputOptions(output, ..., suspendWhenHidden =
-  FALSE)` AFTER the outputs are defined — the mode switch is a pure
-  client-side class flip the server never sees.
-- testServer quirk: `output$rtf` on a downloadHandler RUNS the download
-  and returns the temp path (assert basename + content).
-- JS contract test (test-mod_paper.R) greps arframe.js for literal
-  strings — update it when renaming handlers.
-- Non-ASCII in R strings = `\uXXXX` escapes (`"⌘↵"`, `"·"`,
-  `"—"`); roxygen `[X | Y]` parses as a broken Rd link.
+1. Merge `feat/inspector-panes` → `master` (ff), delete branch + worktree
+   (the standing pattern; merge may already be done — check `git log`).
+2. Then (plan order): QC sheet (Task 15), async mirai export (Task 16 —
+   mirai NOT installed, install first), a11y/responsive sweep (Task 17).
+   Deferred per spec: ⌘K palette (v1.1), Actions/Rules, dark skin.
+3. Integration when approved: push arpillar `333b8ce` (arframe CI cannot
+   resolve `Remotes: vthanik/arpillar` until it is), then arframe.
+
+## Key seams (verified this session, additive to v5's)
+
+- `option_schema(type)` df: key/label/kind/default/choices; kinds =
+  int/text/choice/flag/numvec/levels (km is the richest; occurrence keeps
+  population+hier_sort — population is a plain text row for now).
+- Engine filter predicate: `list(column, op, value, include_missing)`;
+  op set `==, !=, %in%, >, <, >=, <=, is.na, not.na`;
+  `arpillar:::.filter_one` silently DROPS incomplete/unknown predicates
+  (that drop-tolerance is why the pane gates commits on completeness).
+- `.ard_key(object)` (fct_store.R) = the memo key AND the cheap/heavy
+  oracle; options are excluded by design.
+- testServer gotcha: an outer variable named `id` is shadowed by the
+  module server's own `id` arg inside the testServer expr (cost an hour;
+  fixture ids are now named `out_id`).
+- observeEvent + `ignoreInit=TRUE` swallows the first REAL event when no
+  flush ran between observer creation and that event (testServer) — the
+  no-op commit guard replaces ignoreInit in both new modules.
+- `outputOptions()` is not introspectable under testServer's mock; the
+  suspendWhenHidden regression tests pin the call via
+  `deparse(body(<server>))` instead.
 
 ## Conventions in force
 
 Store-first state (never DOM), classed cli conditions, air format hook,
 test-first per stage, `.demo_catalog()` fixtures for tests but REAL pilot
 data for any visual claim (decision #9). Eyeball verification is binding —
-screenshot the running app for any UI claim (Preview MCP, launch.json in
-main-repo `.claude/`, port 7788; kill the port between restarts). No AI
-attribution in commits. No push without explicit approval.
+screenshot the running app for any UI claim (Preview MCP; `.claude/
+launch.json` in the main repo runs `arframe(folders = <pilot dirs>)` on
+port 7788; kill the port between restarts; chromote replay scripts in the
+session scratchpad produced the .local/screens record). No AI attribution
+in commits. No push without explicit approval.
