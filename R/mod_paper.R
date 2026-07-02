@@ -41,7 +41,11 @@
 
 #' The real (non-ghost) title block: number line, title, population line --
 #' all mono, wrapped in the `title` region so clicking it opens the card
-#' routed there, matching a ghost title block's own click target.
+#' routed there, matching a ghost title block's own click target. When the
+#' output carries filters, the Population tag (Task 12) renders below,
+#' wearing its OWN `filters` region -- the jQuery delegation fires
+#' innermost-first with stopPropagation, so clicking the tag routes to the
+#' Filters pane, not the title.
 #' @noRd
 .title_block <- function(object) {
   shiny::tags$div(
@@ -54,6 +58,13 @@
     ),
     if (!is.null(.population_line(object))) {
       shiny::tags$div(class = "ar-paper-population", .population_line(object))
+    },
+    if (length(object@filters) > 0L) {
+      shiny::tags$div(
+        class = "ar-paper-filtertag",
+        `data-ar-region` = "filters",
+        paste0("Population: ", .filters_tag_label(object@filters))
+      )
     }
   )
 }

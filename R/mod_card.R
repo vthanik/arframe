@@ -149,10 +149,7 @@ mod_card_ui <- function(id) {
         ),
         shiny::div(
           class = "ar-insp-pane ar-insp-pane-filters",
-          .card_coming_stub(
-            "filters",
-            "Population and subset filters arrive next."
-          )
+          mod_card_filters_ui(ns("filters"))
         ),
         shiny::div(
           class = "ar-insp-pane ar-insp-pane-ranks",
@@ -234,6 +231,7 @@ mod_card_server <- function(id, store) {
 
     mod_card_roles_server("roles", store)
     mod_card_options_server("options", store)
+    mod_card_filters_server("filters", store)
 
     lapply(names(.INSP_TABS), function(tab) {
       shiny::observeEvent(input[[paste0("tab_", tab)]], {

@@ -123,9 +123,16 @@
 #' matches the type string too (e.g. typing "double" surfaces every
 #' measure). Empty by default (no auto-selected first option, per the
 #' app's selection-input rule already followed in `mod_add_output.R`'s
-#' dataset picker).
+#' dataset picker); the Filters pane passes `selected` to re-seed a
+#' committed row's column.
 #' @noRd
-.eligible_picker <- function(ns, input_id, items) {
+.eligible_picker <- function(
+  ns,
+  input_id,
+  items,
+  selected = character(0),
+  placeholder = "Add a variable"
+) {
   choices <- vapply(
     seq_len(nrow(items)),
     function(i) .pack_item_choice(items$name[[i]], items$sql_type[[i]]),
@@ -155,17 +162,22 @@
     "    '</div>';",
     "} }"
   ))
+  opts <- list(
+    placeholder = placeholder,
+    render = render_js,
+    searchField = list("value")
+  )
+  if (length(selected) == 0L) {
+    # Force-empty on bind -- selectize otherwise auto-picks the first
+    # option; only wanted when nothing is meant to be selected.
+    opts$onInitialize <- I("function() { this.setValue(''); }")
+  }
   shiny::selectizeInput(
     ns(input_id),
     label = NULL,
     choices = stats::setNames(choices, choices),
-    selected = character(0),
-    options = list(
-      placeholder = "Add a variable",
-      onInitialize = I("function() { this.setValue(''); }"),
-      render = render_js,
-      searchField = list("value")
-    )
+    selected = selected,
+    options = opts
   )
 }
 

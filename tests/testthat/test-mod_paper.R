@@ -715,3 +715,53 @@ test_that("arframe() paper: a ready render annotates tabular's own structure as 
   expect_no_match(sheet_html, "runninghead", fixed = TRUE)
   expect_no_match(sheet_html, "Page 1 of 1", fixed = TRUE)
 })
+
+# ---- population/filters tag (Task 12) ---------------------------------------
+
+test_that("a filtered output shows the Population tag routed to the filters region", {
+  fx <- .pp_ready_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(
+    mod_paper_server,
+    args = list(store = fx$store),
+    {
+      # No filters -> no tag.
+      expect_no_match(
+        output$sheet_html_slot$html,
+        "ar-paper-filtertag",
+        fixed = TRUE
+      )
+
+      update_object(fx$store, fx$id, function(o) {
+        S7::set_props(
+          o,
+          filters = list(list(column = "SAFFL", op = "==", value = "Y"))
+        )
+      })
+      session$flushReact()
+      html <- output$sheet_html_slot$html
+      # The tag names the preset and is its own click region (the nested
+      # [data-ar-region] fires innermost-first in the JS delegation).
+      expect_match(html, "ar-paper-filtertag", fixed = TRUE)
+      expect_match(html, 'data-ar-region="filters"', fixed = TRUE)
+      expect_match(html, "Population: Safety population", fixed = TRUE)
+    }
+  )
+})
+
+test_that(".filters_tag_label names the safety preset, else counts filters", {
+  safety <- list(list(column = "SAFFL", op = "==", value = "Y"))
+  expect_identical(.filters_tag_label(safety), "Safety population")
+  expect_identical(
+    .filters_tag_label(list(
+      list(column = "SEX", op = "%in%", value = "F"),
+      list(column = "AGE", op = ">=", value = 65)
+    )),
+    "2 filters"
+  )
+  expect_identical(
+    .filters_tag_label(list(list(column = "SEX", op = "is.na"))),
+    "1 filter"
+  )
+})
