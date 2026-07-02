@@ -62,10 +62,9 @@ mod_frame_ui <- function(id, report_body, data_body, qc_body) {
     # (navigator.platform: Mac -> the Command glyph, else "Ctrl K"). The server
     # cannot know the browser's OS, so this cannot be decided in R.
     shiny::span(class = "ar-bar-hint ar-mono"),
-    .action_btn(
+    shiny::downloadLink(
       ns("export_btn"),
       "Export package",
-      variant = "link",
       class = "ar-btn-ink"
     )
   )
@@ -199,6 +198,31 @@ mod_frame_server <- function(id, store) {
 
     shiny::observeEvent(input$undo_btn, undo(store))
     shiny::observeEvent(input$redo_btn, redo(store))
+
+    # Export package (decision #8): render every ready output through the
+    # export-identical seam, assemble outputs/ + programs/ + report.json +
+    # manifest.csv, and hand back the zip. Draft/query and render-failed
+    # outputs are skipped and reported in the log (the honest-incompleteness
+    # rule); the QC sheet is the pre-flight for this action.
+    output$export_btn <- shiny::downloadHandler(
+      filename = function() paste0(.report_slug(store$rv$report), ".zip"),
+      content = function(file) {
+        dir <- file.path(tempdir(), .report_slug(store$rv$report))
+        unlink(dir, recursive = TRUE)
+        dir.create(dir, recursive = TRUE, showWarnings = FALSE)
+        stamp <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
+        res <- .build_export_package(store, dir, stamp)
+        .zip_export(dir, file)
+        log_line(
+          store,
+          sprintf(
+            "export: %d ready, %d skipped",
+            length(res$ready),
+            length(res$skipped)
+          )
+        )
+      }
+    )
 
     # store$undo is a plain (non-reactive) environment; store$rv$report is
     # the reactive proxy every commit()/undo()/redo() writes last, so reading

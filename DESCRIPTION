@@ -22,7 +22,8 @@ Imports:
     S7,
     shiny,
     shinyFiles,
-    tabular
+    tabular,
+    zip
 Suggests:
     nanoparquet,
     shinytest2,
