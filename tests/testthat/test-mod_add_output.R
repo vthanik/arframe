@@ -57,17 +57,17 @@ test_that(".recommendations: one row per (dataset, preset) pair that will actual
   fx <- .ao_store()
   withr::defer(arpillar::engine_close(fx$con))
 
-  # box_by_visit/ae_overall/ae_soc_pt/km_os are fully covered by their
-  # recommended dataset -- these are the surviving rows. demographics-from-
-  # ADSL and mean_over_time-from-ADVS are each missing one role var (RACE,
-  # CHG) on the demo catalog -- covered by the dedicated var-coverage test
-  # below, not asserted present here.
+  # box_by_visit/ae_overall/ae_soc_pt/km_os/demographics/mean_over_time are
+  # all fully covered by their recommended dataset on the enriched demo
+  # catalog (RACE on ADSL, CHG on ADVS) -- these are the surviving rows.
   recs <- .recommendations(fx$store)
   pairs <- vapply(recs, function(r) paste(r$preset_id, r$dataset), character(1))
   expect_true("box_by_visit ADVS" %in% pairs)
   expect_true("ae_overall ADAE" %in% pairs)
   expect_true("ae_soc_pt ADAE" %in% pairs)
   expect_true("km_os ADTTE" %in% pairs)
+  expect_true("demographics ADSL" %in% pairs)
+  expect_true("mean_over_time ADVS" %in% pairs)
 })
 
 test_that(".recommendations: label is '<preset label> -- from <DATASET>'", {
@@ -136,13 +136,13 @@ test_that(".recommendations drops every candidate missing a role var -- only ful
     }
   }
 
-  # On the demo catalog specifically: demographics-from-ADTTE (the finding's
-  # motivating example -- ADTTE has none of AGE/SEX/RACE) and demographics-
-  # from-ADSL (missing only RACE) are both dropped; mean_over_time-from-ADVS
-  # (missing CHG) is dropped too.
+  # On the demo catalog specifically: demographics-from-ADTTE (ADTTE has
+  # none of AGE/SEX/RACE) is dropped, but demographics-from-ADSL and
+  # mean_over_time-from-ADVS are both fully covered (RACE/CHG were added to
+  # the demo catalog) and survive.
   expect_false("demographics ADTTE" %in% rec_pairs)
-  expect_false("demographics ADSL" %in% rec_pairs)
-  expect_false("mean_over_time ADVS" %in% rec_pairs)
+  expect_true("demographics ADSL" %in% rec_pairs)
+  expect_true("mean_over_time ADVS" %in% rec_pairs)
 })
 
 test_that(".recommendations is memoized under a 'rec::' key on catalog_nonce", {
@@ -243,9 +243,14 @@ test_that(".missing_vars reports absent role vars; empty when all present", {
   fx <- .ao_store()
   withr::defer(arpillar::engine_close(fx$con))
 
+  # km_os shares AVAL/TRT01P with ADVS but ADVS carries no CNSR -- a
+  # genuine single-var partial miss on an otherwise-overlapping dataset.
+  km_pr <- arpillar::preset("km_os")
+  expect_identical(.missing_vars(fx$con, km_pr, "ADVS"), "CNSR")
+
   pr <- arpillar::preset("demographics")
-  # The demo ADSL has AGE/SEX but not RACE.
-  expect_identical(.missing_vars(fx$con, pr, "ADSL"), "RACE")
+  # The demo ADSL now has AGE/SEX/RACE -- demographics is fully covered.
+  expect_identical(.missing_vars(fx$con, pr, "ADSL"), character(0))
   # ADVS has none of AGE/SEX/RACE/TRT01P... wait TRT01P is shared; only the
   # summarize vars are checked here too since .preset_vars() flattens ALL
   # slots -- ADVS is missing AGE/SEX/RACE (all three summarize vars).
@@ -371,20 +376,21 @@ test_that("recommendations include only fully-covered pairs; Demographics-from-A
         fixed = TRUE
       )
 
-      # The finding's motivating example, and the wider var-coverage
-      # invariant it generalizes to: nothing recommended is missing a role
-      # var on its recommended dataset.
+      # The var-coverage invariant: nothing recommended is missing a role
+      # var on its recommended dataset. ADTTE has none of AGE/SEX/RACE, so
+      # demographics-from-ADTTE is dropped; the enriched ADSL/ADVS now fully
+      # cover demographics/mean_over_time, so those two are recommended.
       expect_no_match(
         html,
         "Demographics and Baseline Characteristics -- from ADTTE",
         fixed = TRUE
       )
-      expect_no_match(
+      expect_match(
         html,
         "Demographics and Baseline Characteristics -- from ADSL",
         fixed = TRUE
       )
-      expect_no_match(
+      expect_match(
         html,
         "Mean Change from Baseline Over Time -- from ADVS",
         fixed = TRUE
@@ -516,14 +522,18 @@ test_that("the warning updates live when the user overrides the dataset picker (
     {
       fx$store$rv$adding <- TRUE
       session$flushReact()
-      session$setInputs(pick_preset = "demographics")
+      # response_summary's only role var (AVALC) is absent from every demo
+      # dataset -- both the auto-suggested default (ADSL) and an override
+      # (ADVS) stay genuinely partial, unlike demographics/mean_over_time
+      # which the enriched catalog now fully covers.
+      session$setInputs(pick_preset = "response_summary")
       session$flushReact()
 
-      # First: the auto-suggested default (ADSL, missing only RACE).
+      # First: the auto-suggested default (ADSL, missing AVALC).
       session$setInputs(picker_dataset = "ADSL")
       session$flushReact()
       warn1 <- output$picker_warning$html
-      expect_match(warn1, "ADSL is missing RACE", fixed = TRUE)
+      expect_match(warn1, "ADSL is missing AVALC", fixed = TRUE)
 
       # Then: override to ADVS -- the warning must re-derive against ADVS,
       # not stay pinned to the stale ADSL message.

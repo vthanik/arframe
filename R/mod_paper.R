@@ -117,13 +117,38 @@
   )
 }
 
+#' Split a (possibly multi-line, cli-formatted) `conditionMessage()` into a
+#' plain headline and cleaned-up detail lines. A cli condition message
+#' (e.g. `arpillar_error_input`) is one headline followed by `\n`-joined
+#' bullet lines, each prefixed with a cli glyph (`x` -> "✖", `i` ->
+#' "ℹ", `*`/bullet -> "•", `v` -> "✔", `!` -- see
+#' `cli::cli_abort()`) and a space; rendering the raw string in a single
+#' `<p>` collapses the `\n`s into one run-on line with the glyph bleeding
+#' into the prose. The headline is `parts[[1]]` verbatim; each detail line
+#' has its leading glyph + surrounding whitespace stripped.
+#' @noRd
+.split_error_message <- function(msg) {
+  parts <- strsplit(msg, "\n", fixed = TRUE)[[1]]
+  # ✖/ℹ/•/✔ = the "x"/"i"/bullet/"v" cli glyphs
+  # (\u escapes, not literal UTF-8 bytes, so R CMD check's file-wide
+  # non-ASCII-characters scan of executable code stays clean).
+  glyph_re <- "^\\s*[\u2716\u2139\u2022\u2714!]\\s*"
+  list(
+    headline = parts[[1]],
+    detail = sub(glyph_re, "", parts[-1])
+  )
+}
+
 #' The GOV.UK-pattern error summary rendered at the top of the paper when a
 #' ready-status render throws anyway (the static oracle predicts
 #' acceptance but the actual data does not match, e.g. a role names a
 #' column absent from the bound dataset). `role="alert"` + `tabindex="-1"`
 #' so `session$sendCustomMessage("ar-focus", ...)` (the same handler
 #' `mod_frame.R`'s undo/redo buttons already register) can move focus onto
-#' it.
+#' it. `msg` is split into a headline `<p>` plus one muted `<p>` per detail
+#' line (`.split_error_message()`) rather than rendered raw, so a
+#' multi-line cli message reads as a short list, not a run-on line with a
+#' bullet glyph bleeding into the prose.
 #' @noRd
 .error_summary <- function(ns, id, object, msg) {
   v <- arpillar::validate_output(object)
@@ -134,13 +159,18 @@
   } else {
     list(.error_jump_link(ns, "title", "Check the output configuration."))
   }
+  parsed <- .split_error_message(msg)
+  detail_p <- lapply(parsed$detail, function(line) {
+    shiny::tags$p(class = "ar-mono ar-problem-detail", line)
+  })
   shiny::tags$div(
     class = "ar-problem",
     id = id,
     role = "alert",
     tabindex = "-1",
     shiny::tags$h2("There is a problem"),
-    shiny::tags$p(class = "ar-mono", msg),
+    shiny::tags$p(class = "ar-mono", parsed$headline),
+    detail_p,
     shiny::tags$ul(links)
   )
 }
@@ -258,7 +288,8 @@ mod_paper_server <- function(id, store) {
         p
       },
       res = 96
-    )
+    ) |>
+      shiny::bindEvent(store$rv$report, store$rv$selected)
 
     # The class flip: table content shows the HTML slot, a figure shows the
     # plot slot, "not ready"/no-selection shows neither's real content

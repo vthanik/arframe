@@ -1,15 +1,14 @@
 # shinytest2 fixture app for the Task-9 paper smoke test + screenshots.
 # Builds the bundled demo parquet (arframe:::.demo_catalog(), which
 # includes ADAE), then a 4-output report: a READY summary table (real demo
-# ADSL columns -- the bundled `demographics` preset requests a RACE column
-# the minimal demo ADSL lacks, so this fixture hand-rolls the roles instead,
-# matching test-mod_paper.R's own fixture builder), a READY occurrence
-# table (`ae_overall` on ADAE, PT-only incidence rows), a DRAFT crosstab
-# (ghost shell), and a summary object with a bogus-column role (the error
-# summary) -- serialized to project JSON and handed to the real launcher (a
-# launched app cannot share a live DuckDB connection across processes, so
-# the catalog is rebuilt from the registered file paths, matching the
-# Task-6/7 fixture apps' own pattern).
+# ADSL columns, hand-rolled roles rather than `add_from_preset("demographics",
+# "ADSL")`, matching test-mod_paper.R's own fixture builder), a READY
+# occurrence table (`ae_overall` on ADAE, PT-only incidence rows), a DRAFT
+# crosstab (ghost shell), and a summary object with a bogus-column role (the
+# error summary) -- serialized to project JSON and handed to the real
+# launcher (a launched app cannot share a live DuckDB connection across
+# processes, so the catalog is rebuilt from the registered file paths,
+# matching the Task-6/7 fixture apps' own pattern).
 library(arframe)
 
 .con <- arframe:::.demo_catalog(tempdir())

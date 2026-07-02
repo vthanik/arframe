@@ -1,12 +1,11 @@
 # The typeset sheet: renders the SELECTED output through the export-
 # identical arpillar::render_spec()/render_ggplot() seam, or the ghost
 # shell / GOV.UK error summary when it is not ready / fails. All fixtures
-# here are hand-built against the REAL demo-catalog columns -- the bundled
-# `demographics` preset requests a RACE column the minimal demo ADSL does
-# not carry (a pre-existing demo-catalog/preset gap, ledger-documented, not
-# this module's concern), so a "ready and renders cleanly" fixture is
-# built directly off `.tc_ready_summary()`-style roles instead of added
-# via `add_from_preset(store, "demographics", "ADSL")`.
+# here are hand-built against a deliberately narrow slice of the REAL
+# demo-catalog columns (not every preset role var), so a "ready and
+# renders cleanly" fixture is built directly off `.tc_ready_summary()`-
+# style roles instead of added via
+# `add_from_preset(store, "demographics", "ADSL")`.
 
 # ---- fixtures --------------------------------------------------------------
 
@@ -52,9 +51,9 @@
 }
 
 #' A store with one READY figure object (line: x=AVISIT, y=AVAL,
-#' group=TRT01P -- all real demo ADVS columns; the bundled
-#' `mean_over_time` preset targets a CHG column absent from the demo ADVS,
-#' the figure analogue of the RACE gap above).
+#' group=TRT01P -- all real demo ADVS columns; hand-rolled roles rather
+#' than `add_from_preset(store, "mean_over_time", "ADVS")`, the figure
+#' analogue of the summary fixture above).
 #' @noRd
 .pp_ready_figure_store <- function() {
   con <- .demo_catalog()
@@ -266,6 +265,40 @@ test_that("clicking the empty-report CTA sets rv$adding TRUE", {
   )
 })
 
+# ---- error message splitting -------------------------------------------
+
+test_that(".split_error_message splits a cli-formatted message into headline + cleaned detail lines", {
+  # The real shape arpillar_error_input's conditionMessage() takes: a
+  # headline, then \n-joined bullet lines each prefixed with a cli glyph
+  # and a space.
+  msg <- "Unknown column in projection.\n✖ \"BOGUSVAR\" is not in the dataset."
+  parsed <- .split_error_message(msg)
+  expect_identical(parsed$headline, "Unknown column in projection.")
+  expect_identical(parsed$detail, "\"BOGUSVAR\" is not in the dataset.")
+})
+
+test_that(".split_error_message strips every cli glyph variant (x/i/bullet/check)", {
+  msg <- paste(
+    "Headline.",
+    "✖ x detail",
+    "ℹ i detail",
+    "• bullet detail",
+    "✔ check detail",
+    sep = "\n"
+  )
+  parsed <- .split_error_message(msg)
+  expect_identical(
+    parsed$detail,
+    c("x detail", "i detail", "bullet detail", "check detail")
+  )
+})
+
+test_that(".split_error_message on a single-line message has no detail lines", {
+  parsed <- .split_error_message("A plain single-line error.")
+  expect_identical(parsed$headline, "A plain single-line error.")
+  expect_length(parsed$detail, 0L)
+})
+
 # ---- render error: bogus column --------------------------------------------
 
 test_that("a role naming a bogus column lands its id in rv$broken with alert + jump-link markup", {
@@ -284,6 +317,31 @@ test_that("a role naming a bogus column lands its id in rv$broken with alert + j
       expect_match(html, "BOGUSVAR", fixed = TRUE)
       # a log line was appended recording the failure.
       expect_true(any(grepl(fx$id, fx$store$rv$log, fixed = TRUE)))
+    }
+  )
+})
+
+test_that("the bogus-column error summary renders a clean headline, not a run-on glyph line", {
+  fx <- .pp_bogus_col_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(
+    mod_paper_server,
+    args = list(store = fx$store),
+    {
+      html <- output$sheet_html_slot$html
+      # The headline paragraph is clean, with no trailing cli glyph/newline
+      # bleeding into it.
+      expect_match(
+        html,
+        '<p class="ar-mono">Unknown column in projection.</p>',
+        fixed = TRUE
+      )
+      # The detail line is its own muted paragraph, with the leading glyph
+      # stripped (the raw glyph never reaches the rendered HTML).
+      expect_match(html, "ar-problem-detail", fixed = TRUE)
+      expect_no_match(html, "✖", fixed = TRUE)
+      expect_match(html, '"BOGUSVAR" is not in the dataset.', fixed = TRUE)
     }
   )
 })

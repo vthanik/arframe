@@ -221,9 +221,8 @@ test_that("add_from_preset builds roles with role_type resolved from the demo ca
   items <- summarize_role@items
   names_ <- vapply(items, function(it) it@name, character(1))
   types_ <- vapply(items, function(it) it@role_type, character(1))
-  # AGE/SEX are real ADSL columns (measure/category); RACE is NOT a column
-  # of the demo ADSL and must still appear, defaulted to "category" rather
-  # than dropped.
+  # AGE/SEX/RACE are all real ADSL columns: AGE numeric (measure), SEX/RACE
+  # character (category).
   expect_identical(names_, c("AGE", "SEX", "RACE"))
   expect_identical(types_, c("measure", "category", "category"))
 })

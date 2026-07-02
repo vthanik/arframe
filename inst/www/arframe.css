@@ -913,6 +913,10 @@ input[type="radio"] {
   color: var(--ar-ink-2);
   margin: 0 0 var(--ar-space-2);
 }
+.ar-problem-detail {
+  color: var(--ar-ink-3);
+  margin-left: var(--ar-space-3);
+}
 .ar-problem ul {
   margin: 0;
   padding-left: var(--ar-space-4);

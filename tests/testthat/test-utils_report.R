@@ -104,8 +104,8 @@ test_that(".resolve_role_type reads measure/category/date off the catalog", {
 test_that(".resolve_role_type defaults to 'category' for a var absent from the dataset", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
-  # RACE is not a column of the demo ADSL (USUBJID/TRT01P/AGE/SEX/SAFFL).
-  expect_identical(.resolve_role_type(con, "ADSL", "RACE"), "category")
+  # BOGUSVAR is not a column of any demo dataset.
+  expect_identical(.resolve_role_type(con, "ADSL", "BOGUSVAR"), "category")
 })
 
 test_that(".roles_from_preset builds one role per slot with per-var role_type", {
@@ -133,17 +133,17 @@ test_that(".roles_from_preset builds one role per slot with per-var role_type", 
 test_that(".roles_from_preset does not drop a var absent from the dataset", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
-  # RACE is absent from the demo ADSL -- it must still appear as a
+  # BOGUSVAR is absent from the demo ADSL -- it must still appear as a
   # data_item (default role_type "category"), never be silently filtered.
   roles <- .roles_from_preset(
     con,
     "ADSL",
-    list(summarize = c("AGE", "SEX", "RACE"))
+    list(summarize = c("AGE", "SEX", "BOGUSVAR"))
   )
   names <- vapply(roles[[1]]@items, function(it) it@name, character(1))
-  expect_identical(names, c("AGE", "SEX", "RACE"))
-  race_item <- roles[[1]]@items[[3]]
-  expect_identical(race_item@role_type, "category")
+  expect_identical(names, c("AGE", "SEX", "BOGUSVAR"))
+  bogus_item <- roles[[1]]@items[[3]]
+  expect_identical(bogus_item@role_type, "category")
 })
 
 test_that(".object_from_preset copies type/title/footnotes/filters/options and binds dataset", {

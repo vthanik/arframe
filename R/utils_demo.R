@@ -29,6 +29,23 @@
     stringsAsFactors = FALSE
   )
 
+  # RACE/DISCFL/DCDECOD/EXDOSE: fixed lookups (never RNG), matching the
+  # ADAE AEBODSYS/AEDECOD pattern below -- ADSL itself never calls
+  # rnorm()/runif(), so these only need to stay deterministic themselves,
+  # not sequence-safe against a stream. Coverage for the demographics/
+  # disposition/exposure presets (arpillar::preset()) so they are fully
+  # role-covered on the demo ADSL and recommendable, not dropped by the
+  # Add-output var-coverage filter (mod_add_output.R's .missing_vars()).
+  adsl$RACE <- rep(
+    c("WHITE", "BLACK OR AFRICAN AMERICAN", "ASIAN"),
+    times = 4L
+  )
+  # 3 of 12 subjects discontinued (one per arm pairing), rest completed.
+  adsl$DISCFL <- rep(c("Y", "N", "N", "N"), times = 3L)
+  adsl$DCDECOD <- ifelse(adsl$DISCFL == "Y", "ADVERSE EVENT", "COMPLETED")
+  # Placebo = 0 mg; Xanomeline = the CDISC-pilot 81 mg/day dose.
+  adsl$EXDOSE <- ifelse(adsl$TRT01P == "Placebo", 0, 81)
+
   visits <- c("Baseline", "Week 4", "Week 8")
   advs <- data.frame(
     USUBJID = rep(adsl$USUBJID, each = length(visits)),
@@ -42,6 +59,12 @@
     ),
     stringsAsFactors = FALSE
   )
+  # CHG: a fixed (non-RNG) change-from-baseline lookup keyed on visit --
+  # 0 at Baseline by construction, a small fixed step thereafter. Appended
+  # after AVAL so the rnorm() draw above is untouched; covers
+  # mean_over_time's CHG role var.
+  chg_by_visit <- c("Baseline" = 0, "Week 4" = 2.5, "Week 8" = 4.5)
+  advs$CHG <- unname(chg_by_visit[advs$AVISIT])
 
   adtte <- data.frame(
     USUBJID = adsl$USUBJID,
