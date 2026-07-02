@@ -32,13 +32,16 @@ mod_frame_ui <- function(id, report_body, data_body, qc_body) {
   )
 }
 
-#' The 42px app bar: wordmark, report title (click-to-edit), mode buttons,
-#' the (inert) command-palette hint, undo/redo, Export package.
+#' The 42px app bar (v5, decision #8): wordmark, the [Data | Report]
+#' segmented toggle (top-LEFT -- modes are peers, state reads before
+#' actions), report title (click-to-edit), then the right action cluster:
+#' undo/redo, QC, the command-palette hint, Export package.
 #' @noRd
 .frame_bar <- function(ns) {
   shiny::div(
     class = "ar-bar",
     shiny::span(class = "ar-bar-mark ar-mono", "arframe"),
+    .frame_seg(ns),
     shiny::div(class = "ar-bar-divider"),
     .frame_title(ns),
     shiny::div(class = "ar-bar-spacer"),
@@ -54,7 +57,6 @@ mod_frame_ui <- function(id, report_body, data_body, qc_body) {
       variant = "link",
       class = "ar-icon-btn"
     ),
-    .mode_btn(ns("mode_data"), "data", "Data"),
     .mode_btn(ns("mode_qc"), "qc", "QC"),
     # Empty on the server -- arframe.js fills it per the CLIENT's OS
     # (navigator.platform: Mac -> the Command glyph, else "Ctrl K"). The server
@@ -66,6 +68,19 @@ mod_frame_ui <- function(id, report_body, data_body, qc_body) {
       variant = "link",
       class = "ar-btn-ink"
     )
+  )
+}
+
+#' The [Data | Report] segmented toggle. Both segments are plain mode
+#' buttons under one `.ar-seg` border; the ACTIVE segment is styled by a
+#' pure CSS rule keyed off the workspace `ar-mode-*` class (see `.mode_btn`),
+#' so switching never round-trips just to restyle.
+#' @noRd
+.frame_seg <- function(ns) {
+  shiny::div(
+    class = "ar-seg",
+    .mode_btn(ns("mode_data"), "data", "Data"),
+    .mode_btn(ns("mode_report"), "report", "Report")
   )
 }
 
@@ -134,17 +149,40 @@ mod_frame_server <- function(id, store) {
   shiny::moduleServer(id, function(input, output, session) {
     output$title_display <- shiny::renderText(store$rv$report@name)
 
-    # A mode button toggles: clicking the ACTIVE mode returns to Report, so
-    # Report (home) is always reachable without a separate affordance the
-    # two-button bar does not have.
+    # v5 semantics: the Data/Report SEGMENTS are idempotent (clicking the
+    # active segment is a no-op -- a segmented control names both states).
+    # Only QC keeps the quiet-toggle behavior: clicking the active QC
+    # returns to Report, since the right cluster has no "Report" button.
     shiny::observeEvent(input$mode, {
-      new_mode <- if (identical(store$rv$mode, input$mode)) {
+      new_mode <- if (
+        identical(input$mode, "qc") && identical(store$rv$mode, "qc")
+      ) {
         "report"
       } else {
         input$mode
       }
       store$rv$mode <- new_mode
       session$sendCustomMessage("ar-mode", new_mode)
+    })
+
+    # Panel collapse (decision #8): the chevrons render inside the contents
+    # rail and the inspector, but they post here through arframe.js's
+    # delegated `[data-ar-collapse]` handler -- collapse state is
+    # frame-owned in the store (never the DOM; the ar-collapse message
+    # mirrors it to workspace classes for CSS).
+    shiny::observeEvent(input$collapse, {
+      if (identical(input$collapse, "rail")) {
+        toggle_rail(store)
+      } else {
+        toggle_insp(store)
+      }
+      session$sendCustomMessage(
+        "ar-collapse",
+        list(
+          rail = isTRUE(store$rv$rail_collapsed),
+          insp = isTRUE(store$rv$insp_collapsed)
+        )
+      )
     })
 
     shiny::observeEvent(input$name, {

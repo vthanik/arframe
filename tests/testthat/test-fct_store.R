@@ -35,10 +35,32 @@ test_that("new_store returns con/rv/undo/cache with the full rv field set", {
     "saved_at",
     "broken",
     "log",
-    "catalog_nonce"
+    "catalog_nonce",
+    "rail_collapsed",
+    "insp_collapsed"
   )
   rv <- shiny::isolate(shiny::reactiveValuesToList(store$rv))
   expect_true(all(fields %in% names(rv)))
+})
+
+test_that("collapse defaults are FALSE; toggle_rail()/toggle_insp() flip them (v5)", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+
+  rv <- shiny::isolate(shiny::reactiveValuesToList(store$rv))
+  expect_false(rv$rail_collapsed)
+  expect_false(rv$insp_collapsed)
+
+  shiny::isolate(toggle_rail(store))
+  expect_true(shiny::isolate(store$rv$rail_collapsed))
+  shiny::isolate(toggle_rail(store))
+  expect_false(shiny::isolate(store$rv$rail_collapsed))
+
+  shiny::isolate(toggle_insp(store))
+  expect_true(shiny::isolate(store$rv$insp_collapsed))
+  # The two panels collapse independently -- rail is untouched.
+  expect_false(shiny::isolate(store$rv$rail_collapsed))
 })
 
 test_that("new_store default report is Untitled report / report1 / page p1", {

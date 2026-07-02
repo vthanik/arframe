@@ -280,7 +280,10 @@ mod_card_roles_ui <- function(id) {
     return(NULL)
   }
   rlang::hash(lapply(object@roles, function(r) {
-    list(slot = r@slot, items = vapply(r@items, function(it) it@name, character(1)))
+    list(
+      slot = r@slot,
+      items = vapply(r@items, function(it) it@name, character(1))
+    )
   }))
 }
 
@@ -341,7 +344,9 @@ mod_card_roles_ui <- function(id) {
       current <- roles[[i]]@items
       names_now <- vapply(current, function(it) it@name, character(1))
       full_order <- c(intersect(order, names_now), setdiff(names_now, order))
-      reordered <- lapply(full_order, function(nm) current[[match(nm, names_now)]])
+      reordered <- lapply(full_order, function(nm) {
+        current[[match(nm, names_now)]]
+      })
       roles[[i]] <- S7::set_props(roles[[i]], items = reordered)
       return(S7::set_props(object, roles = roles))
     }

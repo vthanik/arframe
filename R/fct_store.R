@@ -45,7 +45,9 @@ new_store <- function(con, report = NULL) {
       saved_at = NULL,
       broken = character(0),
       log = character(0),
-      catalog_nonce = 0L
+      catalog_nonce = 0L,
+      rail_collapsed = FALSE,
+      insp_collapsed = FALSE
     ),
     undo = undo,
     cache = new.env(parent = emptyenv())
@@ -290,5 +292,21 @@ close_card <- function(store) {
 #' @noRd
 toggle_pin <- function(store) {
   store$rv$pinned <- !isTRUE(store$rv$pinned)
+  invisible(NULL)
+}
+
+# ---- v5 panel collapse (decision #8) --------------------------------------
+
+#' Toggle the contents rail between full and the status-dot strip.
+#' @noRd
+toggle_rail <- function(store) {
+  store$rv$rail_collapsed <- !isTRUE(store$rv$rail_collapsed)
+  invisible(NULL)
+}
+
+#' Toggle the docked inspector between full and the icon strip.
+#' @noRd
+toggle_insp <- function(store) {
+  store$rv$insp_collapsed <- !isTRUE(store$rv$insp_collapsed)
   invisible(NULL)
 }

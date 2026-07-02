@@ -11,7 +11,29 @@ $(document).on("click", "[data-ar-mode]", function () {
 
 Shiny.addCustomMessageHandler("ar-mode", function (m) {
   var ws = document.querySelector(".ar-workspace");
-  ws.className = "ar-workspace ar-mode-" + m;
+  if (!ws) return;
+  // Swap ONLY the mode class -- a wholesale className reset would wipe the
+  // v5 collapse classes (ar-rail-collapsed / ar-insp-collapsed) on every
+  // mode switch.
+  ws.className = ws.className.replace(/\bar-mode-[a-z]+\b/, "ar-mode-" + m);
+});
+
+// v5 panel collapse (decision #8): any element carrying data-ar-collapse
+// ("rail" | "insp") posts to the frame; the store flips, and ar-collapse
+// mirrors both booleans back as workspace classes for the CSS.
+$(document).on("click", "[data-ar-collapse]", function () {
+  Shiny.setInputValue(
+    "frame-collapse",
+    this.getAttribute("data-ar-collapse"),
+    { priority: "event" }
+  );
+});
+
+Shiny.addCustomMessageHandler("ar-collapse", function (m) {
+  var ws = document.querySelector(".ar-workspace");
+  if (!ws) return;
+  ws.classList.toggle("ar-rail-collapsed", !!m.rail);
+  ws.classList.toggle("ar-insp-collapsed", !!m.insp);
 });
 
 Shiny.addCustomMessageHandler("ar-focus", function (m) {

@@ -13,7 +13,11 @@ test_that("mod_frame_ui HTML contains the bar, mode buttons, statusbar, and all 
   html <- as.character(ui)
 
   expect_match(html, "ar-bar", fixed = TRUE)
+  # v5 (decision #8): Data|Report is a SEGMENTED toggle top-left -- both
+  # segments carry data-ar-mode; QC stays a quiet button on the right.
+  expect_match(html, "ar-seg", fixed = TRUE)
   expect_match(html, 'data-ar-mode="data"', fixed = TRUE)
+  expect_match(html, 'data-ar-mode="report"', fixed = TRUE)
   expect_match(html, 'data-ar-mode="qc"', fixed = TRUE)
   expect_match(html, "ar-statusbar", fixed = TRUE)
   expect_match(html, "ar-body-report", fixed = TRUE)
@@ -21,7 +25,7 @@ test_that("mod_frame_ui HTML contains the bar, mode buttons, statusbar, and all 
   expect_match(html, "ar-body-qc", fixed = TRUE)
 })
 
-test_that("mod_frame_server: input$mode sets rv$mode", {
+test_that("mod_frame_server: segmented mode is idempotent; QC toggles back (v5)", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
   store <- shiny::isolate(new_store(con))
@@ -29,13 +33,36 @@ test_that("mod_frame_server: input$mode sets rv$mode", {
   shiny::testServer(mod_frame_server, args = list(store = store), {
     session$setInputs(mode = "data")
     expect_identical(store$rv$mode, "data")
-    # Clicking the active mode again toggles back to Report (home is always
-    # reachable from the two-button bar).
+    # Clicking the ACTIVE segment is a no-op -- a segmented control names
+    # both states, so there is no hidden "toggle back" behavior.
     session$setInputs(mode = "data")
+    expect_identical(store$rv$mode, "data")
+    session$setInputs(mode = "report")
     expect_identical(store$rv$mode, "report")
-    # A different mode switches straight to it.
+    # QC (right cluster) keeps the quiet-toggle semantics: clicking the
+    # active QC returns to Report.
     session$setInputs(mode = "qc")
     expect_identical(store$rv$mode, "qc")
+    session$setInputs(mode = "qc")
+    expect_identical(store$rv$mode, "report")
+  })
+})
+
+test_that("mod_frame_server: input$collapse flips rail/inspector state in the store (v5)", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+
+  shiny::testServer(mod_frame_server, args = list(store = store), {
+    session$setInputs(collapse = "rail")
+    expect_true(store$rv$rail_collapsed)
+    session$setInputs(collapse = "rail")
+    expect_false(store$rv$rail_collapsed)
+
+    session$setInputs(collapse = "insp")
+    expect_true(store$rv$insp_collapsed)
+    # Independent: collapsing the inspector never touches the rail.
+    expect_false(store$rv$rail_collapsed)
   })
 })
 
@@ -69,7 +96,9 @@ test_that("arframe() launches: bar, mode buttons, all three bodies, mode switch,
 
   html <- app$get_html("body", outer_html = TRUE)
   expect_match(html, "ar-bar", fixed = TRUE)
+  expect_match(html, "ar-seg", fixed = TRUE)
   expect_match(html, 'data-ar-mode="data"', fixed = TRUE)
+  expect_match(html, 'data-ar-mode="report"', fixed = TRUE)
   expect_match(html, 'data-ar-mode="qc"', fixed = TRUE)
   expect_match(html, "ar-statusbar", fixed = TRUE)
   expect_match(html, "ar-body-report", fixed = TRUE)

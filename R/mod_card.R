@@ -72,7 +72,10 @@
 .card_header <- function(ns, region, pinned) {
   shiny::tags$div(
     class = "ar-card-header",
-    shiny::tags$div(class = "ar-label ar-card-region-label", .region_label(region)),
+    shiny::tags$div(
+      class = "ar-label ar-card-region-label",
+      .region_label(region)
+    ),
     shiny::tags$div(class = "ar-card-header-spacer"),
     shiny::tags$button(
       id = ns("pin"),
