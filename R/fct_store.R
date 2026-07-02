@@ -44,6 +44,7 @@ new_store <- function(con, report = NULL) {
       dirty = FALSE,
       saved_at = NULL,
       broken = character(0),
+      stale = character(0),
       log = character(0),
       catalog_nonce = 0L,
       rail_collapsed = FALSE,
@@ -141,6 +142,15 @@ selected_object <- function(store) {
 
 #' Apply `fn(object) -> object` to the object with `id`, then commit the
 #' rebuilt report. Siblings are untouched.
+#'
+#' **Run semantics (decision #8).** A HEAVY edit -- one that moves the ARD
+#' cache key (roles/filters/dataset/type) -- on an output that was READY
+#' before the edit marks its proof STALE (`rv$stale`): the paper stops
+#' auto re-collecting from DuckDB and shows the stale notice until Run
+#' re-typesets. A CHEAP edit (options/title/footnotes -- display-only, the
+#' key is unchanged) renders live. A DRAFT output is never marked: filling
+#' its last slot is the ghost-fills-into-a-table payoff and must typeset
+#' immediately.
 #' @noRd
 update_object <- function(store, id, fn, label = "") {
   obj <- .find_object(store$rv$report, id)
@@ -148,6 +158,16 @@ update_object <- function(store, id, fn, label = "") {
     return(invisible(NULL))
   }
   new_obj <- fn(obj)
+  # A BROKEN output is exempt: its render failed, so no proof exists to go
+  # stale -- the fix-it edit must re-render live (the error-summary ->
+  # fixed-table loop), never demand a Run first.
+  if (
+    !identical(.ard_key(obj), .ard_key(new_obj)) &&
+      identical(arpillar::output_status(obj), "ready") &&
+      !(id %in% store$rv$broken)
+  ) {
+    store$rv$stale <- union(store$rv$stale, id)
+  }
   new_report <- .replace_object(store$rv$report, id, new_obj)
   commit(store, new_report, label = label)
 }
@@ -236,17 +256,13 @@ rename_output <- function(store, id, title) {
 
 # ---- ARD cache: the two-stage seam ---------------------------------------
 
-#' A keyed [arpillar::build_ard()] memo -- the two-stage render seam.
-#'
-#' The cache key is `dataset + type + roles + filters` -- deliberately
-#' EXCLUDING `options`, so a display-only edit (decimals, cutoffs, ...)
-#' reuses the already-built ARD instead of recollecting from DuckDB. Keys
-#' are prefixed `"ard::"`: the one cache environment is shared with future
-#' Add-output recommendation memos (`"rec::"`) and Data-mode profiles
-#' (`"profile::"`), so a caller counting ARD entries must filter on the
-#' prefix, never take a bare `ls()` length.
+#' The ARD memo key for an output: `dataset + type + roles + filters` --
+#' deliberately EXCLUDING `options`, so a display-only edit (decimals,
+#' cutoffs, ...) reuses the already-built ARD instead of recollecting from
+#' DuckDB. The same key doubles as `update_object()`'s cheap/heavy oracle:
+#' an edit is HEAVY exactly when it moves this key.
 #' @noRd
-cached_ard <- function(store, object) {
+.ard_key <- function(object) {
   roles <- lapply(object@roles, function(r) {
     list(
       slot = r@slot,
@@ -255,7 +271,7 @@ cached_ard <- function(store, object) {
       })
     )
   })
-  key <- paste0(
+  paste0(
     "ard::",
     rlang::hash(list(
       object@dataset,
@@ -264,6 +280,17 @@ cached_ard <- function(store, object) {
       object@filters
     ))
   )
+}
+
+#' A keyed [arpillar::build_ard()] memo -- the two-stage render seam.
+#'
+#' Keys come from `.ard_key()` and are prefixed `"ard::"`: the one cache
+#' environment is shared with Add-output recommendation memos (`"rec::"`)
+#' and Data-mode profiles (`"profile::"`), so a caller counting ARD
+#' entries must filter on the prefix, never take a bare `ls()` length.
+#' @noRd
+cached_ard <- function(store, object) {
+  key <- .ard_key(object)
   hit <- store$cache[[key]]
   if (!is.null(hit)) {
     return(hit)

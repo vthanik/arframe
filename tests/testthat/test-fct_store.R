@@ -574,3 +574,96 @@ test_that("REGRESSION: config committed via the store survives with no UI mounte
   back <- arpillar::report_from_json(json)
   expect_identical(.find_object(back, id)@options$decimals, 2L)
 })
+
+# ---- stale proofs (run semantics, decision #8) -----------------------------
+
+test_that(".ard_key is stable across options edits, changes on role/filter edits", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  id <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
+  obj <- shiny::isolate(selected_object(store))
+
+  k0 <- .ard_key(obj)
+  expect_match(k0, "^ard::")
+
+  # Options are display-only: the key must not move.
+  opts <- obj@options
+  opts$decimals <- 3L
+  expect_identical(.ard_key(S7::set_props(obj, options = opts)), k0)
+
+  # A filter keys the ARD.
+  filtered <- S7::set_props(
+    obj,
+    filters = list(list(column = "SAFFL", op = "==", value = "Y"))
+  )
+  expect_false(identical(.ard_key(filtered), k0))
+
+  # A role change keys the ARD.
+  rolled <- S7::set_props(obj, roles = obj@roles[1])
+  expect_false(identical(.ard_key(rolled), k0))
+})
+
+test_that("update_object marks a READY output STALE on a heavy edit, never on a cheap one", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  id <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
+  expect_identical(
+    arpillar::output_status(shiny::isolate(selected_object(store))),
+    "ready"
+  )
+
+  # Cheap edit (options only): live, never stale.
+  shiny::isolate(update_object(store, id, function(o) {
+    opts <- o@options
+    opts$decimals <- 3L
+    S7::set_props(o, options = opts)
+  }))
+  expect_identical(shiny::isolate(store$rv$stale), character(0))
+
+  # Heavy edit (roles change -> new ARD key): the proof goes stale.
+  shiny::isolate(update_object(store, id, function(o) {
+    S7::set_props(o, roles = o@roles[1])
+  }))
+  expect_identical(shiny::isolate(store$rv$stale), id)
+})
+
+test_that("update_object never marks a DRAFT output stale (ghost fills render live)", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  id <- shiny::isolate(add_from_generator(store, "summary", "ADSL"))
+  expect_identical(
+    arpillar::output_status(shiny::isolate(selected_object(store))),
+    "draft"
+  )
+
+  # Filling the LAST slot flips draft -> ready: the payoff moment must
+  # typeset immediately, never demand a Run first.
+  shiny::isolate(update_object(store, id, function(o) {
+    S7::set_props(
+      o,
+      roles = list(
+        arpillar::role(
+          slot = "treatment",
+          items = list(arpillar::data_item(name = "TRT01P"))
+        ),
+        arpillar::role(
+          slot = "summarize",
+          items = list(
+            arpillar::data_item(name = "AGE", role_type = "measure")
+          )
+        )
+      )
+    )
+  }))
+  expect_identical(shiny::isolate(store$rv$stale), character(0))
+})
+
+test_that("new_store seeds rv$stale as character(0)", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  expect_identical(shiny::isolate(store$rv$stale), character(0))
+})

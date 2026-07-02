@@ -58,7 +58,7 @@
 #' `"occurrence"`) -- the `.type_icon()` glyph key, distinct from `kind`
 #' which only splits rows into the coarse TABLES/FIGURES/LISTINGS groups.
 #' @noRd
-.toc_rows <- function(report, broken) {
+.toc_rows <- function(report, broken, stale = character(0)) {
   objs <- .all_objects(report)
   if (length(objs) == 0L) {
     return(list())
@@ -81,7 +81,15 @@
     } else {
       paste0(grp$prefix, ".", counters[[kind]])
     }
-    status <- if (obj@id %in% broken) "broken" else arpillar::output_status(obj)
+    status <- if (obj@id %in% broken) {
+      "broken"
+    } else if (obj@id %in% stale) {
+      # The stale flag (run semantics, decision #8) outranks the oracle --
+      # the config is ready, but its proof awaits a Run.
+      "stale"
+    } else {
+      arpillar::output_status(obj)
+    }
     list(
       id = obj@id,
       title = obj@title,
@@ -332,7 +340,7 @@ mod_contents_server <- function(id, store) {
     # happen; Task 9/10 introduces the first concurrent mutator and should
     # revisit this (see `document.body.dataset.arDragging` in arframe.js).
     output$toc <- shiny::renderUI({
-      rows <- .toc_rows(store$rv$report, store$rv$broken)
+      rows <- .toc_rows(store$rv$report, store$rv$broken, store$rv$stale)
       groups <- .toc_groups(rows)
       .toc_ui(ns, groups, store$rv$selected)
     })

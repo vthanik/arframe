@@ -134,6 +134,25 @@
   )
 }
 
+# ---- stale notice (run semantics, decision #8) ----------------------------
+
+#' The stale-proof notice: stands in for the table/figure content when a
+#' heavy edit (roles/filters) invalidated an already-typeset proof. The
+#' page stays a complete shell (title block and source line render around
+#' it); Run in the inspector footer re-typesets.
+#' @noRd
+.stale_panel <- function() {
+  shiny::tags$div(
+    class = "ar-paper-stale ar-mono",
+    shiny::tags$p(class = "ar-paper-stale-word", "STALE"),
+    shiny::tags$p("Roles or filters changed since the last typeset."),
+    # U+2318 PLACE OF INTEREST SIGN + U+21B5 CARRIAGE RETURN -- the Run
+    # shortcut glyphs (mod_card_ui's footer); \u escapes keep R/
+    # ASCII-clean (R CMD check portability rule).
+    shiny::tags$p("Run (\u2318\u21b5) re-typesets this proof.")
+  )
+}
+
 # ---- error summary (GOV.UK pattern) --------------------------------------
 
 #' One jump link in the error summary: the `validate_output()` message,
@@ -424,6 +443,16 @@ mod_paper_server <- function(id, store) {
   if (!identical(status, "ready")) {
     return(shiny::tagList(
       ghost_shell(obj),
+      .source_line(obj)
+    ))
+  }
+
+  # Run semantics (decision #8): a heavy edit marked this proof stale --
+  # never auto re-collect from DuckDB; the notice stands in until Run.
+  if (obj@id %in% store$rv$stale) {
+    return(shiny::tagList(
+      .title_block(obj),
+      .stale_panel(),
       .source_line(obj)
     ))
   }

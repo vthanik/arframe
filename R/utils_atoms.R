@@ -109,22 +109,24 @@
 
 # status -> c(word, css modifier suffix, aria-label sentence). The word/class
 # pair mirrors arpillar::output_status()'s three states 1:1 ("ready", "draft",
-# "needs_data"); "broken" is an app-side render-failed flag layered on top,
-# not part of the engine oracle.
+# "needs_data"); "broken" (render failed) and "stale" (heavy edit awaiting
+# Run, decision #8) are app-side flags layered on top, not part of the
+# engine oracle.
 .stamp_specs <- list(
   ready = c("READY", "ready", "Ready to render."),
   draft = c("DRAFT", "draft", "Draft: some inputs are still unmet."),
   needs_data = c("NO DATA", "needs_data", "No dataset bound."),
-  broken = c("ERROR", "broken", "Render failed.")
+  broken = c("ERROR", "broken", "Render failed."),
+  stale = c("STALE", "stale", "Proof is stale: run to re-typeset.")
 )
 
 #' A letterpress status stamp: mono caps, colored 1px border, transparent fill.
 #'
-#' Maps the oracle's status vocabulary to the four Galley stamps. Colour never
+#' Maps the oracle's status vocabulary to the five Galley stamps. Colour never
 #' carries the signal alone -- the word is always present, and `aria-label`
 #' repeats it as a full sentence for screen readers.
-#' @param status *One of `"ready"`, `"draft"`, `"needs_data"`, `"broken"`.*
-#'   `<character(1)>: required`.
+#' @param status *One of `"ready"`, `"draft"`, `"needs_data"`, `"broken"`,
+#'   `"stale"`.* `<character(1)>: required`.
 #' @noRd
 .stamp <- function(status) {
   spec <- .stamp_specs[[status]]
@@ -132,7 +134,7 @@
     .abort_app(
       c(
         "Unknown stamp status {.val {status}}.",
-        "i" = "Use one of {.val ready}, {.val draft}, {.val needs_data}, {.val broken}."
+        "i" = "Use one of {.val ready}, {.val draft}, {.val needs_data}, {.val broken}, {.val stale}."
       ),
       call = rlang::caller_env()
     )

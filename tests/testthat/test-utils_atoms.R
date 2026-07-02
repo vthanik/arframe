@@ -5,6 +5,9 @@ test_that(".stamp maps the four oracle states to letterpress stamps", {
   expect_match(s, "aria-label", fixed = TRUE)
   expect_match(as.character(.stamp("needs_data")), "NO DATA", fixed = TRUE)
   expect_match(as.character(.stamp("broken")), "ERROR", fixed = TRUE)
+  # The app-side stale flag (run semantics, decision #8) stamps too.
+  expect_match(as.character(.stamp("stale")), "STALE", fixed = TRUE)
+  expect_match(as.character(.stamp("stale")), "ar-stamp-stale", fixed = TRUE)
   expect_error(.stamp("nope"), class = "arframe_error_input")
 })
 

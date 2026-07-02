@@ -451,3 +451,34 @@ test_that("arframe() Contents: grouped rows, stamps, select, screenshot", {
     app$get_screenshot(screenshot_path)
   }
 })
+
+# ---- stale stamp (run semantics, decision #8) -------------------------------
+
+test_that("a stale id stamps STALE in the TOC; broken still wins over stale", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  # NOT named `id`: inside testServer the module server's own `id` arg
+  # ("proxy1") shadows any outer variable of that name.
+  out_id <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
+
+  shiny::testServer(
+    mod_contents_server,
+    args = list(store = store),
+    {
+      expect_match(output$toc$html, "READY", fixed = TRUE)
+
+      store$rv$stale <- out_id
+      session$flushReact()
+      expect_match(output$toc$html, "STALE", fixed = TRUE)
+
+      # The app-side render-failed flag outranks staleness -- a broken
+      # proof is broken first.
+      store$rv$broken <- out_id
+      session$flushReact()
+      html <- output$toc$html
+      expect_match(html, "ERROR", fixed = TRUE)
+      expect_no_match(html, "STALE", fixed = TRUE)
+    }
+  )
+})

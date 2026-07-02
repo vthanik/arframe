@@ -431,7 +431,10 @@ test_that("an options-only edit re-renders WITHOUT adding a new ard:: cache entr
   )
 })
 
-test_that("a role edit re-renders WITH a new ard:: cache entry (cache MISS)", {
+test_that("a role edit on a proofed output marks it STALE; Run re-typesets (decision #8)", {
+  # SUPERSEDES the pre-stale behavior (an immediate cache-MISS rebuild):
+  # a heavy edit on an already-typeset output must NOT auto re-collect
+  # from DuckDB -- the paper shows the stale notice and Run re-typesets.
   fx <- .pp_ready_store()
   withr::defer(arpillar::engine_close(fx$con))
 
@@ -458,9 +461,59 @@ test_that("a role edit re-renders WITH a new ard:: cache entry (cache MISS)", {
         )
       })
       session$flushReact()
+      html <- output$sheet_html_slot$html
+      # The stale notice stands in for the table; no new ARD was built.
+      expect_match(html, "ar-paper-stale", fixed = TRUE)
+      expect_no_match(html, "tabular-doc", fixed = TRUE)
+      expect_identical(sum(startsWith(ls(fx$store$cache), "ard::")), n1)
+
+      # Run (mod_card clears rv$stale, drops the memos, bumps the nonce):
+      # the paper re-typesets the new configuration fresh.
+      rm(
+        list = grep("^ard::", ls(fx$store$cache), value = TRUE),
+        envir = fx$store$cache
+      )
+      fx$store$rv$stale <- character(0)
+      fx$store$rv$run_nonce <- fx$store$rv$run_nonce + 1L
+      session$flushReact()
+      html2 <- output$sheet_html_slot$html
+      expect_match(html2, "tabular-doc", fixed = TRUE)
+      expect_identical(sum(startsWith(ls(fx$store$cache), "ard::")), 1L)
+    }
+  )
+})
+
+test_that("the stale notice keeps the full page shell: title block + source line", {
+  fx <- .pp_ready_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(
+    mod_paper_server,
+    args = list(store = fx$store),
+    {
       output$sheet_html_slot$html
-      n2 <- sum(startsWith(ls(fx$store$cache), "ard::"))
-      expect_identical(n2, n1 + 1L)
+      # Swap the summarize items (still READY -- both slots stay filled):
+      # a heavy edit on a proofed output.
+      update_object(fx$store, fx$id, function(o) {
+        S7::set_props(
+          o,
+          roles = list(
+            o@roles[[1]],
+            arpillar::role(
+              slot = "summarize",
+              items = list(arpillar::data_item(
+                name = "SEX",
+                role_type = "category"
+              ))
+            )
+          )
+        )
+      })
+      session$flushReact()
+      html <- output$sheet_html_slot$html
+      expect_match(html, "ar-paper-title-block", fixed = TRUE)
+      expect_match(html, "ar-paper-stale", fixed = TRUE)
+      expect_match(html, "ar-paper-source", fixed = TRUE)
     }
   )
 })

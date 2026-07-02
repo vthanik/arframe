@@ -252,11 +252,13 @@ mod_card_server <- function(id, store) {
       shiny::bindEvent(store$rv$insp_tab)
 
     # Run: drop every memoized ARD so the rebuild is honest (a stale
-    # upstream parquet re-collects rather than replaying the memo), then
+    # upstream parquet re-collects rather than replaying the memo), clear
+    # the stale-proof flags (decision #8 -- Run IS the re-typeset), then
     # bump the nonce the paper's renderers bind to.
     shiny::observeEvent(input$run, {
       keys <- grep("^ard::", ls(store$cache), value = TRUE)
       rm(list = keys, envir = store$cache)
+      store$rv$stale <- character(0)
       store$rv$run_nonce <- store$rv$run_nonce + 1L
       log_line(store, "run: re-typeset requested")
     })

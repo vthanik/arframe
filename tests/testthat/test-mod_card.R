@@ -94,9 +94,14 @@ test_that("mod_card_server: Run drops the ARD memo and bumps run_nonce", {
     invisible(cached_ard(store, obj))
     expect_length(grep("^ard::", ls(store$cache)), 1L)
 
+    # A heavy edit marked the proof stale; Run must clear it (decision #8).
+    obj_id <- shiny::isolate(store$rv$selected)
+    store$rv$stale <- obj_id
+
     session$setInputs(run = 1)
     expect_length(grep("^ard::", ls(store$cache)), 0L)
     expect_identical(store$rv$run_nonce, 1L)
+    expect_identical(store$rv$stale, character(0))
     # The run is logged for the QC sheet.
     expect_match(store$rv$log[[length(store$rv$log)]], "run", fixed = TRUE)
   })
