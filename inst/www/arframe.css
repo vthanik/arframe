@@ -515,9 +515,24 @@ input[type="radio"] {
   box-shadow: var(--ar-shadow-float);
 }
 .ar-add-card:focus {
-  outline: none; /* the dialog itself is a focus anchor, not an editable
-                     control -- the two-tone focus ring is reserved for the
-                     controls inside it */
+  /* The dialog is a focus TARGET, not an editable control -- JS moves
+     focus onto it (tabindex="-1") the instant it mounts, on every open
+     regardless of mouse or keyboard trigger (arframe.js's MutationObserver
+     calls dialog.focus() unconditionally), so this uses `:focus` rather
+     than `:focus-visible`: a script-invoked focus() is not reliably
+     treated as "visible" by every browser's `:focus-visible` heuristic,
+     which would silently drop the ring for exactly the keyboard user this
+     exists for. Mirrors `.ar-problem:focus` (the other programmatically-
+     focused container in this file) -- same GOV.UK outline + dark
+     box-shadow ring, kept even though the outer 3px ring already sits
+     flush against the backdrop, so a keyboard user always gets a visible
+     landing cue.
+  */
+  outline: 3px solid var(--ar-focus);
+  outline-offset: 0;
+  box-shadow:
+    0 0 0 5px #0b0c0c,
+    var(--ar-shadow-float);
 }
 .ar-add-header {
   flex: 0 0 auto;

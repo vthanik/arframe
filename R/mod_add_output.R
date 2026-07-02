@@ -52,12 +52,21 @@
 }
 
 #' Every recommendation row across every catalog dataset, in catalog then
-#' rule order. Memoized in `store$cache` under a `"rec::"`-prefixed key
-#' keyed on `catalog_nonce` (fct_store.R's `cached_ard()` reserves this
-#' prefix) -- `detect_structure()`/`data_items()` are metadata-only queries,
-#' cheap even unmemoized at demo scale, but the memo keeps this module
-#' consistent with the two-stage cache seam and avoids re-querying on every
-#' render while the overlay is open.
+#' rule order, FILTERED to only the (preset, dataset) pairs that will
+#' actually render -- a candidate is dropped when `dataset` is missing any
+#' of the preset's role vars (`.missing_vars()`, the same var-coverage
+#' check the manual preset-library path uses for its warning). The
+#' one-click recommendation Add has no dataset picker to show a warning
+#' in, so an unrenderable recommendation would add silently; filtering
+#' here is both the fix for that AND for the over-eager heuristic (e.g.
+#' `demographics` recommended from `ADTTE`, which has none of AGE/SEX/
+#' RACE -- `detect_structure()` alone cannot see that). Memoized in
+#' `store$cache` under a `"rec::"`-prefixed key keyed on `catalog_nonce`
+#' (fct_store.R's `cached_ard()` reserves this prefix) --
+#' `detect_structure()`/`data_items()` are metadata-only queries, cheap
+#' even unmemoized at demo scale, but the memo keeps this module
+#' consistent with the two-stage cache seam and avoids re-querying on
+#' every render while the overlay is open.
 #' @noRd
 .recommendations <- function(store) {
   key <- paste0("rec::", store$rv$catalog_nonce)
@@ -69,6 +78,10 @@
   rows <- list()
   for (dataset in grid$name) {
     for (preset_id in .rec_preset_ids(store$con, dataset)) {
+      pr <- arpillar::preset(preset_id)
+      if (length(.missing_vars(store$con, pr, dataset)) > 0L) {
+        next
+      }
       rows[[length(rows) + 1L]] <- .rec_row(preset_id, dataset)
     }
   }

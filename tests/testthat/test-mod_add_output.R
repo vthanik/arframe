@@ -53,14 +53,17 @@ test_that(".rec_preset_ids: a CNSR column adds km_os, independent of the structu
   expect_true("km_os" %in% ids)
 })
 
-test_that(".recommendations: one row per (dataset, preset) pair, across the whole catalog", {
+test_that(".recommendations: one row per (dataset, preset) pair that will actually render", {
   fx <- .ao_store()
   withr::defer(arpillar::engine_close(fx$con))
 
+  # box_by_visit/ae_overall/ae_soc_pt/km_os are fully covered by their
+  # recommended dataset -- these are the surviving rows. demographics-from-
+  # ADSL and mean_over_time-from-ADVS are each missing one role var (RACE,
+  # CHG) on the demo catalog -- covered by the dedicated var-coverage test
+  # below, not asserted present here.
   recs <- .recommendations(fx$store)
   pairs <- vapply(recs, function(r) paste(r$preset_id, r$dataset), character(1))
-  expect_true("demographics ADSL" %in% pairs)
-  expect_true("mean_over_time ADVS" %in% pairs)
   expect_true("box_by_visit ADVS" %in% pairs)
   expect_true("ae_overall ADAE" %in% pairs)
   expect_true("ae_soc_pt ADAE" %in% pairs)
@@ -74,15 +77,72 @@ test_that(".recommendations: label is '<preset label> -- from <DATASET>'", {
   recs <- .recommendations(fx$store)
   hit <- Filter(
     function(r) {
-      identical(r$preset_id, "demographics") && identical(r$dataset, "ADSL")
+      identical(r$preset_id, "ae_overall") && identical(r$dataset, "ADAE")
     },
     recs
   )
   expect_length(hit, 1L)
   expect_identical(
     hit[[1]]$label,
-    "Demographics and Baseline Characteristics -- from ADSL"
+    "Overall Summary of Adverse Events -- from ADAE"
   )
+})
+
+test_that(".recommendations drops every candidate missing a role var -- only fully-covered pairs survive", {
+  fx <- .ao_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  # Reproduce the drop set from first principles against every candidate
+  # .rec_preset_ids() would emit, independent of .recommendations()'s own
+  # filtering logic -- proves the invariant, not just today's fixture
+  # values.
+  grid <- arpillar::catalog_grid(fx$con)
+  candidates <- list()
+  for (dataset in grid$name) {
+    for (preset_id in .rec_preset_ids(fx$con, dataset)) {
+      candidates[[length(candidates) + 1L]] <- list(
+        preset_id = preset_id,
+        dataset = dataset
+      )
+    }
+  }
+  expect_true(length(candidates) > 0L)
+
+  recs <- .recommendations(fx$store)
+  rec_pairs <- vapply(
+    recs,
+    function(r) paste(r$preset_id, r$dataset),
+    character(1)
+  )
+
+  for (cand in candidates) {
+    pr <- arpillar::preset(cand$preset_id)
+    missing <- .missing_vars(fx$con, pr, cand$dataset)
+    pair <- paste(cand$preset_id, cand$dataset)
+    if (length(missing) > 0L) {
+      expect_false(
+        pair %in% rec_pairs,
+        info = sprintf(
+          "%s should be dropped (missing %s)",
+          pair,
+          toString(missing)
+        )
+      )
+    } else {
+      expect_true(
+        pair %in% rec_pairs,
+        info = sprintf("%s is fully covered and should be recommended", pair)
+      )
+    }
+  }
+
+  # On the demo catalog specifically: demographics-from-ADTTE (the finding's
+  # motivating example -- ADTTE has none of AGE/SEX/RACE) and demographics-
+  # from-ADSL (missing only RACE) are both dropped; mean_over_time-from-ADVS
+  # (missing CHG) is dropped too.
+  expect_false("demographics ADTTE" %in% rec_pairs)
+  expect_false("demographics ADSL" %in% rec_pairs)
+  expect_false("mean_over_time ADVS" %in% rec_pairs)
 })
 
 test_that(".recommendations is memoized under a 'rec::' key on catalog_nonce", {
@@ -279,7 +339,7 @@ test_that("a backdrop click (input$dismiss) sets rv$adding FALSE", {
 
 # ---- server: recommendations -------------------------------------------
 
-test_that("recommendations include demographics-from-ADSL, ae_overall/ae_soc_pt-from-ADAE, km_os-from-ADTTE", {
+test_that("recommendations include only fully-covered pairs; Demographics-from-ADTTE is never shown", {
   fx <- .ao_store()
   withr::defer(arpillar::engine_close(fx$con))
 
@@ -290,11 +350,6 @@ test_that("recommendations include demographics-from-ADSL, ae_overall/ae_soc_pt-
       fx$store$rv$adding <- TRUE
       session$flushReact()
       html <- output$overlay$html
-      expect_match(
-        html,
-        "Demographics and Baseline Characteristics -- from ADSL",
-        fixed = TRUE
-      )
       expect_match(
         html,
         "Overall Summary of Adverse Events -- from ADAE",
@@ -308,6 +363,30 @@ test_that("recommendations include demographics-from-ADSL, ae_overall/ae_soc_pt-
       expect_match(
         html,
         "Kaplan-Meier: Overall Survival -- from ADTTE",
+        fixed = TRUE
+      )
+      expect_match(
+        html,
+        "Distribution of Response by Visit -- from ADVS",
+        fixed = TRUE
+      )
+
+      # The finding's motivating example, and the wider var-coverage
+      # invariant it generalizes to: nothing recommended is missing a role
+      # var on its recommended dataset.
+      expect_no_match(
+        html,
+        "Demographics and Baseline Characteristics -- from ADTTE",
+        fixed = TRUE
+      )
+      expect_no_match(
+        html,
+        "Demographics and Baseline Characteristics -- from ADSL",
+        fixed = TRUE
+      )
+      expect_no_match(
+        html,
+        "Mean Change from Baseline Over Time -- from ADVS",
         fixed = TRUE
       )
     }
