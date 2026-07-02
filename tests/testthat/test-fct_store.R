@@ -187,31 +187,105 @@ test_that("the undo stack is capped at 50 entries", {
   expect_identical(first_kept@name, "v10")
 })
 
-# ---- add_output / update_object / remove_output / move_output / rename ---
+# ---- add_from_preset / add_from_generator ---------------------------------
 
-test_that("add_output copies template type/title/footnotes, binds dataset, selects", {
+test_that("add_from_preset copies type/title/footnotes/options, binds dataset, selects", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
   store <- shiny::isolate(new_store(con))
-  id <- shiny::isolate(add_output(store, "demographics", "ADSL"))
+  id <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
+
+  obj <- shiny::isolate(selected_object(store))
+  pr <- arpillar::preset("demographics")
+  expect_identical(obj@id, id)
+  expect_identical(obj@type, "summary")
+  expect_identical(obj@dataset, "ADSL")
+  expect_identical(obj@title, pr$title)
+  expect_identical(obj@footnotes, as.character(pr$footnotes))
+  expect_identical(obj@options$number, pr$options$number)
+  expect_identical(obj@options$number_label, pr$options$number_label)
+  expect_identical(shiny::isolate(store$rv$selected), id)
+})
+
+test_that("add_from_preset builds roles with role_type resolved from the demo catalog", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  id <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
+  obj <- shiny::isolate(selected_object(store))
+
+  slots <- vapply(obj@roles, function(r) r@slot, character(1))
+  expect_setequal(slots, c("treatment", "summarize"))
+
+  summarize_role <- obj@roles[[which(slots == "summarize")]]
+  items <- summarize_role@items
+  names_ <- vapply(items, function(it) it@name, character(1))
+  types_ <- vapply(items, function(it) it@role_type, character(1))
+  # AGE/SEX are real ADSL columns (measure/category); RACE is NOT a column
+  # of the demo ADSL and must still appear, defaulted to "category" rather
+  # than dropped.
+  expect_identical(names_, c("AGE", "SEX", "RACE"))
+  expect_identical(types_, c("measure", "category", "category"))
+})
+
+test_that("add_from_preset sets population for an occurrence preset", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  # ae_overall targets an AE-domain dataset; the demo catalog has none, so
+  # apply it against ADSL to prove the fail-loud contract: AEDECOD is
+  # absent from ADSL and must default to role_type "category", never be
+  # silently dropped from the built roles.
+  id <- shiny::isolate(add_from_preset(store, "ae_overall", "ADSL"))
+  obj <- shiny::isolate(selected_object(store))
+
+  expect_identical(obj@type, "occurrence")
+  expect_identical(obj@options$population, "ADSL")
+  slots <- vapply(obj@roles, function(r) r@slot, character(1))
+  hier_role <- obj@roles[[which(slots == "hierarchy")]]
+  expect_identical(hier_role@items[[1]]@name, "AEDECOD")
+  expect_identical(hier_role@items[[1]]@role_type, "category")
+})
+
+test_that("add_from_generator makes a bare object with an auto-suggested number", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  id <- shiny::isolate(add_from_generator(store, "summary", "ADSL"))
 
   obj <- shiny::isolate(selected_object(store))
   expect_identical(obj@id, id)
   expect_identical(obj@type, "summary")
   expect_identical(obj@dataset, "ADSL")
-  expect_identical(obj@title, arpillar::template("demographics")$title)
+  expect_length(obj@roles, 0L)
+  expect_identical(obj@options$number, "14.1.1")
+  expect_identical(obj@options$number_label, "Table")
   expect_identical(shiny::isolate(store$rv$selected), id)
 })
 
-test_that("add_output ids are monotonic sprintf('out%03d', n)", {
+test_that("add_from_generator auto-suggests the next free number within the same kind", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
   store <- shiny::isolate(new_store(con))
-  id1 <- shiny::isolate(add_output(store, "demographics", "ADSL"))
-  id2 <- shiny::isolate(add_output(store, "crosstab", "ADSL"))
+  shiny::isolate(add_from_preset(store, "demographics", "ADSL")) # seeds 14.1.1
+  id2 <- shiny::isolate(add_from_generator(store, "crosstab", "ADSL"))
+
+  obj2 <- shiny::isolate(selected_object(store))
+  expect_identical(obj2@id, id2)
+  expect_identical(obj2@options$number, "14.1.2")
+})
+
+test_that("add_from_preset/add_from_generator ids are monotonic sprintf('out%03d', n)", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  id1 <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
+  id2 <- shiny::isolate(add_from_generator(store, "crosstab", "ADSL"))
   expect_identical(id1, "out001")
   expect_identical(id2, "out002")
 })
+
+# ---- update_object / remove_output / move_output / rename -----------------
 
 test_that("selected_object returns NULL when nothing is selected", {
   con <- .demo_catalog()
@@ -224,8 +298,8 @@ test_that("update_object edits one object; siblings are untouched", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
   store <- shiny::isolate(new_store(con))
-  id1 <- shiny::isolate(add_output(store, "demographics", "ADSL"))
-  id2 <- shiny::isolate(add_output(store, "crosstab", "ADSL"))
+  id1 <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
+  id2 <- shiny::isolate(add_from_preset(store, "disposition", "ADSL"))
 
   shiny::isolate(update_object(store, id1, function(o) {
     S7::set_props(o, title = "Edited title")
@@ -235,14 +309,14 @@ test_that("update_object edits one object; siblings are untouched", {
   obj1 <- .find_object(rep, id1)
   obj2 <- .find_object(rep, id2)
   expect_identical(obj1@title, "Edited title")
-  expect_identical(obj2@title, arpillar::template("crosstab")$title)
+  expect_identical(obj2@title, arpillar::preset("disposition")$title)
 })
 
 test_that("update_object on an unknown id is a no-op", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
   store <- shiny::isolate(new_store(con))
-  id <- shiny::isolate(add_output(store, "demographics", "ADSL"))
+  id <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
   rep_before <- shiny::isolate(store$rv$report)
 
   shiny::isolate(update_object(store, "nope", function(o) {
@@ -251,7 +325,7 @@ test_that("update_object on an unknown id is a no-op", {
   expect_identical(shiny::isolate(store$rv$report), rep_before)
   expect_identical(
     .find_object(shiny::isolate(store$rv$report), id)@title,
-    arpillar::template("demographics")$title
+    arpillar::preset("demographics")$title
   )
 })
 
@@ -259,7 +333,7 @@ test_that("remove_output clears a dangling selected pointer", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
   store <- shiny::isolate(new_store(con))
-  id <- shiny::isolate(add_output(store, "demographics", "ADSL"))
+  id <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
   expect_identical(shiny::isolate(store$rv$selected), id)
 
   shiny::isolate(remove_output(store, id))
@@ -271,9 +345,9 @@ test_that("remove_output leaves selected untouched when a different id is remove
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
   store <- shiny::isolate(new_store(con))
-  id1 <- shiny::isolate(add_output(store, "demographics", "ADSL"))
-  id2 <- shiny::isolate(add_output(store, "crosstab", "ADSL"))
-  # id2 is currently selected (add_output selects the newly added object)
+  id1 <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
+  id2 <- shiny::isolate(add_from_preset(store, "disposition", "ADSL"))
+  # id2 is currently selected (add_from_preset selects the newly added object)
   shiny::isolate(remove_output(store, id1))
   expect_identical(shiny::isolate(store$rv$selected), id2)
 })
@@ -282,8 +356,8 @@ test_that("move_output reorders and rename_output relabels", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
   store <- shiny::isolate(new_store(con))
-  id1 <- shiny::isolate(add_output(store, "demographics", "ADSL"))
-  id2 <- shiny::isolate(add_output(store, "crosstab", "ADSL"))
+  id1 <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
+  id2 <- shiny::isolate(add_from_preset(store, "disposition", "ADSL"))
 
   shiny::isolate(move_output(store, id2, 1L))
   ids <- vapply(
@@ -343,7 +417,7 @@ test_that("cached_ard HITs on an options-only change, MISSes on a role change", 
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
   store <- shiny::isolate(new_store(con))
-  id <- shiny::isolate(add_output(store, "demographics", "ADSL"))
+  id <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
   shiny::isolate(update_object(store, id, function(o) {
     S7::set_props(
       o,
@@ -396,7 +470,7 @@ test_that("cached_ard MISSes on a filter change", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
   store <- shiny::isolate(new_store(con))
-  id <- shiny::isolate(add_output(store, "demographics", "ADSL"))
+  id <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
   shiny::isolate(update_object(store, id, function(o) {
     S7::set_props(
       o,
@@ -445,7 +519,7 @@ test_that("REGRESSION: config committed via the store survives with no UI mounte
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
   store <- shiny::isolate(new_store(con))
-  id <- shiny::isolate(add_output(store, "demographics", "ADSL"))
+  id <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
   shiny::isolate(update_object(store, id, function(o) {
     S7::set_props(o, options = list(decimals = 2L))
   }))

@@ -1,36 +1,40 @@
 # The Contents column: the TOC that IS navigation (design spec #3) -- there
 # are no canvas tabs, so this list is the only way to switch which output the
 # desk shows. Groups outputs TABLES/FIGURES/LISTINGS (kind read off the
-# type->template map; an empty group is omitted entirely), numbers each row
-# kind-scoped in document order, stamps its status, and drives every mutation
-# (reorder/rename/duplicate/remove/select) straight through the injected
-# store -- this module holds no draft state of its own.
+# type->generator map; an empty group is omitted entirely), numbers each row
+# by its preset-seeded/auto-suggested `options$number` (falling back to the
+# old kind-scoped document-order index only when absent), stamps its status,
+# and drives every mutation (reorder/rename/duplicate/remove/select) straight
+# through the injected store -- this module holds no draft state of its own.
 
 # ---- kind lookup ------------------------------------------------------
 
 #' The kind ("table"/"figure") for each renderable `object@type`.
 #'
-#' `arpillar::templates()` is keyed by TEMPLATE id (`"demographics"`,
-#' `"mean_line"`, ...), not by the render `type` an `object` actually carries
-#' (`"summary"`, `"line"`, ...) -- so the Contents grouping needs its own
-#' reverse index built off each template's `$type` field. No template
-#' currently has `kind == "listing"`; the LISTINGS group is always empty
-#' until one is registered, which is exactly why callers must omit empty
-#' groups rather than assume the three-group set is complete.
+#' `arpillar::generators()` is keyed by engine TYPE (`"summary"`,
+#' `"crosstab"`, `"occurrence"`, `"km"`, `"line"`, `"box"`), which IS the
+#' render `type` an `object` actually carries -- so this is a direct
+#' name -> `$kind` projection, not a reverse index (the old
+#' `arpillar::templates()` was keyed by preset/template id instead, which
+#' needed one). No generator currently has `kind == "listing"`; the
+#' LISTINGS group is always empty until one is registered, which is
+#' exactly why callers must omit empty groups rather than assume the
+#' three-group set is complete.
 #' @noRd
 .kind_by_type <- function() {
-  tp <- arpillar::templates()
-  kinds <- vapply(tp, function(t) t$kind, character(1))
-  types <- vapply(tp, function(t) t$type, character(1))
-  stats::setNames(kinds, types)
+  g <- arpillar::generators()
+  stats::setNames(vapply(g, `[[`, "", "kind"), names(g))
 }
 
 #' The TOC's kind-scoped group key -> display label + numbering prefix.
 #'
-#' An `object@type` outside the known map (a template not yet wired to a
+#' An `object@type` outside the known map (a generator not yet wired to a
 #' render leg) falls back to the `listing` group rather than being silently
 #' dropped from the TOC -- every output the report holds must appear
-#' somewhere (see `.toc_rows()`'s `%||% "listing"` fallback).
+#' somewhere (see `.toc_rows()`'s `%||% "listing"` fallback). The `prefix`
+#' also backs the fallback auto-number (`.toc_rows()`) and
+#' `.next_number()`'s (`utils_report.R`) auto-suggest for a
+#' generator-seeded (preset-less) new output.
 #' @noRd
 .TOC_GROUPS <- list(
   table = list(label = "TABLES", prefix = "14.1"),
@@ -40,12 +44,17 @@
 
 # ---- row model ----------------------------------------------------------
 
-#' Build one row per object: id, title, kind, group label, TLF number
-#' (kind-scoped 1-based index in document order), and status.
+#' Build one row per object: id, title, kind, group label, TLF number, and
+#' status.
 #'
-#' `status` folds in `rv$broken` ahead of the oracle -- a broken id always
-#' shows ERROR regardless of what `output_status()` would otherwise report,
-#' matching the stamp table's "app-side render-failed flag" precedence.
+#' `number` prefers `obj@options$number` -- the number a preset seeded or
+#' `add_from_generator()` auto-suggested -- falling back to the old
+#' kind-scoped 1-based document-order index only when that option is
+#' absent or blank (e.g. an object built by hand, outside either add
+#' path). `status` folds in `rv$broken` ahead of the oracle -- a broken id
+#' always shows ERROR regardless of what `output_status()` would otherwise
+#' report, matching the stamp table's "app-side render-failed flag"
+#' precedence.
 #' @noRd
 .toc_rows <- function(report, broken) {
   objs <- .all_objects(report)
@@ -64,13 +73,19 @@
     kind <- kinds[[i]]
     grp <- .TOC_GROUPS[[kind]]
     counters[[kind]] <<- counters[[kind]] + 1L
+    seeded_number <- obj@options$number
+    number <- if (length(seeded_number) == 1L && nzchar(seeded_number)) {
+      seeded_number
+    } else {
+      paste0(grp$prefix, ".", counters[[kind]])
+    }
     status <- if (obj@id %in% broken) "broken" else arpillar::output_status(obj)
     list(
       id = obj@id,
       title = obj@title,
       kind = kind,
       group_label = grp$label,
-      number = paste0(grp$prefix, ".", counters[[kind]]),
+      number = number,
       status = status
     )
   })

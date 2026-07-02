@@ -2,7 +2,9 @@
 # function here rebuilds the tree with S7::set_props() -- S7 properties are
 # immutable, so a "mutation" is always a brand-new report returned to the
 # caller, never an in-place x@prop <- value. fct_store.R's mutators are thin
-# wrappers over these plus a commit().
+# wrappers over these plus a commit(). Construction (.object_from_preset /
+# .object_from_generator) reads arpillar::preset()/generator() -- the
+# arpillar::template()/templates() API they replaced is gone.
 
 # ---- lookup -----------------------------------------------------------
 
@@ -76,16 +78,105 @@
 
 # ---- construction ---------------------------------------------------------
 
-#' Build a fresh object from a template entry, bound to `dataset`, with `id`.
+#' Resolve one variable's `role_type` (measure/category/date) off the
+#' catalog, defaulting to "category" when the variable is absent from
+#' `dataset` -- construction never silently drops a preset-listed var, it
+#' still builds a `data_item()` for it (fail loud belongs to the caller /
+#' validate step, not to a swallowed role).
 #' @noRd
-.object_from_template <- function(tpl, dataset, id) {
+.resolve_role_type <- function(con, dataset, var) {
+  items <- arpillar::data_items(con, dataset)
+  hit <- items$type[items$name == var]
+  if (length(hit) == 1L) hit else "category"
+}
+
+#' Build the `roles` list for a preset: one [arpillar::role()] per slot,
+#' each holding one [arpillar::data_item()] per variable name in
+#' `preset$roles[[slot]]`, with `role_type` resolved per-var off the
+#' catalog (see `.resolve_role_type()`).
+#' @noRd
+.roles_from_preset <- function(con, dataset, preset_roles) {
+  lapply(names(preset_roles), function(slot) {
+    vars <- preset_roles[[slot]]
+    arpillar::role(
+      slot = slot,
+      items = lapply(vars, function(v) {
+        arpillar::data_item(
+          name = v,
+          role_type = .resolve_role_type(con, dataset, v)
+        )
+      })
+    )
+  })
+}
+
+#' Build a fresh object from a preset entry (`arpillar::preset()`), bound to
+#' `dataset`, with `id`. Copies `type` (the preset's `generator`), `title`,
+#' `footnotes`, `filters`, `options` (carries `number`/`number_label` and,
+#' for occurrence presets, `population`) verbatim; `roles` are rebuilt off
+#' the catalog via `.roles_from_preset()` so `role_type` reflects `dataset`,
+#' not the preset author's assumed source dataset.
+#' @noRd
+.object_from_preset <- function(con, preset, dataset, id) {
   arpillar::object(
     id = id,
-    type = tpl$type,
-    title = tpl$title %||% "",
+    type = preset$generator,
+    title = preset$title %||% "",
     dataset = dataset,
-    footnotes = as.character(tpl$footnotes %||% character(0))
+    roles = .roles_from_preset(con, dataset, preset$roles),
+    filters = preset$filters %||% list(),
+    options = preset$options %||% list(),
+    footnotes = as.character(preset$footnotes %||% character(0))
   )
+}
+
+#' Build a bare object from a generator entry (`arpillar::generator()`),
+#' bound to `dataset`, with `id`, and no roles filled -- the "blank slate"
+#' path (as opposed to `.object_from_preset()`'s pre-filled one). `options`
+#' seeds `number` (auto-suggested via `.next_number()`) and `number_label`
+#' (`kind` title-cased: table -> "Table", figure -> "Figure",
+#' listing -> "Listing").
+#' @noRd
+.object_from_generator <- function(generator, dataset, id, existing_numbers) {
+  arpillar::object(
+    id = id,
+    type = generator$id,
+    title = generator$label %||% "",
+    dataset = dataset,
+    options = list(
+      number = .next_number(generator$kind, existing_numbers),
+      number_label = .kind_number_label(generator$kind)
+    ),
+    footnotes = character(0)
+  )
+}
+
+#' The kind -> TLF number_label used in the paper title block.
+#' @noRd
+.kind_number_label <- function(kind) {
+  switch(
+    kind,
+    table = "Table",
+    figure = "Figure",
+    listing = "Listing",
+    "Table"
+  )
+}
+
+#' The next free `<prefix>.<n>` TLF number for `kind`, one past the highest
+#' `.n` suffix already present in `existing_numbers` that shares the kind's
+#' prefix (so a mix of preset-seeded and generator-suggested numbers in the
+#' same document never collides). Starts at `.1` when none exist yet. The
+#' prefix comes from `.TOC_GROUPS` (`mod_contents.R`) -- the single table
+#' mapping kind -> TOC numbering prefix, not duplicated here.
+#' @noRd
+.next_number <- function(kind, existing_numbers) {
+  prefix <- .TOC_GROUPS[[kind]]$prefix %||% "14.1"
+  pat <- paste0("^", gsub("\\.", "\\\\.", prefix), "\\.(\\d+)$")
+  hits <- grep(pat, existing_numbers, value = TRUE)
+  nums <- as.integer(sub(pat, "\\1", hits))
+  n <- if (length(nums) == 0L) 0L else max(nums)
+  paste0(prefix, ".", n + 1L)
 }
 
 #' The next monotonic object id, `sprintf("out%03d", n)`, over existing ids.

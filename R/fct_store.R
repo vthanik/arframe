@@ -135,20 +135,55 @@ update_object <- function(store, id, fn, label = "") {
   commit(store, new_report, label = label)
 }
 
-#' Add a new output from a template, bind it to `dataset`, select it, and
-#' return its freshly minted id.
+#' Append `obj` to the first page, commit, and select it. Shared tail of
+#' `add_from_preset()`/`add_from_generator()`.
 #' @noRd
-add_output <- function(store, template_id, dataset) {
-  tpl <- arpillar::template(template_id)
-  id <- .next_id(store$rv$report)
-  obj <- .object_from_template(tpl, dataset, id)
+.append_and_select <- function(store, obj, label) {
   pages <- store$rv$report@pages
   first <- pages[[1]]
   pages[[1]] <- S7::set_props(first, objects = c(first@objects, list(obj)))
   new_report <- S7::set_props(store$rv$report, pages = pages)
-  commit(store, new_report, label = "add output")
-  store$rv$selected <- id
-  id
+  commit(store, new_report, label = label)
+  store$rv$selected <- obj@id
+  obj@id
+}
+
+#' Add a new output pre-filled from a named preset (`arpillar::preset()`),
+#' bind it to `dataset`, select it, and return its freshly minted id.
+#'
+#' `roles` are rebuilt off `dataset`'s own catalog entry, not copied
+#' verbatim from the preset -- a preset var absent from `dataset` still
+#' gets a `data_item()` (default `role_type = "category"`), it is never
+#' silently dropped, so a mismatched dataset (e.g. an AE-domain preset
+#' applied to a dataset without `AEDECOD`) surfaces at validate/render
+#' time rather than vanishing here.
+#' @noRd
+add_from_preset <- function(store, preset_id, dataset) {
+  pr <- arpillar::preset(preset_id)
+  id <- .next_id(store$rv$report)
+  obj <- .object_from_preset(store$con, pr, dataset, id)
+  .append_and_select(store, obj, label = "add output from preset")
+}
+
+#' Add a bare new output from a generator (`arpillar::generator()`), bind
+#' it to `dataset`, select it, and return its freshly minted id.
+#'
+#' No roles are filled in -- the "blank slate" counterpart to
+#' `add_from_preset()`. `options$number` is auto-suggested as the next
+#' free `<prefix>.<n>` within the generator's kind group (see
+#' `.next_number()`); `options$number_label` is the kind's TLF label
+#' ("Table"/"Figure"/"Listing").
+#' @noRd
+add_from_generator <- function(store, generator_id, dataset) {
+  gen <- arpillar::generator(generator_id)
+  id <- .next_id(store$rv$report)
+  existing_numbers <- vapply(
+    .all_objects(store$rv$report),
+    function(o) o@options$number %||% "",
+    character(1)
+  )
+  obj <- .object_from_generator(gen, dataset, id, existing_numbers)
+  .append_and_select(store, obj, label = "add output from generator")
 }
 
 #' Remove the output with `id`; clear a now-dangling selection.

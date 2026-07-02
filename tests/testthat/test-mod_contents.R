@@ -1,7 +1,9 @@
 # The Contents column: the TOC that IS the output switcher. Groups outputs
-# TABLES/FIGURES/LISTINGS (kind from the type->template map, empty groups
-# omitted), numbers them kind-scoped (14.1.n / 14.2.n / 16.2.n), and drives
-# reorder/rename/duplicate/remove/select entirely through the injected store.
+# TABLES/FIGURES/LISTINGS (kind from the type->generator map, empty groups
+# omitted), numbers them by preset-seeded/auto-suggested options$number
+# (falling back to the old kind-scoped 14.1.n / 14.2.n / 16.2.n index), and
+# drives reorder/rename/duplicate/remove/select entirely through the
+# injected store.
 
 # ---- fixtures --------------------------------------------------------------
 
@@ -31,14 +33,16 @@
 #' A store seeded with 3 demo outputs across the two live kinds (table,
 #' figure): a READY summary (table), a DRAFT crosstab with no roles filled
 #' (table), and a DRAFT line figure with no roles filled (figure). Draft
-#' status proves the oracle is read per-object, not defaulted.
+#' status proves the oracle is read per-object, not defaulted. Built via
+#' `add_from_generator()` -- the "bare, no roles" path -- rather than
+#' `add_from_preset()`, which now pre-fills roles.
 #' @noRd
 .tc_store <- function() {
   con <- .demo_catalog()
   store <- shiny::isolate(new_store(con))
-  id1 <- shiny::isolate(add_output(store, "demographics", "ADSL")) # summary/table, roles empty -> draft by default
-  id2 <- shiny::isolate(add_output(store, "crosstab", "ADSL")) # crosstab/table, draft
-  id3 <- shiny::isolate(add_output(store, "mean_line", "ADVS")) # line/figure, draft
+  id1 <- shiny::isolate(add_from_generator(store, "summary", "ADSL")) # summary/table, roles empty -> draft by default
+  id2 <- shiny::isolate(add_from_generator(store, "crosstab", "ADSL")) # crosstab/table, draft
+  id3 <- shiny::isolate(add_from_generator(store, "line", "ADVS")) # line/figure, draft
   # Overwrite id1 with a fully-configured object so at least one row is READY.
   shiny::isolate(update_object(store, id1, function(o) {
     S7::set_props(
@@ -84,12 +88,14 @@ test_that("rows are grouped TABLES/FIGURES and numbered kind-scoped in document 
       html <- output$toc$html
       expect_match(html, "TABLES", fixed = TRUE)
       expect_match(html, "FIGURES", fixed = TRUE)
-      # LISTINGS never appears -- no listing template exists, so the group is
-      # always empty and must be omitted entirely.
+      # LISTINGS never appears -- no listing generator exists, so the group
+      # is always empty and must be omitted entirely.
       expect_no_match(html, "LISTINGS", fixed = TRUE)
 
-      # kind-scoped numbering: id1/id2 are both "table" kind (1-based within
-      # kind, in document order); id3 is the lone "figure" kind entry.
+      # id1/id2/id3 each carry an add_from_generator()-auto-suggested
+      # options$number, which .toc_rows() prefers over the fallback index --
+      # id1/id2 are both "table" kind (1-based within kind, in document
+      # order); id3 is the lone "figure" kind entry.
       expect_match(html, "14.1.1", fixed = TRUE)
       expect_match(html, "14.1.2", fixed = TRUE)
       expect_match(html, "14.2.1", fixed = TRUE)
@@ -97,13 +103,60 @@ test_that("rows are grouped TABLES/FIGURES and numbered kind-scoped in document 
   )
 })
 
+test_that("a row with no options$number falls back to the kind-scoped auto index", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  # Built by hand via arpillar::object() -- neither add path -- so
+  # options$number is absent; .toc_rows() must still number it.
+  bare <- arpillar::object(id = "outX", type = "summary", dataset = "ADSL")
+  pages <- shiny::isolate(store$rv$report)@pages
+  pages[[1]] <- S7::set_props(pages[[1]], objects = list(bare))
+  shiny::isolate(commit(
+    store,
+    S7::set_props(
+      shiny::isolate(store$rv$report),
+      pages = pages
+    )
+  ))
+
+  shiny::testServer(
+    mod_contents_server,
+    args = list(store = store),
+    {
+      html <- output$toc$html
+      expect_match(html, "14.1.1", fixed = TRUE)
+    }
+  )
+})
+
+test_that("a preset-seeded options$number is shown verbatim, not the document-order index", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  # disposition seeds "14.1.2" even though it is the FIRST (and only)
+  # object in the document -- the seeded number must win over "14.1.1".
+  shiny::isolate(add_from_preset(store, "disposition", "ADSL"))
+
+  shiny::testServer(
+    mod_contents_server,
+    args = list(store = store),
+    {
+      html <- output$toc$html
+      expect_match(html, "14.1.2", fixed = TRUE)
+      expect_no_match(html, "14.1.1", fixed = TRUE)
+    }
+  )
+})
+
 test_that("the LISTINGS group is present when a listing-kind row exists (future-proof, currently unreachable)", {
-  # No listing template exists in arpillar today (verified: templates() has
-  # no kind == "listing" entry), so this documents the omission contract
-  # without asserting on a row that cannot currently be constructed.
+  # No listing generator exists in arpillar today (verified: generators()
+  # has no kind == "listing" entry), so this documents the omission
+  # contract without asserting on a row that cannot currently be
+  # constructed.
   fx <- .tc_store()
   withr::defer(arpillar::engine_close(fx$con))
-  kinds <- vapply(arpillar::templates(), function(t) t$kind, "")
+  kinds <- vapply(arpillar::generators(), function(g) g$kind, "")
   expect_false("listing" %in% kinds)
 })
 
