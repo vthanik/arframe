@@ -51,7 +51,7 @@ arframe <- function(project = NULL, data = NULL) {
         "frame",
         report_body = shiny::tagList(
           mod_contents_ui("contents"),
-          shiny::div(class = "ar-slot-placeholder", "Paper"),
+          mod_paper_ui("paper"),
           shiny::div(class = "ar-slot-placeholder", "Card")
         ),
         data_body = shiny::div(class = "ar-slot-placeholder", "Data mode"),
@@ -64,6 +64,7 @@ arframe <- function(project = NULL, data = NULL) {
   server <- function(input, output, session) {
     mod_frame_server("frame", store)
     mod_contents_server("contents", store)
+    mod_paper_server("paper", store)
     mod_add_output_server("add_output", store)
   }
 

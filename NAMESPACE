@@ -2,3 +2,4 @@
 
 export(arframe)
 importFrom(rlang,"%||%")
+importFrom(tabular,emit)

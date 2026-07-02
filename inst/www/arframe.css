@@ -640,3 +640,271 @@ input[type="radio"] {
 .ar-add-gen-section summary::-webkit-details-marker {
   display: none;
 }
+
+/* ============ 05 paper ============ */
+/* The typeset sheet (design spec #3/#7): the render payoff. `.ar-desk-col`
+   is the desk's SECOND child (`.ar-body-report > :nth-child(2)` in 02
+   frame, already flex-centered) -- it owns its own vertical scroll so a
+   page taller than the viewport scrolls instead of breaking the desk's
+   centering, and stacks the toolbar above the sheet. */
+.ar-desk-col {
+  height: 100%;
+  width: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.ar-paper-toolbar {
+  flex: 0 0 auto;
+  align-self: flex-end;
+  padding: var(--ar-space-3) var(--ar-space-5) 0;
+}
+.ar-paper-toolbar fieldset {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+.ar-paper-toolbar legend {
+  /* visually hidden but still announced -- the two icon buttons carry
+     their own text labels ("Fit"/"Page"), so the legend need not be seen
+     to be meaningful; it exists for the `fieldset`/`legend` grouping
+     contract (design spec #6). */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  margin: 0;
+}
+.ar-paper-toggle-btn {
+  width: auto;
+  padding: 3px 8px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--ar-ink-4);
+}
+.ar-paper-toggle-btn:hover {
+  color: var(--ar-ink);
+}
+
+/* -- the sheet itself: white, bordered, running head + content + source -- */
+.ar-paper {
+  background: var(--ar-paper);
+  border: 1px solid var(--ar-paper-edge);
+  margin: var(--ar-space-5) auto;
+  padding: var(--ar-space-6) var(--ar-space-6) var(--ar-space-4);
+  flex: 0 0 auto;
+}
+.ar-paper--fit {
+  width: 100%;
+  max-width: 1100px;
+}
+.ar-paper--page {
+  width: 975px;
+  padding-left: 48px;
+  padding-right: 48px;
+}
+
+.ar-paper-runninghead {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--ar-ink-4);
+  padding-bottom: var(--ar-space-2);
+  margin-bottom: var(--ar-space-4);
+  border-bottom: 1px solid var(--ar-rule-2);
+}
+
+/* -- title block: number / title / population, all mono, centred -- */
+.ar-paper-title-block {
+  text-align: center;
+  padding: var(--ar-space-2);
+  margin-bottom: var(--ar-space-4);
+  border-radius: var(--ar-radius);
+  cursor: pointer;
+}
+.ar-paper-number {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ar-ink-2);
+}
+.ar-paper-title-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ar-ink);
+  margin: 2px 0;
+}
+.ar-paper-population {
+  font-size: 11px;
+  color: var(--ar-ink-3);
+}
+
+.ar-paper-table-wrap {
+  margin-bottom: var(--ar-space-4);
+}
+
+.ar-paper-figure-slot {
+  display: none;
+  margin-bottom: var(--ar-space-4);
+}
+.ar-paper-figure-slot img {
+  width: 100%;
+  height: auto;
+}
+/* class flip: `mod_paper.R`'s "ar-paper-kind" message sets one of these on
+   `.ar-paper` (via its `id`, see `data-ar-paper`); neither container ever
+   unmounts. */
+.ar-paper-kind-table .ar-paper-figure-slot {
+  display: none;
+}
+.ar-paper-kind-figure .ar-paper-figure-slot {
+  display: block;
+}
+.ar-paper-kind-figure .ar-paper-table-wrap {
+  display: none;
+}
+
+.ar-paper-source {
+  font-size: 10px;
+  color: var(--ar-ink-4);
+  padding-top: var(--ar-space-2);
+  margin-top: var(--ar-space-2);
+  border-top: 1px solid var(--ar-rule-2);
+}
+
+/* -- page regions: hover/select outline, per design spec #4/#6 -- */
+[data-ar-region] {
+  outline-offset: 1px;
+}
+[data-ar-region]:hover {
+  outline: 1px solid var(--ar-accent-weak);
+}
+.ar-region-active {
+  outline: 1.5px solid var(--ar-accent) !important;
+}
+
+/* -- the `.tabular-doc` override: maps the tabular HTML backend's own
+   typography onto the Galley mono face (design spec #2, "THE ENTIRE
+   PAPER" is Plex Mono). `tabular::as.tags()` embeds a SCOPED `<style>`
+   block keyed to a per-render `#tabular-<hash>` id (regenerated every
+   render, so it cannot be targeted by a static stylesheet); its id-
+   selector rules (specificity 1,0,0) otherwise beat a `.tabular-doc`
+   class selector (0,1,0), so these declarations need `!important` to win
+   regardless of which hash a given render happens to mint. */
+.tabular-doc {
+  font-family: "IBM Plex Mono", monospace !important;
+  font-size: 11px !important;
+  color: var(--ar-ink) !important;
+  margin: 0 !important;
+}
+.tabular-doc .tabular-title {
+  font-family: "IBM Plex Sans", sans-serif !important;
+  font-weight: 600 !important;
+}
+.tabular-doc .tabular-table {
+  font-size: 11px !important;
+}
+.tabular-doc .tabular-footnote {
+  color: var(--ar-ink-3) !important;
+}
+
+/* ============ 06 ghost ============ */
+/* The on-page ghost shell (design spec #4/#7, `utils_ghost.R`): an unfilled
+   region renders as a dashed block in the exact position its real content
+   will occupy, so the page is a complete shell from the first second. */
+.ar-ghost-slot {
+  border: 1.5px dashed var(--ar-paper-edge);
+  border-radius: var(--ar-radius);
+  color: var(--ar-ink-4);
+  padding: var(--ar-space-3);
+  display: flex;
+  gap: var(--ar-space-2);
+  align-items: center;
+  cursor: pointer;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  margin-bottom: var(--ar-space-3);
+}
+.ar-ghost-slot:hover,
+.ar-ghost-slot:focus-visible {
+  border-color: var(--ar-accent);
+  color: var(--ar-accent);
+  background: var(--ar-accent-weak);
+}
+.ar-ghost-plus {
+  flex: 0 0 auto;
+  font-size: 14px;
+  line-height: 1;
+}
+.ar-ghost-hint {
+  flex: 1 1 auto;
+}
+
+/* -- shapes: match the region the block stands in for -- */
+.ar-ghost-title {
+  justify-content: center;
+  text-align: center;
+  padding: var(--ar-space-4);
+}
+.ar-ghost-columns {
+  height: 32px;
+}
+.ar-ghost-rows {
+  height: 96px;
+  align-items: flex-start;
+  padding-top: var(--ar-space-4);
+}
+.ar-ghost-axes {
+  height: 260px;
+  /* the "axes frame" the brief calls for: an inset L-shaped border reading
+     as empty x/y axes rather than a plain rectangle. */
+  border-style: dashed solid solid dashed;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: var(--ar-space-4);
+}
+
+/* -- empty-report CTA -- */
+.ar-ghost-cta {
+  display: block;
+  margin: var(--ar-space-4) auto 0;
+}
+
+/* -- error summary (GOV.UK pattern, design spec #6) -- */
+.ar-problem {
+  border: 2px solid var(--ar-error);
+  border-radius: var(--ar-radius);
+  padding: var(--ar-space-4);
+  margin-bottom: var(--ar-space-4);
+}
+.ar-problem:focus {
+  outline: 3px solid var(--ar-focus);
+  outline-offset: 0;
+  box-shadow: 0 0 0 5px #0b0c0c;
+}
+.ar-problem h2 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ar-error);
+  margin: 0 0 var(--ar-space-2);
+}
+.ar-problem p {
+  font-size: 11px;
+  color: var(--ar-ink-2);
+  margin: 0 0 var(--ar-space-2);
+}
+.ar-problem ul {
+  margin: 0;
+  padding-left: var(--ar-space-4);
+}
+.ar-problem li {
+  font-size: 12px;
+}
+.ar-problem a {
+  color: var(--ar-accent);
+}

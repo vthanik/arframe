@@ -10,6 +10,8 @@ Description: A local-first Shiny application for building clinical tables, listi
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
+Depends:
+    R (>= 4.1.0)
 Imports:
     arpillar,
     bslib,
@@ -18,13 +20,15 @@ Imports:
     htmltools,
     rlang,
     S7,
-    shiny
+    shiny,
+    tabular
 Suggests:
     nanoparquet,
     shinytest2,
     testthat (>= 3.0.0),
     withr
 Remotes:
-    vthanik/arpillar
+    vthanik/arpillar,
+    vthanik/tabular@5dfd80ca5bcb728b9905d731ed07ea650f02ee90
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.0.0
