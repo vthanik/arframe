@@ -91,15 +91,19 @@
 
 # ---- coming stub ------------------------------------------------------
 
-#' A quiet "coming" stub for a region group not yet implemented (Options:
-#' Task 11, Filters: Task 12) -- shows the region label plus a one-line
-#' note so the card never renders visibly empty for a region a click
-#' legitimately routed to.
+#' A quiet "coming" stub for a pane not yet implemented (Filters: Task 12;
+#' Ranks: deliberately deferred to the AE hierarchy work) -- the note plus
+#' a `coming` tag, so the card never renders visibly empty for a tab a
+#' click legitimately routed to.
 #' @noRd
 .card_coming_stub <- function(region, note) {
   shiny::tags$div(
     class = "ar-card-coming",
-    shiny::tags$p(class = "ar-mono", note)
+    shiny::tags$p(
+      class = "ar-mono",
+      note,
+      shiny::tags$span(class = "ar-tag-coming ar-mono", "coming")
+    )
   )
 }
 
@@ -141,10 +145,7 @@ mod_card_ui <- function(id) {
         ),
         shiny::div(
           class = "ar-insp-pane ar-insp-pane-options",
-          .card_coming_stub(
-            "options",
-            "Title, footnotes, and display options arrive next."
-          )
+          mod_card_options_ui(ns("options"))
         ),
         shiny::div(
           class = "ar-insp-pane ar-insp-pane-filters",
@@ -155,7 +156,10 @@ mod_card_ui <- function(id) {
         ),
         shiny::div(
           class = "ar-insp-pane ar-insp-pane-ranks",
-          .card_coming_stub("ranks", "Row ordering -- coming in v1.1.")
+          .card_coming_stub(
+            "ranks",
+            "Top-N and incidence cutoffs arrive with the AE hierarchy table"
+          )
         )
       ),
       shiny::div(
@@ -229,6 +233,7 @@ mod_card_server <- function(id, store) {
     ns <- session$ns
 
     mod_card_roles_server("roles", store)
+    mod_card_options_server("options", store)
 
     lapply(names(.INSP_TABS), function(tab) {
       shiny::observeEvent(input[[paste0("tab_", tab)]], {

@@ -1459,3 +1459,143 @@ input[type="radio"] {
   border-bottom: 1px solid var(--ar-rule-2);
   white-space: nowrap;
 }
+
+/* ============ 09 options ============ */
+/* The Options pane (Task 11): TITLE / FOOTNOTES / schema-row sections.
+   Option-value controls stay quiet -- mono where the value is data-like
+   (number, levels), the same input chrome as the rest of the card. */
+.ar-opt-sec {
+  margin-bottom: var(--ar-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ar-space-1);
+}
+.ar-opt-sec-label {
+  display: block;
+}
+.ar-opt-sec .form-group,
+.ar-opt-sec .shiny-input-container {
+  margin-bottom: 0;
+  width: 100%;
+}
+.ar-opt-sec input[type="text"],
+.ar-opt-sec select {
+  width: 100%;
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius);
+  background: var(--ar-paper);
+  color: var(--ar-ink);
+  font-size: 12px;
+  padding: 5px 8px;
+}
+.ar-opt-sec input[type="text"]:focus,
+.ar-opt-sec select:focus {
+  outline: none;
+  border-color: var(--ar-accent);
+}
+
+/* -- TITLE: [label-word select | number input] over the title line -- */
+.ar-opt-number {
+  display: flex;
+  gap: var(--ar-space-1);
+}
+.ar-opt-number input[type="text"] {
+  font-family: "IBM Plex Mono", monospace;
+}
+
+/* -- footnote rows: [input 1fr] [pop tag] [remove] -- */
+.ar-fn-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ar-fn-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ar-fn-pop {
+  flex: 0 0 auto;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ar-ink-4);
+  border: 1px solid var(--ar-rule);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+.ar-fn-add {
+  align-self: flex-start;
+  font-size: 11.5px;
+  padding: 0;
+}
+
+/* -- schema option rows: [label 1fr] [control auto] -- */
+.ar-opt-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--ar-space-1);
+}
+.ar-opt-row-block {
+  grid-template-columns: 1fr;
+}
+.ar-opt-label {
+  font-size: 12px;
+  color: var(--ar-ink-2);
+}
+.ar-opt-row input[type="text"] {
+  width: 88px;
+  font-family: "IBM Plex Mono", monospace;
+  text-align: right;
+}
+.ar-opt-row-block input[type="text"] {
+  width: 100%;
+}
+.ar-opt-row .radio-inline {
+  font-size: 11.5px;
+  color: var(--ar-ink-2);
+}
+.ar-opt-row .checkbox {
+  margin: 0;
+}
+
+/* -- levels: the sortable x-order list -- */
+.ar-opt-levels {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ar-opt-level {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--ar-ink-2);
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius);
+  padding: 3px 7px;
+  background: var(--ar-paper);
+  cursor: grab;
+}
+
+/* -- inline invalid-input message -- */
+.ar-opt-err {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  font-size: 10.5px;
+  color: var(--ar-warn, #a15c07);
+}
+
+/* -- the coming tag on stub panes -- */
+.ar-tag-coming {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ar-ink-4);
+  border: 1px solid var(--ar-rule);
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin-left: 6px;
+}

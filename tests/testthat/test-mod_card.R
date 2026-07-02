@@ -58,6 +58,18 @@ test_that("mod_card_ui: tab strip, all four panes, action footer, slim strip", {
   expect_no_match(html, 'id="card-close"', fixed = TRUE)
 })
 
+test_that("mod_card_ui: the Ranks pane is the Task-11 placeholder row", {
+  html <- as.character(mod_card_ui("card"))
+  # Ranks is a stub BY DESIGN (plan: "Ranks stub -> T11"): a quiet disabled
+  # row naming what will fill it, plus the coming tag.
+  expect_match(
+    html,
+    "Top-N and incidence cutoffs arrive with the AE hierarchy table",
+    fixed = TRUE
+  )
+  expect_match(html, "ar-tag-coming", fixed = TRUE)
+})
+
 test_that("mod_card_server: tab clicks route rv$insp_tab", {
   fx <- .mc_ready_store()
   withr::defer(arpillar::engine_close(fx$con))
