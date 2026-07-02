@@ -195,3 +195,47 @@ function arSetShortcutHint() {
 }
 document.addEventListener("DOMContentLoaded", arSetShortcutHint);
 $(document).on("shiny:idle", arSetShortcutHint);
+
+// The Add-output overlay (Task 8b): Esc closes it, same as a backdrop
+// click -- both post to the module's own `dismiss` input (namespaced
+// under whatever id app.R gave mod_add_output_server(), read off the open
+// dialog's own id attribute rather than hardcoded, so this keeps working
+// if the module is ever mounted under a different namespace). A no-op
+// when the dialog is not present (rv$adding FALSE unmounts its content).
+$(document).on("keydown", function (e) {
+  if (e.key !== "Escape") return;
+  var dialog = document.querySelector(".ar-add-card");
+  if (!dialog) return;
+  var ns = dialog.id.replace(/-dialog$/, "");
+  Shiny.setInputValue(ns + "-dismiss", Date.now(), { priority: "event" });
+});
+
+// Move focus into the dialog the moment it appears (design spec #6's
+// "focus != selection" rule). Client-driven, NOT a server "ar-focus"
+// message: `output$overlay`'s first mount of the search box triggers
+// Shiny's normal "a freshly bound input echoes its own value back once"
+// behavior, which (since that render depends on the search input for
+// live filtering) fires ONE extra, unavoidable renderUI cycle right
+// after open -- a server message sent from the observer that flips
+// rv$adding has no ordering guarantee against that second cycle
+// replacing the dialog DOM node out from under it. Watching for the
+// element's own appearance sidesteps the race regardless of how many
+// render cycles happen to fire. `.ar-add-overlay-slot` is the STABLE
+// `uiOutput()` wrapper (mod_add_output_ui()) -- renderUI only ever
+// replaces its CONTENTS, matching the `.ar-toc`/arPopoverObserver
+// pattern above, so this observer is attached once and never needs
+// re-binding.
+document.addEventListener("DOMContentLoaded", function () {
+  var slot = document.querySelector(".ar-add-overlay-slot");
+  if (!slot) return;
+  var seen = null;
+  new MutationObserver(function () {
+    var dialog = slot.querySelector(".ar-add-card");
+    if (dialog && dialog !== seen) {
+      seen = dialog;
+      dialog.focus();
+    } else if (!dialog) {
+      seen = null;
+    }
+  }).observe(slot, { childList: true, subtree: true });
+});

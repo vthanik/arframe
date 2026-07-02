@@ -38,21 +38,33 @@ arframe <- function(project = NULL, data = NULL) {
     padding = 0,
     gap = 0,
     .head_assets(),
-    mod_frame_ui(
-      "frame",
-      report_body = shiny::tagList(
-        mod_contents_ui("contents"),
-        shiny::div(class = "ar-slot-placeholder", "Paper"),
-        shiny::div(class = "ar-slot-placeholder", "Card")
+    # A `position: relative` wrapper around the whole frame -- the Add-output
+    # overlay (mod_add_output.R) is an absolutely-positioned `inset: 0`
+    # sibling of `mod_frame_ui()`'s output, so it needs a same-size
+    # positioning ancestor. `.ar-workspace` (inside the frame) is the
+    # explicit `height: 100vh` box; this wrapper has no height of its own,
+    # it simply grows to contain that box, so it never has to duplicate
+    # `100vh` and never fights bslib's fill-item sizing.
+    shiny::div(
+      class = "ar-app-root",
+      mod_frame_ui(
+        "frame",
+        report_body = shiny::tagList(
+          mod_contents_ui("contents"),
+          shiny::div(class = "ar-slot-placeholder", "Paper"),
+          shiny::div(class = "ar-slot-placeholder", "Card")
+        ),
+        data_body = shiny::div(class = "ar-slot-placeholder", "Data mode"),
+        qc_body = shiny::div(class = "ar-slot-placeholder", "QC sheet")
       ),
-      data_body = shiny::div(class = "ar-slot-placeholder", "Data mode"),
-      qc_body = shiny::div(class = "ar-slot-placeholder", "QC sheet")
+      mod_add_output_ui("add_output")
     )
   )
 
   server <- function(input, output, session) {
     mod_frame_server("frame", store)
     mod_contents_server("contents", store)
+    mod_add_output_server("add_output", store)
   }
 
   shiny::onStop(function() arpillar::engine_close(con))

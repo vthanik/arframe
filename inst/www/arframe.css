@@ -467,3 +467,167 @@ input[type="radio"] {
   box-shadow: var(--ar-shadow-float);
   background: var(--ar-card);
 }
+
+/* ============ 04 overlay ============ */
+/* The Add-output overlay (design spec #4). `.ar-app-root` (set in app.R,
+   wrapping the whole mod_frame_ui() output) is the `position: relative`
+   positioning ancestor; `.ar-add-overlay-slot` is the `uiOutput` wrapper
+   itself and takes NO layout space while empty (`rv$adding == FALSE`
+   renders NULL, an empty div). The backdrop is `position: absolute`, never
+   `fixed` -- an in-flow sibling of the frame, not a viewport-anchored
+   layer, so it never fights an embedding iframe's own height (shinytest2's
+   AppDriver, a future embedded preview) the way `position: fixed` can. */
+.ar-app-root {
+  position: relative;
+  height: 100%;
+}
+.ar-add-overlay-slot:empty {
+  display: contents;
+}
+.ar-add-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  background: rgba(20, 28, 40, 0.26);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ar-space-5);
+}
+.ar-add-card {
+  display: flex;
+  flex-direction: column;
+  width: 640px;
+  max-width: 100%;
+  max-height: 100%;
+  background: var(--ar-card);
+  border: 1px solid var(--ar-paper-edge);
+  border-radius: var(--ar-radius);
+  box-shadow: var(--ar-shadow-float);
+}
+.ar-add-card:focus {
+  outline: none; /* the dialog itself is a focus anchor, not an editable
+                     control -- the two-tone focus ring is reserved for the
+                     controls inside it */
+}
+.ar-add-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--ar-space-3) var(--ar-space-4) var(--ar-space-2);
+  border-bottom: 1px solid var(--ar-rule);
+}
+.ar-add-header .ar-label {
+  margin: 0;
+}
+.ar-add-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: var(--ar-space-3) var(--ar-space-4) var(--ar-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ar-space-2);
+}
+
+/* -- Recommended for your data -- */
+.ar-add-rec-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ar-space-1);
+  margin-bottom: var(--ar-space-2);
+}
+.ar-add-rec-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ar-space-2);
+  padding: var(--ar-space-2);
+  background: var(--ar-accent-weak);
+  border-radius: var(--ar-radius);
+}
+.ar-add-rec-label {
+  font-size: 12.5px;
+  color: var(--ar-ink);
+}
+.ar-add-rec-btn {
+  flex: 0 0 auto;
+  font-size: 11.5px;
+  padding: 3px 10px;
+}
+
+/* -- Preset library: search + domain-grouped rows -- */
+.ar-add-lib-list {
+  display: flex;
+  flex-direction: column;
+}
+.ar-add-lib-domain {
+  margin-top: var(--ar-space-3);
+}
+.ar-add-lib-domain:first-of-type {
+  margin-top: var(--ar-space-1);
+}
+.ar-add-lib-row,
+.ar-add-gen-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-2);
+  padding: 6px var(--ar-space-1);
+  border-radius: var(--ar-radius);
+  border-left: 2px solid transparent;
+  cursor: pointer;
+}
+.ar-add-lib-row:hover,
+.ar-add-gen-row:hover {
+  background: rgba(27, 31, 35, 0.03);
+}
+.ar-add-lib-row-active {
+  border-left-color: var(--ar-accent);
+  background: var(--ar-accent-weak);
+}
+.ar-add-lib-label {
+  font-size: 12.5px;
+  color: var(--ar-ink);
+  flex: 0 1 auto;
+}
+.ar-add-lib-caption {
+  font-size: 11px;
+  color: var(--ar-ink-4);
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+.ar-add-gen-desc {
+  font-size: 11px;
+  color: var(--ar-ink-4);
+}
+
+/* -- dataset picker + missing-vars warning -- */
+.ar-add-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ar-space-1);
+  padding: var(--ar-space-2);
+  background: rgba(201, 162, 39, 0.1);
+  border: 1px solid #c9a227;
+  border-radius: var(--ar-radius);
+  color: var(--ar-draft);
+  font-size: 11.5px;
+}
+.ar-add-warn svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+/* -- Start from a generator (collapsed by default) -- */
+.ar-add-gen-section {
+  margin-top: var(--ar-space-2);
+  border-top: 1px solid var(--ar-rule);
+  padding-top: var(--ar-space-2);
+}
+.ar-add-gen-section summary {
+  cursor: pointer;
+  list-style: none;
+}
+.ar-add-gen-section summary::-webkit-details-marker {
+  display: none;
+}

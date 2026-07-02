@@ -1,18 +1,18 @@
-# A tiny bundled demo catalog: ADSL/ADVS/ADTTE, written to parquet and
+# A tiny bundled demo catalog: ADSL/ADVS/ADTTE/ADAE, written to parquet and
 # registered against a fresh arpillar catalog. Shared by the store tests, the
 # later shinytest2 apps, and screenshots -- one fixture builder, not a copy
 # per surface.
 
-#' A small demo catalog (ADSL/ADVS/ADTTE), opened and registered
+#' A small demo catalog (ADSL/ADVS/ADTTE/ADAE), opened and registered
 #'
-#' Writes three minimal analysis-ready datasets to parquet under `dir` and
+#' Writes four minimal analysis-ready datasets to parquet under `dir` and
 #' registers each against a freshly opened [arpillar::engine_open()] catalog.
 #' The caller owns the returned catalog's lifecycle -- close it with
 #' [arpillar::engine_close()].
 #' @param dir *Where to write the parquet files.* `<character(1)>: default
 #'   tempdir()`.
 #' @return *`<catalog>`.* An open, registered arpillar catalog with `ADSL`,
-#'   `ADVS`, and `ADTTE` in the `WORK` library.
+#'   `ADVS`, `ADTTE`, and `ADAE` in the `WORK` library.
 #' @noRd
 .demo_catalog <- function(dir = tempdir()) {
   # Deterministic: every consumer (store tests, shinytest2 apps, screenshots)
@@ -51,9 +51,31 @@
     stringsAsFactors = FALSE
   )
 
+  # ADAE: occurrence-shaped (AEBODSYS/AEDECOD, the *TERM|*DECOD suffix
+  # detect_structure() keys on) -- a fixed lookup, not a random draw, so
+  # appending it after ADVS/ADTTE never perturbs the rnorm()/runif() stream
+  # those two already consume above. Two AE records per subject: a GI event
+  # alternating Nausea/Vomiting (odd/even subject), plus a Cardiac
+  # Atrial-fibrillation event for every subject -- all three PTs across two
+  # SOCs appear at least once. TRTEMFL is the column both ae_overall/
+  # ae_soc_pt presets filter on.
+  gi_pt <- rep(c("Nausea", "Vomiting"), times = 6L)
+  adae <- data.frame(
+    USUBJID = rep(adsl$USUBJID, each = 2L),
+    TRT01P = rep(adsl$TRT01P, each = 2L),
+    AEBODSYS = rep(
+      c("Gastrointestinal disorders", "Cardiac disorders"),
+      times = 12L
+    ),
+    AEDECOD = as.vector(rbind(gi_pt, rep("Atrial fibrillation", 12L))),
+    TRTEMFL = "Y",
+    stringsAsFactors = FALSE
+  )
+
   .demo_register(con, "ADSL", adsl, dir)
   .demo_register(con, "ADVS", advs, dir)
   .demo_register(con, "ADTTE", adtte, dir)
+  .demo_register(con, "ADAE", adae, dir)
   con
 }
 
