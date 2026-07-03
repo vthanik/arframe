@@ -1262,6 +1262,7 @@ input[type="radio"] {
 /* -- SOURCE row: dataset + structure + dims above the slot editors -- */
 .ar-role-src {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: var(--ar-space-2);
   padding: var(--ar-space-1) var(--ar-space-1) var(--ar-space-2);
@@ -1288,6 +1289,7 @@ input[type="radio"] {
   margin-left: auto;
   font-size: 11px;
   color: var(--ar-ink-3);
+  white-space: nowrap;
 }
 
 /* -- orphan oracle problems (not owned by a rendered slot) -- */
@@ -1802,9 +1804,13 @@ input[type="radio"] {
 }
 .ar-opt-stepper .form-group {
   margin: 0;
-  width: 52px;
+  width: 56px;
 }
-.ar-opt-stepper input {
+.ar-opt-row .ar-opt-stepper input[type="text"] {
+  /* outranks the generic 88px .ar-opt-row input rule above: the stepper
+     row also carries two 20px buttons, so its input must stay narrower */
+  width: 56px;
+  min-width: 0;
   text-align: right;
 }
 .ar-opt-step {
@@ -1883,6 +1889,7 @@ input[type="radio"] {
 }
 .ar-flt-presets {
   display: flex;
+  flex-wrap: wrap; /* real studies carry many *FL flags -- never clip them */
   gap: var(--ar-space-1);
   margin-bottom: var(--ar-space-2);
 }

@@ -743,3 +743,23 @@ test_that(".source_text/.with_source compose the one provenance string", {
   expect_identical(with_src@options$source, txt)
   expect_null(obj@options$source)
 })
+
+test_that("a malformed region payload is dropped, never a session error", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  id <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
+  shiny::isolate(store$rv$selected <- id)
+
+  shiny::testServer(mod_paper_server, args = list(store = store), {
+    # The real contract is a plain string; an object payload (as any stray
+    # client-side script could post) must be ignored, not crash open_card.
+    expect_no_error(
+      session$setInputs(region = list(region = "title", nonce = 1))
+    )
+    expect_null(shiny::isolate(store$rv$region))
+
+    session$setInputs(region = "title")
+    expect_identical(shiny::isolate(store$rv$region), "title")
+  })
+})

@@ -404,9 +404,15 @@ mod_paper_server <- function(id, store) {
 
     # Region clicks (real furniture, ghost slots, and error-summary jump
     # links all post to this one input -- see the `[data-ar-region]`
-    # delegated handler in arframe.js).
+    # delegated handler in arframe.js). The contract is a plain region
+    # STRING; anything else (a stray browser script, an extension) is
+    # dropped -- a malformed payload must never take the session down.
     shiny::observeEvent(input$region, {
-      open_card(store, input$region)
+      region <- input$region
+      if (!is.character(region) || length(region) != 1L || !nzchar(region)) {
+        return()
+      }
+      open_card(store, region)
     })
 
     # The empty-report CTA (ghost_shell's `.ghost_empty_report()` button).

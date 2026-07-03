@@ -112,10 +112,17 @@
 # ---- controls ---------------------------------------------------------
 
 #' A text input carrying `inputmode="numeric"` -- the plan's int control
-#' (mobile numeric keyboard, no spinner chrome).
+#' (mobile numeric keyboard, no spinner chrome). Width is pinned inline so
+#' the stepper's plus button never gets pushed off the row (bslib's
+#' shiny-input-container is 100%-wide by default).
 #' @noRd
 .opt_numeric_text <- function(ns, key, value) {
-  ti <- shiny::textInput(ns(paste0("opt_", key)), label = NULL, value = value)
+  ti <- shiny::textInput(
+    ns(paste0("opt_", key)),
+    label = NULL,
+    value = value,
+    width = "56px"
+  )
   htmltools::tagQuery(ti)$find("input")$addAttrs(
     inputmode = "numeric"
   )$allTags()
