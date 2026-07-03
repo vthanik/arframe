@@ -24,6 +24,10 @@ feeds it the on-disk file (labels intact in the parquet).
 - Gate 0/0/0 (lone NOTE = spurious offline time check); 815 tests. Real-data
   eyeball verified the widget mounts + loads: ADSL Total rows 254 / cols 48,
   pagination + FILTER + property panel all live (`.local/screens/data-dsv.png`).
+- **Font:** the widget's default is the system stack; arframe overrides its
+  `--dv-sans` / `--dv-mono` / `--gdg-font-family` (Glide grid) vars to IBM Plex
+  on `.ar-dx-dv .datasetviewer-root`, so Data mode reads as one typographic
+  surface (`.local/screens/dsv-font.png`). CSS-only, eyeball-verified.
 - Note: `.data_grid`'s `datasetviewerOutput(ns("dv"))` lives inside the
   `output$explorer` renderUI (re-inits the widget per dataset-open -- fine).
   A few now-orphaned section-08 CSS selectors (`.ar-colpick`, `.ar-dx-data`,

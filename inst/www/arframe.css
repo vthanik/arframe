@@ -1878,3 +1878,17 @@ input[type="radio"] {
   height: 72vh;
   min-height: 420px;
 }
+
+/* Make the embedded widget wear arframe's own IBM Plex (its default is the
+   system font stack), so Data mode reads as one typographic surface instead
+   of an IBM Plex chrome wrapped around a system-font widget. Override the
+   widget's own font vars at higher specificity than its `.datasetviewer-root`
+   defaults; `--gdg-font-family` is the Glide grid's cell font (mono, matching
+   arframe's data-is-mono aesthetic), the rest follow the sans/mono split
+   datasetviewer already draws. */
+.ar-dx-dv .datasetviewer-root {
+  --dv-sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --dv-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --gdg-font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo,
+    monospace;
+}
