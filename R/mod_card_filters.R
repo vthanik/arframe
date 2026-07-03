@@ -1,6 +1,7 @@
 # The Filters pane (design spec #8, plan Task 12): the Filters-tab content
-# of the docked inspector. Presets FIRST ("Safety population" when the
-# bound dataset carries SAFFL; "Full set" clears), then builder rows --
+# of the docked inspector. Presets FIRST (one chip per `*FL` population
+# flag in the dataset, CDISC-mapped names; "Full set" clears), then
+# builder rows --
 # column (rich picker) - op (the EXACT engine set) - value (multi selectize
 # over distinct values for category/date, numeric text for measures, hidden
 # for null-tests) - include-missing - remove. Rows live in the store-side
@@ -19,8 +20,66 @@
 # display order in the op select.
 .FILTER_OPS <- c("==", "!=", "%in%", ">", "<", ">=", "<=", "is.na", "not.na")
 
-# The canonical safety-population predicate the preset writes -- also what
-# the paper tag recognizes (`.filters_tag_label`).
+# The operator select shows these HUMANIZED names over the EXACT engine
+# values -- the posted value is always a member of .FILTER_OPS, never a
+# display string.
+.FILTER_OP_LABELS <- c(
+  "is" = "==",
+  "is not" = "!=",
+  "is any of" = "%in%",
+  ">" = ">",
+  "<" = "<",
+  "\u2265" = ">=",
+  "\u2264" = "<=",
+  "is missing" = "is.na",
+  "is present" = "not.na"
+)
+
+# CDISC population-flag conventions: flag column -> chip label. Any OTHER
+# `*FL` category column in the dataset still gets a quick chip, labeled
+# by its bare predicate ("DISCFL = Y").
+.POPULATION_FLAGS <- c(
+  SAFFL = "Safety population",
+  ITTFL = "ITT population",
+  EFFFL = "Efficacy population",
+  FASFL = "Full analysis set",
+  PPROTFL = "Per-protocol",
+  RANDFL = "Randomized",
+  ENRLFL = "Enrolled",
+  COMPLFL = "Completers"
+)
+
+#' The canonical flag predicate a population chip writes.
+#' @noRd
+.flag_filter <- function(column) {
+  list(column = column, op = "==", value = "Y")
+}
+
+#' The chip label for a flag column: the CDISC name when mapped, else the
+#' bare predicate.
+#' @noRd
+.flag_label <- function(column) {
+  lbl <- .POPULATION_FLAGS[column]
+  if (length(lbl) == 1L && !is.na(lbl)) {
+    return(unname(lbl))
+  }
+  paste0(column, " = Y")
+}
+
+#' Every population-flag candidate in the dataset: category columns ending
+#' in `FL`, mapped flags first (in .POPULATION_FLAGS order), the rest
+#' alphabetical.
+#' @noRd
+.population_flags <- function(items) {
+  flags <- items$name[items$type == "category" & grepl("FL$", items$name)]
+  c(
+    intersect(names(.POPULATION_FLAGS), flags),
+    sort(setdiff(flags, names(.POPULATION_FLAGS)))
+  )
+}
+
+# The canonical safety-population predicate (the SAFFL chip's own output)
+# -- kept named because tests and the paper tag pin it.
 .SAFETY_FILTER <- list(column = "SAFFL", op = "==", value = "Y")
 
 # The selectize token standing in for a real NA level ("(missing)") --
@@ -77,12 +136,19 @@
   })
 }
 
-#' The paper tag's label: the preset's name when the committed set IS the
-#' canonical safety predicate, else an honest count.
+#' The paper tag's label: the population name when the committed set is a
+#' single canonical flag predicate (`<FL> == "Y"`), else an honest count.
 #' @noRd
 .filters_tag_label <- function(filters) {
-  if (identical(filters, list(.SAFETY_FILTER))) {
-    return("Safety population")
+  if (length(filters) == 1L) {
+    f <- filters[[1L]]
+    col <- f$column %||% ""
+    if (
+      identical(f, .flag_filter(col)) &&
+        grepl("FL$", col)
+    ) {
+      return(.flag_label(col))
+    }
   }
   sprintf(
     "%d filter%s",
@@ -176,10 +242,10 @@
         shiny::selectInput(
           ns(paste0("f_op_", i)),
           label = NULL,
-          choices = .FILTER_OPS,
+          choices = .FILTER_OP_LABELS,
           selected = row$op,
           selectize = FALSE,
-          width = "84px"
+          width = "96px"
         )
       },
       if (has_col) .flt_value_control(con, ns, i, row, type, dataset),
@@ -289,16 +355,34 @@ mod_card_filters_server <- function(id, store) {
           shiny::tags$span(class = "ar-label", "POPULATION"),
           shiny::uiOutput(ns("count"), inline = TRUE)
         ),
-        shiny::tags$div(
-          class = "ar-flt-presets",
-          if ("SAFFL" %in% items$name) {
-            .action_btn(
-              ns("preset_safety"),
-              "Safety population",
-              class = "ar-flt-preset"
+        do.call(
+          shiny::tags$div,
+          c(
+            list(class = "ar-flt-presets"),
+            # One chip per population-flag candidate (`*FL` category
+            # columns): CDISC-mapped names first, the rest by their bare
+            # predicate. Dynamic set -> ONE shared `preset_flag` input.
+            lapply(.population_flags(items), function(fl) {
+              js <- sprintf(
+                "Shiny.setInputValue('%s', {column: '%s', nonce: Date.now()}, {priority: 'event'})",
+                ns("preset_flag"),
+                fl
+              )
+              shiny::tags$button(
+                type = "button",
+                class = "ar-flt-preset btn btn-default action-button",
+                onclick = js,
+                .flag_label(fl)
+              )
+            }),
+            list(
+              .action_btn(
+                ns("preset_full"),
+                "Full set",
+                class = "ar-flt-preset"
+              )
             )
-          },
-          .action_btn(ns("preset_full"), "Full set", class = "ar-flt-preset")
+          )
         ),
         lapply(seq_along(draft), function(i) {
           .flt_row(store$con, ns, items, i, draft[[i]], obj@dataset)
@@ -350,8 +434,12 @@ mod_card_filters_server <- function(id, store) {
     shiny::outputOptions(output, "count", suspendWhenHidden = FALSE)
 
     # ---- presets ----
-    shiny::observeEvent(input$preset_safety, {
-      store$rv$filter_draft <- .seed_draft(list(.SAFETY_FILTER))
+    shiny::observeEvent(input$preset_flag, {
+      col <- input$preset_flag$column
+      if (is.null(col) || !nzchar(col)) {
+        return()
+      }
+      store$rv$filter_draft <- .seed_draft(list(.flag_filter(col)))
       .commit_filters(store)
     })
 

@@ -49,7 +49,7 @@ test_that("the Safety preset shows for a SAFFL dataset and writes in one click",
     session$flushReact()
     expect_match(output$pane$html, "Safety population", fixed = TRUE)
 
-    session$setInputs(preset_safety = 1)
+    session$setInputs(preset_flag = list(column = "SAFFL", nonce = 1))
     filters <- shiny::isolate(selected_object(store))@filters
     expect_identical(
       filters,
@@ -79,7 +79,7 @@ test_that("Full set clears every filter", {
   withr::defer(arpillar::engine_close(fx$con))
 
   shiny::testServer(mod_card_filters_server, args = list(store = fx$store), {
-    session$setInputs(preset_safety = 1)
+    session$setInputs(preset_flag = list(column = "SAFFL", nonce = 1))
     expect_length(shiny::isolate(selected_object(store))@filters, 1L)
 
     session$setInputs(preset_full = 1)
@@ -264,7 +264,7 @@ test_that("REGRESSION: a committed row re-seeds its picker with a REAL choice va
   withr::defer(arpillar::engine_close(fx$con))
 
   shiny::testServer(mod_card_filters_server, args = list(store = fx$store), {
-    session$setInputs(preset_safety = 1)
+    session$setInputs(preset_flag = list(column = "SAFFL", nonce = 1))
     session$flushReact()
     html <- output$pane$html
     opt <- regmatches(
@@ -280,4 +280,67 @@ test_that("REGRESSION: a committed row re-seeds its picker with a REAL choice va
     )
     expect_match(opt, "selected", fixed = TRUE)
   })
+})
+
+# ---- stage-11 depth: flag chips, humanized ops, paper tag ------------------
+
+test_that("every *FL category flag becomes a population preset chip", {
+  fx <- .mcf_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_filters_server, args = list(store = fx$store), {
+    session$flushReact()
+    html <- output$pane$html
+    # Demo ADSL carries SAFFL (mapped) and DISCFL (unmapped fallback).
+    expect_match(html, "Safety population", fixed = TRUE)
+    expect_match(html, "DISCFL = Y", fixed = TRUE)
+    expect_match(html, "Full set", fixed = TRUE)
+  })
+})
+
+test_that("an unmapped flag chip writes its canonical predicate", {
+  fx <- .mcf_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_filters_server, args = list(store = fx$store), {
+    session$setInputs(preset_flag = list(column = "DISCFL", nonce = 1))
+    expect_identical(
+      shiny::isolate(selected_object(store))@filters,
+      list(list(column = "DISCFL", op = "==", value = "Y"))
+    )
+  })
+})
+
+test_that("op labels are humanized but post the exact engine op set", {
+  # The engine contract is untouched: the labeled vector's VALUES are the
+  # engine ops, in the engine's own display order.
+  expect_identical(unname(.FILTER_OP_LABELS), .FILTER_OPS)
+  expect_identical(unname(.FILTER_OP_LABELS[["is any of"]]), "%in%")
+})
+
+test_that("the paper tag names any recognized flag population", {
+  expect_identical(
+    .filters_tag_label(list(list(column = "SAFFL", op = "==", value = "Y"))),
+    "Safety population"
+  )
+  expect_identical(
+    .filters_tag_label(list(list(column = "ITTFL", op = "==", value = "Y"))),
+    "ITT population"
+  )
+  expect_identical(
+    .filters_tag_label(list(list(column = "DISCFL", op = "==", value = "Y"))),
+    "DISCFL = Y"
+  )
+  # A non-flag single predicate and multi-predicate sets stay honest counts.
+  expect_identical(
+    .filters_tag_label(list(list(column = "AGE", op = ">", value = 65))),
+    "1 filter"
+  )
+  expect_identical(
+    .filters_tag_label(list(
+      list(column = "SAFFL", op = "==", value = "Y"),
+      list(column = "AGE", op = ">", value = 65)
+    )),
+    "2 filters"
+  )
 })
