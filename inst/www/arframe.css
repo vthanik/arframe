@@ -34,6 +34,18 @@ input[type="radio"] {
   outline-offset: 1px;
   box-shadow: 0 0 0 3px var(--ar-accent-weak);
 }
+/* One compact button size app-wide. bslib/Bootstrap's default `.btn` is
+   ~16px / ~38px tall, which reads XXL in this dense UI. Override Bootstrap 5's
+   own button CSS variables (its `.btn` rule consumes these) so every button
+   that does NOT set its own size lands on one XL baseline; bespoke `.ar-*`
+   buttons that already declare font/padding still win. */
+.btn {
+  --bs-btn-padding-y: 4px;
+  --bs-btn-padding-x: 10px;
+  --bs-btn-font-size: 11.5px;
+  --bs-btn-line-height: 1.4;
+  --bs-btn-border-radius: var(--ar-radius);
+}
 
 /* ============ 01 atoms ============ */
 .ar-label {
@@ -553,23 +565,15 @@ input[type="radio"] {
   box-shadow: var(--ar-shadow-float);
 }
 .ar-add-card:focus {
-  /* The dialog is a focus TARGET, not an editable control -- JS moves
-     focus onto it (tabindex="-1") the instant it mounts, on every open
-     regardless of mouse or keyboard trigger (arframe.js's MutationObserver
-     calls dialog.focus() unconditionally), so this uses `:focus` rather
-     than `:focus-visible`: a script-invoked focus() is not reliably
-     treated as "visible" by every browser's `:focus-visible` heuristic,
-     which would silently drop the ring for exactly the keyboard user this
-     exists for. Mirrors `.ar-problem:focus` (the other programmatically-
-     focused container in this file) -- same GOV.UK outline + dark
-     box-shadow ring, kept even though the outer 3px ring already sits
-     flush against the backdrop, so a keyboard user always gets a visible
-     landing cue.
-  */
-  outline: 3px solid var(--ar-focus);
+  /* The dialog is a focus TARGET, not an editable control -- JS moves focus
+     onto it (tabindex="-1") on every open, so this uses `:focus` (a
+     script-invoked focus is not reliably `:focus-visible`). A calm accent
+     ring, matching the softened global focus -- still a visible keyboard
+     landing cue, no jarring yellow/black. */
+  outline: 2px solid var(--ar-accent);
   outline-offset: 0;
   box-shadow:
-    0 0 0 5px #0b0c0c,
+    0 0 0 3px var(--ar-accent-weak),
     var(--ar-shadow-float);
 }
 .ar-add-header {
@@ -929,9 +933,9 @@ input[type="radio"] {
   margin-bottom: var(--ar-space-4);
 }
 .ar-problem:focus {
-  outline: 3px solid var(--ar-focus);
+  outline: 2px solid var(--ar-accent);
   outline-offset: 0;
-  box-shadow: 0 0 0 5px #0b0c0c;
+  box-shadow: 0 0 0 3px var(--ar-accent-weak);
 }
 .ar-problem h2 {
   font-size: 14px;
