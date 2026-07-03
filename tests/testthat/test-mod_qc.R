@@ -52,9 +52,9 @@ test_that(".qc_sheet: running head, summary count, per-status stamps, newest-fir
     .qc_sheet(shiny::NS("qc"), report, character(0), character(0), log)
   )
 
-  # Running head names the report (QC IS a document -- decision #7 allows the
-  # page chrome here, unlike the on-screen galley artifact).
-  expect_match(html, "Quality control", fixed = TRUE)
+  # Running head names the report (the Logs sheet IS a document -- decision #7
+  # allows the page chrome here, unlike the on-screen galley artifact).
+  expect_match(html, "Logs", fixed = TRUE)
   expect_match(html, report@name, fixed = TRUE)
   # Summary: exactly one of two outputs is ready (matches the oracle).
   expect_match(html, "1 of 2 outputs ready", fixed = TRUE)

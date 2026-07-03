@@ -133,7 +133,7 @@
     # U+2014 EM DASH -- \u escape keeps R/ ASCII-clean (portability rule).
     shiny::tags$div(
       class = "ar-qc-head ar-mono",
-      paste0("Quality control \u2014 ", report@name)
+      paste0("Logs \u2014 ", report@name)
     ),
     shiny::tags$div(
       class = "ar-qc-summary ar-mono",

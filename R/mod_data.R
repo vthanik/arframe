@@ -80,7 +80,20 @@
     )
   })
   shiny::tagList(
-    shiny::tags$div(class = "ar-label", "Sources"),
+    # The header carries a chevron that folds the whole rail to a slim strip
+    # (frame-owned `rail` collapse -- the same toggle the Report contents rail
+    # uses; one "left rail collapsed" preference).
+    shiny::tags$div(
+      class = "ar-src-head",
+      shiny::tags$div(class = "ar-label", "Sources"),
+      shiny::tags$button(
+        type = "button",
+        class = "ar-icon-btn ar-src-cv",
+        `data-ar-collapse` = "rail",
+        `aria-label` = "Collapse sources",
+        .icon("chevrons_left", 13)
+      )
+    ),
     shiny::tags$div(
       class = paste("ar-data-src ar-data-src-root ar-toc-row", root_sel),
       `data-ar-source` = "",
