@@ -522,7 +522,7 @@ $(document).on("click", ".ar-colpick-item", function () {
     k.textContent = p[0];
     var v = document.createElement("td");
     v.className = "ar-prop-v";
-    v.textContent = p[1] && p[1].length ? p[1] : "--";
+    v.textContent = p[1] && p[1].length ? p[1] : "—";
     tr.appendChild(k);
     tr.appendChild(v);
     body.appendChild(tr);

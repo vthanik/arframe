@@ -3,11 +3,10 @@
 # the labels the DuckDB catalog's SQL metadata drops), memoized per dataset.
 
 test_that(".dataset_meta reads artoo labels + format from the source, memoized", {
-  skip_if_not_installed("artoo")
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
   # A labelled xpt so the artoo label path is exercised deterministically
-  # (the nanoparquet demo datasets carry no labels).
+  # (the plain demo datasets carry no labels).
   df <- data.frame(
     SUBJ = c("a", "b"),
     AGE = c(30L, 40L),
@@ -42,7 +41,6 @@ test_that(".dataset_meta falls back to a data_items shape for a label-less datas
 })
 
 test_that(".unmount_dataset clears the metadata memo", {
-  skip_if_not_installed("artoo")
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
   store <- shiny::isolate(new_store(con))

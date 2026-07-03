@@ -106,7 +106,7 @@
 #' @noRd
 .demo_register <- function(con, name, data, dir) {
   path <- file.path(dir, paste0(tolower(name), ".parquet"))
-  nanoparquet::write_parquet(data, path)
+  artoo::write_parquet(data, path)
   arpillar::register_dataset(con, name, path)
   invisible(NULL)
 }

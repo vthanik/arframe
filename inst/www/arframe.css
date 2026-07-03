@@ -1962,3 +1962,26 @@ input[type="radio"] {
 .ar-dx-th[data-ar-dir="desc"] .ar-dx-sort-caret::after {
   content: " \2193"; /* down arrow */
 }
+
+/* -- sample-size selector in the grid breadcrumb -- */
+.ar-dx-nsel-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  color: var(--ar-ink-3);
+}
+.ar-dx-nsel {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10.5px;
+  color: var(--ar-ink);
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius-sm);
+  background: var(--ar-paper);
+  padding: 1px 4px;
+  cursor: pointer;
+}
+.ar-dx-nsel:focus-visible {
+  border-color: var(--ar-accent);
+  outline: none;
+}

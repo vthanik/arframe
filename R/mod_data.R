@@ -13,7 +13,7 @@
 #' @noRd
 .fmt_bytes <- function(n) {
   if (is.na(n)) {
-    return("--")
+    return("\u2014")
   }
   units <- c("B", "KB", "MB", "GB")
   i <- if (n <= 0) 1L else min(length(units), floor(log(n, 1024)) + 1L)
@@ -112,8 +112,8 @@
     class = paste("ar-dx-row", if (is_focus) "ar-dx-row-sel"),
     `data-ar-name` = row$name,
     shiny::tags$td(class = "ar-mono ar-dx-name", row$name),
-    shiny::tags$td(class = "ar-dx-dim", row$folder %||% "--"),
-    shiny::tags$td(class = "ar-mono ar-dx-dim", row$kind %||% "--"),
+    shiny::tags$td(class = "ar-dx-dim", row$folder %||% "\u2014"),
+    shiny::tags$td(class = "ar-mono ar-dx-dim", row$kind %||% "\u2014"),
     shiny::tags$td(
       class = "ar-mono ar-dx-num",
       format(row$cols, big.mark = ",")
@@ -124,7 +124,7 @@
     ),
     shiny::tags$td(class = "ar-mono ar-dx-num", .fmt_bytes(row$size)),
     shiny::tags$td(shiny::tags$span(class = "ar-lz", status)),
-    shiny::tags$td(class = "ar-mono ar-dx-dim", row$modified %||% "--")
+    shiny::tags$td(class = "ar-mono ar-dx-dim", row$modified %||% "\u2014")
   )
 }
 
@@ -172,7 +172,8 @@
 #' @noRd
 .data_grid <- function(ns, store, name) {
   folder <- .source_folder(store, name)
-  sample <- arpillar::sample_rows(store$con, name, n = 100L)
+  n <- store$rv$grid_n
+  sample <- arpillar::sample_rows(store$con, name, n = n)
   meta <- .dataset_meta(store, name)
   grid <- arpillar::catalog_grid(store$con)
   total <- grid$rows[grid$name == name][[1]]
@@ -196,7 +197,9 @@
       shiny::tags$span(
         class = "ar-dx-bc-meta",
         sprintf("rows 1-%d of %s", nrow(sample), format(total, big.mark = ","))
-      )
+      ),
+      shiny::tags$div(class = "ar-bar-spacer"),
+      .sample_size_select(ns, n)
     ),
     shiny::tags$div(
       class = "ar-dx-grid-body",
@@ -207,6 +210,37 @@
       ),
       .grid_preview(sample, meta)
     )
+  )
+}
+
+# The preset preview sizes offered by the sample-size selector.
+.SAMPLE_SIZES <- c(50L, 100L, 250L, 500L, 1000L)
+
+#' The sample-size selector: a compact `<select>` in the grid breadcrumb that
+#' sets how many rows the preview pulls (`store$rv$grid_n`). Changing it posts
+#' `grid_n` and re-renders the grid off a fresh `sample_rows()`. A `<select>`
+#' (not a free numeric input) keeps the pull bounded to a few sane presets --
+#' the preview is a sample, never the whole dataset.
+#' @noRd
+.sample_size_select <- function(ns, current) {
+  shiny::tags$label(
+    class = "ar-dx-nsel-wrap ar-mono",
+    "Show",
+    shiny::tags$select(
+      class = "ar-dx-nsel",
+      onchange = sprintf(
+        "Shiny.setInputValue('%s', this.value, {priority: 'event'})",
+        ns("grid_n")
+      ),
+      lapply(.SAMPLE_SIZES, function(k) {
+        shiny::tags$option(
+          value = k,
+          selected = if (k == current) "selected" else NULL,
+          format(k, big.mark = ",")
+        )
+      })
+    ),
+    "rows"
   )
 }
 
@@ -287,7 +321,10 @@
   lapply(props, function(p) {
     shiny::tags$tr(
       shiny::tags$td(class = "ar-prop-k", p[[1]]),
-      shiny::tags$td(class = "ar-prop-v", if (nzchar(p[[2]])) p[[2]] else "--")
+      shiny::tags$td(
+        class = "ar-prop-v",
+        if (nzchar(p[[2]])) p[[2]] else "\u2014"
+      )
     )
   })
 }
@@ -436,7 +473,8 @@ mod_data_server <- function(id, store) {
         store$rv$catalog_nonce,
         store$rv$data_source,
         store$rv$data_focus,
-        store$rv$grid_dataset
+        store$rv$grid_dataset,
+        store$rv$grid_n
       )
 
     # The Data body starts CSS-hidden (Report is the default mode), and the
@@ -471,6 +509,16 @@ mod_data_server <- function(id, store) {
 
     shiny::observeEvent(input$grid_back, {
       store$rv$grid_dataset <- NULL
+    })
+
+    # Sample-size selector: re-pull the preview at the chosen row count. Guard
+    # against a value outside the offered presets (only those can be posted by
+    # the select, but a stray input should never crash the render).
+    shiny::observeEvent(input$grid_n, {
+      n <- suppressWarnings(as.integer(input$grid_n))
+      if (!is.na(n) && n %in% .SAMPLE_SIZES) {
+        store$rv$grid_n <- n
+      }
     })
 
     shiny::observeEvent(input$delete, {

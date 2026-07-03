@@ -233,7 +233,7 @@ test_that(".best_dataset returns NULL when no catalog dataset covers any role va
   withr::defer(arpillar::engine_close(con))
   df <- data.frame(ZZZZ = 1:3)
   pq <- tempfile(fileext = ".parquet")
-  nanoparquet::write_parquet(df, pq)
+  artoo::write_parquet(df, pq)
   arpillar::register_dataset(con, "NOTHING", pq)
 
   expect_null(.best_dataset(con, arpillar::preset("demographics")))

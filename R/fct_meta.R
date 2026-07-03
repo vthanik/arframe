@@ -5,8 +5,8 @@
 # converts an xpt into. artoo reads the file's schema (labels/formats and all)
 # without loading rows (`n_max = 0`), so this is the source for Data mode's
 # column labels and the property panel. artoo is the same metadata reader
-# datasetviewer uses; a dataset with no readable path (or when artoo is
-# absent) falls back to `data_items()` (name + type only, blank label/format).
+# datasetviewer uses; a dataset with no readable path (or an unreadable file)
+# falls back to `data_items()` (name + type only, blank label/format).
 
 #' Blank out NAs in a vector coerced to character (a `""` cell reads better in
 #' a property panel than `NA`).
@@ -20,8 +20,8 @@
 #' Uncached read of a dataset's column metadata: artoo's schema off the
 #' on-disk file joined onto the catalog's own column set (`data_items()` is
 #' authoritative for which columns exist and their arframe type), or the
-#' `data_items()` fallback when there is no readable path / artoo is absent.
-#' Returns a `data.frame(name, label, type, length, format)`.
+#' `data_items()` fallback when there is no readable path / the file cannot
+#' be read. Returns a `data.frame(name, label, type, length, format)`.
 #' @noRd
 .read_dataset_meta <- function(store, name) {
   di <- arpillar::data_items(store$con, name)
@@ -29,9 +29,7 @@
     arpillar::dataset_path(store$con, name),
     error = function(e) NA_character_
   )
-  cols <- if (
-    !is.na(path) && nzchar(path) && requireNamespace("artoo", quietly = TRUE)
-  ) {
+  cols <- if (!is.na(path) && nzchar(path)) {
     tryCatch(
       artoo::columns(artoo::read_dataset(path, n_max = 0L)),
       error = function(e) NULL

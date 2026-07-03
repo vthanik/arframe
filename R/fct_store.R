@@ -54,7 +54,10 @@ new_store <- function(con, report = NULL) {
       code_view = FALSE,
       data_source = NULL,
       data_focus = NULL,
-      grid_dataset = NULL
+      grid_dataset = NULL,
+      # Data-mode preview sample size (rows pulled by `sample_rows()`),
+      # user-changeable in the grid; persists across datasets.
+      grid_n = 100L
     ),
     undo = undo,
     cache = new.env(parent = emptyenv()),

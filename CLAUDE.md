@@ -92,6 +92,12 @@ page, proof-stamp statuses, and a summonable/pinnable galley card. The deliverab
 - Tokens/skin by variable override (one `bslib::bs_theme()` + `inst/www/*.css`);
   no scattered inline styles. Fonts: self-hosted IBM Plex (OFL), never a commercial
   face.
+- **No `--` in user-facing text.** Empty-value placeholders, printed cells, and
+  any displayed string use the em-dash `—` (`"—"` in R strings to keep the
+  source ASCII-clean; the literal `—` in JS/CSS, matching the existing `⌘`),
+  never the ASCII double-hyphen `--`. `--` reads as a typo in the rendered UI.
+  (This is a UI rule; `--` as an em-dash inside `#`/`#'` comments is still fine
+  per `~/.claude/rules/ascii.md`.)
 - No `Co-Authored-By: Claude` / AI attribution anywhere. Never push without explicit
   per-session approval.
 - Subagent execution hygiene: verify INLINE — do not spawn nested background

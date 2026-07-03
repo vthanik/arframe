@@ -14,7 +14,7 @@ library(arframe)
       USUBJID = sprintf("S%03d", 1:4),
       AGE = c(40L, 55L, 61L, 48L)
     )
-    nanoparquet::write_parquet(df, file.path(d, paste0(nm, ".parquet")))
+    artoo::write_parquet(df, file.path(d, paste0(nm, ".parquet")))
   }
   d
 }

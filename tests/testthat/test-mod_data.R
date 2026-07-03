@@ -16,7 +16,7 @@
       AGE = c(34L, 56L, 45L, 23L, 67L),
       stringsAsFactors = FALSE
     )
-    nanoparquet::write_parquet(df, file.path(dir, paste0(nm, ".parquet")))
+    artoo::write_parquet(df, file.path(dir, paste0(nm, ".parquet")))
   }
   dir
 }
@@ -75,7 +75,8 @@ test_that(".fmt_bytes renders B / KB / MB", {
   expect_identical(.fmt_bytes(512), "512 B")
   expect_identical(.fmt_bytes(1536), "1.5 KB")
   expect_identical(.fmt_bytes(1024^2 * 2.5), "2.5 MB")
-  expect_identical(.fmt_bytes(NA_real_), "--")
+  # Empty-value placeholder is the em-dash, never "--" (CLAUDE.md UI rule).
+  expect_identical(.fmt_bytes(NA_real_), "—")
 })
 
 test_that(".explorer_grid and .explorer_table handle an empty catalog", {
@@ -298,4 +299,34 @@ test_that(".grid_preview headers are typed and sortable, rows keep their origina
   expect_match(html, 'data-ar-sort-type="measure"', fixed = TRUE)
   expect_match(html, 'data-ar-sort-type="category"', fixed = TRUE)
   expect_match(html, 'data-ar-orig="0"', fixed = TRUE)
+})
+
+# ---- sample-size selector --------------------------------------------------
+
+test_that(".sample_size_select marks the current size and posts grid_n", {
+  html <- as.character(.sample_size_select(shiny::NS("data"), 250L))
+  expect_match(html, "ar-dx-nsel", fixed = TRUE)
+  expect_match(html, "data-grid_n", fixed = TRUE)
+  expect_match(html, 'value="250" selected', fixed = TRUE)
+  # the top preset is offered, its value raw and its label grouped
+  expect_match(html, 'value="1000"', fixed = TRUE)
+  expect_match(html, ">1,000<", fixed = TRUE)
+})
+
+test_that("mod_data_server: changing the sample size updates grid_n and re-renders", {
+  fx <- .md_store()
+  withr::defer(arpillar::engine_close(fx$con))
+  shiny::testServer(mod_data_server, args = list(store = fx$store), {
+    session$setInputs(open = "ADSL")
+    expect_identical(store$rv$grid_n, 100L) # default
+    grid_html <- as.character(output$explorer$html)
+    expect_match(grid_html, "ar-dx-nsel", fixed = TRUE)
+
+    session$setInputs(grid_n = "500")
+    expect_identical(store$rv$grid_n, 500L)
+
+    # A value outside the presets is ignored (never crashes the render).
+    session$setInputs(grid_n = "999999")
+    expect_identical(store$rv$grid_n, 500L)
+  })
 })

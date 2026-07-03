@@ -1,5 +1,27 @@
 # handoff — arframe
 
+## Latest: Data-mode follow-ups (2026-07-03)
+
+`feat/data-polish` (off `master` @ 9ac17cd), merged. Three tweaks on the
+data-mode work below:
+- **Dropped `nanoparquet`; `artoo` -> Imports.** artoo reads AND writes
+  parquet, and nanoparquet was write-only in fixtures/demo -- so `.demo_register`
+  + the test fixtures now use `artoo::write_parquet`. Because `utils_demo.R` is
+  in `R/`, artoo can no longer be a conditional Suggests; it is Imports now
+  (core to Data mode anyway), which also let `.read_dataset_meta()` drop its
+  `requireNamespace` guard (the file-unreadable `tryCatch` fallback stays).
+- **Banned `--` in user-facing text** -> em-dash `—` (`"—"` as `—` in R to
+  keep source ASCII-clean; literal `—` in JS). Fixed 6 placeholders in
+  `mod_data.R` + arframe.js. New hard rule in `CLAUDE.md` (Working
+  conventions): no `--` in displayed strings; `--`-as-em-dash in `#`/`#'`
+  comments is still fine.
+- **Sample-size selector** in the grid breadcrumb (`Show [50/100/250/500/1000]
+  rows`) -> `store$rv$grid_n` (default 100, persists across datasets); the grid
+  re-samples on change. Server guards the value to the preset set.
+- Gate 0/0/0 (lone NOTE = spurious offline time check); 841 tests. Real-data
+  eyeball: `.local/screens/data-samplesize.png` (selector at 500 -> all 254
+  ADSL rows; Format `—`).
+
 ## Most recent: Data-mode column metadata + sort (2026-07-03)
 
 `feat/data-meta-sort` (worktree `../arframe-wt-datameta`, off `master` @

@@ -14,6 +14,7 @@ Depends:
     R (>= 4.1.0)
 Imports:
     arpillar,
+    artoo,
     bslib,
     cli,
     fontawesome,
@@ -26,8 +27,6 @@ Imports:
     tabular,
     zip
 Suggests:
-    artoo,
-    nanoparquet,
     shinytest2,
     testthat (>= 3.0.0),
     withr
