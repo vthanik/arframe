@@ -84,6 +84,25 @@ test_that("mod_card_server: tab clicks route rv$insp_tab", {
   })
 })
 
+test_that("mod_card_server: clicking a tab toggles the pane collapsed/open", {
+  fx <- .mc_ready_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_server, args = list(store = fx$store), {
+    expect_false(isTRUE(store$rv$insp_collapsed))
+    # Switch to Options (open), then click Options again -> collapse.
+    session$setInputs(tab_options = 1)
+    expect_identical(store$rv$insp_tab, "options")
+    expect_false(isTRUE(store$rv$insp_collapsed))
+    session$setInputs(tab_options = 2)
+    expect_true(store$rv$insp_collapsed)
+    # Clicking any tab while collapsed re-opens it on that tab.
+    session$setInputs(tab_filters = 1)
+    expect_false(store$rv$insp_collapsed)
+    expect_identical(store$rv$insp_tab, "filters")
+  })
+})
+
 test_that("mod_card_server: Run drops the ARD memo and bumps run_nonce", {
   fx <- .mc_ready_store()
   withr::defer(arpillar::engine_close(fx$con))

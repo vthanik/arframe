@@ -247,9 +247,29 @@ mod_card_server <- function(id, store) {
     mod_card_options_server("options", store)
     mod_card_filters_server("filters", store)
 
+    # The tab strip doubles as a show/hide toggle: clicking the ACTIVE tab
+    # while the pane is open collapses it (the strip stays); clicking any tab
+    # while collapsed re-opens it on that tab; clicking a different tab while
+    # open just switches. `insp_collapsed` is mirrored to the client via the
+    # frame's own `ar-collapse` message (any session may send it -- it targets
+    # the workspace class), so the CSS folds/unfolds the pane.
     lapply(names(.INSP_TABS), function(tab) {
       shiny::observeEvent(input[[paste0("tab_", tab)]], {
-        store$rv$insp_tab <- tab
+        if (isTRUE(store$rv$insp_collapsed)) {
+          store$rv$insp_collapsed <- FALSE
+          store$rv$insp_tab <- tab
+        } else if (identical(store$rv$insp_tab, tab)) {
+          store$rv$insp_collapsed <- TRUE
+        } else {
+          store$rv$insp_tab <- tab
+        }
+        session$sendCustomMessage(
+          "ar-collapse",
+          list(
+            rail = isTRUE(store$rv$rail_collapsed),
+            insp = isTRUE(store$rv$insp_collapsed)
+          )
+        )
       })
     })
 

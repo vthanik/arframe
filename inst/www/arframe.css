@@ -303,8 +303,10 @@ input[type="radio"] {
 .ar-rail-collapsed .ar-body-report > :first-child {
   flex: 0 0 34px;
 }
+/* The inspector folds to its tab strip (not a 34px stub): the strip stays
+   visible and doubles as the show/hide toggle. */
 .ar-insp-collapsed .ar-body-report > :nth-child(3) {
-  flex: 0 0 34px;
+  flex: 0 0 63px;
 }
 
 /* A stand-in for a mode body whose real module lands in a later task. */
@@ -1009,8 +1011,11 @@ input[type="radio"] {
 .ar-insp-collapsed .ar-insp-resize {
   display: none;
 }
+/* Collapsed = hide the pane CONTENT but KEEP the tab strip (which doubles as
+   the show/hide toggle: clicking the active tab collapses, clicking any tab
+   re-opens). The rail shrinks to just the icon strip. */
 .ar-insp-collapsed .ar-card {
-  flex: 0 0 34px;
+  flex-basis: 63px;
 }
 .ar-insp-full {
   display: flex;
@@ -1027,17 +1032,18 @@ input[type="radio"] {
   display: flex;
   flex-direction: column;
 }
-.ar-insp-collapsed .ar-insp-full {
+.ar-insp-collapsed .ar-insp-main {
   display: none;
 }
-.ar-insp-slim {
-  display: none;
-}
+/* The old full-collapse slim strip is superseded by the always-visible tab
+   strip; never show it. */
+.ar-insp-slim,
 .ar-insp-collapsed .ar-insp-slim {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding-top: var(--ar-space-2);
+  display: none;
+}
+/* The collapse chevron points inward when open, outward when collapsed. */
+.ar-insp-collapsed .ar-insp-cv svg {
+  transform: rotate(180deg);
 }
 
 /* -- tab strip: VERTICAL, icon+label, on the rail's FAR-RIGHT edge. `order`
