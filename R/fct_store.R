@@ -54,7 +54,11 @@ new_store <- function(con, report = NULL) {
       code_view = FALSE,
       data_source = NULL,
       data_focus = NULL,
-      grid_dataset = NULL
+      grid_dataset = NULL,
+      # Open variable-peek rows in the Roles editor, by item name -- store-
+      # side (never the DOM) so a digest redraw or Sortable re-init cannot
+      # fold an open peek.
+      peek = character(0)
     ),
     undo = undo,
     cache = new.env(parent = emptyenv()),
@@ -261,13 +265,19 @@ rename_output <- function(store, id, title) {
 #' cutoffs, ...) reuses the already-built ARD instead of recollecting from
 #' DuckDB. The same key doubles as `update_object()`'s cheap/heavy oracle:
 #' an edit is HEAVY exactly when it moves this key.
+#'
+#' Item `label`s are display-only too: `build_ard()` never reads them (the
+#' row headers consume them at the render_display stage), so a relabel
+#' re-renders live off the memoized ARD instead of stale-marking the proof.
+#' `role_type` stays in the key -- it genuinely changes the ARD (measure
+#' stats vs category counts).
 #' @noRd
 .ard_key <- function(object) {
   roles <- lapply(object@roles, function(r) {
     list(
       slot = r@slot,
       items = lapply(r@items, function(it) {
-        list(name = it@name, label = it@label, role_type = it@role_type)
+        list(name = it@name, role_type = it@role_type)
       })
     )
   })

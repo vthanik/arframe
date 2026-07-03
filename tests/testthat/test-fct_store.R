@@ -667,3 +667,27 @@ test_that("new_store seeds rv$stale as character(0)", {
   store <- shiny::isolate(new_store(con))
   expect_identical(shiny::isolate(store$rv$stale), character(0))
 })
+
+test_that(".ard_key ignores display-label edits (labels are display-only)", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  id <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
+  obj <- shiny::isolate(.find_object(store$rv$report, id))
+  k0 <- .ard_key(obj)
+
+  # A relabel must NOT move the key (build_ard never reads labels): the
+  # proof re-renders live off the memoized ARD instead of going stale.
+  relabeled <- .relabel_item(obj, "summarize", "AGE", "Age at Baseline")
+  expect_identical(
+    .relabel_item(obj, "summarize", "AGE", "Age at Baseline")@roles[[2]]@items[[
+      1
+    ]]@label,
+    "Age at Baseline"
+  )
+  expect_identical(.ard_key(relabeled), k0)
+
+  # A treat-as flip MUST move it (the ARD genuinely changes).
+  retyped <- .retype_item(obj, "summarize", "AGE", "category")
+  expect_false(identical(.ard_key(retyped), k0))
+})

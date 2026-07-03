@@ -78,24 +78,26 @@
 
 # ---- construction ---------------------------------------------------------
 
-#' Resolve one variable's `role_type` (measure/category/date) off the
-#' catalog, defaulting to "category" when the variable is absent from
-#' `dataset` -- construction never silently drops a preset-listed var, it
-#' still builds a `data_item()` for it (fail loud belongs to the caller /
-#' validate step, not to a swallowed role).
-#' @noRd
-.resolve_role_type <- function(con, dataset, var) {
-  items <- arpillar::data_items(con, dataset)
-  hit <- items$type[items$name == var]
-  if (length(hit) == 1L) hit else "category"
-}
-
 #' Build the `roles` list for a preset: one [arpillar::role()] per slot,
 #' each holding one [arpillar::data_item()] per variable name in
-#' `preset$roles[[slot]]`, with `role_type` resolved per-var off the
-#' catalog (see `.resolve_role_type()`).
+#' `preset$roles[[slot]]`, with `role_type` resolved off the catalog
+#' (defaulting to "category" for a variable absent from `dataset` --
+#' construction never silently drops a preset-listed var; fail loud belongs
+#' to the validate step) and `label` filled from the dataset's own CDISC
+#' metadata (`data_items()`' sidecar labels) -- a preset-seeded demographics
+#' table says "Age" where the source says AGE, with no author-side label
+#' list to maintain. A dataset without labels degrades to the bare name
+#' exactly as before.
 #' @noRd
 .roles_from_preset <- function(con, dataset, preset_roles) {
+  items <- tryCatch(
+    arpillar::data_items(con, dataset),
+    error = function(e) NULL
+  )
+  meta <- function(v, col, default) {
+    hit <- if (is.null(items)) character(0) else items[[col]][items$name == v]
+    if (length(hit) == 1L && !is.na(hit)) hit else default
+  }
   lapply(names(preset_roles), function(slot) {
     vars <- preset_roles[[slot]]
     arpillar::role(
@@ -103,7 +105,8 @@
       items = lapply(vars, function(v) {
         arpillar::data_item(
           name = v,
-          role_type = .resolve_role_type(con, dataset, v)
+          label = meta(v, "label", ""),
+          role_type = meta(v, "type", "category")
         )
       })
     )

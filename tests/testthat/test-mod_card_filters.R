@@ -256,9 +256,9 @@ test_that("REGRESSION: the pane computes while hidden (tab flip is client-only)"
 })
 
 test_that("REGRESSION: a committed row re-seeds its picker with a REAL choice value", {
-  # The picker's choices are packed NAME\x1fSQL_TYPE; seeding the selection
-  # with the ROLE type ("SAFFL\x1fcategory") matches nothing, so selectize
-  # falls back to the first column and its bind-post RESETS the freshly
+  # The picker's choices are packed NAME\x1fTYPE\x1fLABEL; seeding the
+  # selection with any OTHER packing matches nothing, so selectize falls
+  # back to the first column and its bind-post RESETS the freshly
   # committed row (seen on the real CDISC pilot mount).
   fx <- .mcf_store()
   withr::defer(arpillar::engine_close(fx$con))
@@ -272,8 +272,12 @@ test_that("REGRESSION: a committed row re-seeds its picker with a REAL choice va
       regexpr("<option[^>]*value=\"SAFFL[^\"]*\"[^>]*>", html)
     )
     expect_length(opt, 1L)
-    # Packed with the SQL type (matches a choice) and actually selected.
-    expect_match(opt, "SAFFL\x1fVARCHAR", fixed = TRUE)
+    # Packed exactly as the choices are (type + label) and selected.
+    expect_match(
+      opt,
+      "SAFFL\x1fcategory\x1fSafety Population Flag",
+      fixed = TRUE
+    )
     expect_match(opt, "selected", fixed = TRUE)
   })
 })

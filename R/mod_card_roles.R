@@ -86,30 +86,67 @@
 
 # ---- eligible variables ---------------------------------------------------
 
-#' The dataset's `data_items()` filtered to what `slot$accepts` allows,
-#' minus names already assigned to `slot` on `object` -- the "only eligible
-#' variables" contract (design spec #8: "Treatment arms won't offer a
-#' numeric"). `data_items()` is called fresh (not memoized here) -- it is
-#' metadata-only (a single `DESCRIBE`), cheap at demo/dev scale, and a
-#' cross-request memo would risk showing a stale column list right after
-#' an Add-output/import bumped `catalog_nonce`.
+#' The dataset's column metadata (`data_items()`), memoized in the store
+#' cache PER CATALOG GENERATION -- the `catalog_nonce` in the key means an
+#' Add-output/import/delete gets a fresh column list on its next render,
+#' while the many readers of one render cycle (source row, every slot's
+#' picker, every assigned row's label line) share one `DESCRIBE`. Returns
+#' an empty frame (never NULL) when the dataset is unreachable, so every
+#' consumer degrades to "no metadata" without its own guard.
 #' @noRd
-.eligible_items <- function(con, dataset, slot, assigned_names) {
-  items <- arpillar::data_items(con, dataset)
+.items_meta <- function(store, dataset) {
+  key <- paste0("items::", dataset, "::", store$rv$catalog_nonce)
+  if (!exists(key, envir = store$cache)) {
+    items <- tryCatch(
+      arpillar::data_items(store$con, dataset),
+      error = function(e) NULL
+    )
+    if (is.null(items)) {
+      items <- data.frame(
+        name = character(0),
+        type = character(0),
+        sql_type = character(0),
+        label = character(0),
+        stringsAsFactors = FALSE
+      )
+    }
+    assign(key, items, envir = store$cache)
+  }
+  get(key, envir = store$cache)
+}
+
+#' One column's metadata row from `.items_meta()`, or `NULL` when absent.
+#' @noRd
+.item_meta_row <- function(items, name) {
+  i <- match(name, items$name)
+  if (is.na(i)) {
+    return(NULL)
+  }
+  items[i, , drop = FALSE]
+}
+
+#' `items` (a `.items_meta()` frame) filtered to what `slot$accepts`
+#' allows, minus names already assigned to `slot` on `object` -- the "only
+#' eligible variables" contract (design spec #8: "Treatment arms won't
+#' offer a numeric").
+#' @noRd
+.eligible_items <- function(items, slot, assigned_names) {
   items <- items[items$type %in% slot$accepts, , drop = FALSE]
   items[!items$name %in% assigned_names, , drop = FALSE]
 }
 
 # ---- picker ---------------------------------------------------------------
 
-#' Pack one eligible-variable option as `"NAME\x1fTYPE"` -- `\x1f` (unit
-#' separator) cannot appear in a column name or a DuckDB type string, so
-#' splitting on it always recovers both fields cleanly; packing both into
-#' the selectize VALUE (not just the label) is what lets `render` search
-#' match on either the name or the type.
+#' Pack one eligible-variable option as `"NAME\x1fTYPE\x1fLABEL"` -- `\x1f`
+#' (unit separator) cannot appear in a column name, a DuckDB type string,
+#' or a CDISC label, so splitting on it always recovers the fields cleanly;
+#' packing everything into the selectize VALUE (not just the label) is what
+#' lets `render` search match on the name, the type, OR the label (typing
+#' "treatment" surfaces TRT01P by its label).
 #' @noRd
-.pack_item_choice <- function(name, sql_type) {
-  paste0(name, "\x1f", sql_type)
+.pack_item_choice <- function(name, sql_type, label = NA_character_) {
+  lab <- if (length(label) == 1L && !is.na(label)) label else ""
+  paste0(name, "\x1f", sql_type, "\x1f", lab)
 }
 
 #' The variable name half of a packed `"NAME\x1fTYPE"` choice value.
@@ -138,19 +175,28 @@
 ) {
   choices <- vapply(
     seq_len(nrow(items)),
-    function(i) .pack_item_choice(items$name[[i]], items$sql_type[[i]]),
+    function(i) {
+      .pack_item_choice(
+        items$name[[i]],
+        items$type[[i]],
+        items$label[[i]]
+      )
+    },
     character(1)
   )
-  # One JS template per row: `item.value.split(...)` recovers name/type
-  # client-side from the packed choice string -- selectize's `render`
-  # callback only ever sees the (value, label) pair it was given, so the
-  # chip/type-line markup is regenerated in JS, not pre-rendered per row
-  # server-side (which would need one `option` template per possible
-  # item, an unbounded set).
+  # One JS template per row: `item.value.split(...)` recovers
+  # name/type/label client-side from the packed choice string --
+  # selectize's `render` callback only ever sees the (value, label) pair
+  # it was given, so the chip/label-line markup is regenerated in JS, not
+  # pre-rendered per row server-side (which would need one `option`
+  # template per possible item, an unbounded set). Line 2 prefers the
+  # CDISC label (the sidecar metadata); a label-less column falls back to
+  # its type word.
   render_js <- I(paste0(
     "{ option: function(item, escape) {",
     "  var parts = item.value.split('\\u001f');",
-    "  var nm = escape(parts[0]); var ty = escape(parts[1] || '');",
+    "  var nm = escape(parts[0]);",
+    "  var sub = escape(parts[2] || parts[1] || '');",
     "  var cls = { measure: 'ar-chip ar-chip-meas', ",
     "              date: 'ar-chip ar-chip-date', ",
     "              category: 'ar-chip ar-chip-cat' };",
@@ -161,7 +207,7 @@
     "    '<span class=\"' + cls[t] + '\">' + glyph[t] + '</span>' +",
     "    '<span class=\"ar-picker-option-name\">' + nm + '</span>' +",
     "    '</div>' +",
-    "    '<div class=\"ar-picker-option-type ar-mono\">' + ty + '</div>' +",
+    "    '<div class=\"ar-picker-option-type\">' + sub + '</div>' +",
     "    '</div>';",
     "}, item: function(item, escape) {",
     # The SELECTED display (closed control) shows the bare name -- the
@@ -191,51 +237,274 @@
 
 # ---- assigned-item rows ---------------------------------------------------
 
-#' One assigned-item row: chip + name + a visible, focusable remove button.
-#' `grip` (the drag handle) is shown only when the slot is multi-item
-#' (`slot$max > 1`) -- a single-item slot has nothing to reorder.
+#' One assigned-item row: a flex action line (grip when the slot is
+#' multi-item, the role-type chip, the variable name over its CDISC label,
+#' the peek toggle, remove) with the variable-peek panel expanded BELOW the
+#' line when this item is in `store$rv$peek`. The panel lives INSIDE the
+#' row element so a Sortable drag moves the whole unit.
 #'
-#' The remove button is a per-item DYNAMIC control (any dataset column
-#' name), so it posts through ONE shared `ns("remove")` input via an
-#' inline onclick -- `Shiny.setInputValue({slot, name})` -- exactly
-#' `mod_contents.R`'s `.toc_kebab()` pattern for its own dynamically-named
-#' row actions (`dup_js`/`remove_js`), rather than a per-item
-#' `observeEvent` that would need re-registering on every render.
+#' Every per-item control is DYNAMIC (any dataset column name), so each
+#' posts through ONE shared input (`remove`/`peek`) via an inline onclick
+#' -- `Shiny.setInputValue({slot, name, nonce})` -- exactly
+#' `mod_contents.R`'s `.toc_kebab()` pattern, rather than per-item
+#' `observeEvent`s that would need re-registering on every render.
 #' @noRd
-.assigned_row <- function(ns, slot_id, item, multi) {
+.assigned_row <- function(store, ns, object, slot, item, multi, meta) {
+  slot_id <- slot$slot
+  open <- item@name %in% store$rv$peek
   remove_js <- sprintf(
     "Shiny.setInputValue('%s', {slot: '%s', name: '%s', nonce: Date.now()}, {priority: 'event'})",
     ns("remove"),
     slot_id,
     item@name
   )
+  peek_js <- sprintf(
+    "Shiny.setInputValue('%s', {name: '%s', nonce: Date.now()}, {priority: 'event'})",
+    ns("peek"),
+    item@name
+  )
+  engine_label <- if (!is.null(meta) && !is.na(meta$label)) meta$label else NULL
+  sub <- if (nzchar(item@label %||% "")) item@label else engine_label
   shiny::tags$div(
-    class = "ar-role-row",
+    class = paste0("ar-role-row", if (open) " ar-role-row-open"),
     `data-ar-item` = item@name,
-    if (multi) shiny::tags$span(class = "ar-role-grip", .icon("grip", 11)),
-    .type_chip(item@role_type),
-    shiny::tags$span(class = "ar-role-name", item@label %||% item@name),
+    shiny::tags$div(
+      class = "ar-role-line",
+      if (multi) shiny::tags$span(class = "ar-role-grip", .icon("grip", 11)),
+      .type_chip(item@role_type),
+      shiny::tags$div(
+        class = "ar-role-id",
+        shiny::tags$span(class = "ar-role-name ar-mono", item@name),
+        if (!is.null(sub)) shiny::tags$span(class = "ar-role-sub", sub)
+      ),
+      shiny::tags$button(
+        type = "button",
+        class = paste0(
+          "ar-icon-btn ar-role-peek-btn",
+          if (open) " ar-role-peek-on"
+        ),
+        `aria-label` = paste0(
+          if (open) "Hide details for " else "Show details for ",
+          item@name
+        ),
+        `aria-expanded` = if (open) "true" else "false",
+        onclick = peek_js,
+        .icon("eye", 11)
+      ),
+      shiny::tags$button(
+        type = "button",
+        class = "ar-icon-btn ar-role-remove",
+        `aria-label` = paste0("Remove ", item@name, " from ", slot_id),
+        onclick = remove_js,
+        .icon("close", 11)
+      )
+    ),
+    if (open) .peek_panel(store, ns, object, slot, item, meta)
+  )
+}
+
+# ---- the variable peek ------------------------------------------------------
+
+#' The engine facts behind one peek panel, memoized per catalog generation:
+#' a measure column gets its min/median/max landmarks + observed decimal
+#' precision; anything else gets its per-value counts. All pushed-down
+#' aggregates (`column_range`/`column_precision`/`value_counts`) -- the
+#' column itself never leaves DuckDB. `NULL` when the dataset/column is
+#' unreachable; the panel says so rather than erroring.
+#' @noRd
+.peek_facts <- function(store, dataset, column, meta) {
+  key <- paste0("peek::", dataset, "::", column, "::", store$rv$catalog_nonce)
+  if (!exists(key, envir = store$cache)) {
+    numeric_col <- !is.null(meta) && identical(meta$type, "measure")
+    facts <- tryCatch(
+      {
+        if (numeric_col) {
+          list(
+            kind = "range",
+            range = arpillar::column_range(store$con, dataset, column),
+            precision = arpillar::column_precision(store$con, dataset, column)
+          )
+        } else {
+          list(
+            kind = "counts",
+            counts = arpillar::value_counts(store$con, dataset, column)
+          )
+        }
+      },
+      error = function(e) NULL
+    )
+    assign(key, facts, envir = store$cache)
+  }
+  get(key, envir = store$cache)
+}
+
+#' The number of distribution bars a category peek shows before folding the
+#' tail into "+ n more values".
+.PEEK_BARS <- 6L
+
+#' The peek panel body: the display-label editor (a cheap commit -- labels
+#' are display-only), the treat-as toggle when the slot accepts more than
+#' one role type AND the column is numeric (text can only ever be a
+#' category), and the live distribution -- value-count bars for a category,
+#' min/median/max + precision for a measure.
+#' @noRd
+.peek_panel <- function(store, ns, object, slot, item, meta) {
+  relabel_js <- sprintf(
+    "Shiny.setInputValue('%s', {slot: '%s', name: '%s', value: this.value, nonce: Date.now()}, {priority: 'event'})",
+    ns("relabel"),
+    slot$slot,
+    item@name
+  )
+  can_retype <- length(slot$accepts) > 1L &&
+    !is.null(meta) &&
+    identical(meta$type, "measure")
+  facts <- .peek_facts(store, object@dataset, item@name, meta)
+  shiny::tags$div(
+    class = "ar-role-peek",
+    shiny::tags$div(
+      class = "ar-peek-row",
+      shiny::tags$span(class = "ar-peek-key", "Label"),
+      shiny::tags$input(
+        type = "text",
+        class = "ar-peek-label",
+        value = item@label,
+        placeholder = "Display label (defaults to the name)",
+        onchange = relabel_js,
+        `aria-label` = paste0("Display label for ", item@name)
+      )
+    ),
+    if (can_retype) .retype_control(ns, slot$slot, item),
+    .peek_distribution(facts)
+  )
+}
+
+#' The treat-as segmented toggle: a numeric column can be summarized as a
+#' measure (stats) or grouped as a category (counts); flipping it is a
+#' HEAVY edit (the ARD changes), so the existing stale/Run semantics apply
+#' untouched.
+#' @noRd
+.retype_control <- function(ns, slot_id, item) {
+  btn <- function(rt) {
+    active <- identical(item@role_type, rt)
+    js <- sprintf(
+      "Shiny.setInputValue('%s', {slot: '%s', name: '%s', role_type: '%s', nonce: Date.now()}, {priority: 'event'})",
+      ns("retype"),
+      slot_id,
+      item@name,
+      rt
+    )
     shiny::tags$button(
       type = "button",
-      class = "ar-icon-btn ar-role-remove",
-      `aria-label` = paste0("Remove ", item@name, " from ", slot_id),
-      onclick = remove_js,
-      .icon("close", 11)
+      class = paste0("ar-peek-type-btn", if (active) " ar-peek-type-on"),
+      `aria-pressed` = if (active) "true" else "false",
+      onclick = js,
+      rt
     )
+  }
+  shiny::tags$div(
+    class = "ar-peek-row",
+    shiny::tags$span(class = "ar-peek-key", "Treat as"),
+    shiny::tags$div(
+      class = "ar-peek-type",
+      role = "group",
+      `aria-label` = paste0("Treat ", item@name, " as"),
+      btn("measure"),
+      btn("category")
+    )
+  )
+}
+
+#' Render the distribution half of a peek panel from `.peek_facts()`.
+#' @noRd
+.peek_distribution <- function(facts) {
+  if (is.null(facts)) {
+    return(shiny::tags$p(
+      class = "ar-peek-none ar-mono",
+      "Distribution unavailable."
+    ))
+  }
+  if (identical(facts$kind, "range")) {
+    r <- facts$range
+    line <- if (anyNA(unlist(r))) {
+      "all values missing"
+    } else {
+      sprintf(
+        "min %s \u00b7 median %s \u00b7 max %s",
+        format(r$min, trim = TRUE),
+        format(r$median, trim = TRUE),
+        format(r$max, trim = TRUE)
+      )
+    }
+    return(shiny::tags$div(
+      class = "ar-peek-facts ar-mono",
+      shiny::tags$div(class = "ar-peek-range", line),
+      shiny::tags$div(
+        class = "ar-peek-precision",
+        sprintf("observed precision: %d dp", facts$precision)
+      )
+    ))
+  }
+  counts <- facts$counts
+  if (length(counts) == 0L) {
+    return(shiny::tags$p(class = "ar-peek-none ar-mono", "No values."))
+  }
+  top <- utils::head(counts, .PEEK_BARS)
+  peak <- max(top)
+  bars <- lapply(seq_along(top), function(i) {
+    pct <- round(100 * top[[i]] / peak)
+    shiny::tags$div(
+      class = "ar-peek-bar-row",
+      shiny::tags$span(class = "ar-peek-val", names(top)[[i]]),
+      shiny::tags$div(
+        class = "ar-peek-bar",
+        shiny::tags$div(
+          class = "ar-peek-bar-fill",
+          style = paste0("width:", max(pct, 2), "%;")
+        )
+      ),
+      shiny::tags$span(
+        class = "ar-peek-n ar-mono",
+        format(top[[i]], big.mark = ",")
+      )
+    )
+  })
+  more <- length(counts) - length(top)
+  shiny::tags$div(
+    class = "ar-peek-facts",
+    bars,
+    if (more > 0L) {
+      shiny::tags$div(
+        class = "ar-peek-more ar-mono",
+        sprintf("+ %d more value%s", more, if (more == 1L) "" else "s")
+      )
+    }
   )
 }
 
 # ---- one slot's fieldset --------------------------------------------------
 
-#' One slot's whole fieldset: legend (the slot label -- the micro-label IS
-#' the legend, per the brief), assigned rows (sortable when `max > 1`),
-#' the dashed "+ Add variable" picker row, and an inline `validate_output`
-#' message when this slot's control_id is among the object's unmet
-#' requirements (message text IDENTICAL to the oracle's own -- never
-#' reworded, so the ghost hint, the error summary, and this inline message
-#' always agree).
+#' The legend's cardinality hint, straight from the generator's own
+#' `min`/`max` slot contract -- the engine's requirement, not a UI guess.
 #' @noRd
-.slot_fieldset <- function(con, ns, object, slot, problems) {
+.cardinality_hint <- function(slot) {
+  if (slot$max == 1L) {
+    return(if (slot$min >= 1L) "required" else "optional")
+  }
+  if (is.infinite(slot$max)) {
+    return(if (slot$min >= 1L) "1 or more" else "any number")
+  }
+  sprintf("%d\u2013%d", slot$min, slot$max)
+}
+
+#' One slot's whole fieldset: legend (the slot label + the cardinality
+#' hint), assigned rows (sortable when `max > 1`, each with its peek
+#' panel), the "+ Add variable" picker row, and an inline
+#' `validate_output` message when this slot's control_id is among the
+#' object's unmet requirements (message text IDENTICAL to the oracle's own
+#' -- never reworded, so the ghost hint, the error summary, and this
+#' inline message always agree).
+#' @noRd
+.slot_fieldset <- function(store, ns, object, slot, problems, items_meta) {
   role <- .role_for_slot(object, slot$slot)
   items <- if (is.null(role)) list() else role@items
   assigned_names <- vapply(items, function(it) it@name, character(1))
@@ -258,19 +527,33 @@
 
   shiny::tags$fieldset(
     class = "ar-role-slot",
-    do.call(shiny::tags$legend, list(class = "ar-label", slot$label)),
+    shiny::tags$legend(
+      class = "ar-label",
+      slot$label,
+      shiny::tags$span(class = "ar-role-card-hint", .cardinality_hint(slot))
+    ),
     do.call(
       shiny::tags$div,
       c(
         list(class = "ar-role-assigned"),
         sortable_attrs,
-        lapply(items, function(it) .assigned_row(ns, slot$slot, it, multi))
+        lapply(items, function(it) {
+          .assigned_row(
+            store,
+            ns,
+            object,
+            slot,
+            it,
+            multi,
+            .item_meta_row(items_meta, it@name)
+          )
+        })
       )
     ),
     .eligible_picker(
       ns,
       paste0("add_", slot$slot),
-      .eligible_items(con, object@dataset, slot, assigned_names)
+      .eligible_items(items_meta, slot, assigned_names)
     ),
     if (!is.null(problem)) {
       shiny::tags$p(
@@ -279,6 +562,96 @@
         shiny::span(problem)
       )
     }
+  )
+}
+
+# ---- pane header: source row + orphan problems -----------------------------
+
+#' The dataset facts behind the SOURCE row, memoized per catalog
+#' generation: the ADaM structure heuristic + the catalog's row/col counts.
+#' `NULL` when the catalog is unreachable (the row simply shows the name).
+#' @noRd
+.source_facts <- function(store, dataset) {
+  key <- paste0("structure::", dataset, "::", store$rv$catalog_nonce)
+  if (!exists(key, envir = store$cache)) {
+    facts <- tryCatch(
+      {
+        grid <- arpillar::catalog_grid(store$con)
+        row <- grid[grid$name == dataset, , drop = FALSE]
+        list(
+          structure = arpillar::detect_structure(store$con, dataset),
+          rows = if (nrow(row) == 1L) row$rows[[1L]] else NA,
+          cols = if (nrow(row) == 1L) row$cols[[1L]] else NA
+        )
+      },
+      error = function(e) NULL
+    )
+    assign(key, facts, envir = store$cache)
+  }
+  get(key, envir = store$cache)
+}
+
+#' The SOURCE row at the top of the Roles pane: the dataset this output
+#' reads, its detected ADaM structure, and its dimensions -- the provenance
+#' the roles below are editing against. Read-only here; the dataset is
+#' chosen at Add-output time.
+#' @noRd
+.roles_source_row <- function(store, object) {
+  facts <- .source_facts(store, object@dataset)
+  shiny::tags$div(
+    class = "ar-role-src",
+    shiny::tags$span(class = "ar-label", "Source"),
+    shiny::tags$span(
+      class = "ar-role-src-ds ar-mono",
+      toupper(object@dataset)
+    ),
+    if (!is.null(facts)) {
+      shiny::tags$span(class = "ar-role-src-kind", facts$structure)
+    },
+    if (!is.null(facts) && !is.na(facts$rows) && !is.na(facts$cols)) {
+      shiny::tags$span(
+        class = "ar-role-src-dims ar-mono",
+        sprintf(
+          "%s \u00d7 %s",
+          format(facts$rows, big.mark = ","),
+          format(facts$cols, big.mark = ",")
+        )
+      )
+    }
+  )
+}
+
+#' `validate_output()` messages NOT owned by any rendered slot fieldset
+#' (dataset-level problems, a future non-roles control) -- the checklist
+#' strip shows these, the slot-owned ones render inline in their own
+#' fieldsets, and nothing is ever double-reported.
+#' @noRd
+.orphan_problems <- function(object, slots) {
+  v <- arpillar::validate_output(object)
+  if (nrow(v) == 0L) {
+    return(character(0))
+  }
+  ids <- vapply(slots, `[[`, "", "slot")
+  owned <- sub("^roles-", "", v$control_id) %in% ids
+  v$message[!owned]
+}
+
+#' The problems strip: one warn-tagged line per orphan oracle message.
+#' `NULL` when the output is clean (no empty congratulation box).
+#' @noRd
+.roles_problem_strip <- function(problems) {
+  if (length(problems) == 0L) {
+    return(NULL)
+  }
+  shiny::tags$div(
+    class = "ar-role-checklist",
+    lapply(problems, function(msg) {
+      shiny::tags$p(
+        class = "ar-role-problem ar-mono",
+        .icon("warn", 11),
+        shiny::span(msg)
+      )
+    })
   )
 }
 
@@ -296,8 +669,9 @@ mod_card_roles_ui <- function(id) {
 
 # ---- server -------------------------------------------------------------
 
-#' A stable digest of `object@roles` -- the assigned slot/item set, order-
-#' sensitive (so a reorder also invalidates the render). Deliberately
+#' A stable digest of `object@roles` -- the assigned slot/item set with
+#' each item's `label` and `role_type`, order-sensitive (so a reorder, a
+#' relabel, or a treat-as flip all invalidate the render). Deliberately
 #' EXCLUDES everything else on the object (`filters`, `options`, `title`)
 #' so an edit made in a DIFFERENT card region never forces this module to
 #' re-render its own slot list.
@@ -309,9 +683,53 @@ mod_card_roles_ui <- function(id) {
   rlang::hash(lapply(object@roles, function(r) {
     list(
       slot = r@slot,
-      items = vapply(r@items, function(it) it@name, character(1))
+      items = lapply(r@items, function(it) {
+        list(name = it@name, label = it@label, role_type = it@role_type)
+      })
     )
   }))
+}
+
+#' Apply `fn` to the single item named `item_name` inside the
+#' alias-matched role for `slot` -- the shared walk behind relabel and
+#' retype, mirroring `.remove_item_from_slot()`'s own discipline. A no-op
+#' when no such role/item exists.
+#' @noRd
+.update_item <- function(object, slot, item_name, fn) {
+  aliases <- .slot_aliases(slot)
+  roles <- object@roles
+  for (i in seq_along(roles)) {
+    if (roles[[i]]@slot %in% aliases) {
+      items <- roles[[i]]@items
+      for (j in seq_along(items)) {
+        if (identical(items[[j]]@name, item_name)) {
+          items[[j]] <- fn(items[[j]])
+          roles[[i]] <- S7::set_props(roles[[i]], items = items)
+          return(S7::set_props(object, roles = roles))
+        }
+      }
+      return(object)
+    }
+  }
+  object
+}
+
+#' Set an item's display label (CHEAP: labels are display-only, excluded
+#' from the ARD key -- the proof re-renders live).
+#' @noRd
+.relabel_item <- function(object, slot, item_name, label) {
+  .update_item(object, slot, item_name, function(it) {
+    S7::set_props(it, label = label)
+  })
+}
+
+#' Set an item's role_type (HEAVY: the ARD changes; `update_object()`'s
+#' stale semantics fire untouched).
+#' @noRd
+.retype_item <- function(object, slot, item_name, role_type) {
+  .update_item(object, slot, item_name, function(it) {
+    S7::set_props(it, role_type = role_type)
+  })
 }
 
 #' Append `item` to the alias-matched existing role on `object`, or create
@@ -423,7 +841,16 @@ mod_card_roles_server <- function(id, store) {
     output$slots <- shiny::renderUI({
       obj <- selected_object(store)
       if (is.null(obj)) {
-        return(NULL)
+        return(shiny::tags$div(
+          class = "ar-insp-empty",
+          shiny::tags$p(
+            class = "ar-insp-empty-text",
+            paste0(
+              "No output selected. Choose one in Contents, ",
+              "or add one with the + button."
+            )
+          )
+        ))
       }
       gen <- tryCatch(arpillar::generator(obj@type), error = function(e) NULL)
       if (is.null(gen)) {
@@ -440,13 +867,20 @@ mod_card_roles_server <- function(id, store) {
         return(NULL)
       }
       problems <- .slot_problems(obj, slots)
-      shiny::tagList(lapply(slots, function(s) {
-        .slot_fieldset(store$con, ns, obj, s, problems)
-      }))
+      items_meta <- .items_meta(store, obj@dataset)
+      shiny::tagList(
+        .roles_problem_strip(.orphan_problems(obj, slots)),
+        .roles_source_row(store, obj),
+        lapply(slots, function(s) {
+          .slot_fieldset(store, ns, obj, s, problems, items_meta)
+        })
+      )
     }) |>
       shiny::bindEvent(
         store$rv$selected,
         store$rv$region,
+        store$rv$peek,
+        store$rv$catalog_nonce,
         .roles_digest(selected_object(store))
       )
 
@@ -482,10 +916,18 @@ mod_card_roles_server <- function(id, store) {
               return()
             }
             obj <- selected_object(store)
-            item_row <- arpillar::data_items(store$con, obj@dataset)
-            hit <- item_row$type[item_row$name == name]
-            role_type <- if (length(hit) == 1L) hit else "category"
-            item <- arpillar::data_item(name = name, role_type = role_type)
+            meta <- .item_meta_row(.items_meta(store, obj@dataset), name)
+            role_type <- if (!is.null(meta)) meta$type else "category"
+            label <- if (!is.null(meta) && !is.na(meta$label)) {
+              meta$label
+            } else {
+              ""
+            }
+            item <- arpillar::data_item(
+              name = name,
+              label = label,
+              role_type = role_type
+            )
             update_object(
               store,
               obj_id,
@@ -543,6 +985,50 @@ mod_card_roles_server <- function(id, store) {
         obj_id,
         function(o) .remove_item_from_slot(o, req$slot, req$name),
         label = paste0("remove ", req$name, " from ", req$slot)
+      )
+    })
+
+    # Peek toggle: membership in `rv$peek` is the ONLY open/closed state
+    # (never the DOM), so a digest redraw or a Sortable re-init restores
+    # every open panel exactly.
+    shiny::observeEvent(input$peek, {
+      nm <- input$peek$name
+      cur <- store$rv$peek
+      store$rv$peek <- if (nm %in% cur) setdiff(cur, nm) else c(cur, nm)
+    })
+
+    # Display-label edit (cheap: label is display-only, so the proof
+    # re-renders live off the memoized ARD).
+    shiny::observeEvent(input$relabel, {
+      obj_id <- store$rv$selected
+      if (is.null(obj_id)) {
+        return()
+      }
+      req <- input$relabel
+      update_object(
+        store,
+        obj_id,
+        function(o) .relabel_item(o, req$slot, req$name, req$value %||% ""),
+        label = paste0("relabel ", req$name)
+      )
+    })
+
+    # Treat-as flip (heavy: the ARD changes; update_object marks the proof
+    # stale through the existing oracle, Run re-typesets).
+    shiny::observeEvent(input$retype, {
+      obj_id <- store$rv$selected
+      if (is.null(obj_id)) {
+        return()
+      }
+      req <- input$retype
+      if (!req$role_type %in% c("measure", "category")) {
+        return()
+      }
+      update_object(
+        store,
+        obj_id,
+        function(o) .retype_item(o, req$slot, req$name, req$role_type),
+        label = paste0("treat ", req$name, " as ", req$role_type)
       )
     })
 

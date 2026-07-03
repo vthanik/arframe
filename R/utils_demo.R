@@ -95,11 +95,59 @@
     stringsAsFactors = FALSE
   )
 
+  # CDISC display labels, as plain label attributes: artoo::write_parquet
+  # (in .demo_register) embeds them in each file's Dataset-JSON sidecar, so
+  # the demo catalog exercises the SAME label seam real mounted data uses
+  # (data_items()$label -> pickers, assigned rows, preset-seeded headers).
+  adsl <- .demo_label(
+    adsl,
+    c(
+      USUBJID = "Unique Subject Identifier",
+      TRT01P = "Planned Treatment for Period 01",
+      AGE = "Age",
+      SEX = "Sex",
+      SAFFL = "Safety Population Flag",
+      RACE = "Race",
+      DISCFL = "Discontinued Study Flag",
+      DCDECOD = "Standardized Disposition Term",
+      EXDOSE = "Dose per Administration"
+    )
+  )
+  advs <- .demo_label(
+    advs,
+    c(
+      AVISIT = "Analysis Visit",
+      PARAMCD = "Parameter Code",
+      AVAL = "Analysis Value",
+      CHG = "Change from Baseline"
+    )
+  )
+  adtte <- .demo_label(adtte, c(AVAL = "Analysis Value", CNSR = "Censor"))
+  adae <- .demo_label(
+    adae,
+    c(
+      AEBODSYS = "Body System or Organ Class",
+      AEDECOD = "Dictionary-Derived Term",
+      TRTEMFL = "Treatment Emergent Analysis Flag"
+    )
+  )
+
   .demo_register(con, "ADSL", adsl, dir)
   .demo_register(con, "ADVS", advs, dir)
   .demo_register(con, "ADTTE", adtte, dir)
   .demo_register(con, "ADAE", adae, dir)
   con
+}
+
+#' Stamp label attributes onto the named columns of a demo frame.
+#' @noRd
+.demo_label <- function(data, labels) {
+  for (nm in names(labels)) {
+    if (nm %in% names(data)) {
+      attr(data[[nm]], "label") <- unname(labels[[nm]])
+    }
+  }
+  data
 }
 
 #' Write one demo data frame to parquet and register it.

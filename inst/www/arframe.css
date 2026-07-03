@@ -1196,14 +1196,20 @@ input[type="radio"] {
   gap: 2px;
 }
 .ar-role-row {
-  display: flex;
-  align-items: center;
-  gap: var(--ar-space-1);
+  display: block;
   padding: 4px var(--ar-space-1);
   border-radius: var(--ar-radius);
 }
 .ar-role-row:hover {
   background: rgba(27, 31, 35, 0.03);
+}
+.ar-role-row-open {
+  background: rgba(27, 31, 35, 0.03);
+}
+.ar-role-line {
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-1);
 }
 .ar-role-grip {
   flex: 0 0 auto;
@@ -1211,18 +1217,37 @@ input[type="radio"] {
   cursor: grab;
   display: inline-flex;
 }
-.ar-role-name {
+.ar-role-id {
   flex: 1 1 auto;
-  font-size: 12.5px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ar-role-name {
+  font-size: 12px;
   color: var(--ar-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.ar-role-sub {
+  font-size: 10.5px;
+  color: var(--ar-ink-4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ar-role-peek-btn,
 .ar-role-remove {
   flex: 0 0 auto;
   width: 22px;
   height: 22px;
+}
+.ar-role-peek-btn {
+  color: var(--ar-ink-4);
+}
+.ar-role-peek-on {
+  color: var(--ar-accent);
 }
 .ar-role-problem {
   display: flex;
@@ -1233,10 +1258,169 @@ input[type="radio"] {
   margin: 2px 0 0;
 }
 
+/* -- legend cardinality hint (the generator's own min/max contract) -- */
+.ar-role-card-hint {
+  margin-left: var(--ar-space-1);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--ar-ink-5);
+}
+
+/* -- SOURCE row: dataset + structure + dims above the slot editors -- */
+.ar-role-src {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ar-space-2);
+  padding: var(--ar-space-1) var(--ar-space-1) var(--ar-space-2);
+  border-bottom: 1px solid var(--ar-rule-2);
+  margin-bottom: var(--ar-space-2);
+}
+.ar-role-src .ar-label {
+  margin: 0;
+}
+.ar-role-src-ds {
+  font-size: 12px;
+  color: var(--ar-ink);
+}
+.ar-role-src-kind {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ar-ink-4);
+  border: 1px solid var(--ar-rule);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+.ar-role-src-dims {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ar-ink-3);
+}
+
+/* -- orphan oracle problems (not owned by a rendered slot) -- */
+.ar-role-checklist {
+  padding: var(--ar-space-1);
+  border: 1px solid var(--ar-rule-2);
+  border-left: 2px solid var(--ar-error);
+  border-radius: var(--ar-radius);
+  margin-bottom: var(--ar-space-2);
+}
+
+/* -- the variable peek: label editor, treat-as, live distribution -- */
+.ar-role-peek {
+  margin: var(--ar-space-1) 0 2px 0;
+  padding: var(--ar-space-1) var(--ar-space-1) var(--ar-space-1)
+    var(--ar-space-3);
+  border-left: 2px solid var(--ar-rule);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ar-space-1);
+}
+.ar-peek-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-1);
+}
+.ar-peek-key {
+  flex: 0 0 52px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ar-ink-4);
+}
+.ar-peek-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11.5px;
+  padding: 2px 6px;
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius);
+  background: var(--ar-paper);
+  color: var(--ar-ink);
+}
+.ar-peek-type {
+  display: inline-flex;
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius);
+  overflow: hidden;
+}
+.ar-peek-type-btn {
+  border: none;
+  background: transparent;
+  font-size: 10.5px;
+  padding: 2px 8px;
+  color: var(--ar-ink-3);
+  cursor: pointer;
+}
+.ar-peek-type-btn + .ar-peek-type-btn {
+  border-left: 1px solid var(--ar-rule);
+}
+.ar-peek-type-on {
+  background: var(--ar-accent-weak);
+  color: var(--ar-accent);
+}
+.ar-peek-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ar-peek-bar-row {
+  display: grid;
+  grid-template-columns: minmax(48px, 38%) 1fr auto;
+  align-items: center;
+  gap: var(--ar-space-1);
+}
+.ar-peek-val {
+  font-size: 10.5px;
+  color: var(--ar-ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ar-peek-bar {
+  height: 8px;
+  background: var(--ar-rule-2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.ar-peek-bar-fill {
+  height: 100%;
+  background: var(--ar-accent);
+  opacity: 0.55;
+  border-radius: 2px;
+}
+.ar-peek-n {
+  font-size: 10px;
+  color: var(--ar-ink-3);
+}
+.ar-peek-range,
+.ar-peek-precision,
+.ar-peek-more,
+.ar-peek-none {
+  font-size: 10.5px;
+  color: var(--ar-ink-3);
+  margin: 0;
+}
+.ar-peek-more {
+  color: var(--ar-ink-5);
+}
+
+/* -- pane empty state: an invitation to act, not a blank sheet -- */
+.ar-insp-empty {
+  padding: var(--ar-space-3) var(--ar-space-2);
+}
+.ar-insp-empty-text {
+  font-size: 11.5px;
+  color: var(--ar-ink-4);
+  margin: 0;
+}
+
 /* -- the eligible-variable rich picker: two-line options (chip+name, then
-   the muted sql_type) -- selectize's own `render.option` markup, targeted
-   here since it renders OUTSIDE the selectize-input's own DOM subtree
-   (appended to `body` by default) and so needs a page-level selector. */
+   the muted CDISC label, or the type word when unlabeled) -- selectize's
+   own `render.option` markup, targeted here since it renders OUTSIDE the
+   selectize-input's own DOM subtree (appended to `body` by default) and
+   so needs a page-level selector. */
 .ar-picker-option {
   display: flex;
   flex-direction: column;

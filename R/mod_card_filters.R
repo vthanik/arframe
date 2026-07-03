@@ -146,13 +146,17 @@
   } else {
     "category"
   }
-  # The picker's choices are packed with the raw SQL type (that is what
+  # The picker's choices are packed NAME\x1fTYPE\x1fLABEL (what
   # `.eligible_picker()` builds and what search matches on) -- the
   # re-seeded selection must be packed the SAME way or selectize ignores
   # it and the bind-post resets the row to the first column.
   selected <- if (has_col) {
-    sql_hit <- items$sql_type[items$name == row$column]
-    .pack_item_choice(row$column, if (length(sql_hit) == 1L) sql_hit else "")
+    lab_hit <- items$label[items$name == row$column]
+    .pack_item_choice(
+      row$column,
+      type,
+      if (length(lab_hit) == 1L) lab_hit else NA_character_
+    )
   } else {
     character(0)
   }

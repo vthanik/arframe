@@ -103,3 +103,180 @@ test_that("mod_card_roles_server: the slots pane renders without a region focus"
     expect_match(html, "TRT01P", fixed = TRUE)
   })
 })
+
+# ---- stage-9 depth: digest, source row, labels, peek, relabel, retype ------
+
+.mcr_store <- function() {
+  con <- .demo_catalog()
+  store <- shiny::isolate(new_store(con))
+  id <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
+  shiny::isolate(store$rv$selected <- id)
+  list(con = con, store = store, id = id)
+}
+
+test_that("the roles digest changes on a label or role_type edit", {
+  fx <- .mcr_store()
+  withr::defer(arpillar::engine_close(fx$con))
+  obj <- shiny::isolate(selected_object(fx$store))
+
+  d0 <- .roles_digest(obj)
+  expect_false(identical(
+    .roles_digest(.relabel_item(obj, "summarize", "AGE", "Age (years)")),
+    d0
+  ))
+  expect_false(identical(
+    .roles_digest(.retype_item(obj, "summarize", "AGE", "category")),
+    d0
+  ))
+})
+
+test_that("the SOURCE row names the dataset, its structure, and its dims", {
+  fx <- .mcr_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_roles_server, args = list(store = fx$store), {
+    session$flushReact()
+    html <- output$slots$html
+    expect_match(html, "ar-role-src", fixed = TRUE)
+    expect_match(html, "ADSL", fixed = TRUE)
+    # The demo ADSL is subject-level, 12 x 9.
+    expect_match(html, "subject", fixed = TRUE)
+    expect_match(html, "12", fixed = TRUE)
+  })
+})
+
+test_that("assigned rows show the CDISC label under the variable name", {
+  fx <- .mcr_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_roles_server, args = list(store = fx$store), {
+    session$flushReact()
+    html <- output$slots$html
+    # The demo sidecar labels flow through the preset seed into the rows.
+    expect_match(html, "ar-role-sub", fixed = TRUE)
+    expect_match(html, "Planned Treatment for Period 01", fixed = TRUE)
+  })
+})
+
+test_that("the peek expands a category with value-count bars and caches", {
+  fx <- .mcr_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_roles_server, args = list(store = fx$store), {
+    session$setInputs(peek = list(name = "SEX", nonce = 1))
+    session$flushReact()
+    expect_identical(store$rv$peek, "SEX")
+    html <- output$slots$html
+    expect_match(html, "ar-role-peek", fixed = TRUE)
+    expect_match(html, "ar-peek-bar-row", fixed = TRUE)
+    # The engine facts are memoized per catalog generation.
+    expect_true(exists("peek::ADSL::SEX::0", envir = store$cache))
+
+    # Toggling again folds the panel and clears the open state.
+    session$setInputs(peek = list(name = "SEX", nonce = 2))
+    session$flushReact()
+    expect_identical(store$rv$peek, character(0))
+    expect_no_match(output$slots$html, "ar-role-peek\"", fixed = TRUE)
+  })
+})
+
+test_that("the peek shows min/median/max + precision for a measure", {
+  fx <- .mcr_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_roles_server, args = list(store = fx$store), {
+    session$setInputs(peek = list(name = "AGE", nonce = 1))
+    session$flushReact()
+    html <- output$slots$html
+    expect_match(html, "min 55", fixed = TRUE)
+    expect_match(html, "max 74", fixed = TRUE)
+    expect_match(html, "observed precision", fixed = TRUE)
+    # Numeric column in a both-types slot: the treat-as toggle renders.
+    expect_match(html, "ar-peek-type", fixed = TRUE)
+  })
+})
+
+test_that("the treat-as toggle never renders for a text column", {
+  fx <- .mcr_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_roles_server, args = list(store = fx$store), {
+    session$setInputs(peek = list(name = "SEX", nonce = 1))
+    session$flushReact()
+    # SEX is VARCHAR: it can only ever be a category.
+    expect_no_match(output$slots$html, "ar-peek-type\"", fixed = TRUE)
+  })
+})
+
+test_that("relabel commits a cheap edit: the label lands, nothing goes stale", {
+  fx <- .mcr_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_roles_server, args = list(store = fx$store), {
+    session$setInputs(
+      relabel = list(
+        slot = "summarize",
+        name = "AGE",
+        value = "Age at Baseline",
+        nonce = 1
+      )
+    )
+    obj <- shiny::isolate(selected_object(store))
+    it <- obj@roles[[2]]@items[[1]]
+    expect_identical(it@label, "Age at Baseline")
+    expect_identical(shiny::isolate(store$rv$stale), character(0))
+  })
+})
+
+test_that("retype flips the role_type and marks the proof stale", {
+  fx <- .mcr_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_roles_server, args = list(store = fx$store), {
+    session$setInputs(
+      retype = list(
+        slot = "summarize",
+        name = "AGE",
+        role_type = "category",
+        nonce = 1
+      )
+    )
+    obj <- shiny::isolate(selected_object(store))
+    it <- obj@roles[[2]]@items[[1]]
+    expect_identical(it@role_type, "category")
+    expect_identical(shiny::isolate(store$rv$stale), fx$id)
+
+    # An unknown role_type is refused, never committed.
+    session$setInputs(
+      retype = list(
+        slot = "summarize",
+        name = "AGE",
+        role_type = "banana",
+        nonce = 2
+      )
+    )
+    obj2 <- shiny::isolate(selected_object(store))
+    expect_identical(obj2@roles[[2]]@items[[1]]@role_type, "category")
+  })
+})
+
+test_that(".orphan_problems reports nothing when every problem is slot-owned", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  # A bare summary has only roles-* requirements: the strip stays empty,
+  # the inline fieldset messages carry them -- nothing double-reports.
+  obj <- arpillar::object(id = "o1", type = "summary", dataset = "ADSL")
+  slots <- arpillar::generator("summary")$slots
+  expect_identical(.orphan_problems(obj, slots), character(0))
+})
+
+test_that("the roles pane's empty state directs action when nothing is selected", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+
+  shiny::testServer(mod_card_roles_server, args = list(store = store), {
+    session$flushReact()
+    expect_match(output$slots$html, "No output selected", fixed = TRUE)
+  })
+})

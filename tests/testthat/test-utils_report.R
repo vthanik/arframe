@@ -94,18 +94,20 @@ test_that(".all_objects flattens objects across every page in order", {
   expect_identical(ids, c("out001", "out002", "out003"))
 })
 
-test_that(".resolve_role_type reads measure/category/date off the catalog", {
+test_that(".roles_from_preset resolves role_type off the catalog, category fallback", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
-  expect_identical(.resolve_role_type(con, "ADSL", "AGE"), "measure")
-  expect_identical(.resolve_role_type(con, "ADSL", "TRT01P"), "category")
-})
-
-test_that(".resolve_role_type defaults to 'category' for a var absent from the dataset", {
-  con <- .demo_catalog()
-  withr::defer(arpillar::engine_close(con))
-  # BOGUSVAR is not a column of any demo dataset.
-  expect_identical(.resolve_role_type(con, "ADSL", "BOGUSVAR"), "category")
+  roles <- .roles_from_preset(
+    con,
+    "ADSL",
+    list(treatment = "TRT01P", summarize = c("AGE", "BOGUSVAR"))
+  )
+  items <- roles[[2]]@items
+  expect_identical(items[[1]]@role_type, "measure")
+  # BOGUSVAR is not a column of any demo dataset: never dropped, defaults
+  # to category (+ no label), and the validate step reports it.
+  expect_identical(items[[2]]@role_type, "category")
+  expect_identical(items[[2]]@label, "")
 })
 
 test_that(".roles_from_preset builds one role per slot with per-var role_type", {
