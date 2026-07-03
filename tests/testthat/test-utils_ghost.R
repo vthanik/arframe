@@ -13,8 +13,8 @@ test_that("a draft summary object gets one ghost block per unfilled slot, naming
   # unmet .SLOT_REQS for "summary".
   expect_match(html, "assign treatment arms", fixed = TRUE)
   expect_match(html, "assign summarize", fixed = TRUE)
-  expect_match(html, 'data-ar-region="columns"', fixed = TRUE)
-  expect_match(html, 'data-ar-region="rows"', fixed = TRUE)
+  expect_match(html, 'ar-ghost-columns', fixed = TRUE)
+  expect_match(html, 'ar-ghost-rows', fixed = TRUE)
 })
 
 test_that("filling one slot removes only that slot's ghost block", {
@@ -58,7 +58,7 @@ test_that("a fully configured (READY) object ghosts nothing -- ghost_shell retur
 test_that("an unbound dataset shows a title-region ghost (needs_data precedence)", {
   unbound <- arpillar::object(id = "t1", type = "summary", dataset = "")
   html <- as.character(ghost_shell(unbound))
-  expect_match(html, 'data-ar-region="title"', fixed = TRUE)
+  expect_match(html, 'ar-ghost-title', fixed = TRUE)
 })
 
 # ---- figure ghost: the axes frame ---------------------------------------
@@ -67,7 +67,7 @@ test_that("a draft figure gets an axes-frame-shaped ghost (ar-ghost-axes)", {
   draft_fig <- arpillar::object(id = "f1", type = "line", dataset = "ADVS")
   html <- as.character(ghost_shell(draft_fig))
   expect_match(html, "ar-ghost-axes", fixed = TRUE)
-  expect_match(html, 'data-ar-region="axes"', fixed = TRUE)
+  expect_match(html, 'ar-ghost-axes', fixed = TRUE)
 })
 
 test_that("a draft table gets a rows-shaped ghost (ar-ghost-rows), not the figure axes shape", {
@@ -117,7 +117,7 @@ test_that("an occurrence object missing population gets a title-region ghost", {
   )
   expect_identical(arpillar::output_status(obj), "draft")
   html <- as.character(ghost_shell(obj))
-  expect_match(html, 'data-ar-region="title"', fixed = TRUE)
+  expect_match(html, 'ar-ghost-title', fixed = TRUE)
 })
 
 test_that("an occurrence object missing hierarchy gets a rows-region ghost naming it", {
@@ -134,7 +134,7 @@ test_that("an occurrence object missing hierarchy gets a rows-region ghost namin
     )
   )
   html <- as.character(ghost_shell(obj))
-  expect_match(html, 'data-ar-region="rows"', fixed = TRUE)
+  expect_match(html, 'ar-ghost-rows', fixed = TRUE)
   expect_match(html, "hierarchy", fixed = TRUE)
 })
 

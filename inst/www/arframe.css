@@ -784,7 +784,6 @@ input[type="radio"] {
   padding: var(--ar-space-2);
   margin-bottom: var(--ar-space-4);
   border-radius: var(--ar-radius);
-  cursor: pointer;
 }
 .ar-paper-number {
   font-size: 12px;
@@ -835,43 +834,8 @@ input[type="radio"] {
   border-top: 1px solid var(--ar-rule-2);
 }
 
-/* -- page regions: hover/select outline, per design spec #4/#6 -- */
-[data-ar-region] {
-  outline-offset: 3px;
-  cursor: pointer;
-}
-[data-ar-region]:hover {
-  outline: 1.5px solid var(--ar-accent);
-  background: var(--ar-accent-weak);
-}
-.ar-region-active {
-  outline: 1.5px solid var(--ar-accent) !important;
-}
-/* v5 signature (decision #8): the proofreader MARGIN MARK. Hovering a
-   region stamps its name into the artifact's left margin -- pure CSS off
-   the data attribute, no JS, no extra markup. Regions inside the paper
-   only; the desk's padding provides the margin the chip sits in. */
-.ar-paper [data-ar-region] {
-  position: relative;
-}
-.ar-paper [data-ar-region]:hover::before,
-.ar-paper .ar-region-active::before {
-  content: attr(data-ar-region);
-  position: absolute;
-  left: -92px;
-  top: 2px;
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 8.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ar-accent);
-  border: 1px solid var(--ar-accent);
-  border-radius: var(--ar-radius-sm);
-  padding: 1px 6px;
-  background: var(--ar-paper);
-  pointer-events: none;
-  white-space: nowrap;
-}
+/* The canvas is a read-only tabular preview (no click-to-edit regions, no
+   proofreader margin-marks) -- all editing lives in the right rail. */
 
 /* -- the `.tabular-doc` override: maps the tabular HTML backend's own
    typography onto the Galley mono face (design spec #2, "THE ENTIRE
@@ -914,16 +878,9 @@ input[type="radio"] {
   display: flex;
   gap: var(--ar-space-2);
   align-items: center;
-  cursor: pointer;
   font-family: "IBM Plex Mono", monospace;
   font-size: 11px;
   margin-bottom: var(--ar-space-3);
-}
-.ar-ghost-slot:hover,
-.ar-ghost-slot:focus-visible {
-  border-color: var(--ar-accent);
-  color: var(--ar-accent);
-  background: var(--ar-accent-weak);
 }
 .ar-ghost-plus {
   flex: 0 0 auto;
@@ -1009,23 +966,62 @@ input[type="radio"] {
    see 02 frame). The active tab is the `ar-insp-tab-*` class on the card
    root (the "ar-insp-tab" message) -- pure CSS pane flip, no remount. */
 .ar-card {
-  flex: 0 0 260px;
+  flex: 0 0 300px;
   height: 100%;
   background: var(--ar-card);
   border-left: 1px solid var(--ar-rule);
   display: flex;
   flex-direction: column;
   min-width: 0;
+  position: relative;
   transition: flex-basis var(--ar-motion-slow) var(--ar-motion-ease);
+}
+/* No basis transition while the user is dragging the resize handle. */
+.ar-card.ar-resizing {
+  transition: none;
+  user-select: none;
+}
+/* -- resize handle (Part C): a thin col-resize strip on the rail's left
+   edge; arframe.js drags it to set the rail's flex-basis. -- */
+.ar-insp-resize {
+  position: absolute;
+  left: -3px;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: col-resize;
+  z-index: 6;
+}
+.ar-insp-resize:hover,
+.ar-card.ar-resizing .ar-insp-resize {
+  background: linear-gradient(
+    to right,
+    transparent 2px,
+    var(--ar-accent) 2px,
+    var(--ar-accent) 4px,
+    transparent 4px
+  );
+}
+.ar-insp-collapsed .ar-insp-resize {
+  display: none;
 }
 .ar-insp-collapsed .ar-card {
   flex: 0 0 34px;
 }
 .ar-insp-full {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   height: 100%;
   min-height: 0;
+}
+/* The pane body / footer / telemetry column, to the right of the vertical
+   tab strip. */
+.ar-insp-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 .ar-insp-collapsed .ar-insp-full {
   display: none;
@@ -1040,21 +1036,26 @@ input[type="radio"] {
   padding-top: var(--ar-space-2);
 }
 
-/* -- tab strip -- */
+/* -- tab strip: VERTICAL, on the rail's left side -- */
 .ar-insp-tabs {
+  flex: 0 0 74px;
   display: flex;
-  align-items: center;
-  border-bottom: 1px solid var(--ar-rule);
-  padding-right: 2px;
+  flex-direction: column;
+  align-items: stretch;
+  border-right: 1px solid var(--ar-rule);
+  padding: var(--ar-space-2) 0;
+}
+.ar-insp-tabs-spacer {
+  flex: 1 1 auto;
 }
 .ar-insp-tab {
-  flex: 1 1 auto;
   background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
+  border-left: 2px solid transparent;
   font-size: 11.5px;
+  text-align: left;
   color: var(--ar-ink-4);
-  padding: 8px 0;
+  padding: 7px 10px;
   cursor: pointer;
 }
 .ar-insp-tab:hover {
@@ -1065,11 +1066,11 @@ input[type="radio"] {
 .ar-insp-tab-filters .ar-insp-tab[data-ar-insp-tab="filters"],
 .ar-insp-tab-ranks .ar-insp-tab[data-ar-insp-tab="ranks"] {
   color: var(--ar-ink);
-  border-bottom-color: var(--ar-accent);
+  border-left-color: var(--ar-accent);
   font-weight: 500;
 }
 .ar-insp-cv {
-  flex: 0 0 auto;
+  align-self: center;
 }
 
 /* -- pane stack: every pane mounts, the root tab class picks one -- */

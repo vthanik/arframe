@@ -1,6 +1,37 @@
 # handoff — arframe
 
-## Latest: Data grid-view layout polish (2026-07-03)
+## Latest: UI polish + Report-mode redesign (2026-07-03)
+
+Two merges off `master` @ b2cd72a.
+
+**Polish (`feat/ui-polish2`, 8c9ee62):** softened the GOV.UK yellow+black
+`:focus-visible` to a calm accent 2px ring; trimmed the inspector footer
+buttons (Run/.rtf/code) XXL->XL; the shinyFiles "Choose a study folder" dialog
+now uses IBM Plex Sans (`.sF-modalContainer`); **QC -> Logs** (header button +
+sheet title -- kept the proof-check rows under the Logs name); Data-mode
+Sources rail gets a chevron folding it to a 34px strip (reuses the frame
+`rail` collapse flag).
+
+**Report-mode redesign (`feat/report-redesign`, this branch) -- REVERSES
+locked decisions #7/#8 (galley margin-marks), per the user:**
+- **Read-only canvas** -- the paper is a read-only tabular HTML preview; ALL
+  editing is in the right rail. Removed: `data-ar-region` from title block /
+  filter tag / source line / ghost slots; the arframe.js region-click
+  delegation + drag-guard queue (`arRegionClick`/`arDeferredRegionClicks`) +
+  the tabular-structure annotation; the CSS margin-mark/hover/active rules +
+  cursor:pointer. KEPT: the error-summary jump links still post `input$region`
+  (navigation to the rail), so that observer stays.
+- **Vertical side tabs** -- the inspector Roles/Options/Filters/Ranks strip is
+  now a 74px VERTICAL column on the rail's left (`.ar-insp-full` is a row of
+  `.ar-insp-tabs` + `.ar-insp-main`), active tab = accent left-border.
+- **Draggable rail** -- `.ar-insp-resize` handle on the rail's left edge;
+  arframe.js drags it to set `.ar-card` flex-basis (client-only, clamps
+  220-640px, persists for the session). Default rail width 260 -> 300.
+- Gate 0/0/0; 811 tests; eyeball verified (`.local/screens/redesign.png`):
+  canvas has no `data-ar-region`, tabs vertical 74px + switch, drag 300->439.
+  Ghost-slot keyboard + region-annotation shinytest2 tests removed (obsolete).
+
+## Superseded: Data grid-view layout polish (2026-07-03)
 
 `feat/data-layout` (off `master` @ daca4e0), merged. Three grid-view fixes:
 - **Fill height** — the viewer widget was a fixed `72vh` (dead space below).

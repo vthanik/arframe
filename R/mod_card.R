@@ -124,11 +124,21 @@ mod_card_ui <- function(id) {
   shiny::div(
     id = ns("card"),
     class = "ar-card ar-insp-tab-roles",
+    # A drag handle on the rail's left edge -- arframe.js resizes the rail
+    # width as it is dragged (client-side; the width persists for the session).
+    shiny::tags$div(
+      class = "ar-insp-resize",
+      `data-ar-resize` = "insp",
+      `aria-hidden` = "true"
+    ),
     shiny::div(
       class = "ar-insp-full",
+      # v5 refinement: the tab strip is VERTICAL on the rail's side (not a
+      # horizontal strip on top), so the editing panes get the full height.
       shiny::div(
         class = "ar-insp-tabs",
         lapply(names(.INSP_TABS), function(tab) .insp_tab_btn(ns, tab)),
+        shiny::tags$div(class = "ar-insp-tabs-spacer"),
         shiny::tags$button(
           type = "button",
           class = "ar-icon-btn ar-insp-cv",
@@ -138,53 +148,56 @@ mod_card_ui <- function(id) {
         )
       ),
       shiny::div(
-        class = "ar-insp-body",
+        class = "ar-insp-main",
         shiny::div(
-          class = "ar-insp-pane ar-insp-pane-roles",
-          mod_card_roles_ui(ns("roles"))
-        ),
-        shiny::div(
-          class = "ar-insp-pane ar-insp-pane-options",
-          mod_card_options_ui(ns("options"))
-        ),
-        shiny::div(
-          class = "ar-insp-pane ar-insp-pane-filters",
-          mod_card_filters_ui(ns("filters"))
-        ),
-        shiny::div(
-          class = "ar-insp-pane ar-insp-pane-ranks",
-          .card_coming_stub(
-            "ranks",
-            "Top-N and incidence cutoffs arrive with the AE hierarchy table"
+          class = "ar-insp-body",
+          shiny::div(
+            class = "ar-insp-pane ar-insp-pane-roles",
+            mod_card_roles_ui(ns("roles"))
+          ),
+          shiny::div(
+            class = "ar-insp-pane ar-insp-pane-options",
+            mod_card_options_ui(ns("options"))
+          ),
+          shiny::div(
+            class = "ar-insp-pane ar-insp-pane-filters",
+            mod_card_filters_ui(ns("filters"))
+          ),
+          shiny::div(
+            class = "ar-insp-pane ar-insp-pane-ranks",
+            .card_coming_stub(
+              "ranks",
+              "Top-N and incidence cutoffs arrive with the AE hierarchy table"
+            )
           )
-        )
-      ),
-      shiny::div(
-        class = "ar-insp-act",
-        shiny::tags$button(
-          id = ns("run"),
-          type = "button",
-          class = "ar-insp-run action-button",
-          .icon("play", 11),
-          "Run",
-          # U+2318 PLACE OF INTEREST SIGN + U+21B5 CARRIAGE RETURN -- \u
-          # escapes keep R/ ASCII-clean (R CMD check portability rule).
-          shiny::span(class = "ar-insp-kbd ar-mono", "\u2318\u21b5")
         ),
-        shiny::downloadLink(
-          ns("rtf"),
-          label = shiny::tagList(.icon("export", 12), ".rtf"),
-          class = "ar-insp-dl"
+        shiny::div(
+          class = "ar-insp-act",
+          shiny::tags$button(
+            id = ns("run"),
+            type = "button",
+            class = "ar-insp-run action-button",
+            .icon("play", 11),
+            "Run",
+            # U+2318 PLACE OF INTEREST SIGN + U+21B5 CARRIAGE RETURN -- \u
+            # escapes keep R/ ASCII-clean (R CMD check portability rule).
+            shiny::span(class = "ar-insp-kbd ar-mono", "\u2318\u21b5")
+          ),
+          shiny::downloadLink(
+            ns("rtf"),
+            label = shiny::tagList(.icon("export", 12), ".rtf"),
+            class = "ar-insp-dl"
+          ),
+          shiny::tags$button(
+            id = ns("code"),
+            type = "button",
+            class = "ar-insp-dl action-button",
+            `aria-label` = "View reproduction code",
+            .icon("code", 12)
+          )
         ),
-        shiny::tags$button(
-          id = ns("code"),
-          type = "button",
-          class = "ar-insp-dl action-button",
-          `aria-label` = "View reproduction code",
-          .icon("code", 12)
-        )
-      ),
-      shiny::uiOutput(ns("telemetry"), class = "ar-insp-tel ar-mono")
+        shiny::uiOutput(ns("telemetry"), class = "ar-insp-tel ar-mono")
+      )
     ),
     shiny::div(
       class = "ar-insp-slim",

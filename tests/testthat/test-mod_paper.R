@@ -597,30 +597,24 @@ test_that("mod_paper: the code download writes a parse()-clean .R", {
 
 # ---- JS bridge smoke test ----------------------------------------------
 
-test_that("arframe.js contains the region-click delegation and the drag-guard queue", {
+test_that("arframe.js: the read-only canvas carries no region-click machinery", {
   js <- readLines(
     system.file("www", "arframe.js", package = "arframe"),
     warn = FALSE
   )
   txt <- paste(js, collapse = "\n")
-  expect_match(txt, "data-ar-region", fixed = TRUE)
-  expect_match(txt, "arRegionClick", fixed = TRUE)
-  expect_match(txt, "arFlushDeferredRegionClicks", fixed = TRUE)
-  expect_match(txt, "arDeferredRegionClicks", fixed = TRUE)
-  expect_match(txt, "ar-paper-kind", fixed = TRUE)
-  # v5 (decision #7/#8): the fit/page width handler is GONE; in its place
-  # the shiny:value hook annotates tabular's own emitted structure so the
-  # margin-mark regions bind to the engine's classes.
+  # The canvas is a read-only tabular preview -- no region-click delegation,
+  # no drag-guard queue, no margin-mark annotation of tabular's structure.
+  expect_no_match(txt, "arRegionClick", fixed = TRUE)
+  expect_no_match(txt, "arDeferredRegionClicks", fixed = TRUE)
+  expect_no_match(txt, "data-ar-region", fixed = TRUE)
+  expect_no_match(txt, "tabular-table thead", fixed = TRUE)
   expect_no_match(txt, "ar-paper-width", fixed = TRUE)
-  expect_match(txt, "shiny:value", fixed = TRUE)
-  expect_match(txt, "tabular-table thead", fixed = TRUE)
-  # Code view (S4): the desk-swap handler and the clipboard Copy handler.
+  # What stays: the table/figure class flip, plus the code-view desk-swap and
+  # the clipboard Copy handler.
+  expect_match(txt, "ar-paper-kind", fixed = TRUE)
   expect_match(txt, "ar-code-view", fixed = TRUE)
   expect_match(txt, "data-ar-copy", fixed = TRUE)
-  # a ghost slot's `role="button"` + `tabindex="0"` promise (utils_ghost.R)
-  # needs a matching Enter/Space keydown handler -- a plain div does not
-  # natively fire `click` on those keys the way a real <button> does.
-  expect_match(txt, "keydown", fixed = TRUE)
 })
 
 # ---- end-to-end: the real arframe() launcher, a real browser ---------------
@@ -657,36 +651,11 @@ test_that("arframe() paper: a READY table renders live, screenshots the payoff",
   }
 })
 
-test_that("arframe() paper: a focused ghost slot fires input$region on Enter (keyboard activation)", {
-  skip_on_cran()
-  app <- shinytest2::AppDriver$new(
-    app_dir = testthat::test_path("apps/paper"),
-    name = "paper-keyboard",
-    height = 900,
-    width = 1440
-  )
-  withr::defer(app$stop())
+# The former galley region tests -- ghost-slot keyboard activation and
+# tabular-structure region annotation -- are gone with the read-only canvas
+# redesign: nothing on the canvas is a click/keyboard target anymore.
 
-  # out003 is the DRAFT crosstab (ghost shell).
-  app$click(selector = '.ar-toc-row[data-ar-id="out003"]')
-  app$wait_for_idle()
-
-  app$run_js("document.querySelector('[data-ar-region][tabindex]').focus();")
-  focused_region <- app$get_js(
-    "document.activeElement.getAttribute('data-ar-region')"
-  )
-  expect_identical(focused_region, "columns")
-
-  app$run_js(paste0(
-    "var el = document.activeElement;",
-    "var ev = new KeyboardEvent('keydown', {key: 'Enter', bubbles: true, cancelable: true});",
-    "el.dispatchEvent(ev);"
-  ))
-  app$wait_for_idle()
-  expect_identical(app$get_value(input = "paper-region"), "columns")
-})
-
-test_that("arframe() paper: a ready render annotates tabular's own structure as regions (v5)", {
+test_that("arframe() paper: a ready render never cosplays as a page (decision #7)", {
   skip_on_cran()
   app <- shinytest2::AppDriver$new(
     app_dir = testthat::test_path("apps/paper"),
@@ -699,19 +668,10 @@ test_that("arframe() paper: a ready render annotates tabular's own structure as 
   app$click(selector = '.ar-toc-row[data-ar-id="out001"]')
   app$wait_for_idle()
 
-  # The margin-mark hit zones bind to the ENGINE's own emitted structure
-  # (decision #8) -- arframe annotates, it never re-typesets.
-  thead_region <- app$get_js(
-    "document.querySelector('.ar-paper .tabular-table thead')?.dataset.arRegion"
-  )
-  expect_identical(thead_region, "columns")
-  tbody_region <- app$get_js(
-    "document.querySelector('.ar-paper .tabular-table tbody')?.dataset.arRegion"
-  )
-  expect_identical(tbody_region, "rows")
-
-  # No page cosplay anywhere in the artifact (decision #7).
+  # The canvas is a read-only tabular preview -- no clickable region hooks.
   sheet_html <- app$get_html("#paper-sheet", outer_html = TRUE)
+  expect_no_match(sheet_html, "data-ar-region", fixed = TRUE)
+  # No page cosplay anywhere in the artifact.
   expect_no_match(sheet_html, "runninghead", fixed = TRUE)
   expect_no_match(sheet_html, "Page 1 of 1", fixed = TRUE)
 })
@@ -741,10 +701,8 @@ test_that("a filtered output shows the Population tag routed to the filters regi
       })
       session$flushReact()
       html <- output$sheet_html_slot$html
-      # The tag names the preset and is its own click region (the nested
-      # [data-ar-region] fires innermost-first in the JS delegation).
+      # The tag names the population preset (read-only -- no click region).
       expect_match(html, "ar-paper-filtertag", fixed = TRUE)
-      expect_match(html, 'data-ar-region="filters"', fixed = TRUE)
       expect_match(html, "Population: Safety population", fixed = TRUE)
     }
   )

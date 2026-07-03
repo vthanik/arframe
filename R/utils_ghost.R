@@ -76,12 +76,12 @@
 #' clicking the eventual real content.
 #' @noRd
 .ghost_slot <- function(region, hint) {
+  # Read-only canvas: the ghost slot is a static "what's still missing"
+  # indicator, not a click target (editing happens in the right rail). It
+  # keeps the region class for shape/layout, but no `data-ar-region` /
+  # `role="button"` / `tabindex` -- nothing on the canvas is interactive.
   shiny::tags$div(
     class = "ar-ghost-slot",
-    `data-ar-region` = region,
-    tabindex = "0",
-    role = "button",
-    `aria-label` = paste0("Configure: ", hint),
     shiny::span(class = "ar-ghost-plus", "+"),
     shiny::span(class = "ar-ghost-hint ar-mono", hint)
   )

@@ -100,20 +100,8 @@ function arInitSortables() {
       onStart: function () {
         document.body.dataset.arDragging = "true";
       },
-      // `arFlushDeferredRegionClicks` (defined further down, in the Task-9
-      // paper section) is called here -- NOT via a `shiny:inputchanged`
-      // listener keyed on the input's name -- so the flush is deterministic
-      // and does not depend on guessing every current/future sortable
-      // input's naming pattern. `typeof` guards the call because this
-      // function runs before the paper section's declaration is READ in
-      // source order is irrelevant (function declarations hoist), but
-      // keeping the guard costs nothing and protects a future refactor that
-      // splits this file.
       onEnd: function () {
         delete document.body.dataset.arDragging;
-        if (typeof arFlushDeferredRegionClicks === "function") {
-          arFlushDeferredRegionClicks();
-        }
         var attr = el.getAttribute("data-ar-sortable-attr");
         var order = Array.prototype.map.call(
           el.querySelectorAll(el.getAttribute("data-ar-sortable-item")),
@@ -309,78 +297,9 @@ document.addEventListener("DOMContentLoaded", function () {
   }).observe(slot, { childList: true, subtree: true });
 });
 
-// The paper (Task 9): region-click delegation, the class-flip message
-// handlers (table/figure kind, fit/page width), and click-to-select
-// styling on the active region.
-
-// THE CONCURRENT-MUTATOR DRAG GUARD (deferred from Task 7, landing here --
-// see the `document.body.dataset.arDragging` comment in `arInitSortables()`
-// above). mod_paper is the first SECOND module that re-renders off
-// `store$rv$report`/`store$rv$selected` while a Contents TOC drag can be
-// physically in progress (`arInitSortables()`'s `onStart`/`onEnd` sets and
-// clears the flag for exactly that window). The concrete risk this guards
-// against: a region click (real furniture, a ghost slot, or an error-
-// summary jump link) firing `Shiny.setInputValue` WHILE the mouse button is
-// still down on a TOC row -- e.g. a drag gesture that clips a paper region
-// as it starts, or a synthetic/automated click landing mid-gesture in a
-// test. `open_card()` only touches `rv$region`/`rv$card` (never
-// `rv$report`), so this is not today's most dangerous race, but the guard
-// is written for the general contract the brief asks for: NO Shiny input
-// that could drive a report-triggered re-render fires while `arDragging` is
-// set, queued instead and flushed the instant the flag clears. `arRegionClick()`
-// is the ONE function both the real click delegation below and any future
-// paper-triggered input (fit/page toggle is local-only CSS, so it does not
-// need the guard) route through, so the guard lives in one place.
-var arDeferredRegionClicks = [];
-function arRegionClick(host, region) {
-  if (document.body.dataset.arDragging) {
-    // Queue rather than drop: a click physically landed, the user's intent
-    // should not silently vanish just because it raced a drag -- it fires
-    // the instant the drag's `onEnd` clears the flag (see the flush call
-    // appended to `onEnd` below).
-    arDeferredRegionClicks.push({ host: host, region: region });
-    return;
-  }
-  Shiny.setInputValue(host + "-region", region, { priority: "event" });
-}
-function arFlushDeferredRegionClicks() {
-  if (arDeferredRegionClicks.length === 0) return;
-  var queued = arDeferredRegionClicks;
-  arDeferredRegionClicks = [];
-  queued.forEach(function (c) {
-    Shiny.setInputValue(c.host + "-region", c.region, { priority: "event" });
-  });
-}
-// The flush itself is called directly from `arInitSortables()`'s `onEnd`
-// (above, right after it clears `document.body.dataset.arDragging`) -- a
-// direct call is deterministic and needs no assumption about a reorder
-// input's name pattern, unlike listening for `shiny:inputchanged`.
-
-$(document).on("click", "[data-ar-region]", function (e) {
-  e.stopPropagation();
-  var host = $(this).closest("[data-ar-paper]").attr("data-ar-paper");
-  if (!host) return;
-  arRegionClick(host, this.getAttribute("data-ar-region"));
-  document
-    .querySelectorAll(".ar-region-active")
-    .forEach(function (el) {
-      el.classList.remove("ar-region-active");
-    });
-  this.classList.add("ar-region-active");
-});
-
-// A ghost slot carries `role="button"` + `tabindex="0"` (utils_ghost.R) so
-// it is keyboard-focusable and announced as a button -- but a plain `div`,
-// unlike a real `<button>`/`<a>`, does not natively fire `click` on
-// Enter/Space, so that promise needs an explicit handler. Real (non-ghost)
-// furniture regions are NOT focusable (no `tabindex`), so this only ever
-// matches a ghost slot; `e.preventDefault()` stops Space from also
-// scrolling the page, the standard `role="button"` keyboard contract.
-$(document).on("keydown", "[data-ar-region][tabindex]", function (e) {
-  if (e.key !== "Enter" && e.key !== " ") return;
-  e.preventDefault();
-  $(this).trigger("click");
-});
+// The paper is a READ-ONLY tabular preview: no region-click delegation and
+// no editable margin-marks -- editing happens entirely in the right rail.
+// Only the table/figure class-flip message handler remains.
 
 Shiny.addCustomMessageHandler("ar-paper-kind", function (m) {
   var el = document.getElementById(m.id);
@@ -388,26 +307,6 @@ Shiny.addCustomMessageHandler("ar-paper-kind", function (m) {
   el.classList.remove("ar-paper-kind-table", "ar-paper-kind-figure");
   if (m.kind === "table") el.classList.add("ar-paper-kind-table");
   if (m.kind === "figure") el.classList.add("ar-paper-kind-figure");
-});
-
-// v5 galley regions (decision #8): after each sheet render, annotate the
-// ENGINE's own emitted structure so region hover/click binds to tabular's
-// classes -- arframe decorates the typography, it never re-typesets. The
-// hook fires on shiny:value for the paper's html slot; setTimeout(0) lets
-// Shiny finish swapping the DOM first.
-$(document).on("shiny:value", function (e) {
-  if (!e.name || e.name.indexOf("sheet_html_slot") === -1) return;
-  setTimeout(function () {
-    var root = document.querySelector(".ar-paper");
-    if (!root) return;
-    var thead = root.querySelector(".tabular-table thead");
-    if (thead) thead.setAttribute("data-ar-region", "columns");
-    var tbody = root.querySelector(".tabular-table tbody");
-    if (tbody) tbody.setAttribute("data-ar-region", "rows");
-    root.querySelectorAll(".tabular-footnote").forEach(function (f) {
-      f.setAttribute("data-ar-region", "footnotes");
-    });
-  }, 0);
 });
 
 // The docked inspector (v5, decision #8): the active-tab class flip on the
@@ -489,3 +388,31 @@ $(document).on("click", "[data-ar-copy]", function () {
     document.execCommand("copy");
   }
 });
+
+// Inspector rail resize (Part C): drag the handle on the rail's left edge to
+// set the rail width. Client-side only -- the inline flex-basis persists for
+// the session; `ar-resizing` disables the width transition + text selection
+// during the drag.
+(function () {
+  var MIN = 220,
+    MAX = 640;
+  var dragging = null;
+  document.addEventListener("mousedown", function (e) {
+    var h = e.target.closest ? e.target.closest("[data-ar-resize]") : null;
+    if (!h) return;
+    dragging = h.closest(".ar-card");
+    if (!dragging) return;
+    dragging.classList.add("ar-resizing");
+    e.preventDefault();
+  });
+  document.addEventListener("mousemove", function (e) {
+    if (!dragging) return;
+    var w = Math.max(MIN, Math.min(MAX, window.innerWidth - e.clientX));
+    dragging.style.flexBasis = w + "px";
+  });
+  document.addEventListener("mouseup", function () {
+    if (!dragging) return;
+    dragging.classList.remove("ar-resizing");
+    dragging = null;
+  });
+})();

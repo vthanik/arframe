@@ -50,7 +50,6 @@
 .title_block <- function(object) {
   shiny::tags$div(
     class = "ar-paper-title-block ar-mono",
-    `data-ar-region` = "title",
     shiny::tags$div(class = "ar-paper-number", .number_line(object)),
     shiny::tags$div(
       class = "ar-paper-title-text",
@@ -62,7 +61,6 @@
     if (length(object@filters) > 0L) {
       shiny::tags$div(
         class = "ar-paper-filtertag",
-        `data-ar-region` = "filters",
         paste0("Population: ", .filters_tag_label(object@filters))
       )
     }
@@ -94,7 +92,6 @@
   )
   shiny::tags$div(
     class = "ar-paper-source ar-mono",
-    `data-ar-region` = "source",
     txt
   )
 }
