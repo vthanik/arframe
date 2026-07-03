@@ -338,8 +338,8 @@
   get(key, envir = store$cache)
 }
 
-#' The number of distribution bars a category peek shows before folding the
-#' tail into "+ n more values".
+# The number of distribution bars a category peek shows before folding the
+# tail into "+ n more values".
 .PEEK_BARS <- 6L
 
 #' The peek panel body: the display-label editor (a cheap commit -- labels

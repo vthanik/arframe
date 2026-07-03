@@ -53,3 +53,48 @@ test_that("the render-error summary announces itself with role=alert", {
   )
   expect_match(html, 'role="alert"', fixed = TRUE)
 })
+
+test_that("the pane depth controls are labelled and stateful (stage 13)", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  id <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
+  shiny::isolate(store$rv$selected <- id)
+
+  # Roles: peek toggle carries aria-expanded + a per-variable label; the
+  # remove button names the variable and the slot.
+  shiny::testServer(mod_card_roles_server, args = list(store = store), {
+    session$flushReact()
+    html <- output$slots$html
+    expect_match(html, 'aria-label="Show details for AGE"', fixed = TRUE)
+    expect_match(html, 'aria-expanded="false"', fixed = TRUE)
+    expect_match(
+      html,
+      'aria-label="Remove AGE from summarize"',
+      fixed = TRUE
+    )
+
+    session$setInputs(peek = list(name = "AGE", nonce = 1))
+    session$flushReact()
+    html <- output$slots$html
+    expect_match(html, 'aria-label="Hide details for AGE"', fixed = TRUE)
+    expect_match(html, 'aria-expanded="true"', fixed = TRUE)
+    expect_match(html, 'aria-label="Display label for AGE"', fixed = TRUE)
+    expect_match(html, 'aria-pressed="true"', fixed = TRUE)
+  })
+
+  # Options: stepper buttons + footnote rows + statistics rows.
+  shiny::testServer(mod_card_options_server, args = list(store = store), {
+    session$flushReact()
+    html <- output$pane$html
+    expect_match(html, 'aria-label="Decrease decimals"', fixed = TRUE)
+    expect_match(html, 'aria-label="Increase decimals"', fixed = TRUE)
+    expect_match(html, 'aria-label="Footnote 1"', fixed = TRUE)
+    expect_match(html, 'aria-label="Remove footnote 1"', fixed = TRUE)
+    expect_match(
+      html,
+      'aria-label="Remove statistic Mean (SD)"',
+      fixed = TRUE
+    )
+  })
+})

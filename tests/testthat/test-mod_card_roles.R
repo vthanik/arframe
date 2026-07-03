@@ -75,13 +75,14 @@ test_that("a stale figure region ('axes') on a table shows the full editor, neve
 test_that("mod_card_roles_server keeps its pane computing while hidden", {
   # The panes are always mounted and CSS-toggled; a suspended-when-hidden
   # output would freeze (or blank) the editor after a pure class-flip tab
-  # switch. Pin the literal contract line, as the sibling panes do.
-  src <- readLines(test_path("..", "..", "R", "mod_card_roles.R"))
-  expect_true(any(grepl(
-    'outputOptions(output, "slots", suspendWhenHidden = FALSE)',
+  # switch. outputOptions() is not introspectable under testServer's mock
+  # session, so pin the call in the server body (works installed too).
+  src <- paste(deparse(body(mod_card_roles_server)), collapse = "\n")
+  expect_match(
     src,
+    'outputOptions(output, "slots", suspendWhenHidden = FALSE)',
     fixed = TRUE
-  )))
+  )
 })
 
 test_that("mod_card_roles_server: the slots pane renders without a region focus", {

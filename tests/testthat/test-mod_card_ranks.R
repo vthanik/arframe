@@ -117,10 +117,12 @@ test_that("km: the empty state names why nothing is rankable", {
 })
 
 test_that("the ranks pane keeps computing while hidden", {
-  src <- readLines(test_path("..", "..", "R", "mod_card_ranks.R"))
-  expect_true(any(grepl(
-    'outputOptions(output, "pane", suspendWhenHidden = FALSE)',
+  # outputOptions() is not introspectable under testServer's mock session:
+  # pin the call in the server body (works against the installed package).
+  src <- paste(deparse(body(mod_card_ranks_server)), collapse = "\n")
+  expect_match(
     src,
+    'outputOptions(output, "pane", suspendWhenHidden = FALSE)',
     fixed = TRUE
-  )))
+  )
 })
