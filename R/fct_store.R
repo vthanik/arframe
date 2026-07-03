@@ -66,7 +66,11 @@ new_store <- function(con, report = NULL) {
     # reactive) -- the explorer reads them under `catalog_nonce`, which
     # every mount/delete bumps.
     sources = new.env(parent = emptyenv()),
-    kinds = new.env(parent = emptyenv())
+    kinds = new.env(parent = emptyenv()),
+    # Per-dataset column-metadata memo (name/label/type/length/format), read
+    # from the on-disk file via artoo (`.dataset_meta()`). Keyed by dataset
+    # name; cleared on unmount. Plain env, like sources/kinds.
+    meta = new.env(parent = emptyenv())
   )
 }
 
@@ -355,7 +359,7 @@ cached_ard <- function(store, object) {
 #' @noRd
 .unmount_dataset <- function(store, name) {
   arpillar::unregister_dataset(store$con, name)
-  for (env in list(store$sources, store$kinds)) {
+  for (env in list(store$sources, store$kinds, store$meta)) {
     if (exists(name, envir = env, inherits = FALSE)) {
       rm(list = name, envir = env)
     }

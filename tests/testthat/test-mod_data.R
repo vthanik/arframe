@@ -161,6 +161,10 @@ test_that("mod_data_server: focus, View data opens the grid, back closes it", {
     expect_match(grid_html, "ar-dx-grid", fixed = TRUE)
     expect_match(grid_html, "USUBJID", fixed = TRUE)
     expect_match(grid_html, "ar-colpick", fixed = TRUE)
+    # The property panel + sortable headers ship with the grid.
+    expect_match(grid_html, "ar-prop-body", fixed = TRUE)
+    expect_match(grid_html, 'data-ar-sort="USUBJID"', fixed = TRUE)
+    expect_match(grid_html, 'data-ar-col="USUBJID"', fixed = TRUE)
 
     session$setInputs(grid_back = 1)
     expect_null(store$rv$grid_dataset)
@@ -236,4 +240,62 @@ test_that("arframe() Data mode renders the explorer after a client-side mode swi
   )
   expect_match(srcs, "adam", fixed = TRUE)
   expect_match(srcs, "sdtm", fixed = TRUE)
+})
+
+# ---- column labels / property panel / sort (data meta) ---------------------
+
+test_that(".column_picker shows the label and embeds per-column metadata", {
+  meta <- data.frame(
+    name = c("AGE", "SEX"),
+    label = c("Age in Years", ""),
+    type = c("measure", "category"),
+    length = c("8", "1"),
+    format = c("", ""),
+    stringsAsFactors = FALSE
+  )
+  html <- as.character(.column_picker(meta))
+  expect_match(html, "Age in Years", fixed = TRUE)
+  expect_match(html, 'data-ar-col="AGE"', fixed = TRUE)
+  expect_match(html, 'data-ar-type="measure"', fixed = TRUE)
+  # The first row is pre-selected for the property panel.
+  expect_match(html, "ar-colpick-item-sel", fixed = TRUE)
+})
+
+test_that(".property_panel renders the Property/Value rows for the first column", {
+  meta <- data.frame(
+    name = "AGE",
+    label = "Age in Years",
+    type = "measure",
+    length = "8",
+    format = "8.1",
+    stringsAsFactors = FALSE
+  )
+  html <- as.character(.property_panel(meta))
+  expect_match(html, "ar-prop-body", fixed = TRUE)
+  expect_match(html, "Age in Years", fixed = TRUE)
+  # measure -> the SAS-facing word.
+  expect_match(html, "Numeric", fixed = TRUE)
+  expect_match(html, "8.1", fixed = TRUE)
+})
+
+test_that(".grid_preview headers are typed and sortable, rows keep their original index", {
+  sample <- data.frame(
+    AGE = c(3L, 1L, 2L),
+    SEX = c("M", "F", "M"),
+    stringsAsFactors = FALSE
+  )
+  meta <- data.frame(
+    name = c("AGE", "SEX"),
+    label = c("", ""),
+    type = c("measure", "category"),
+    length = c("", ""),
+    format = c("", ""),
+    stringsAsFactors = FALSE
+  )
+  html <- as.character(.grid_preview(sample, meta))
+  expect_match(html, "ar-dx-th", fixed = TRUE)
+  expect_match(html, 'data-ar-sort="AGE"', fixed = TRUE)
+  expect_match(html, 'data-ar-sort-type="measure"', fixed = TRUE)
+  expect_match(html, 'data-ar-sort-type="category"', fixed = TRUE)
+  expect_match(html, 'data-ar-orig="0"', fixed = TRUE)
 })

@@ -489,3 +489,84 @@ $(document).on("click", "[data-ar-copy]", function () {
     document.execCommand("copy");
   }
 });
+
+// Data mode -- the column property panel (Task: data meta). Clicking a
+// column-picker row fills the Property/Value table from that row's
+// `data-ar-*` metadata, with zero server round-trip (the metadata is already
+// in the DOM). Built with textContent, never innerHTML, so a SAS label can
+// never inject markup.
+$(document).on("click", ".ar-colpick-item", function () {
+  document
+    .querySelectorAll(".ar-colpick-item-sel")
+    .forEach(function (el) {
+      el.classList.remove("ar-colpick-item-sel");
+    });
+  this.classList.add("ar-colpick-item-sel");
+  var d = this.dataset;
+  var typeWord =
+    d.arType === "measure" ? "Numeric" : d.arType === "date" ? "Date" : "Character";
+  var body = document.querySelector(".ar-prop-body");
+  if (!body) return;
+  var props = [
+    ["Label", d.arLabel],
+    ["Name", d.arCol],
+    ["Type", typeWord],
+    ["Length", d.arLen],
+    ["Format", d.arFmt],
+  ];
+  body.textContent = "";
+  props.forEach(function (p) {
+    var tr = document.createElement("tr");
+    var k = document.createElement("td");
+    k.className = "ar-prop-k";
+    k.textContent = p[0];
+    var v = document.createElement("td");
+    v.className = "ar-prop-v";
+    v.textContent = p[1] && p[1].length ? p[1] : "--";
+    tr.appendChild(k);
+    tr.appendChild(v);
+    body.appendChild(tr);
+  });
+});
+
+// Data mode -- client-side typed sort of the 100-row sample grid. Clicking a
+// header cycles asc -> desc -> original; a measure column sorts numerically,
+// anything else lexically; blank/NA cells sort last. The full dataset is
+// never pulled -- this sorts the on-screen sample only.
+$(document).on("click", ".ar-dx-th", function () {
+  var th = this;
+  var table = th.closest("table");
+  if (!table) return;
+  var tbody = table.tBodies[0];
+  var ths = Array.prototype.slice.call(table.querySelectorAll(".ar-dx-th"));
+  var col = ths.indexOf(th);
+  var cur = th.getAttribute("data-ar-dir") || "none";
+  var next = cur === "none" ? "asc" : cur === "asc" ? "desc" : "none";
+  ths.forEach(function (h) {
+    h.removeAttribute("data-ar-dir");
+  });
+  var rows = Array.prototype.slice.call(tbody.rows);
+  if (next === "none") {
+    rows.sort(function (a, b) {
+      return (+a.getAttribute("data-ar-orig")) - (+b.getAttribute("data-ar-orig"));
+    });
+  } else {
+    th.setAttribute("data-ar-dir", next);
+    var numeric = th.getAttribute("data-ar-sort-type") === "measure";
+    var dir = next === "asc" ? 1 : -1;
+    rows.sort(function (a, b) {
+      var x = a.cells[col].textContent;
+      var y = b.cells[col].textContent;
+      var xe = x === "" || x === "NA";
+      var ye = y === "" || y === "NA";
+      if (xe && ye) return 0;
+      if (xe) return 1;
+      if (ye) return -1;
+      if (numeric) return (parseFloat(x) - parseFloat(y)) * dir;
+      return x.localeCompare(y) * dir;
+    });
+  }
+  rows.forEach(function (r) {
+    tbody.appendChild(r);
+  });
+});

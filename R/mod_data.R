@@ -165,13 +165,15 @@
 # ---- drill grid -----------------------------------------------------------
 
 #' The preview grid for one dataset: a breadcrumb (`< sources / <lib> /
-#' <name>`), a column picker (typed badges, all checked), and a sample of
-#' rows. `sample_rows()` caps the pull -- the parquet is never fully read.
+#' <name>`), a left side pane (column list + property panel), and a sortable
+#' sample of rows. `sample_rows()` caps the pull -- the parquet is never fully
+#' read; column labels/formats come from `.dataset_meta()` (memoized artoo
+#' read), the property panel and sort are pure client-side view state.
 #' @noRd
 .data_grid <- function(ns, store, name) {
   folder <- .source_folder(store, name)
   sample <- arpillar::sample_rows(store$con, name, n = 100L)
-  items <- arpillar::data_items(store$con, name)
+  meta <- .dataset_meta(store, name)
   grid <- arpillar::catalog_grid(store$con)
   total <- grid$rows[grid$name == name][[1]]
   shiny::tags$div(
@@ -198,33 +200,96 @@
     ),
     shiny::tags$div(
       class = "ar-dx-grid-body",
-      .column_picker(items),
-      .grid_preview(sample)
+      shiny::tags$div(
+        class = "ar-dx-side",
+        .column_picker(meta),
+        .property_panel(meta)
+      ),
+      .grid_preview(sample, meta)
     )
   )
 }
 
-#' The left column picker inside the grid: one checked row per variable,
-#' with its type badge (A / # / date). Purely a preview affordance in v1
-#' (toggling columns in the grid is a later refinement).
+#' The left column picker inside the grid: one row per variable -- type badge,
+#' name, and (when present) its SAS label. Each row carries the variable's
+#' full metadata as `data-ar-*` attributes so clicking it fills the property
+#' panel with zero server round-trip (arframe.js). The checkbox is a preview
+#' affordance (column toggling in the grid is a later refinement).
 #' @noRd
-.column_picker <- function(items) {
-  rows <- lapply(seq_len(nrow(items)), function(i) {
+.column_picker <- function(meta) {
+  rows <- lapply(seq_len(nrow(meta)), function(i) {
     shiny::tags$div(
-      class = "ar-colpick-item ar-mono",
+      class = paste(
+        "ar-colpick-item ar-mono",
+        if (i == 1L) "ar-colpick-item-sel"
+      ),
+      `data-ar-col` = meta$name[[i]],
+      `data-ar-label` = meta$label[[i]],
+      `data-ar-type` = meta$type[[i]],
+      `data-ar-len` = meta$length[[i]],
+      `data-ar-fmt` = meta$format[[i]],
       shiny::tags$input(type = "checkbox", checked = "checked"),
-      .type_badge(items$type[[i]]),
-      items$name[[i]]
+      .type_badge(meta$type[[i]]),
+      shiny::tags$span(class = "ar-colpick-name", meta$name[[i]]),
+      if (nzchar(meta$label[[i]])) {
+        shiny::tags$span(class = "ar-colpick-label", meta$label[[i]])
+      }
     )
   })
   shiny::tags$div(
     class = "ar-colpick",
     shiny::tags$div(
       class = "ar-label",
-      sprintf("Columns %d", nrow(items))
+      sprintf("Columns %d", nrow(meta))
     ),
     rows
   )
+}
+
+#' The SAS-Studio-style property panel: a Property/Value table for the active
+#' column (the datasetviewer pattern). Server-rendered for the FIRST column so
+#' it is populated before any interaction; arframe.js rewrites the `tbody` on
+#' every column-picker click from that row's `data-ar-*` attributes.
+#' @noRd
+.property_panel <- function(meta) {
+  if (nrow(meta) == 0L) {
+    return(NULL)
+  }
+  shiny::tags$div(
+    class = "ar-prop",
+    shiny::tags$div(class = "ar-label", "Property"),
+    shiny::tags$table(
+      class = "ar-prop-table ar-mono",
+      shiny::tags$tbody(class = "ar-prop-body", .property_rows(meta, 1L))
+    )
+  )
+}
+
+#' The five property rows (Label / Name / Type / Length / Format) for row `i`
+#' of a metadata frame. Kept a separate helper so the initial server render
+#' and arframe.js agree on the exact field set and order. `type` is mapped to
+#' the SAS-facing word (Numeric / Character / Date).
+#' @noRd
+.property_rows <- function(meta, i) {
+  type_word <- switch(
+    meta$type[[i]],
+    measure = "Numeric",
+    date = "Date",
+    "Character"
+  )
+  props <- list(
+    c("Label", meta$label[[i]]),
+    c("Name", meta$name[[i]]),
+    c("Type", type_word),
+    c("Length", meta$length[[i]]),
+    c("Format", meta$format[[i]])
+  )
+  lapply(props, function(p) {
+    shiny::tags$tr(
+      shiny::tags$td(class = "ar-prop-k", p[[1]]),
+      shiny::tags$td(class = "ar-prop-v", if (nzchar(p[[2]])) p[[2]] else "--")
+    )
+  })
 }
 
 #' The typed variable badge (# = measure, A = category, D = date), from an
@@ -241,21 +306,41 @@
   shiny::tags$span(class = paste("ar-chip", cls), glyph)
 }
 
-#' The grid preview table: a mono data grid of the sampled rows.
+#' The grid preview table: a mono data grid of the sampled rows, with
+#' click-to-sort headers. Each `<th>` carries `data-ar-sort` (the column
+#' name) and `data-ar-sort-type` (measure/category/date) so arframe.js sorts
+#' the 100-row sample client-side -- numerically for a measure, lexically
+#' otherwise, cycling asc -> desc -> original. Each `<tr>` keeps its original
+#' index (`data-ar-orig`) so the "original" state restores without a
+#' re-render. Sorting a SAMPLE is honest for a preview -- the full dataset is
+#' never pulled.
 #' @noRd
-.grid_preview <- function(sample) {
+.grid_preview <- function(sample, meta) {
+  types <- stats::setNames(meta$type, meta$name)
   shiny::tags$div(
     class = "ar-dx-grid-wrap",
     shiny::tags$table(
       class = "ar-dx-data",
+      `data-ar-grid` = "true",
       shiny::tags$thead(shiny::tags$tr(
-        lapply(names(sample), function(nm) shiny::tags$th(nm))
+        lapply(names(sample), function(nm) {
+          shiny::tags$th(
+            class = "ar-dx-th",
+            `data-ar-sort` = nm,
+            `data-ar-sort-type` = types[[nm]] %||% "category",
+            shiny::tags$span(class = "ar-dx-th-name", nm),
+            shiny::tags$span(class = "ar-dx-sort-caret")
+          )
+        })
       )),
       shiny::tags$tbody(
         lapply(seq_len(nrow(sample)), function(i) {
-          shiny::tags$tr(lapply(sample[i, , drop = FALSE], function(v) {
-            shiny::tags$td(format(v))
-          }))
+          shiny::tags$tr(
+            `data-ar-orig` = i - 1L,
+            lapply(sample[i, , drop = FALSE], function(v) {
+              shiny::tags$td(format(v))
+            })
+          )
         })
       )
     )
