@@ -5,99 +5,111 @@ shell) on the **arpillar** engine. `arframe()` is the only export; everything
 else is `@noRd`. Binding design spec + plan live in `docs/superpowers/specs/`
 and `docs/superpowers/plans/`.
 
-## STATUS (master @ `5a2129c`, 2026-07-03)
+## STATUS (master @ `a060149`, 2026-07-03, evening session)
 
-Plan Stage-5 (Tasks 1–17) is DONE and merged. On top of it, a large run of UI
-iterations this session (below). **`devtools::check` = 0 errors / 0 warnings**
-(the lone NOTE, "unable to verify current time", is the spurious offline
-time-server check — ignore it). Working tree clean. **Nothing is pushed** —
-see Integration.
+**The inspector full-depth redesign + RTF-parity session is DONE and merged.**
+arframe `devtools::check` = **0/0/0** (929 tests green); arpillar
+(`feat/ui-prereqs` @ `eb3af37`) = **0/0/0** (740 tests green). **Nothing is
+pushed** — publish decision still HELD (see Integration).
 
-## Architecture (what a fresh session must know)
+Eyeballed on the real CDISC pilot mount (decision #9): 20/20 chromote
+assertions, screenshots in `.local/screens/ws-0*.png`, RTF gates green.
 
-- **One injected store** (`new_store(con)` in `fct_store.R`): all draft/edit
-  state in `store$rv` (reactiveValues); modules communicate ONLY through it,
-  never the DOM. Plain-env side maps: `sources`/`kinds` (data provenance),
-  `cache` (ARD memo). `commit()/undo()/redo()`; `update_object()` marks
-  `rv$stale` on a heavy edit (the two-stage `.ard_key()` seam).
-- **Logic lives in arpillar**; modules wire UI↔store. No DBI/tabular/ggplot2
-  in an arframe `render*`/`observe`/`reactive`.
-- **Modules** (`R/mod_*.R`): frame (bar/modes/undo/redo/async-export),
-  contents (TOC), paper (the canvas), card (the inspector),
-  card_roles/options/filters, data (Data mode), add_output (overlay), qc (the
-  "Logs" sheet). Pure walkers in `utils_report.R`; atoms in `utils_atoms.R`
-  (`.fa_names` icon map, `.stamp`, `.action_btn`); ghost shell `utils_ghost.R`;
-  export `fct_export.R`; async `fct_async.R`.
-- **Data mode = embedded `datasetviewer` widget** (in-browser DuckDB,
-  virtualized, full filter/sort/find). `output$dv <-
-  datasetviewer::renderDatasetViewer(dataset_viewer(arpillar::dataset_path(
-  con, name)))`. arframe supplies only the breadcrumb + × close chrome; the
-  SAMPLE-table grid and the whole `.dataset_meta`/`fct_meta` seam were REMOVED
-  when the widget landed.
-- **Report canvas = READ-ONLY tabular preview** (`mod_paper.R`): renders
-  `arpillar::render_spec()` -> `htmltools::as.tags()`. The galley
-  click-to-edit region system (decisions #7/#8) was REMOVED — no
-  `data-ar-region`, no margin-marks, no ghost-slot clicking. Editing is
-  entirely in the right rail. The error-summary jump links still post
-  `input$region` (navigation to the rail) — that observer stays.
-- **Inspector** (`mod_card.R`): a VERTICAL icon+label tab strip
-  (Roles/Options/Filters/Ranks, glyphs table-list/sliders/filter/sort) on the
-  rail's **FAR-RIGHT edge** (CSS `order:1`), role content to its left. A
-  **resize handle** (`.ar-insp-resize`, arframe.js drag) sets the rail width
-  (220–640px, session-persistent). Clicking the ACTIVE tab **collapses** the
-  pane to the 63px icon strip (the strip stays = the show/hide toggle);
-  clicking any tab re-opens. `rv$insp_collapsed` mirrored via the frame's
-  `ar-collapse` message.
+## What this session shipped (user-reported issues → root causes → fixes)
 
-## This session's changes (all merged to master, newest first)
+1. **"Roles tab is empty"** — `.region_slots()`'s switch fallback returned ZERO
+   slots for any stale non-roles region (e.g. `"title"` after a rename jump);
+   plus the roles output was the only pane missing `suspendWhenHidden = FALSE`.
+   Fixed: tab clicks clear `rv$region`; unknown regions fall back to ALL slots;
+   a roles-empty narrowing (stale `"axes"` on a table) falls back too; suspend
+   contract pinned like the sibling panes.
+2. **Footnote "population" badge** — hardcoded row-1 span; deleted (+ CSS).
+   Line 1 keeps its population-subtitle convention by position alone.
+3. **RTF ≠ screen** — arpillar's `.rtf_titles()` dropped the number line +
+   subtitle, `.rtf_footnotes()` dropped the source line, and `.apply_cols()`
+   passed no widths (tabular autofit is EXACT-fit over NBSP-padded cells →
+   Word's font substitution emergency-broke mid-cell). Fixed engine-side:
+   title block = number line + title + footnotes[1]; footnotes += verbatim
+   `options$source` (arframe stamps the date via `.with_source()` /
+   `.report_with_source()` at export time — engine stays byte-deterministic);
+   `.pin_col_widths()` pins every column to `tabular::as_grid()`'s own
+   resolved width + 0.05in slack (slack shrinks to spare printable room).
+   Goldens regenerated deliberately once. Both export legs (per-output .rtf
+   download AND the export-package async/sync paths) carry the source line.
+4. **"Rail is 5% of the depth"** — all four panes rebuilt on REAL engine
+   capability:
+   - **Roles**: SOURCE row (dataset + `detect_structure` + dims), cardinality
+     hints from `generator()$slots` min/max, CDISC labels everywhere (see
+     seam below), per-row **variable peek** (label editor = cheap commit;
+     treat-as measure/category toggle for numeric cols = heavy commit;
+     live distribution — `value_counts()` bars / `column_range()` +
+     `column_precision()`), oracle problems strip, action-directing empty
+     state. `.ard_key` no longer hashes labels (relabel renders live);
+     `.roles_digest` now includes label + role_type.
+   - **Options**: footnote drag-reorder (grips, index re-keyed after drop),
+     decimals stepper + derived-precision hint, **stats membership+order
+     editor** (new engine `stats` option, default-elided so goldens never
+     churn), ordering keys filtered out via `.RANKS_KEYS`.
+   - **Filters**: one chip per `*FL` category flag (CDISC map SAFFL/ITTFL/
+     EFFFL/FASFL/PPROTFL/RANDFL/ENRLFL/COMPLFL; bare "<FL> = Y" fallback) via
+     one shared `preset_flag` input; humanized operator labels over the EXACT
+     engine values; paper Population tag recognizes any canonical flag.
+   - **Ranks**: real module (`mod_card_ranks.R`) replaces the stub —
+     summary/crosstab row-block order (SAME `.reorder_slot()` helper as
+     Roles), occurrence `hier_sort` radios (default-elided), line/box
+     relocated `x_order`, km honest empty state.
+5. **Engine seams added (arpillar)**: `data_items()` now fills `label` from
+   the artoo Dataset-JSON parquet sidecar (footer-only read, forgiving; the
+   REAL pilot data already carries full CDISC labels); new export
+   `column_range()` (min/median/max pushed down); `options$stats` for
+   summary; `.rtf_source()`; width pinning. The demo catalog now stamps
+   labels through the same sidecar seam.
+6. **Robustness from the eyeball**: `input$region` drops non-string payloads
+   (a malformed post used to CRASH the session via `open_card`); stepper
+   input width outranks the generic 88px rule; population chips wrap (pilot
+   ADSL has NINE flags); SOURCE dims never break mid-value.
 
-1. `5a2129c` inspector tab strip doubles as a show/hide toggle.
-2. `7df8e6d` ONE compact XL button size app-wide — set Bootstrap 5's
-   `--bs-btn-*` vars on `.btn` (default was ~16px/38px = the "XXXL"); softened
-   the last two yellow focus rings (`.ar-add-card:focus`, `.ar-problem:focus`).
-3. `b63b815` inspector tabs -> far-right icon+label strip (mockup piece "D").
-4. `d3c2bd4` Report redesign: read-only canvas + vertical side tabs +
-   draggable rail (reverses locked decisions #7/#8).
-5. `8c9ee62` focus ring softened globally, inspector footer buttons trimmed,
-   shinyFiles dialog -> IBM Plex, **QC renamed to Logs**, Sources rail chevron.
-6. `b2cd72a`/`daca4e0`/`f6d445a` Data mode: embed datasetviewer (drop the
-   sample grid), IBM Plex on the widget, grid fills height + X-close + hidden
-   list toolbar.
-7. Earlier: artoo labels/property/sort (SUPERSEDED by the widget); dropped
-   nanoparquet, `artoo` -> Imports; Tasks 15/16/17 (Logs sheet, mirai async
-   export, a11y/responsive).
+## Gotchas learned this session (do not relearn)
 
-## NEXT STEPS — the mockup redesign (user is steering here)
+- **tabular width mechanism**: autofit resolves EXACT-fit inches from AFM
+  metrics over the decimal-padded (NBSP — never a legal break) cells;
+  `tabular::as_grid(spec)@metadata$cols[[nm]]@width` is the resolved surface
+  (a unit test pins its shape). `cols()` WARNS if you re-pass the grid's
+  resolved col_specs (group_display baggage) — build fresh `col_spec()`s;
+  an unset align resolves to NA (pass NULL). Content mode never shrinks
+  below natural width; it warns and overflows — don't fight it.
+- **`.mount_folder` names datasets `toupper(file stem)`**; `report_from_json`
+  accepts a path; `arframe(project=)` + folders is the clean way to seed an
+  eyeball session (`.local/screens/launcher.R` + `driver.R` are reusable).
+- **The store is per-PROCESS**: a second chromote/driver run against the same
+  app sees the first run's selection/peeks. Restart between drives.
+- **`input$region` contract is a plain string** (jump links, ghosts).
+- **testServer**: `outputOptions` pins must grep `deparse(body(<server>))`,
+  not the source file (R/ is absent under installed check).
+- The picker pack format is now `NAME\x1fTYPE\x1fLABEL` — the filters row
+  re-seed MUST pack identically or selectize resets the row (regression
+  test pins it).
 
-The user shared an IDE-style mockup ("Widget from visualize show_widget") and
-wants arframe to move toward it. It **supersedes binding decision #1** (which
-said NO canvas tabs, NO dual rails). Pieces:
+## NEXT STEPS
 
-- **DONE — D**: right-rail icon tabs on the far edge (`b63b815`).
-- **PENDING — C**: richer OUTLINE (rename CONTENTS): group TABLES/FIGURES/
-  LISTINGS, colored status **dot** + word (Ready/Draft/Needs data) + TLF
-  number, card-highlighted active row.
-- **PENDING — A**: left **activity bar** (Data / Outputs / Outline / Suggest /
-  Review vertical icon rail). Ask which of the 5 are real vs placeholder.
-- **PENDING — B**: **canvas per-output tabs** (Demographics / Adverse events /
-  … / +). Biggest — adds multi-open-output state, reverses "no canvas tabs".
-
-Suggested order if they say continue: C -> A -> B. Confirm scope before B.
+- **Mockup roadmap (user steering, from the previous session)**: C (richer
+  OUTLINE: grouped TABLES/FIGURES/LISTINGS, colored status dot + word),
+  A (left activity bar — ask which of the 5 icons are real), B (canvas
+  per-output tabs — biggest, confirm scope first). Order C → A → B.
+- Possible inspector follow-ups (all engine-gated, none started):
+  `total_column` option (ARD arm pooling — heavier), dataset switching
+  in-place on the SOURCE row (mechanically trivial via update_object; roles
+  keep stale names until validate), per-row filter match counts.
+- `.ar-insp-slim` CSS is still vestigial; a few section-08 selectors remain
+  dead (harmless) — later sweep.
 
 ## Integration / push — NOTHING PUSHED (decision pending)
 
-- **No GitHub repos exist**: `gh repo view vthanik/arpillar` and
-  `vthanik/arframe` both 404. `vthanik/tabular` DOES exist (public). arframe
-  `DESCRIPTION` Remotes: `vthanik/arpillar`, `vthanik/artoo`,
-  `vthanik/datasetviewer`, `vthanik/tabular@<sha>` — none but tabular resolve.
-- arpillar `333b8ce` (`unregister_dataset()`) is LOCAL-ONLY on its
-  `feat/ui-prereqs` branch (8 commits ahead of arpillar `master`, the default
-  branch — NOT `main`), no git remote configured.
-- Publishing arframe = a **first-time multi-repo publish** (create
-  `vthanik/{arpillar,artoo,datasetviewer,arframe}` + push), NOT a simple push.
-  User chose **HOLD**. Do NOT create repos or push without an explicit
-  per-session go-ahead + visibility (public/private) + the public-surface
-  hygiene denylist check.
+Unchanged from last session: no GitHub repos exist for
+arpillar/artoo/datasetviewer/arframe (only `vthanik/tabular`). Publishing is
+a first-time multi-repo publish; user chose **HOLD**. Do NOT create repos or
+push without an explicit per-session go-ahead + visibility choice + the
+public-surface hygiene denylist check.
 
 ## How to run it (eyeball, real CDISC data — decision #9)
 
@@ -109,35 +121,13 @@ arframe(folders = c(
 ))
 ```
 
-Headless eyeball: `shiny::runApp(app, port = 7788, launch.browser = FALSE)` in
-a background Rscript, drive with `chromote`. Screens in `.local/screens/`
-(gitignored). Pass `daemons = 0` for test/headless launches (skips the mirai
-pool).
-
-## Gotchas / seams
-
-- **`arframe()` builds ONE store** at construction, shared by every browser
-  session of that process — repeated `chromote` connections ACCUMULATE
-  outputs. Restart the app for clean eyeball state.
-- **testServer can't replay `priority:event`** — repeated same-value inputs
-  won't re-fire `observeEvent`; give the payload a nonce (keyboard nav + tab
-  toggle tests do this).
-- **`.dataset_meta`/`fct_meta` are GONE** — datasetviewer reads its own
-  metadata. If Report-mode ever wants variable labels, re-add (~90 lines + a
-  test).
-- `datasetviewer` vendors the DuckDB-WASM bundle in its package (works
-  offline). Its font vars (`--dv-sans/--dv-mono/--gdg-font-family`) are
-  overridden to IBM Plex on `.ar-dx-dv .datasetviewer-root`.
-- A few now-orphaned section-08 CSS selectors (`.ar-colpick`, `.ar-dx-data`,
-  `.ar-dx-th`) are harmless dead rules from the removed sample grid — later
-  CSS sweep. `.ar-insp-slim` is vestigial (superseded by the tab strip).
+Headless: `.local/screens/launcher.R` (seeds Table 14.1.1 on the real ADSL,
+pre-emits the source-injected RTF) + `.local/screens/driver.R` (20 chromote
+assertions + per-tab screenshots). Kill port 7788 + relaunch between drives.
 
 ## Conventions in force
 
-Worktree + staged + real-data eyeball per change; merged `--ff-only` to
-master; worktree/branch removed after. Gate `devtools::check` 0/0/0.
-`\uXXXX` escapes for non-ASCII in R strings (even HTML output). **No `--` in
-user-facing text** — em-dash `—` (`"—"` in R, literal in JS/CSS); rule in
-`CLAUDE.md`. `air format` (PostToolUse hook). No `Co-Authored-By: Claude` / AI
-attribution. **Never push without explicit per-session approval.** Ponytail
-mode + ultracode were active this session.
+Unchanged: `\uXXXX` escapes for non-ASCII in R strings; em-dash `—` (never
+`--`) in UI text; tokens.css vars only; observer-pool + `Date.now()` nonce
+patterns; `air format` hook; gate `devtools::check` 0/0/0; no AI attribution;
+**never push without explicit per-session approval**.
