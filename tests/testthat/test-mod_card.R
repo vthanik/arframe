@@ -58,16 +58,12 @@ test_that("mod_card_ui: tab strip, all four panes, action footer, slim strip", {
   expect_no_match(html, 'id="card-close"', fixed = TRUE)
 })
 
-test_that("mod_card_ui: the Ranks pane is the Task-11 placeholder row", {
+test_that("mod_card_ui: the Ranks pane mounts the real ranks module", {
   html <- as.character(mod_card_ui("card"))
-  # Ranks is a stub BY DESIGN (plan: "Ranks stub -> T11"): a quiet disabled
-  # row naming what will fill it, plus the coming tag.
-  expect_match(
-    html,
-    "Top-N and incidence cutoffs arrive with the AE hierarchy table",
-    fixed = TRUE
-  )
-  expect_match(html, "ar-tag-coming", fixed = TRUE)
+  # The Task-11 stub is gone: the pane hosts mod_card_ranks' own output.
+  expect_match(html, 'id="card-ranks-pane"', fixed = TRUE)
+  expect_no_match(html, "ar-tag-coming", fixed = TRUE)
+  expect_no_match(html, "arrive with the AE hierarchy table", fixed = TRUE)
 })
 
 test_that("mod_card_server: tab clicks route rv$insp_tab", {

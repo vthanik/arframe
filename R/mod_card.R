@@ -90,24 +90,6 @@
   )
 }
 
-# ---- coming stub ------------------------------------------------------
-
-#' A quiet "coming" stub for a pane not yet implemented (Filters: Task 12;
-#' Ranks: deliberately deferred to the AE hierarchy work) -- the note plus
-#' a `coming` tag, so the card never renders visibly empty for a tab a
-#' click legitimately routed to.
-#' @noRd
-.card_coming_stub <- function(region, note) {
-  shiny::tags$div(
-    class = "ar-card-coming",
-    shiny::tags$p(
-      class = "ar-mono",
-      note,
-      shiny::tags$span(class = "ar-tag-coming ar-mono", "coming")
-    )
-  )
-}
-
 # ---- UI ---------------------------------------------------------------
 
 #' The docked inspector UI (v5, decision #8): a fixed-width right panel --
@@ -166,10 +148,7 @@ mod_card_ui <- function(id) {
           ),
           shiny::div(
             class = "ar-insp-pane ar-insp-pane-ranks",
-            .card_coming_stub(
-              "ranks",
-              "Top-N and incidence cutoffs arrive with the AE hierarchy table"
-            )
+            mod_card_ranks_ui(ns("ranks"))
           )
         ),
         shiny::div(
@@ -246,6 +225,7 @@ mod_card_server <- function(id, store) {
     mod_card_roles_server("roles", store)
     mod_card_options_server("options", store)
     mod_card_filters_server("filters", store)
+    mod_card_ranks_server("ranks", store)
 
     # The tab strip doubles as a show/hide toggle: clicking the ACTIVE tab
     # while the pane is open collapses it (the strip stays); clicking any tab

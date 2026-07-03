@@ -244,58 +244,6 @@ test_that("an options-only commit leaves the ARD memo untouched (cheap edit)", {
   })
 })
 
-# ---- levels (x_order) -----------------------------------------------------
-
-test_that("levels: x_order renders a sortable list seeded from distinct_values", {
-  con <- .demo_catalog()
-  withr::defer(arpillar::engine_close(con))
-  store <- shiny::isolate(new_store(con))
-  id <- shiny::isolate(add_from_generator(store, "line", "ADVS"))
-  shiny::isolate(update_object(store, id, function(o) {
-    S7::set_props(
-      o,
-      roles = list(
-        arpillar::role(
-          slot = "x",
-          items = list(arpillar::data_item(name = "AVISIT"))
-        )
-      )
-    )
-  }))
-  shiny::isolate(store$rv$selected <- id)
-
-  shiny::testServer(mod_card_options_server, args = list(store = store), {
-    session$flushReact()
-    html <- output$pane$html
-    expect_match(html, "data-ar-sortable", fixed = TRUE)
-    for (lv in c("Baseline", "Week 4", "Week 8")) {
-      expect_match(html, sprintf('data-ar-item="%s"', lv), fixed = TRUE)
-    }
-
-    # A drop commits the explicit order.
-    session$setInputs(
-      opt_reorder_x_order = list(order = list("Week 8", "Baseline", "Week 4"))
-    )
-    expect_identical(
-      shiny::isolate(selected_object(store))@options$x_order,
-      c("Week 8", "Baseline", "Week 4")
-    )
-  })
-})
-
-test_that("levels: the x_order row is absent until the x slot is filled", {
-  con <- .demo_catalog()
-  withr::defer(arpillar::engine_close(con))
-  store <- shiny::isolate(new_store(con))
-  id <- shiny::isolate(add_from_generator(store, "line", "ADVS"))
-  shiny::isolate(store$rv$selected <- id)
-
-  shiny::testServer(mod_card_options_server, args = list(store = store), {
-    session$flushReact()
-    expect_no_match(output$pane$html, "data-ar-sortable", fixed = TRUE)
-  })
-})
-
 # ---- footnotes ------------------------------------------------------------
 
 test_that("footnote add/edit/remove round-trips through the footnotes prop", {
@@ -363,4 +311,161 @@ test_that("REGRESSION: the pane computes while hidden (tab flip is client-only)"
     'outputOptions(output, "opt_msg", suspendWhenHidden = FALSE)',
     fixed = TRUE
   )
+})
+
+# ---- stage-10 depth: reorder, stepper, stats editor, ranks-key filter ------
+
+test_that("footnote drag-reorder commits the new order and re-keys the rows", {
+  fx <- .mco_demo_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
+    session$setInputs(fn_add = 1)
+    session$setInputs(
+      fn_edit = list(i = 2L, value = "Second line.", nonce = 1)
+    )
+    before <- shiny::isolate(selected_object(store))@footnotes
+    expect_identical(before, c("Safety Population.", "Second line."))
+
+    session$setInputs(fn_reorder = list(order = list("2", "1")))
+    expect_identical(
+      shiny::isolate(selected_object(store))@footnotes,
+      c("Second line.", "Safety Population.")
+    )
+
+    # The pane redrew, so row 1 now carries the moved line (fresh keys).
+    html <- output$pane$html
+    expect_match(html, 'value="Second line."[^>]*aria-label="Footnote 1"')
+
+    # A partial/stale payload reconciles instead of losing lines.
+    session$setInputs(fn_reorder = list(order = list("2")))
+    expect_identical(
+      shiny::isolate(selected_object(store))@footnotes,
+      c("Safety Population.", "Second line.")
+    )
+  })
+})
+
+test_that("the decimals stepper steps off the committed value and repaints", {
+  fx <- .mco_demo_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
+    # Preset decimals = 1 (the engine default, elided). Step up -> 2.
+    session$setInputs(opt_step = list(key = "decimals", dir = 1, nonce = 1))
+    expect_identical(
+      shiny::isolate(selected_object(store))@options$decimals,
+      2L
+    )
+    # The derived-precision hint follows the stepped value.
+    expect_match(output$pane$html, "mean 2 dp", fixed = TRUE)
+
+    # Step down back to the default -> the key elides.
+    session$setInputs(opt_step = list(key = "decimals", dir = -1, nonce = 2))
+    expect_null(shiny::isolate(selected_object(store))@options$decimals)
+
+    # Never steps below zero.
+    session$setInputs(opt_step = list(key = "decimals", dir = -1, nonce = 3))
+    session$setInputs(opt_step = list(key = "decimals", dir = -1, nonce = 4))
+    d <- shiny::isolate(selected_object(store))@options$decimals
+    expect_true(is.null(d) || d >= 0L)
+  })
+})
+
+test_that("stats: remove and add-back commit an ordered subset; the default elides", {
+  fx <- .mco_demo_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
+    session$flushReact()
+    # The stats editor renders one grip row per default statistic.
+    html <- output$pane$html
+    expect_match(html, "ar-opt-stats", fixed = TRUE)
+    expect_match(html, 'data-ar-item="Mean (SD)"', fixed = TRUE)
+
+    session$setInputs(opt_stat_rm = list(value = "Min, Max", nonce = 1))
+    expect_identical(
+      shiny::isolate(selected_object(store))@options$stats,
+      c("n", "Mean (SD)", "Median", "Q1, Q3")
+    )
+
+    # Add it back -> the full default set -> the key elides.
+    session$setInputs(opt_stat_add = "Min, Max")
+    expect_null(shiny::isolate(selected_object(store))@options$stats)
+  })
+})
+
+test_that("stats: a reorder commits the explicit order through default-elision", {
+  fx <- .mco_demo_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
+    session$setInputs(
+      opt_reorder_stats = list(
+        order = list("Median", "n", "Mean (SD)", "Q1, Q3", "Min, Max")
+      )
+    )
+    expect_identical(
+      shiny::isolate(selected_object(store))@options$stats,
+      c("Median", "n", "Mean (SD)", "Q1, Q3", "Min, Max")
+    )
+
+    # Dragging back to the engine default order elides the key entirely.
+    session$setInputs(
+      opt_reorder_stats = list(
+        order = list("n", "Mean (SD)", "Median", "Q1, Q3", "Min, Max")
+      )
+    )
+    expect_null(shiny::isolate(selected_object(store))@options$stats)
+  })
+})
+
+test_that("stats: the last remaining statistic can never be removed", {
+  fx <- .mco_demo_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
+    for (v in c("n", "Mean (SD)", "Median", "Q1, Q3")) {
+      session$setInputs(opt_stat_rm = list(value = v, nonce = v))
+    }
+    expect_identical(
+      shiny::isolate(selected_object(store))@options$stats,
+      "Min, Max"
+    )
+    # Removing the last one is refused -- an empty set would silently mean
+    # "everything" engine-side, which reads as a broken control.
+    session$setInputs(opt_stat_rm = list(value = "Min, Max", nonce = "last"))
+    expect_identical(
+      shiny::isolate(selected_object(store))@options$stats,
+      "Min, Max"
+    )
+  })
+})
+
+test_that("ordering keys (hier_sort, x_order) no longer render in Options", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  id <- shiny::isolate(add_from_generator(store, "line", "ADVS"))
+  shiny::isolate(update_object(store, id, function(o) {
+    S7::set_props(
+      o,
+      roles = list(
+        arpillar::role(
+          slot = "x",
+          items = list(arpillar::data_item(name = "AVISIT"))
+        )
+      )
+    )
+  }))
+  shiny::isolate(store$rv$selected <- id)
+
+  shiny::testServer(mod_card_options_server, args = list(store = store), {
+    session$flushReact()
+    html <- output$pane$html
+    # x_order's sortable list moved to the Ranks pane; the axes section
+    # still carries the other figure knobs.
+    expect_no_match(html, "X level order", fixed = TRUE)
+    expect_match(html, "X axis label", fixed = TRUE)
+  })
 })
