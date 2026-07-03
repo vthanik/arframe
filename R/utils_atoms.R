@@ -49,7 +49,12 @@
   eye = "eye",
   chevrons_left = "angles-left",
   chevrons_right = "angles-right",
-  play = "play"
+  play = "play",
+  # Inspector tab glyphs (the far-right icon strip).
+  roles = "table-list",
+  options = "sliders",
+  filters = "filter",
+  ranks = "arrow-down-wide-short"
 )
 
 #' An inline workspace icon by semantic name (HTML to drop into a label/button).

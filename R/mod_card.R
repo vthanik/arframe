@@ -85,7 +85,8 @@
     type = "button",
     class = "ar-insp-tab action-button",
     `data-ar-insp-tab` = tab,
-    .INSP_TABS[[tab]]
+    .icon(tab, 15),
+    shiny::tags$span(class = "ar-insp-tab-lbl", .INSP_TABS[[tab]])
   )
 }
 
