@@ -164,19 +164,19 @@
 
 # ---- drill grid -----------------------------------------------------------
 
-#' The preview grid for one dataset: a breadcrumb (`< sources / <lib> /
-#' <name>`), a left side pane (column list + property panel), and a sortable
-#' sample of rows. `sample_rows()` caps the pull -- the parquet is never fully
-#' read; column labels/formats come from `.dataset_meta()` (memoized artoo
-#' read), the property panel and sort are pure client-side view state.
+#' The full-dataset viewer for one open dataset: a breadcrumb (`< sources /
+#' <lib> / <name>`) above the embedded datasetviewer widget.
+#'
+#' datasetviewer owns the grid entirely -- it loads the dataset into an
+#' in-browser DuckDB, renders only the visible rows (virtualized), and does
+#' typed sort / filter / column select / a SAS-style property panel
+#' client-side. That is what lets Data mode find a specific subject in a large
+#' dataset and stay fast where a server-rendered sample table could not: the
+#' row work never round-trips to R, and no sample is taken (the whole dataset
+#' is queryable). The widget itself is populated by `output$dv` in the server.
 #' @noRd
 .data_grid <- function(ns, store, name) {
   folder <- .source_folder(store, name)
-  n <- store$rv$grid_n
-  sample <- arpillar::sample_rows(store$con, name, n = n)
-  meta <- .dataset_meta(store, name)
-  grid <- arpillar::catalog_grid(store$con)
-  total <- grid$rows[grid$name == name][[1]]
   shiny::tags$div(
     class = "ar-dx-grid",
     shiny::tags$div(
@@ -193,193 +193,11 @@
         if (is.na(folder)) "WORK" else folder
       ),
       shiny::tags$span(" / "),
-      shiny::tags$span(class = "ar-dx-name", name),
-      shiny::tags$span(
-        class = "ar-dx-bc-meta",
-        sprintf("rows 1-%d of %s", nrow(sample), format(total, big.mark = ","))
-      ),
-      shiny::tags$div(class = "ar-bar-spacer"),
-      .sample_size_select(ns, n)
+      shiny::tags$span(class = "ar-dx-name", name)
     ),
     shiny::tags$div(
-      class = "ar-dx-grid-body",
-      shiny::tags$div(
-        class = "ar-dx-side",
-        .column_picker(meta),
-        .property_panel(meta)
-      ),
-      .grid_preview(sample, meta)
-    )
-  )
-}
-
-# The preset preview sizes offered by the sample-size selector.
-.SAMPLE_SIZES <- c(50L, 100L, 250L, 500L, 1000L)
-
-#' The sample-size selector: a compact `<select>` in the grid breadcrumb that
-#' sets how many rows the preview pulls (`store$rv$grid_n`). Changing it posts
-#' `grid_n` and re-renders the grid off a fresh `sample_rows()`. A `<select>`
-#' (not a free numeric input) keeps the pull bounded to a few sane presets --
-#' the preview is a sample, never the whole dataset.
-#' @noRd
-.sample_size_select <- function(ns, current) {
-  shiny::tags$label(
-    class = "ar-dx-nsel-wrap ar-mono",
-    "Show",
-    shiny::tags$select(
-      class = "ar-dx-nsel",
-      onchange = sprintf(
-        "Shiny.setInputValue('%s', this.value, {priority: 'event'})",
-        ns("grid_n")
-      ),
-      lapply(.SAMPLE_SIZES, function(k) {
-        shiny::tags$option(
-          value = k,
-          selected = if (k == current) "selected" else NULL,
-          format(k, big.mark = ",")
-        )
-      })
-    ),
-    "rows"
-  )
-}
-
-#' The left column picker inside the grid: one row per variable -- type badge,
-#' name, and (when present) its SAS label. Each row carries the variable's
-#' full metadata as `data-ar-*` attributes so clicking it fills the property
-#' panel with zero server round-trip (arframe.js). The checkbox is a preview
-#' affordance (column toggling in the grid is a later refinement).
-#' @noRd
-.column_picker <- function(meta) {
-  rows <- lapply(seq_len(nrow(meta)), function(i) {
-    shiny::tags$div(
-      class = paste(
-        "ar-colpick-item ar-mono",
-        if (i == 1L) "ar-colpick-item-sel"
-      ),
-      `data-ar-col` = meta$name[[i]],
-      `data-ar-label` = meta$label[[i]],
-      `data-ar-type` = meta$type[[i]],
-      `data-ar-len` = meta$length[[i]],
-      `data-ar-fmt` = meta$format[[i]],
-      shiny::tags$input(type = "checkbox", checked = "checked"),
-      .type_badge(meta$type[[i]]),
-      shiny::tags$span(class = "ar-colpick-name", meta$name[[i]]),
-      if (nzchar(meta$label[[i]])) {
-        shiny::tags$span(class = "ar-colpick-label", meta$label[[i]])
-      }
-    )
-  })
-  shiny::tags$div(
-    class = "ar-colpick",
-    shiny::tags$div(
-      class = "ar-label",
-      sprintf("Columns %d", nrow(meta))
-    ),
-    rows
-  )
-}
-
-#' The SAS-Studio-style property panel: a Property/Value table for the active
-#' column (the datasetviewer pattern). Server-rendered for the FIRST column so
-#' it is populated before any interaction; arframe.js rewrites the `tbody` on
-#' every column-picker click from that row's `data-ar-*` attributes.
-#' @noRd
-.property_panel <- function(meta) {
-  if (nrow(meta) == 0L) {
-    return(NULL)
-  }
-  shiny::tags$div(
-    class = "ar-prop",
-    shiny::tags$div(class = "ar-label", "Property"),
-    shiny::tags$table(
-      class = "ar-prop-table ar-mono",
-      shiny::tags$tbody(class = "ar-prop-body", .property_rows(meta, 1L))
-    )
-  )
-}
-
-#' The five property rows (Label / Name / Type / Length / Format) for row `i`
-#' of a metadata frame. Kept a separate helper so the initial server render
-#' and arframe.js agree on the exact field set and order. `type` is mapped to
-#' the SAS-facing word (Numeric / Character / Date).
-#' @noRd
-.property_rows <- function(meta, i) {
-  type_word <- switch(
-    meta$type[[i]],
-    measure = "Numeric",
-    date = "Date",
-    "Character"
-  )
-  props <- list(
-    c("Label", meta$label[[i]]),
-    c("Name", meta$name[[i]]),
-    c("Type", type_word),
-    c("Length", meta$length[[i]]),
-    c("Format", meta$format[[i]])
-  )
-  lapply(props, function(p) {
-    shiny::tags$tr(
-      shiny::tags$td(class = "ar-prop-k", p[[1]]),
-      shiny::tags$td(
-        class = "ar-prop-v",
-        if (nzchar(p[[2]])) p[[2]] else "\u2014"
-      )
-    )
-  })
-}
-
-#' The typed variable badge (# = measure, A = category, D = date), from an
-#' arpillar `data_items()` type string (`"measure"`/`"category"`/`"date"`).
-#' @noRd
-.type_badge <- function(type) {
-  cls <- switch(
-    type,
-    measure = "ar-chip-meas",
-    date = "ar-chip-date",
-    "ar-chip-cat"
-  )
-  glyph <- switch(type, measure = "#", date = "D", "A")
-  shiny::tags$span(class = paste("ar-chip", cls), glyph)
-}
-
-#' The grid preview table: a mono data grid of the sampled rows, with
-#' click-to-sort headers. Each `<th>` carries `data-ar-sort` (the column
-#' name) and `data-ar-sort-type` (measure/category/date) so arframe.js sorts
-#' the 100-row sample client-side -- numerically for a measure, lexically
-#' otherwise, cycling asc -> desc -> original. Each `<tr>` keeps its original
-#' index (`data-ar-orig`) so the "original" state restores without a
-#' re-render. Sorting a SAMPLE is honest for a preview -- the full dataset is
-#' never pulled.
-#' @noRd
-.grid_preview <- function(sample, meta) {
-  types <- stats::setNames(meta$type, meta$name)
-  shiny::tags$div(
-    class = "ar-dx-grid-wrap",
-    shiny::tags$table(
-      class = "ar-dx-data",
-      `data-ar-grid` = "true",
-      shiny::tags$thead(shiny::tags$tr(
-        lapply(names(sample), function(nm) {
-          shiny::tags$th(
-            class = "ar-dx-th",
-            `data-ar-sort` = nm,
-            `data-ar-sort-type` = types[[nm]] %||% "category",
-            shiny::tags$span(class = "ar-dx-th-name", nm),
-            shiny::tags$span(class = "ar-dx-sort-caret")
-          )
-        })
-      )),
-      shiny::tags$tbody(
-        lapply(seq_len(nrow(sample)), function(i) {
-          shiny::tags$tr(
-            `data-ar-orig` = i - 1L,
-            lapply(sample[i, , drop = FALSE], function(v) {
-              shiny::tags$td(format(v))
-            })
-          )
-        })
-      )
+      class = "ar-dx-dv",
+      datasetviewer::datasetviewerOutput(ns("dv"), height = "100%")
     )
   )
 }
@@ -473,8 +291,7 @@ mod_data_server <- function(id, store) {
         store$rv$catalog_nonce,
         store$rv$data_source,
         store$rv$data_focus,
-        store$rv$grid_dataset,
-        store$rv$grid_n
+        store$rv$grid_dataset
       )
 
     # The Data body starts CSS-hidden (Report is the default mode), and the
@@ -511,14 +328,14 @@ mod_data_server <- function(id, store) {
       store$rv$grid_dataset <- NULL
     })
 
-    # Sample-size selector: re-pull the preview at the chosen row count. Guard
-    # against a value outside the offered presets (only those can be posted by
-    # the select, but a stray input should never crash the render).
-    shiny::observeEvent(input$grid_n, {
-      n <- suppressWarnings(as.integer(input$grid_n))
-      if (!is.na(n) && n %in% .SAMPLE_SIZES) {
-        store$rv$grid_n <- n
-      }
+    # The embedded datasetviewer widget for the open dataset: fed the dataset's
+    # on-disk file (`dataset_path()` -- the parquet arpillar registered/
+    # converted, labels intact), the widget does all row work in the browser.
+    # Bound to `grid_dataset` so opening a new dataset re-inits it.
+    output$dv <- datasetviewer::renderDatasetViewer({
+      name <- store$rv$grid_dataset
+      shiny::req(name)
+      datasetviewer::dataset_viewer(arpillar::dataset_path(store$con, name))
     })
 
     shiny::observeEvent(input$delete, {

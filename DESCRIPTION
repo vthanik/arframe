@@ -17,6 +17,7 @@ Imports:
     artoo,
     bslib,
     cli,
+    datasetviewer,
     fontawesome,
     htmltools,
     mirai,
@@ -33,6 +34,7 @@ Suggests:
 Remotes:
     vthanik/arpillar,
     vthanik/artoo,
+    vthanik/datasetviewer,
     vthanik/tabular@5dfd80ca5bcb728b9905d731ed07ea650f02ee90
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.0.0

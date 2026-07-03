@@ -160,12 +160,10 @@ test_that("mod_data_server: focus, View data opens the grid, back closes it", {
     expect_identical(store$rv$grid_dataset, "ADSL")
     grid_html <- as.character(output$explorer$html)
     expect_match(grid_html, "ar-dx-grid", fixed = TRUE)
-    expect_match(grid_html, "USUBJID", fixed = TRUE)
-    expect_match(grid_html, "ar-colpick", fixed = TRUE)
-    # The property panel + sortable headers ship with the grid.
-    expect_match(grid_html, "ar-prop-body", fixed = TRUE)
-    expect_match(grid_html, 'data-ar-sort="USUBJID"', fixed = TRUE)
-    expect_match(grid_html, 'data-ar-col="USUBJID"', fixed = TRUE)
+    # The grid is the embedded datasetviewer widget (the row work is all
+    # client-side in the browser; the server emits only its output container).
+    expect_match(grid_html, "ar-dx-dv", fixed = TRUE)
+    expect_match(grid_html, "datasetviewer html-widget", fixed = TRUE)
 
     session$setInputs(grid_back = 1)
     expect_null(store$rv$grid_dataset)
@@ -241,92 +239,4 @@ test_that("arframe() Data mode renders the explorer after a client-side mode swi
   )
   expect_match(srcs, "adam", fixed = TRUE)
   expect_match(srcs, "sdtm", fixed = TRUE)
-})
-
-# ---- column labels / property panel / sort (data meta) ---------------------
-
-test_that(".column_picker shows the label and embeds per-column metadata", {
-  meta <- data.frame(
-    name = c("AGE", "SEX"),
-    label = c("Age in Years", ""),
-    type = c("measure", "category"),
-    length = c("8", "1"),
-    format = c("", ""),
-    stringsAsFactors = FALSE
-  )
-  html <- as.character(.column_picker(meta))
-  expect_match(html, "Age in Years", fixed = TRUE)
-  expect_match(html, 'data-ar-col="AGE"', fixed = TRUE)
-  expect_match(html, 'data-ar-type="measure"', fixed = TRUE)
-  # The first row is pre-selected for the property panel.
-  expect_match(html, "ar-colpick-item-sel", fixed = TRUE)
-})
-
-test_that(".property_panel renders the Property/Value rows for the first column", {
-  meta <- data.frame(
-    name = "AGE",
-    label = "Age in Years",
-    type = "measure",
-    length = "8",
-    format = "8.1",
-    stringsAsFactors = FALSE
-  )
-  html <- as.character(.property_panel(meta))
-  expect_match(html, "ar-prop-body", fixed = TRUE)
-  expect_match(html, "Age in Years", fixed = TRUE)
-  # measure -> the SAS-facing word.
-  expect_match(html, "Numeric", fixed = TRUE)
-  expect_match(html, "8.1", fixed = TRUE)
-})
-
-test_that(".grid_preview headers are typed and sortable, rows keep their original index", {
-  sample <- data.frame(
-    AGE = c(3L, 1L, 2L),
-    SEX = c("M", "F", "M"),
-    stringsAsFactors = FALSE
-  )
-  meta <- data.frame(
-    name = c("AGE", "SEX"),
-    label = c("", ""),
-    type = c("measure", "category"),
-    length = c("", ""),
-    format = c("", ""),
-    stringsAsFactors = FALSE
-  )
-  html <- as.character(.grid_preview(sample, meta))
-  expect_match(html, "ar-dx-th", fixed = TRUE)
-  expect_match(html, 'data-ar-sort="AGE"', fixed = TRUE)
-  expect_match(html, 'data-ar-sort-type="measure"', fixed = TRUE)
-  expect_match(html, 'data-ar-sort-type="category"', fixed = TRUE)
-  expect_match(html, 'data-ar-orig="0"', fixed = TRUE)
-})
-
-# ---- sample-size selector --------------------------------------------------
-
-test_that(".sample_size_select marks the current size and posts grid_n", {
-  html <- as.character(.sample_size_select(shiny::NS("data"), 250L))
-  expect_match(html, "ar-dx-nsel", fixed = TRUE)
-  expect_match(html, "data-grid_n", fixed = TRUE)
-  expect_match(html, 'value="250" selected', fixed = TRUE)
-  # the top preset is offered, its value raw and its label grouped
-  expect_match(html, 'value="1000"', fixed = TRUE)
-  expect_match(html, ">1,000<", fixed = TRUE)
-})
-
-test_that("mod_data_server: changing the sample size updates grid_n and re-renders", {
-  fx <- .md_store()
-  withr::defer(arpillar::engine_close(fx$con))
-  shiny::testServer(mod_data_server, args = list(store = fx$store), {
-    session$setInputs(open = "ADSL")
-    expect_identical(store$rv$grid_n, 100L) # default
-    grid_html <- as.character(output$explorer$html)
-    expect_match(grid_html, "ar-dx-nsel", fixed = TRUE)
-
-    session$setInputs(grid_n = "500")
-    expect_identical(store$rv$grid_n, 500L)
-
-    # A value outside the presets is ignored (never crashes the render).
-    session$setInputs(grid_n = "999999")
-    expect_identical(store$rv$grid_n, 500L)
-  })
 })

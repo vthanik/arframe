@@ -1869,119 +1869,12 @@ input[type="radio"] {
   }
 }
 
-/* ============ 13 data meta ============ */
-/* Column labels + SAS-style property panel + click-to-sort headers on the
-   Data-mode preview grid. The left side pane needs a touch more room now
-   that it stacks the column list AND the property panel and shows labels. */
-.ar-dx-grid-body {
-  grid-template-columns: 210px 1fr;
-}
-.ar-dx-side {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ar-space-3);
-  min-height: 0;
-}
-/* The column list scrolls within a capped height so the property panel below
-   it stays on screen however many columns a dataset has (a 48-column ADaM
-   dataset would otherwise push the panel far below the fold). */
-.ar-colpick {
-  max-height: 55vh;
-  overflow-y: auto;
-}
-.ar-prop {
-  flex: 0 0 auto;
-}
-/* -- column list: name + muted label, click to inspect -- */
-.ar-colpick-item {
-  cursor: pointer;
-  border-radius: var(--ar-radius-sm);
-}
-.ar-colpick-item:hover {
-  background: var(--ar-hover, rgba(0, 0, 0, 0.04));
-}
-.ar-colpick-item-sel,
-.ar-colpick-item-sel:hover {
-  background: var(--ar-accent-weak);
-  color: var(--ar-ink);
-}
-.ar-colpick-name {
-  flex: 0 0 auto;
-}
-.ar-colpick-label {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--ar-ink-4);
-  font-size: 10px;
-}
-/* -- property/value panel -- */
-.ar-prop {
-  background: var(--ar-paper);
-  border: 1px solid var(--ar-paper-edge);
-  border-radius: var(--ar-radius);
-  padding: var(--ar-space-2);
-  height: fit-content;
-}
-.ar-prop-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.ar-prop-table td {
-  font-size: 10.5px;
-  padding: 2px 4px;
-  vertical-align: top;
-}
-.ar-prop-k {
-  color: var(--ar-ink-4);
-  width: 58px;
-  white-space: nowrap;
-}
-.ar-prop-v {
-  color: var(--ar-ink);
-  word-break: break-word;
-}
-/* -- sortable headers: pointer + a caret that reflects data-ar-dir -- */
-.ar-dx-th {
-  cursor: pointer;
-  user-select: none;
-}
-.ar-dx-th:hover {
-  color: var(--ar-ink-2);
-}
-.ar-dx-sort-caret {
-  display: inline-block;
-  width: 0.9em;
-  color: var(--ar-accent);
-}
-.ar-dx-th[data-ar-dir="asc"] .ar-dx-sort-caret::after {
-  content: " \2191"; /* up arrow */
-}
-.ar-dx-th[data-ar-dir="desc"] .ar-dx-sort-caret::after {
-  content: " \2193"; /* down arrow */
-}
-
-/* -- sample-size selector in the grid breadcrumb -- */
-.ar-dx-nsel-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 10.5px;
-  color: var(--ar-ink-3);
-}
-.ar-dx-nsel {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 10.5px;
-  color: var(--ar-ink);
-  border: 1px solid var(--ar-rule);
-  border-radius: var(--ar-radius-sm);
-  background: var(--ar-paper);
-  padding: 1px 4px;
-  cursor: pointer;
-}
-.ar-dx-nsel:focus-visible {
-  border-color: var(--ar-accent);
-  outline: none;
+/* ============ 13 data viewer ============ */
+/* Data mode's grid is the embedded datasetviewer widget (in-browser DuckDB,
+   virtualized rows, full filter/sort/find). arframe supplies only the
+   breadcrumb chrome above it; the widget owns a bounded, internally-scrolling
+   height. */
+.ar-dx-dv {
+  height: 72vh;
+  min-height: 420px;
 }

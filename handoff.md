@@ -1,6 +1,35 @@
 # handoff — arframe
 
-## Latest: Data-mode follow-ups (2026-07-03)
+## Latest: Data grid = embedded datasetviewer (2026-07-03)
+
+`feat/data-dsv` (off `master` @ 3877bda), merged. **Reverses the "skip
+DuckDB-WASM / hand-rolled sample grid" direction** below — the sample-table
+approach was slow at high row counts AND could not find a specific subject (a
+sample won't contain an arbitrary one; the "Filter datasets" box only filters
+the dataset LIST). So Data mode's "View data" grid is now the **embedded
+`datasetviewer` widget** (the user's own package): in-browser DuckDB,
+virtualized rows, full typed sort / filter / column-select / property panel,
+no sampling. arframe supplies only the breadcrumb chrome; `output$dv <-
+datasetviewer::renderDatasetViewer(dataset_viewer(dataset_path(con, name)))`
+feeds it the on-disk file (labels intact in the parquet).
+
+- **Added** `datasetviewer` to Imports (+ `Remotes: vthanik/datasetviewer`);
+  its DuckDB-WASM bundle is vendored in the package (works offline).
+- **Removed (superseded):** the sample table, `.column_picker`,
+  `.property_panel`/`.property_rows`, `.grid_preview`, `.type_badge`, the
+  `.sample_size_select`/`grid_n` selector, the `.ar-colpick`/`.ar-dx-th` JS
+  handlers, CSS section 13 data-meta, AND the whole `R/fct_meta.R` +
+  `.dataset_meta` + `store$meta` (no consumer once the widget reads its own
+  metadata). `artoo` stays Imports (still used by `.demo_register`).
+- Gate 0/0/0 (lone NOTE = spurious offline time check); 815 tests. Real-data
+  eyeball verified the widget mounts + loads: ADSL Total rows 254 / cols 48,
+  pagination + FILTER + property panel all live (`.local/screens/data-dsv.png`).
+- Note: `.data_grid`'s `datasetviewerOutput(ns("dv"))` lives inside the
+  `output$explorer` renderUI (re-inits the widget per dataset-open -- fine).
+  A few now-orphaned section-08 CSS selectors (`.ar-colpick`, `.ar-dx-data`,
+  `.ar-dx-th`) are harmless dead rules left for a later CSS sweep.
+
+## Superseded: Data-mode follow-ups (2026-07-03)
 
 `feat/data-polish` (off `master` @ 9ac17cd), merged. Three tweaks on the
 data-mode work below:
