@@ -187,13 +187,23 @@
         variant = "link",
         class = "ar-dx-bk"
       ),
-      shiny::tags$span(" / "),
+      shiny::tags$span(class = "ar-dx-sep", "/"),
       shiny::tags$span(
         class = "ar-dx-dim",
         if (is.na(folder)) "WORK" else folder
       ),
-      shiny::tags$span(" / "),
-      shiny::tags$span(class = "ar-dx-name", name)
+      shiny::tags$span(class = "ar-dx-sep", "/"),
+      shiny::tags$span(class = "ar-dx-name", name),
+      shiny::tags$div(class = "ar-bar-spacer"),
+      # The list toolbar (filter/import/delete) is hidden while a dataset is
+      # open; this X is the only chrome needed here -- close the viewer.
+      shiny::tags$button(
+        id = ns("grid_close"),
+        type = "button",
+        class = "ar-icon-btn ar-dx-close action-button",
+        `aria-label` = "Close data view",
+        .icon("close", 14)
+      )
     ),
     shiny::tags$div(
       class = "ar-dx-dv",
@@ -325,6 +335,12 @@ mod_data_server <- function(id, store) {
     })
 
     shiny::observeEvent(input$grid_back, {
+      store$rv$grid_dataset <- NULL
+    })
+
+    # The X in the open-dataset breadcrumb closes the viewer (same as the
+    # "< sources" back link; the list toolbar is CSS-hidden while it is open).
+    shiny::observeEvent(input$grid_close, {
       store$rv$grid_dataset <- NULL
     })
 

@@ -1,6 +1,25 @@
 # handoff — arframe
 
-## Latest: Data grid = embedded datasetviewer (2026-07-03)
+## Latest: Data grid-view layout polish (2026-07-03)
+
+`feat/data-layout` (off `master` @ daca4e0), merged. Three grid-view fixes:
+- **Fill height** — the viewer widget was a fixed `72vh` (dead space below).
+  Now the Data pane flexes: `.ar-data-main { overflow: hidden }`, its explorer
+  output `flex:1 min-height:0 overflow-y:auto` (LIST table scrolls there), the
+  GRID `.ar-dx-grid` + `.ar-dx-dv` flex to fill so the widget takes all space
+  under the breadcrumb (it scrolls its own rows).
+- **Breadcrumb spacing** — the `< sources` back link is a Bootstrap `.btn`; its
+  padding left an odd gap. Zeroed `.ar-dx-bk { padding: 0 }`; separators are
+  `.ar-dx-sep` and the `.ar-dx-bc` flex gap owns the spacing.
+- **Toolbar in grid view** — the list toolbar (filter/import/delete) is
+  irrelevant while a dataset is open, so it's CSS-hidden
+  (`.ar-data-main:has(.ar-dx-grid) .ar-dx-bar { display:none }`) and the
+  breadcrumb gets an X close (`input$grid_close` -> `grid_dataset <- NULL`,
+  same as "< sources").
+- Gate 0/0/0; eyeball on ADAE (1191x55): widget fills to the status bar,
+  toolbar gone, X closes (`.local/screens/data-layout.png`).
+
+## Superseded: Data grid = embedded datasetviewer (2026-07-03)
 
 `feat/data-dsv` (off `master` @ 3877bda), merged. **Reverses the "skip
 DuckDB-WASM / hand-rolled sample grid" direction** below — the sample-table

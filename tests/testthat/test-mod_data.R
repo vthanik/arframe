@@ -164,7 +164,15 @@ test_that("mod_data_server: focus, View data opens the grid, back closes it", {
     # client-side in the browser; the server emits only its output container).
     expect_match(grid_html, "ar-dx-dv", fixed = TRUE)
     expect_match(grid_html, "datasetviewer html-widget", fixed = TRUE)
+    # The breadcrumb carries an X close (the list toolbar is hidden in grid
+    # view); it closes the viewer just like the "< sources" back link.
+    expect_match(grid_html, "ar-dx-close", fixed = TRUE)
 
+    session$setInputs(grid_close = 1)
+    expect_null(store$rv$grid_dataset)
+
+    session$setInputs(view = 1)
+    expect_identical(store$rv$grid_dataset, "ADSL")
     session$setInputs(grid_back = 1)
     expect_null(store$rv$grid_dataset)
   })
