@@ -1,3 +1,39 @@
+# handoff — arframe
+
+## Most recent: Data-mode column metadata + sort (2026-07-03)
+
+`feat/data-meta-sort` (worktree `../arframe-wt-datameta`, off `master` @
+ae0c32a), merged to `master`. Data mode now shows the SAS-style variable
+metadata artoo recovers from the on-disk file (the DuckDB catalog drops
+labels/formats): the column list shows each variable's **label**; a
+**Property/Value panel** (Label/Name/Type/Length/Format) tracks the active
+column client-side; grid headers **sort** the 100-row sample typed
+(numeric/lexical, asc/desc/original) with zero round-trip. DuckDB-WASM stays
+out (it never shipped); the sample stays capped at 100.
+
+- Decision: use artoo directly (the user's own package; Suggests + Remotes
+  `vthanik/artoo`, guarded by `requireNamespace`) rather than routing through
+  arpillar. `.dataset_meta()` reads `artoo::columns(read_dataset(path, n_max =
+  0))` off `dataset_path()` (labels survive arpillar's xpt->parquet convert in
+  the parquet metadata, even though `data_items()` returns them NA), memoized
+  in `store$meta` (cleared on unmount).
+- Files: `R/fct_meta.R` (+ test), `R/mod_data.R` (`.column_picker`/
+  `.property_panel`/`.property_rows`/`.grid_preview` rewrite), `R/fct_store.R`
+  (`meta` env), `inst/www/arframe.js` (property-panel fill + typed sort),
+  `inst/www/arframe.css` (section 13; column list capped `55vh` so the panel
+  stays on screen for a 48-column ADaM dataset), DESCRIPTION.
+- `devtools::check` = 0 errors / 0 warnings; the lone NOTE ("unable to verify
+  current time") is the spurious offline time-server check, not code. Real
+  CDISC eyeball: 48/48 ADSL columns labelled, property panel Study Identifier
+  / STUDYID / Character / 12, AGE sort asc=51 desc=88 (`.local/screens/
+  data-meta.png`, `data-sorted.png`).
+- Known ceiling (ponytail): the data grid still scrolls with the page rather
+  than each pane scrolling independently (SAS-Studio fixed-pane model) -- the
+  column list is capped so the panel shows, but a full fixed-pane refactor of
+  `.ar-data-main` is deferred (it would ripple into the explorer-table view).
+
+---
+
 # handoff — arframe QC sheet + async export + a11y/responsive (Tasks 15/16/17)
 
 **Branch state (2026-07-02):** `feat/qc-async-polish` (worktree
