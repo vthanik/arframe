@@ -84,6 +84,21 @@ test_that("mod_card_server: tab clicks route rv$insp_tab", {
   })
 })
 
+test_that("mod_card_server: a tab click clears the region focus (empty-pane regression)", {
+  # A direct tab click is navigation, not region routing: a stale "title"
+  # region left behind by a jump link must not survive into the Roles pane
+  # (where it used to narrow the slot list to nothing).
+  fx <- .mc_ready_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_server, args = list(store = fx$store), {
+    store$rv$region <- "title"
+    session$setInputs(tab_roles = 1)
+    expect_null(store$rv$region)
+    expect_identical(store$rv$insp_tab, "roles")
+  })
+})
+
 test_that("mod_card_server: clicking a tab toggles the pane collapsed/open", {
   fx <- .mc_ready_store()
   withr::defer(arpillar::engine_close(fx$con))
@@ -154,6 +169,22 @@ test_that("mod_card_server: the .rtf download names and writes a non-empty RTF",
     expect_gt(file.size(path), 0)
     first <- readLines(path, n = 1L, warn = FALSE)
     expect_match(first, "\\{\\\\rtf", perl = TRUE)
+
+    # Paper parity: the emitted RTF carries the screen's whole chrome --
+    # the TLF number line, the population subtitle (title block AND
+    # footer = 2 hits), and the injected source line.
+    txt <- paste(readLines(path, warn = FALSE), collapse = "\n")
+    expect_match(txt, "Table 14.1.1", fixed = TRUE)
+    expect_identical(
+      lengths(regmatches(
+        txt,
+        gregexpr("Safety Population.", txt, fixed = TRUE)
+      )),
+      2L
+    )
+    expect_match(txt, "Source: ADSL - arframe", fixed = TRUE)
+    # The injection never leaks back into the live store object.
+    expect_null(shiny::isolate(selected_object(store))@options$source)
   })
 })
 

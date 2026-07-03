@@ -723,3 +723,23 @@ test_that(".filters_tag_label names the safety preset, else counts filters", {
     "1 filter"
   )
 })
+
+test_that(".source_text/.with_source compose the one provenance string", {
+  obj <- arpillar::object(
+    id = "o1",
+    type = "summary",
+    dataset = "ADSL",
+    title = "T"
+  )
+  txt <- .source_text(obj)
+  expect_match(
+    txt,
+    "^Source: ADSL - arframe [0-9.]+ - \\d{4}-\\d{2}-\\d{2}$"
+  )
+
+  # .with_source bakes exactly that string into options$source and keeps
+  # every other option; the original object is untouched (S7 immutability).
+  with_src <- .with_source(obj)
+  expect_identical(with_src@options$source, txt)
+  expect_null(obj@options$source)
+})

@@ -258,12 +258,13 @@
   )
 }
 
-#' One footnote line: the population tag on line 1 (the convention the
-#' paper's `.population_line()` reads), a plain text input posting through
-#' the shared `fn_edit` input on change (blur/Enter -- footnotes are
-#' sentences, not live-typed previews), and a remove button posting
-#' `fn_remove`. Dynamic per-line controls use the same
-#' single-shared-input pattern as `.assigned_row()`/`.toc_kebab()`.
+#' One footnote line: a drag grip (footnote order is part of the output), a
+#' plain text input posting through the shared `fn_edit` input on change
+#' (blur/Enter -- footnotes are sentences, not live-typed previews), and a
+#' remove button posting `fn_remove`. Line 1 still doubles as the paper's
+#' population subtitle (`.population_line()`), but that convention is
+#' carried by position alone -- no badge. Dynamic per-line controls use the
+#' same single-shared-input pattern as `.assigned_row()`/`.toc_kebab()`.
 #' @noRd
 .fn_row <- function(ns, i, value) {
   edit_js <- sprintf(
@@ -285,9 +286,6 @@
       onchange = edit_js,
       `aria-label` = paste0("Footnote ", i)
     ),
-    if (i == 1L) {
-      shiny::tags$span(class = "ar-fn-pop ar-mono", "population")
-    },
     shiny::tags$button(
       type = "button",
       class = "ar-icon-btn ar-fn-remove",

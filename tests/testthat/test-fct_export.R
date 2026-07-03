@@ -141,3 +141,45 @@ test_that(".zip_export produces a readable archive containing the tree", {
 # That reactive glue is browser-only; the render + package assembly are
 # covered in test-fct_async.R (daemon byte-identical + `.build_export_package(
 # rendered=)`), and the button/hidden-link affordances in test-mod_frame.R.
+
+test_that("the export click's injected report carries the source line end to end", {
+  fx <- .ex_store()
+  withr::defer(arpillar::engine_close(fx$con))
+  dir <- withr::local_tempdir()
+
+  # The export button hands .build_export_package the SAME source-injected
+  # copy the daemon serialized (mod_frame); the sync leg here proves the
+  # injected options$source lands in the emitted RTFs, the programs, and
+  # report.json -- a self-consistent package.
+  injected <- shiny::isolate(.report_with_source(fx$store$rv$report))
+  res <- shiny::isolate(
+    .build_export_package(
+      fx$store,
+      dir,
+      stamp = "2026-07-02T14:02:00",
+      report = injected
+    )
+  )
+  expect_gt(length(res$ready), 0L)
+
+  rtfs <- list.files(file.path(dir, "outputs"), full.names = TRUE)
+  expect_gt(length(rtfs), 0L)
+  for (f in rtfs) {
+    txt <- paste(readLines(f, warn = FALSE), collapse = "\n")
+    # Each output stamps its OWN dataset (ADSL, ADAE, ...).
+    expect_match(txt, "Source: [A-Z0-9]+ - arframe")
+  }
+
+  # The archival spec records the provenance the RTFs were emitted with.
+  spec <- paste(
+    readLines(file.path(dir, "report.json"), warn = FALSE),
+    collapse = "\n"
+  )
+  expect_match(spec, "Source: [A-Z0-9]+ - arframe")
+
+  # The live store report stays uninjected -- no stamped date at rest.
+  live <- shiny::isolate(fx$store$rv$report)
+  for (obj in .all_objects(live)) {
+    expect_null(obj@options$source)
+  }
+})

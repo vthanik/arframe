@@ -255,6 +255,10 @@ mod_card_server <- function(id, store) {
     # the workspace class), so the CSS folds/unfolds the pane.
     lapply(names(.INSP_TABS), function(tab) {
       shiny::observeEvent(input[[paste0("tab_", tab)]], {
+        # A direct tab click is navigation, NOT region routing: clear any
+        # stale region focus so a pane never renders a region-narrowed (or
+        # empty) subset after the user moved on from a jump-link.
+        store$rv$region <- NULL
         if (isTRUE(store$rv$insp_collapsed)) {
           store$rv$insp_collapsed <- FALSE
           store$rv$insp_tab <- tab
@@ -314,6 +318,11 @@ mod_card_server <- function(id, store) {
         if (is.null(obj)) {
           .abort_app("No output is selected.")
         }
+        # Paper parity: bake the screen's own source line into the emitted
+        # RTF (options$source; the engine renders it verbatim and never
+        # stamps a date itself). The ARD memo key ignores options, so the
+        # cached ARD is reused as-is.
+        obj <- .with_source(obj)
         if (.is_figure_type(obj@type)) {
           arpillar::render_figure_rtf(store$con, obj, file)
         } else {

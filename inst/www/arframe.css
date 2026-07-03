@@ -1529,7 +1529,7 @@ input[type="radio"] {
   font-family: "IBM Plex Mono", monospace;
 }
 
-/* -- footnote rows: [input 1fr] [pop tag] [remove] -- */
+/* -- footnote rows: [grip] [input 1fr] [remove] -- */
 .ar-fn-row {
   display: flex;
   align-items: center;
@@ -1538,16 +1538,6 @@ input[type="radio"] {
 .ar-fn-input {
   flex: 1 1 auto;
   min-width: 0;
-}
-.ar-fn-pop {
-  flex: 0 0 auto;
-  font-size: 9px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ar-ink-4);
-  border: 1px solid var(--ar-rule);
-  border-radius: 3px;
-  padding: 1px 4px;
 }
 .ar-fn-add {
   align-self: flex-start;

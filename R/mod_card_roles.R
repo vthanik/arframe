@@ -23,7 +23,10 @@
   # v5: the docked Roles TAB is shown with no region focus (`region` NULL) --
   # `switch()` aborts on a length-0 EXPR, and the right content there is the
   # FULL role-slot editor, not a region-filtered subset. Only an explicit
-  # role-region (columns/rows/axes) narrows the set.
+  # role-region (columns/rows/axes) narrows the set; ANY other region token
+  # ("title", "footnotes", a future one) falls back to the full set -- a
+  # stale non-roles region must never filter the pane down to nothing (the
+  # empty-Roles regression).
   if (is.null(region) || length(region) != 1L) {
     return(slots)
   }
@@ -33,7 +36,7 @@
     columns = ids %in% "treatment",
     rows = ids %in% c("summarize", "hierarchy"),
     axes = !ids %in% c("treatment", "summarize", "hierarchy"),
-    ids %in% character(0)
+    rep(TRUE, length(slots))
   )
   slots[keep]
 }
@@ -428,6 +431,12 @@ mod_card_roles_server <- function(id, store) {
       }
       slots <- .region_slots(store$rv$region, gen$slots)
       if (length(slots) == 0L) {
+        # A region narrowing that matches nothing on THIS generator (a stale
+        # "axes" from a figure carried onto a table) shows the full editor,
+        # never an empty pane.
+        slots <- gen$slots
+      }
+      if (length(slots) == 0L) {
         return(NULL)
       }
       problems <- .slot_problems(obj, slots)
@@ -536,6 +545,12 @@ mod_card_roles_server <- function(id, store) {
         label = paste0("remove ", req$name, " from ", req$slot)
       )
     })
+
+    # The panes are always mounted and CSS-toggled (never remounted), so the
+    # slot editor must keep computing while hidden -- a suspended output
+    # would show a STALE (or empty) editor after a pure class-flip tab
+    # switch. Same contract as mod_card_options/mod_card_filters.
+    shiny::outputOptions(output, "slots", suspendWhenHidden = FALSE)
 
     invisible(NULL)
   })

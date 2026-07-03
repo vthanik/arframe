@@ -234,7 +234,11 @@ mod_frame_server <- function(id, store) {
     ex <- new.env(parent = emptyenv())
 
     shiny::observeEvent(input$export_btn, {
-      report <- store$rv$report
+      # Export-time source injection: the daemon sees only this JSON, and
+      # the success handler assembles the package from the SAME copy -- the
+      # store's live report never carries a stamped date.
+      report <- .report_with_source(store$rv$report)
+      ex$report <- report
       ex$dir <- file.path(tempdir(), .report_slug(report))
       unlink(ex$dir, recursive = TRUE)
       dir.create(
@@ -260,7 +264,13 @@ mod_frame_server <- function(id, store) {
       if (identical(st, "success")) {
         rendered <- as.list(export$result())
         stamp <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
-        res <- .build_export_package(store, ex$dir, stamp, rendered = rendered)
+        res <- .build_export_package(
+          store,
+          ex$dir,
+          stamp,
+          rendered = rendered,
+          report = ex$report
+        )
         ex$zip <- file.path(tempdir(), paste0(basename(ex$dir), ".zip"))
         .zip_export(ex$dir, ex$zip)
         log_line(

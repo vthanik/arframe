@@ -70,9 +70,20 @@
 #' skipped/error) and assembles the cheap parts (programs, report.json,
 #' manifest). Either way the outputs/ filenames are the `.output_slug()`
 #' slugs, so the manifest linkage is identical.
+#'
+#' `report` lets the export click hand in its source-injected copy
+#' (`.report_with_source()`) so outputs/, programs/ (emit_code embeds
+#' options) and report.json stay self-consistent with what the daemon
+#' rendered; `NULL` falls back to the store's live report.
 #' @noRd
-.build_export_package <- function(store, dir, stamp, rendered = NULL) {
-  report <- store$rv$report
+.build_export_package <- function(
+  store,
+  dir,
+  stamp,
+  rendered = NULL,
+  report = NULL
+) {
+  report <- report %||% store$rv$report
   out_dir <- file.path(dir, "outputs")
   prog_dir <- file.path(dir, "programs")
   dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)

@@ -75,14 +75,16 @@
 # RTF leg, the screen leg suppresses them with tabular's
 # `chrome_onscreen = "off"` preset knob instead of re-adding markup here.
 
-#' The faint provenance line at the foot of the sheet: `Source: <dataset> -
-#' arframe <version> - <date>`. Wrapped in the `source` region so clicking
-#' it opens the card's read-only provenance / "View code" panel (design
-#' spec #4's `source` row).
+#' The provenance TEXT: `Source: <dataset> - arframe <version> - <date>`.
+#' The one composition of the source line, shared by the screen leg (below)
+#' and the export legs (mod_card's .rtf download, fct_export's package
+#' build), which bake it into `options$source` so arpillar renders the SAME
+#' string on paper -- the date is stamped here, arframe-side, keeping the
+#' engine's emit byte-deterministic.
 #' @noRd
-.source_line <- function(object) {
+.source_text <- function(object) {
   ver <- as.character(utils::packageVersion("arframe"))
-  txt <- paste0(
+  paste0(
     "Source: ",
     object@dataset,
     " - arframe ",
@@ -90,10 +92,40 @@
     " - ",
     format(Sys.Date(), "%Y-%m-%d")
   )
+}
+
+#' The faint provenance line at the foot of the sheet, from
+#' `.source_text()`. Wrapped in the `source` region so clicking it opens
+#' the card's read-only provenance / "View code" panel (design spec #4's
+#' `source` row).
+#' @noRd
+.source_line <- function(object) {
   shiny::tags$div(
     class = "ar-paper-source ar-mono",
-    txt
+    .source_text(object)
   )
+}
+
+#' A copy of `object` with the screen's source line baked into
+#' `options$source`, so an RTF render carries the same provenance string
+#' the canvas paints. Applied at EXPORT time only -- the live report in the
+#' store never carries a stamped date.
+#' @noRd
+.with_source <- function(object) {
+  opts <- object@options
+  opts$source <- .source_text(object)
+  S7::set_props(object, options = opts)
+}
+
+#' `.with_source()` mapped over every output of a report -- the export
+#' package's whole-report leg (both the async JSON handoff and the sync
+#' fallback build from the same injected copy).
+#' @noRd
+.report_with_source <- function(report) {
+  pages <- lapply(report@pages, function(pg) {
+    S7::set_props(pg, objects = lapply(pg@objects, .with_source))
+  })
+  S7::set_props(report, pages = pages)
 }
 
 # ---- code view (v5, decision #8) -----------------------------------------

@@ -322,6 +322,18 @@ test_that("footnote add/edit/remove round-trips through the footnotes prop", {
   })
 })
 
+test_that("footnote rows carry no population badge (removed by request)", {
+  fx <- .mco_demo_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
+    session$flushReact()
+    html <- output$pane$html
+    expect_no_match(html, "ar-fn-pop", fixed = TRUE)
+    expect_no_match(html, ">population<", fixed = TRUE)
+  })
+})
+
 # ---- empty state ----------------------------------------------------------
 
 test_that("the pane renders empty (no crash) with no selection", {
