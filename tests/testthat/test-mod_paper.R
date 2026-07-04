@@ -648,7 +648,11 @@ test_that("arframe() paper: a READY table renders live, screenshots the payoff",
   # no `rv$selected` pointer -- matching a freshly reopened project) --
   # click the READY demographics row first, exactly like
   # test-mod_contents.R's own e2e click, before asserting selection-
-  # dependent content.
+  # dependent content. shinytest2 can declare a SECOND consecutive
+  # AppDriver "ready" before its first renderUI paints (the chromote
+  # tracer reports "Already connected" and skips the value wait), so
+  # wait for the row itself, not just idle.
+  app$wait_for_js('document.querySelector(".ar-toc-row") !== null')
   app$click(selector = '.ar-toc-row[data-ar-id="out001"]')
   app$wait_for_idle()
 
@@ -680,6 +684,10 @@ test_that("arframe() paper: a ready render never cosplays as a page (decision #7
   )
   withr::defer(app$stop())
 
+  # Second consecutive AppDriver: the first render can land AFTER
+  # shinytest2's ready gate (see the sibling test above) -- wait for the
+  # row before clicking.
+  app$wait_for_js('document.querySelector(".ar-toc-row") !== null')
   app$click(selector = '.ar-toc-row[data-ar-id="out001"]')
   app$wait_for_idle()
 
