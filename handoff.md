@@ -1,85 +1,133 @@
-# handoff -- 2026-07-04 (session 2: Global-Requirements parity + explorer port)
+# handoff -- 2026-07-04 (end of session 2: Global-Requirements parity DONE)
 
 ## Goal
 
-Galley UI (arframe) on arpillar/tabular. This session executed the full 8-stage
-"Global Requirements for TLGs + explorer parity" plan
-(`~/.claude/plans/users-vignesh-downloads-global-requirem-hashed-glade.md`):
-Appendix-I page chrome, explorer-blue theme, levels editor, Total column,
-spanning headers, page-by. tabular was NOT modified.
+Galley UI (arframe) on arpillar/tabular. Session 2 executed and FINISHED the
+8-stage "Global Requirements for TLGs + explorer parity" plan
+(`~/.claude/plans/users-vignesh-downloads-global-requirem-hashed-glade.md`),
+including the end-to-end Appendix-I verification. **The next session starts
+mockup piece C** (see "Next in queue").
 
 ## Current state
 
-- **arframe** @ `9d142ec` (master), clean, `check` **0/0/0**, 1014 tests green.
-- **arpillar** @ `7bc1461` (`feat/ui-prereqs`), clean, **0/0/0**, 822 green.
-- **tabular untouched.** Nothing pushed anywhere (publish still HELD).
-- Eyeball proof on real CDISC pilot: `.local/screens/s1-blue-run-age-peek.png`,
-  `s3-*`, `s4-canvas-page.png`, `s5-levels-editor.png`, `s7-spans.png`,
-  `s8-pageby.png`.
+- **arframe** @ `60dc93b` (master), clean, `check` **0/0/0**, 1014 tests green.
+- **arpillar** @ `4fb6225` (`feat/ui-prereqs`), clean, **0/0/0**, 824 green.
+- **tabular untouched** this session. Nothing pushed anywhere (publish HELD --
+  no GitHub repos exist yet for arpillar/artoo/datasetviewer/arframe).
+- **Final proof:** `.local/screens/t-14-1-1-full.rtf` -- kitchen-sink Table
+  14.1.1 (chrome bands, Total, arm reorder/recode, level recode + expected
+  ASIAN zero row, Xanomeline span, SEX page-by with RIGHT-aligned banners +
+  per-page Ns, stamped Program/datetime footer). 18/18 Appendix-I greps pass,
+  byte-deterministic. **User still owes the Word eyeball** (font
+  substitution / page fit) -- generator script: /tmp is gone, rebuild from
+  this file's "Verification recipe" below if needed.
+- Eyeball screenshots: `.local/screens/s1-blue-run-age-peek.png`, `s3-*`,
+  `s4-canvas-page.png`, `s5-levels-editor.png`, `s7-spans.png`, `s8-pageby.png`.
 
-## Superseded decision (CLAUDE.md updated)
+## What landed (both repos, this session)
 
-**Decision #7 flipped (2026-07-04):** canvas = tabular's FULL page render
-(title block, footnotes, source, running bands all from the ONE spec the .rtf
-emits); chrome-free galley is dead. `.rtf` is the org default export --
-**no .lst emitter, ever** (user confirmed twice).
+arframe (newest first): `60dc93b` handoff; `9d142ec` SUBGROUP/PAGE BY section
++ conditional page_by ARD key; `ebd734e` SPANNING HEADER section; `026b02d`
+Total toggle + conditional total key; `7fe9059` LEVELS editor
+(order/include/display-as/expected, cap 24); `ee8d01a` canvas flip (tabular's
+full page render, 1056/816px sheet); `90e4a2b` Options layout sections
+(titles/header N/page&output/running bands) + `.with_chrome()`; `14d580e`
+explorer blue `#0378CD` + peek failure-not-memoized fix.
 
-## What landed (newest first, per repo)
+arpillar: `4fb6225` non-contiguous span drops forgivingly (live-repro);
+`7bc1461` page-by var drops its own row block (live-repro); `74c4aeb`
+page_by/page_n/banner/panels via tabular subgroup, banner RIGHT-aligned;
+`b612968` options$spans bands; `175266a` pooled Total arm + arm order/recode;
+`8f5bc19` data_item@levels; `ee51938` .LAYOUT_SCHEMA + Appendix-I chrome.
 
-arframe: `9d142ec` PAGING section + conditional page_by key; `ebd734e`
-SPANNING HEADER section; `026b02d` Total toggle + conditional total key;
-`7fe9059` LEVELS editor (order/include/display-as/expected, cap 24);
-`ee8d01a` canvas flip (page facsimile 1056/816px, .tabular-title un-hidden);
-`90e4a2b` Options layout sections (titles/header N/page&output/running bands)
-+ `.with_chrome()` token stamping; `14d580e` explorer blue #0378CD + peek
-failure-not-memoized fix.
+## Binding decisions from this session (CLAUDE.md already updated)
 
-arpillar: `7bc1461` page-by var drops its own row block (live-repro fix);
-`74c4aeb` page_by/page_n/banner/panels via tabular subgroup (banner
-RIGHT-aligned -- user correction to Appendix I); `b612968` options$spans
-bands; `175266a` pooled Total arm + arm order/recode; `8f5bc19`
-data_item@levels; `ee51938` .LAYOUT_SCHEMA + Appendix-I chrome
-(pagehead/pagefoot, {page}/{npages} field codes, {datetime} rejection,
-printable-width pin, header_n) -- existing goldens passed UNCHANGED.
+- **Canvas = tabular's FULL page render** (decision #7 FLIPPED 2026-07-04).
+  A ready table gets NO arframe title/source markup (double-print);
+  ghost/stale/error paths + figures keep theirs. `.tabular-title` CSS
+  un-hidden (was display:none in the v5 dup-fix -- inverted).
+- **Export = .rtf ONLY.** Org updated their standard; **no .lst emitter,
+  ever** (user confirmed twice -- do not re-raise).
+- **Subgroup banner is RIGHT-aligned** (user correction to Appendix I's
+  centered-looking mock) -- engine-side via `cells_subgroup_labels()`.
+- **Primary color = explorer blue `#0378CD`** (from ~/projects/r/explorer,
+  theme.R:19 there).
 
-## Key invariants (do not re-litigate)
+## Key invariants (do NOT re-litigate)
 
 - **No layout options = byte-identical legacy render** (no preset attached);
-  pinned by "no options => old golden" tests. New goldens:
-  `pagechrome.rtf`, `pageby.rtf`.
-- **Determinism gate:** arpillar REJECTS `{datetime}`/`{program}` in bands
-  (classed error); arframe stamps literals via `.with_chrome()` (mod_paper.R)
-  at canvas/.rtf/export legs; `{page}`/`{npages}` = Word field codes.
-- **ARD key discipline:** `total`/`page_by` conditionally appended ONLY when
-  set -- legacy hashes stable (regression-pinned). Level edits, spans, chrome
-  = CHEAP; total/page_by = HEAVY (Run-gated) with zero new stale plumbing.
-- **Levels:** `data_item@levels` = list(value, display, include, expected);
-  empty = legacy bytes. Arms reuse it (Total pinned last, never synthesized).
-- Percent denominators are population-N: level exclusion never moves other
-  cells (test-pinned).
+  pinned by tests. Goldens: `pagechrome.rtf`, `pageby.rtf` + originals
+  (which passed UNCHANGED -- zero regen this whole session).
+- **Determinism gate:** arpillar REJECTS `{datetime}`/`{program}` in
+  pagehead/pagefoot (classed `arpillar_error_input`); arframe stamps
+  literals via `.with_chrome()` (mod_paper.R) at canvas/.rtf/export legs;
+  `{page}`/`{npages}` pass as Word field codes.
+- **ARD key discipline:** `total`/`page_by` appended to `.ard_key()` ONLY
+  when set (legacy hashes stable, regression-pinned). Level edits, spans,
+  chrome = CHEAP (live re-render); total/page_by = HEAVY (auto Run-gated
+  via the existing key-diff in `update_object` -- no bespoke stale code).
+- **Levels model:** `data_item@levels` = list of
+  `list(value, display, include, expected)`, list order = display order,
+  empty = legacy bytes. Arms reuse it (Total pinned last; an unobserved arm
+  is NEVER synthesized; non-contiguous span bands DROP, the fix is arm
+  reorder). Percent denominators are population-N: exclusion never moves
+  other cells (test-pinned).
+- Serializer: `levels` is an additive field, NO schema bump (decoder `%||%`
+  defaults it; v1-JSON regression test pinned).
 
-## Deliberate cuts (add when asked)
+## Deliberate cuts (add only when asked)
 
-- page_n "banner" placement (banner shows label only; N modes: off/headers).
-- Ranks-pane rebase onto a shared sortable atom (works as-is).
-- Occurrence page_by (ignored, documented in layout_schema docs).
-- Levels editor hard cap 24 observed levels, no paging.
-- No auto-seeded Appendix-I pagehead (protocol id is not modeled in the
-  report; user types it in RUNNING HEADER or we add report metadata later).
+- page_n `"banner"` placement (modes now: off / headers).
+- Occurrence page_by (silently unsupported, noted in layout_schema docs).
+- Levels editor caps at 24 observed levels (flat cap, no paging).
+- Ranks-pane rebase onto a shared sortable atom (works as-is; skipped).
+- Auto-seeded `Protocol:` pagehead (protocol id is NOT modeled on report;
+  user types it in RUNNING HEADER, or add report metadata later).
 
-## What to do next (user steering)
+## Next in queue (the reset session starts HERE)
 
-1. Open an emitted .rtf in Word (Table 14.1.1 with chrome + page-by) --
-   final Appendix-I line-by-line check (machine checks all pass).
-2. IBM Plex font work: still waiting on the SEPARATE tabular session
-   (prompt handed over previously); arpillar/arframe kept font_family
-   generic (mono/sans/serif) deliberately.
-3. Prior roadmap: mockup pieces C (richer OUTLINE) -> A (activity bar) ->
-   B (canvas per-output tabs).
+**Mockup piece C -- richer OUTLINE** (from the pre-font-detour steering,
+order C -> A -> B):
+- CONTENTS tree grouped into TABLES / FIGURES / LISTINGS sections.
+- Colored status as dot + WORD (not dot alone) per row.
+- Keep: ICH numbers mono, per-generator icons, chevron-collapse strip.
+- Files: `R/mod_contents.R`, `inst/www/arframe.css` (TOC block), tests in
+  `test-mod_contents.R`. Status colors already tokenized: `--ar-ready`,
+  `--ar-draft`, `--ar-error`.
+
+Then **A** (left activity bar -- ASK the user which of the 5 mockup icons are
+real before building), then **B** (canvas per-output tabs -- CONFIRM scope
+first, biggest piece).
+
+Also pending externally: the **IBM Plex tabular session** (prompt was handed
+over a session ago). arpillar/arframe deliberately kept `font_family`
+generic (mono/sans/serif); when tabular lands recognition, follow the OLD
+handoff's step 2/3 (preset font_family + figure base family + golden regen).
+
+## Verification recipe (kitchen-sink RTF, if it needs rebuilding)
+
+Object: summary on real ADSL (`~/projects/data/cdisc-adam-pilot`), options:
+number 14.1.1, titles "Randomized Subjects", header_n "(N={n})",
+total TRUE, spans list(label "Xanomeline", cols = the two Xanomeline arms),
+page_by SEX + page_n headers + banner "Sex: {SEX}", pagehead
+Protocol/Draft/Page {page} of {npages}, pagefoot "Program: {program}" /
+"{datetime}"; treatment levels reorder Placebo, Xano High (display "Xano
+High"), Xano Low (span needs contiguous arms!); RACE levels with recodes +
+expected ASIAN. Render via `arframe:::.with_chrome(arframe:::.with_source(obj))`
+then `arpillar::render_rtf` -- grep the 18 Appendix-I markers.
 
 ## Operating constraints (unchanged)
 
-`\uXXXX` escapes; em-dash in UI text; check 0/0/0 both repos before commit;
-eyeball on real CDISC (launcher :7788, kill port between drives); RTF byte
-determinism is the golden gate; never push without per-session approval;
-no AI attribution.
+- `\uXXXX` escapes for non-ASCII in R strings; em-dash `—` in UI text
+  (never `--`); tokens.css vars only.
+- Gate: `devtools::check` 0/0/0 BOTH repos before commit (use
+  `_R_CHECK_SYSTEM_CLOCK_=0` -- the NTP probe NOTE is environmental).
+- After arpillar changes: `R CMD INSTALL --no-docs .` or arframe tests run
+  against the stale installed copy.
+- Eyeball harness: `.local/screens/launcher.R` (:7788, real CDISC mounts) +
+  chromote driver; kill port 7788 between drives (store is per-process);
+  in driver JS, mind quote collision (use double quotes inside `click('...')`).
+- testServer suspend pins grep `deparse(body(<server>))`, not source files.
+- Never push without explicit per-session approval. No AI attribution.
+- `handoff.md` is TRACKED (committed, in `.Rbuildignore`) -- overwrite +
+  commit, matching prior handoff commits.
