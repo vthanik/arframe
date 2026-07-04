@@ -431,6 +431,28 @@ input[type="radio"] {
   min-width: 6px;
 }
 
+/* -- TOC status: dot + word (mockup piece C) -- inside a 280px row the
+   bordered letterpress stamp reads too heavy, so the SAME `.stamp()` atom
+   restyles to a colored dot beside the word. Color still never carries the
+   signal alone (the word stays); the dot inherits the status color via the
+   existing `currentColor` modifiers. QC-pane stamps keep the letterpress. */
+.ar-toc-row .ar-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  padding: 0;
+  font-size: 10px;
+}
+.ar-toc-row .ar-stamp::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+}
+
 /* -- hover-revealed kebab + its popovers -- */
 .ar-toc-kebab-wrap {
   position: relative;

@@ -403,6 +403,22 @@ test_that("arframe.js contains the Sortable bridge (_arSortable, shiny:value)", 
   expect_match(txt, "arInitSortables", fixed = TRUE)
 })
 
+test_that("TOC rows restyle the stamp as dot + word (mockup piece C)", {
+  css <- readLines(
+    system.file("www", "arframe.css", package = "arframe"),
+    warn = FALSE
+  )
+  txt <- paste(css, collapse = "\n")
+  # The scoped override keeps the word and adds a currentColor dot; the
+  # letterpress border is dropped only inside `.ar-toc-row`.
+  expect_match(txt, ".ar-toc-row .ar-stamp::before", fixed = TRUE)
+  expect_match(
+    txt,
+    ".ar-toc-row .ar-stamp {\n  display: inline-flex",
+    fixed = TRUE
+  )
+})
+
 test_that("Sortable.min.js is vendored with the MIT header intact", {
   first_line <- readLines(
     system.file("www", "Sortable.min.js", package = "arframe"),
