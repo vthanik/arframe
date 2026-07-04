@@ -74,7 +74,8 @@ arframe <- function(project = NULL, data = NULL, folders = NULL, daemons = 2L) {
           mod_card_ui("card")
         ),
         data_body = mod_data_ui("data"),
-        qc_body = mod_qc_ui("qc")
+        qc_body = mod_qc_ui("qc"),
+        logs_body = mod_logs_ui("qc")
       ),
       mod_add_output_ui("add_output")
     )

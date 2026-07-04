@@ -1,47 +1,54 @@
-# The Galley frame: the whole 100vh workspace -- app bar, the three mounted
-# mode bodies (report/data/qc), and the status bar (design spec #3). Layout
-# only: every body is handed in by the caller as opaque tag content and all
-# three stay MOUNTED at once (draft state lives in the store, never the DOM --
+# The Galley frame: the whole 100vh workspace -- app bar, the activity bar
+# (the far-left mode rail, mockup piece A), the four mounted mode bodies
+# (report/data/qc/logs), and the status bar (design spec #3). Layout only:
+# every body is handed in by the caller as opaque tag content and all four
+# stay MOUNTED at once (draft state lives in the store, never the DOM --
 # see the suspend-contract regression in test-fct_store.R). CSS shows only the
 # one matching `store$rv$mode` via the `ar-mode-*` class on `.ar-workspace`,
 # set by arframe.js's "ar-mode" custom message handler.
 
-#' The Galley frame UI: app bar, the three mode bodies, status bar.
+#' The Galley frame UI: app bar, activity bar, the four mode bodies,
+#' status bar.
 #'
-#' `report_body`/`data_body`/`qc_body` are opaque tag content -- this module
-#' does not know what is inside them, only which `.ar-body-*` container each
-#' sits in. The report body is itself the three-region contents/desk/card row;
-#' the caller composes that (see [arframe()]).
+#' `report_body`/`data_body`/`qc_body`/`logs_body` are opaque tag content --
+#' this module does not know what is inside them, only which `.ar-body-*`
+#' container each sits in. The report body is itself the three-region
+#' contents/desk/card row; the caller composes that (see [arframe()]).
 #' @param id *The module namespace.* `<character(1)>: required`.
 #' @param report_body *Report-mode body content.* `<tag/tagList>: required`.
 #' @param data_body *Data-mode body content.* `<tag/tagList>: required`.
 #' @param qc_body *QC-mode body content.* `<tag/tagList>: required`.
+#' @param logs_body *Logs-mode body content.* `<tag/tagList>: required`.
 #' @noRd
-mod_frame_ui <- function(id, report_body, data_body, qc_body) {
+mod_frame_ui <- function(id, report_body, data_body, qc_body, logs_body) {
   ns <- shiny::NS(id)
   shiny::div(
     class = "ar-workspace ar-mode-report",
     .frame_bar(ns),
     shiny::div(
-      class = "ar-body",
-      shiny::div(class = "ar-body-report", report_body),
-      shiny::div(class = "ar-body-data", data_body),
-      shiny::div(class = "ar-body-qc", qc_body)
+      class = "ar-main",
+      .frame_actbar(ns),
+      shiny::div(
+        class = "ar-body",
+        shiny::div(class = "ar-body-report", report_body),
+        shiny::div(class = "ar-body-data", data_body),
+        shiny::div(class = "ar-body-qc", qc_body),
+        shiny::div(class = "ar-body-logs", logs_body)
+      )
     ),
     .frame_statusbar(ns)
   )
 }
 
-#' The 42px app bar (v5, decision #8): wordmark, the Data/Report
-#' segmented toggle (top-LEFT -- modes are peers, state reads before
-#' actions), report title (click-to-edit), then the right action cluster:
-#' undo/redo, QC, the command-palette hint, Export package.
+#' The 42px app bar (mockup piece A supersedes the v5 segmented toggle):
+#' wordmark, report title (click-to-edit), then the right action cluster:
+#' undo/redo, the command-palette hint, Export package. Mode switching
+#' lives in the activity bar (`.frame_actbar()`).
 #' @noRd
 .frame_bar <- function(ns) {
   shiny::div(
     class = "ar-bar",
     shiny::span(class = "ar-bar-mark ar-mono", "arframe"),
-    .frame_seg(ns),
     shiny::div(class = "ar-bar-divider"),
     .frame_title(ns),
     shiny::div(class = "ar-bar-spacer"),
@@ -63,7 +70,6 @@ mod_frame_ui <- function(id, report_body, data_body, qc_body) {
       ),
       `aria-label` = "Redo"
     ),
-    .mode_btn(ns("mode_qc"), "qc", "Logs"),
     # Empty on the server -- arframe.js fills it per the CLIENT's OS
     # (navigator.platform: Mac -> the Command glyph, else "Ctrl K"). The server
     # cannot know the browser's OS, so this cannot be decided in R.
@@ -90,30 +96,33 @@ mod_frame_ui <- function(id, report_body, data_body, qc_body) {
   )
 }
 
-#' The Data/Report segmented toggle. Both segments are plain mode
-#' buttons under one `.ar-seg` border; the ACTIVE segment is styled by a
-#' pure CSS rule keyed off the workspace `ar-mode-*` class (see `.mode_btn`),
-#' so switching never round-trips just to restyle.
+#' The activity bar (mockup piece A): a narrow far-left vertical rail of
+#' icon buttons, one per mode destination -- Report, Data, QC, Logs. The
+#' ACTIVE button is a pure CSS rule keyed off the workspace `ar-mode-*`
+#' class, so switching never round-trips just to restyle. `data-ar-mode`
+#' is what arframe.js's delegated click handler reads to fire `input$mode`.
+#' Distinct from the collapsible CONTENTS rail (`rv$rail_collapsed`) --
+#' the activity bar never collapses.
 #' @noRd
-.frame_seg <- function(ns) {
+.frame_actbar <- function(ns) {
   shiny::div(
-    class = "ar-seg",
-    .mode_btn(ns("mode_data"), "data", "Data"),
-    .mode_btn(ns("mode_report"), "report", "Report")
+    class = "ar-actbar",
+    .act_btn(ns("mode_report"), "report", "report", "Report"),
+    .act_btn(ns("mode_data"), "data", "database", "Data"),
+    .act_btn(ns("mode_qc"), "qc", "check", "QC"),
+    .act_btn(ns("mode_logs"), "logs", "logs", "Logs")
   )
 }
 
-#' One quiet mode-switch button (`Data` / `QC`). No "active" class is set
-#' here -- the active state is a pure CSS rule keyed off the `.ar-mode-*`
-#' class on the workspace root (see arframe.css 02 frame), so switching mode
-#' never needs a second server round-trip just to restyle the buttons.
-#' `data-ar-mode` is what arframe.js's delegated click handler reads to fire
-#' `input$mode`.
+#' One activity-bar button: an icon-only mode switch carrying its label as
+#' tooltip + aria-label (the rail is too narrow for words).
 #' @noRd
-.mode_btn <- function(id, mode, label) {
+.act_btn <- function(id, mode, icon, label) {
   shiny::tagAppendAttributes(
-    .action_btn(id, label, variant = "link", class = "ar-bar-mode"),
-    `data-ar-mode` = mode
+    .action_btn(id, .icon(icon, 16), variant = "link", class = "ar-act-btn"),
+    `data-ar-mode` = mode,
+    `aria-label` = label,
+    title = label
   )
 }
 
@@ -168,20 +177,13 @@ mod_frame_server <- function(id, store) {
   shiny::moduleServer(id, function(input, output, session) {
     output$title_display <- shiny::renderText(store$rv$report@name)
 
-    # v5 semantics: the Data/Report SEGMENTS are idempotent (clicking the
-    # active segment is a no-op -- a segmented control names both states).
-    # Only QC keeps the quiet-toggle behavior: clicking the active QC
-    # returns to Report, since the right cluster has no "Report" button.
+    # Activity-bar semantics (piece A): every destination has its own
+    # button, so clicks are idempotent -- no quiet-toggle special case
+    # (the old header QC toggle existed only because the right cluster
+    # had no "Report" button).
     shiny::observeEvent(input$mode, {
-      new_mode <- if (
-        identical(input$mode, "qc") && identical(store$rv$mode, "qc")
-      ) {
-        "report"
-      } else {
-        input$mode
-      }
-      store$rv$mode <- new_mode
-      session$sendCustomMessage("ar-mode", new_mode)
+      store$rv$mode <- input$mode
+      session$sendCustomMessage("ar-mode", input$mode)
     })
 
     # Panel collapse (decision #8): the chevrons render inside the contents

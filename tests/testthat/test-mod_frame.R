@@ -1,28 +1,32 @@
-# The Galley frame: app bar + status bar + the three mounted mode bodies
-# (report/data/qc), shown/hidden by a workspace mode class. Server-side, the
-# frame owns mode switching, undo/redo, and the report-title edit -- all
-# through the injected store, never local reactiveVal state.
+# The Galley frame: app bar + activity bar + status bar + the four mounted
+# mode bodies (report/data/qc/logs), shown/hidden by a workspace mode class.
+# Server-side, the frame owns mode switching, undo/redo, and the report-title
+# edit -- all through the injected store, never local reactiveVal state.
 
-test_that("mod_frame_ui HTML contains the bar, mode buttons, statusbar, and all three mode-body containers", {
+test_that("mod_frame_ui HTML contains the bar, activity bar, statusbar, and all four mode-body containers", {
   ui <- mod_frame_ui(
     "frame",
     report_body = shiny::div("report placeholder"),
     data_body = shiny::div("data placeholder"),
-    qc_body = shiny::div("qc placeholder")
+    qc_body = shiny::div("qc placeholder"),
+    logs_body = shiny::div("logs placeholder")
   )
   html <- as.character(ui)
 
   expect_match(html, "ar-bar", fixed = TRUE)
-  # v5 (decision #8): Data|Report is a SEGMENTED toggle top-left -- both
-  # segments carry data-ar-mode; QC stays a quiet button on the right.
-  expect_match(html, "ar-seg", fixed = TRUE)
+  # Piece A: the far-left activity bar carries one icon button per mode
+  # destination -- it supersedes the v5 segmented toggle + header QC button.
+  expect_match(html, "ar-actbar", fixed = TRUE)
+  expect_no_match(html, "ar-seg", fixed = TRUE)
   expect_match(html, 'data-ar-mode="data"', fixed = TRUE)
   expect_match(html, 'data-ar-mode="report"', fixed = TRUE)
   expect_match(html, 'data-ar-mode="qc"', fixed = TRUE)
+  expect_match(html, 'data-ar-mode="logs"', fixed = TRUE)
   expect_match(html, "ar-statusbar", fixed = TRUE)
   expect_match(html, "ar-body-report", fixed = TRUE)
   expect_match(html, "ar-body-data", fixed = TRUE)
   expect_match(html, "ar-body-qc", fixed = TRUE)
+  expect_match(html, "ar-body-logs", fixed = TRUE)
   # Async export (Task 16): a plain action button (not a download link) plus a
   # hidden download link the server clicks once the zip is ready.
   expect_match(html, 'id="frame-export_btn"', fixed = TRUE)
@@ -30,26 +34,20 @@ test_that("mod_frame_ui HTML contains the bar, mode buttons, statusbar, and all 
   expect_match(html, "ar-hidden-dl", fixed = TRUE)
 })
 
-test_that("mod_frame_server: segmented mode is idempotent; QC toggles back (v5)", {
+test_that("mod_frame_server: every activity-bar destination is idempotent (piece A)", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
   store <- shiny::isolate(new_store(con))
 
   shiny::testServer(mod_frame_server, args = list(store = store), {
-    session$setInputs(mode = "data")
-    expect_identical(store$rv$mode, "data")
-    # Clicking the ACTIVE segment is a no-op -- a segmented control names
-    # both states, so there is no hidden "toggle back" behavior.
-    session$setInputs(mode = "data")
-    expect_identical(store$rv$mode, "data")
-    session$setInputs(mode = "report")
-    expect_identical(store$rv$mode, "report")
-    # QC (right cluster) keeps the quiet-toggle semantics: clicking the
-    # active QC returns to Report.
-    session$setInputs(mode = "qc")
-    expect_identical(store$rv$mode, "qc")
-    session$setInputs(mode = "qc")
-    expect_identical(store$rv$mode, "report")
+    for (m in c("data", "report", "qc", "logs")) {
+      session$setInputs(mode = m)
+      expect_identical(store$rv$mode, m)
+      # Clicking the ACTIVE button is a no-op -- each destination has its
+      # own button, so no hidden "toggle back" behavior remains.
+      session$setInputs(mode = m)
+      expect_identical(store$rv$mode, m)
+    }
   })
 })
 
@@ -101,14 +99,16 @@ test_that("arframe() launches: bar, mode buttons, all three bodies, mode switch,
 
   html <- app$get_html("body", outer_html = TRUE)
   expect_match(html, "ar-bar", fixed = TRUE)
-  expect_match(html, "ar-seg", fixed = TRUE)
+  expect_match(html, "ar-actbar", fixed = TRUE)
   expect_match(html, 'data-ar-mode="data"', fixed = TRUE)
   expect_match(html, 'data-ar-mode="report"', fixed = TRUE)
   expect_match(html, 'data-ar-mode="qc"', fixed = TRUE)
+  expect_match(html, 'data-ar-mode="logs"', fixed = TRUE)
   expect_match(html, "ar-statusbar", fixed = TRUE)
   expect_match(html, "ar-body-report", fixed = TRUE)
   expect_match(html, "ar-body-data", fixed = TRUE)
   expect_match(html, "ar-body-qc", fixed = TRUE)
+  expect_match(html, "ar-body-logs", fixed = TRUE)
   expect_match(html, "ar-mode-report", fixed = TRUE)
 
   app$click(selector = '[data-ar-mode="qc"]')

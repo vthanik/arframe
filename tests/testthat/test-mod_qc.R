@@ -43,29 +43,50 @@ test_that("mod_qc_ui HTML contains the QC container and the sheet slot", {
 
 # ---- sheet content ---------------------------------------------------------
 
-test_that(".qc_sheet: running head, summary count, per-status stamps, newest-first log", {
+test_that(".qc_sheet: running head, summary count, per-status stamps", {
   f <- .qc_fixture()
   withr::defer(arpillar::engine_close(f$con))
   report <- shiny::isolate(f$store$rv$report)
-  log <- c("[00:00:01] older line", "[00:00:02] newer line")
   html <- as.character(
-    .qc_sheet(shiny::NS("qc"), report, character(0), character(0), log)
+    .qc_sheet(shiny::NS("qc"), report, character(0), character(0))
   )
 
-  # Running head names the report (the Logs sheet IS a document -- decision #7
+  # Running head names the report (the QC sheet IS a document -- decision #7
   # allows the page chrome here, unlike the on-screen galley artifact).
-  expect_match(html, "Logs", fixed = TRUE)
+  expect_match(html, "QC", fixed = TRUE)
   expect_match(html, report@name, fixed = TRUE)
   # Summary: exactly one of two outputs is ready (matches the oracle).
   expect_match(html, "1 of 2 outputs ready", fixed = TRUE)
   # Both stamps present -- the oracle is read per object, not defaulted.
   expect_match(html, "ar-stamp-ready", fixed = TRUE)
   expect_match(html, "ar-stamp-draft", fixed = TRUE)
-  # The run log is newest-first.
+})
+
+test_that(".logs_sheet: running head + newest-first run log (piece A split)", {
+  f <- .qc_fixture()
+  withr::defer(arpillar::engine_close(f$con))
+  report <- shiny::isolate(f$store$rv$report)
+  log <- c("[00:00:01] older line", "[00:00:02] newer line")
+  html <- as.character(.logs_sheet(report, log))
+
+  expect_match(html, "Logs", fixed = TRUE)
+  expect_match(html, report@name, fixed = TRUE)
   expect_lt(
     regexpr("newer line", html, fixed = TRUE),
     regexpr("older line", html, fixed = TRUE)
   )
+  # Empty state is explicit, never a blank gap.
+  expect_match(
+    as.character(.logs_sheet(report, character(0))),
+    "Nothing logged yet.",
+    fixed = TRUE
+  )
+})
+
+test_that("mod_logs_ui HTML contains the desk container and the log-sheet slot", {
+  html <- as.character(mod_logs_ui("qc"))
+  expect_match(html, "ar-qc", fixed = TRUE)
+  expect_match(html, "qc-log_sheet", fixed = TRUE)
 })
 
 test_that(".qc_sheet: a not-ready output lists its validate_output gaps as jump links", {
@@ -73,7 +94,7 @@ test_that(".qc_sheet: a not-ready output lists its validate_output gaps as jump 
   withr::defer(arpillar::engine_close(f$con))
   report <- shiny::isolate(f$store$rv$report)
   html <- as.character(
-    .qc_sheet(shiny::NS("qc"), report, character(0), character(0), character(0))
+    .qc_sheet(shiny::NS("qc"), report, character(0), character(0))
   )
   expect_match(html, "ar-qc-problems", fixed = TRUE)
   # The jump link carries the draft output's id and posts the `qc-jump` input.
@@ -88,7 +109,7 @@ test_that(".qc_sheet: a broken output shows ERROR with a render-failed jump", {
   # Fold the ready output into rv$broken -- the QC stamp must follow the same
   # app-side flag precedence the TOC uses.
   html <- as.character(
-    .qc_sheet(shiny::NS("qc"), report, f$ready_id, character(0), character(0))
+    .qc_sheet(shiny::NS("qc"), report, f$ready_id, character(0))
   )
   expect_match(html, "ar-stamp-broken", fixed = TRUE)
   expect_match(html, "Render failed", fixed = TRUE)
