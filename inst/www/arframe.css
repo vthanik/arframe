@@ -776,12 +776,16 @@ input[type="radio"] {
   margin: var(--ar-space-5) auto;
   padding: var(--ar-space-5) var(--ar-space-6) var(--ar-space-4);
   flex: 0 0 auto;
-  /* v5 (decision #7): the artifact HUGS its content -- no page aspect, no
-     fit/page modes. Wide crosstabs scroll inside the table wrap instead of
-     stretching the surface. */
-  width: fit-content;
+  /* Canvas flip (2026-07-04, supersedes decision #7's content-hugging
+     galley): the sheet reads as the PAGE the RTF will be -- letter
+     landscape width (11in at 96dpi) unless the render carries a portrait
+     orient attribute. Vertical flow stays continuous (the RTF is the
+     paginated truth; the canvas never fakes page breaks). */
+  width: min(1056px, 100%);
   min-width: 380px;
-  max-width: min(1100px, 100%);
+}
+.ar-paper:has(.ar-paper-table-wrap[data-ar-orient="portrait"]) {
+  width: min(816px, 100%);
 }
 
 /* -- title block: number / title / population, all mono, centred -- */
@@ -858,12 +862,11 @@ input[type="radio"] {
   margin: 0 !important;
 }
 .tabular-doc .tabular-title {
-  /* v5 dup fix: the spec carries the title for the EXPORT leg, so
-     `as.tags()` emits a `.tabular-title` too -- but on screen the title
-     region is arframe's own `.ar-paper-title-block` (number + title +
-     population, the clickable region). Showing both printed the title
-     twice; the engine's copy is hidden on screen only. */
-  display: none !important;
+  /* Canvas flip (2026-07-04): tabular's title block IS the on-screen
+     title now (the arframe `.ar-paper-title-block` no longer renders on
+     the ready path), styled to the old block's look: centered mono. */
+  display: block !important;
+  text-align: center !important;
 }
 .tabular-doc .tabular-table {
   font-size: 11px !important;

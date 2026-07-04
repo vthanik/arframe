@@ -46,14 +46,18 @@ page, proof-stamp statuses, and a summonable/pinnable galley card. The deliverab
 6. **Platform-specific UI resolves in the browser, never in R** — e.g. the ⌘K /
    Ctrl-K hint is set client-side from `navigator.platform` (a web app's server OS
    is not the client's).
-7. **Canvas = galley, NOT page facsimile** (2026-07-02, supersedes Task 9's
-   screen==paper canvas). The typeset-page look is tabular's brand; arframe never
-   cosplays as paper. The canvas shows the live rendered proof (real table/figure,
-   title block, footnotes, source — all clickable regions) on an app-native
-   surface: NO running head (`Protocol … · Page N of N`), NO fit/page toggle, NO
-   letter-page aspect, NO faux sheet. Page chrome appears only in export/QC
-   preview (which is honestly tabular's render). Engine-enforced via tabular's
-   `chrome_onscreen = "off"` preset knob on the screen leg only.
+7. **Canvas = tabular's FULL page render** (2026-07-04, supersedes the 2026-07-02
+   chrome-free galley after the Global-Requirements review: tabular already
+   renders the compliant unified-format page, so the canvas shows it as-is).
+   A READY table is tabular's own HTML render alone — title block, footnotes,
+   source, and any running header/footer bands (`chrome_onscreen = "auto"`);
+   arframe paints NO title/source markup around it (double-print). The sheet
+   is page-width (letter landscape 1056px / portrait 816px via
+   `data-ar-orient`), vertically continuous — the RTF is the paginated truth,
+   the canvas never fakes page breaks. Ghost/stale/error paths and figures
+   keep the arframe-side title block + source line (no spec exists there).
+   Chrome tokens `{datetime}`/`{program}` are stamped to literals arframe-side
+   (`.with_chrome()`); `{page}`/`{npages}` stay as field codes.
 8. **v5 UI frame — LOCKED 2026-07-02** (five mockup iterations, converged):
    - Header: `arframe` wordmark · `[Data | Report]` segmented toggle (top-LEFT,
      modes are peers) · report name · QC · ⌘K · `Export package`.

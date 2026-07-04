@@ -69,11 +69,12 @@
 
 # ---- source line ---------------------------------------------------------
 
-# v5 (decision #7): the running head ("Page 1 of 1") is GONE -- the galley
-# artifact never cosplays as a page; page chrome belongs to export/QC
-# preview. When arpillar's spec later grows pagehead/pagefoot bands for the
-# RTF leg, the screen leg suppresses them with tabular's
-# `chrome_onscreen = "off"` preset knob instead of re-adding markup here.
+# Canvas flip (2026-07-04, supersedes decision #7): the canvas shows
+# tabular's FULL page render -- running header/footer bands included
+# (`chrome_onscreen = "auto"`, tabular's default). A ready table needs no
+# arframe-side title/source markup; `.title_block()`/`.source_line()`
+# remain for the ghost/stale/error paths and the figure leg, where no
+# tabular spec exists to carry them.
 
 #' The provenance TEXT: `Source: <dataset> - arframe <version> - <date>`.
 #' The one composition of the source line, shared by the screen leg (below)
@@ -523,11 +524,11 @@ mod_paper_server <- function(id, store) {
 # ---- sheet body dispatch ---------------------------------------------------
 
 #' Build the whole sheet body: dispatches on selection / output_status /
-#' render success, returning the running head + title block (real or
-#' ghost) + content (real table markup, ghost, or error summary) + source
-#' line every time -- the sheet is ALWAYS a complete page shell, never a
-#' bare spinner or blank div, per the design spec's "the page is always a
-#' complete shell from the first second."
+#' render success. The sheet is ALWAYS a complete page shell, never a bare
+#' spinner or blank div. A READY table is tabular's own full page render
+#' (canvas flip 2026-07-04); every other path (ghost, stale, error,
+#' figure) still paints the arframe title block / source line around its
+#' content.
 #' @noRd
 .render_sheet <- function(store, session, ns) {
   obj <- selected_object(store)
@@ -575,11 +576,19 @@ mod_paper_server <- function(id, store) {
   }
 
   store$rv$broken <- setdiff(store$rv$broken, obj@id)
-  shiny::tagList(
-    .title_block(obj),
-    result$content,
-    .source_line(obj)
-  )
+  if (.is_figure_type(obj@type)) {
+    return(shiny::tagList(
+      .title_block(obj),
+      result$content,
+      .source_line(obj)
+    ))
+  }
+  # Canvas flip (2026-07-04, supersedes decision #7's chrome-free galley):
+  # a READY table is tabular's own full page render -- title block,
+  # footnotes, source, and any running header/footer bands all come from
+  # the spec, so the sheet adds NOTHING around it. Painting arframe's own
+  # title/source here again would double-print them.
+  result$content
 }
 
 #' Render a table output through the export-identical seam
@@ -594,14 +603,21 @@ mod_paper_server <- function(id, store) {
   tryCatch(
     {
       ard <- cached_ard(store, object)
-      # Chrome tokens ({datetime}/{program}) stamp to literals here too --
-      # the engine rejects them raw, and the canvas must show the same
-      # stamped band the RTF export carries.
-      spec <- arpillar::render_spec(ard, .with_chrome(object))
+      # Paper parity on screen: the canvas spec carries the SAME stamped
+      # source line and chrome literals the .rtf download gets -- tabular
+      # renders the whole page (title block through source), the sheet
+      # adds nothing.
+      spec <- arpillar::render_spec(ard, .with_chrome(.with_source(object)))
+      orient <- object@options$orientation %||% "landscape"
       list(
         ok = TRUE,
         content = shiny::div(
           class = "ar-paper-table-wrap",
+          `data-ar-orient` = if (identical(orient, "portrait")) {
+            "portrait"
+          } else {
+            "landscape"
+          },
           htmltools::as.tags(spec)
         ),
         message = NULL

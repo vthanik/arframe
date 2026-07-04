@@ -155,7 +155,10 @@ test_that("a READY table renders tabular-doc markup with arm names and the title
   )
 })
 
-test_that("a READY table's rendered content is inside the paper's table-wrap region", {
+test_that("a READY table is tabular's page alone -- ONE title block, no arframe chrome", {
+  # Canvas flip (2026-07-04, supersedes decision #7): tabular renders the
+  # whole page (title block, footnotes, source); painting arframe's own
+  # title/source around it would double-print both.
   fx <- .pp_ready_store()
   withr::defer(arpillar::engine_close(fx$con))
 
@@ -165,11 +168,19 @@ test_that("a READY table's rendered content is inside the paper's table-wrap reg
     {
       html <- output$sheet_html_slot$html
       expect_match(html, "ar-paper-table-wrap", fixed = TRUE)
-      expect_match(html, "ar-paper-title-block", fixed = TRUE)
-      # v5 (decision #7): the galley artifact carries NO page cosplay --
-      # the running head ("Page 1 of 1") is gone from every render path.
-      expect_no_match(html, "ar-paper-runninghead", fixed = TRUE)
-      expect_no_match(html, "Page 1 of 1", fixed = TRUE)
+      expect_no_match(html, "ar-paper-title-block", fixed = TRUE)
+      expect_no_match(html, "ar-paper-source", fixed = TRUE)
+      # The wrap carries the orientation attribute the page-width CSS keys
+      # on (landscape default).
+      expect_match(html, 'data-ar-orient="landscape"', fixed = TRUE)
+      # The title text appears exactly once -- tabular's.
+      expect_identical(
+        lengths(regmatches(
+          html,
+          gregexpr("Demographics and Baseline Characteristics", html, fixed = TRUE)
+        )),
+        1L
+      )
     }
   )
 })
