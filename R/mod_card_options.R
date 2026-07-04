@@ -644,11 +644,124 @@
   )
 }
 
-#' The layout sections (COLUMNS / PAGE & OUTPUT / RUNNING HEADER & FOOTER),
-#' rendered off `arpillar::layout_schema()` for TABLE outputs only -- the
-#' figure legs ignore every layout key, so a figure never shows dead knobs.
+#' The arm-column choices a spanning band can cover: the treatment
+#' variable's distinct values (engine pushdown) plus "Total" when the
+#' pooled column is on. Empty when the treatment slot is unfilled or the
+#' catalog is unreachable -- the section then shows its waiting hint.
 #' @noRd
-.opt_layout_sections <- function(ns, object) {
+.span_arm_choices <- function(con, object) {
+  r <- .role_for_slot(object, "treatment")
+  if (is.null(r) || length(r@items) == 0L) {
+    return(character(0))
+  }
+  arms <- tryCatch(
+    arpillar::distinct_values(con, object@dataset, r@items[[1]]@name),
+    error = function(e) character(0)
+  )
+  if (isTRUE(object@options$total)) {
+    arms <- c(arms, "Total")
+  }
+  as.character(arms)
+}
+
+#' One spanning-band row: label input + arm multi-select + remove, all
+#' posting shared inputs keyed by row index.
+#' @noRd
+.span_row <- function(ns, i, band, arms) {
+  label_js <- sprintf(
+    "Shiny.setInputValue('%s', {i: %d, value: this.value, nonce: Date.now()}, {priority: 'event'})",
+    ns("span_label"),
+    i
+  )
+  cols_js <- sprintf(
+    "Shiny.setInputValue('%s', {i: %d, value: Array.from(this.selectedOptions).map(function(o){return o.value;}), nonce: Date.now()}, {priority: 'event'})",
+    ns("span_cols"),
+    i
+  )
+  remove_js <- sprintf(
+    "Shiny.setInputValue('%s', {i: %d, nonce: Date.now()}, {priority: 'event'})",
+    ns("span_rm"),
+    i
+  )
+  selected <- as.character(unlist(band$cols %||% character(0)))
+  shiny::tags$div(
+    class = "ar-span-row",
+    shiny::tags$input(
+      type = "text",
+      class = "ar-band-input",
+      value = band$label %||% "",
+      placeholder = "Band label",
+      onchange = label_js,
+      `aria-label` = paste0("Spanning band ", i, " label")
+    ),
+    shiny::tags$select(
+      class = "ar-span-cols",
+      multiple = "multiple",
+      size = min(max(length(arms), 2L), 4L),
+      onchange = cols_js,
+      `aria-label` = paste0("Spanning band ", i, " columns"),
+      lapply(arms, function(a) {
+        shiny::tags$option(
+          value = a,
+          selected = if (a %in% selected) "selected",
+          a
+        )
+      })
+    ),
+    shiny::tags$button(
+      type = "button",
+      class = "ar-icon-btn ar-fn-remove",
+      `aria-label` = paste0("Remove spanning band ", i),
+      onclick = remove_js,
+      .icon("close", 11)
+    )
+  )
+}
+
+#' The SPANNING HEADER section: one row per band + add. Unset = the
+#' engine's default single "Treatment Group" band.
+#' @noRd
+.opt_spans_section <- function(con, ns, object) {
+  arms <- .span_arm_choices(con, object)
+  sp <- object@options$spans
+  sp <- if (is.list(sp)) sp else list()
+  add_js <- sprintf(
+    "Shiny.setInputValue('%s', {nonce: Date.now()}, {priority: 'event'})",
+    ns("span_add")
+  )
+  .opt_section(
+    "SPANNING HEADER",
+    list(
+      if (length(arms) == 0L) {
+        shiny::tags$p(
+          class = "ar-opt-hint ar-mono",
+          "Assign a treatment variable first."
+        )
+      } else {
+        shiny::tagList(
+          lapply(seq_along(sp), function(i) .span_row(ns, i, sp[[i]], arms)),
+          shiny::tags$button(
+            type = "button",
+            class = "btn btn-link ar-fn-add",
+            onclick = add_js,
+            "+ Add band"
+          ),
+          shiny::tags$p(
+            class = "ar-opt-hint ar-mono",
+            "No bands = one Treatment Group band over every arm."
+          )
+        )
+      }
+    )
+  )
+}
+
+#' The layout sections (COLUMNS / PAGE & OUTPUT / SPANNING HEADER /
+#' RUNNING HEADER & FOOTER), rendered off `arpillar::layout_schema()` for
+#' TABLE outputs only -- the figure legs ignore every layout key, so a
+#' figure never shows dead knobs.
+#' @noRd
+.opt_layout_sections <- function(con, ns, object) {
   if (.is_figure_type(object@type)) {
     return(NULL)
   }
@@ -749,6 +862,7 @@
         )
       )
     ),
+    .opt_spans_section(con, ns, object),
     .opt_section(
       "RUNNING HEADER & FOOTER",
       list(
@@ -876,7 +990,7 @@ mod_card_options_server <- function(id, store) {
         .opt_title_section(ns, obj),
         .opt_footnotes_section(ns, obj),
         .opt_schema_sections(store$con, ns, obj, schema),
-        .opt_layout_sections(ns, obj),
+        .opt_layout_sections(store$con, ns, obj),
         shiny::uiOutput(ns("opt_msg"))
       )
     }) |>
@@ -1244,6 +1358,74 @@ mod_card_options_server <- function(id, store) {
         b <- NULL # every cell blank -- elide
       }
       .commit_band(obj, band_key, b, paste0("edit ", band_key))
+    })
+
+    # ---- spanning header bands ----
+    .commit_spans <- function(obj, spans, label) {
+      if (length(spans) == 0L) {
+        spans <- NULL # no bands = the engine's default band -- elide
+      }
+      if (identical(spans, obj@options$spans)) {
+        return()
+      }
+      update_object(
+        store,
+        obj@id,
+        function(o) {
+          opts <- o@options
+          opts$spans <- spans
+          S7::set_props(o, options = opts)
+        },
+        label = label
+      )
+    }
+
+    shiny::observeEvent(input$span_add, {
+      obj <- selected_object(store)
+      if (is.null(obj)) {
+        return()
+      }
+      sp <- obj@options$spans
+      sp <- if (is.list(sp)) sp else list()
+      sp[[length(sp) + 1L]] <- list(label = "", cols = character(0))
+      .commit_spans(obj, sp, "add spanning band")
+      pane_redraw(pane_redraw() + 1L)
+    })
+
+    shiny::observeEvent(input$span_rm, {
+      obj <- selected_object(store)
+      i <- as.integer(input$span_rm$i)
+      sp <- if (is.null(obj)) list() else obj@options$spans
+      sp <- if (is.list(sp)) sp else list()
+      if (is.null(obj) || is.na(i) || i < 1L || i > length(sp)) {
+        return()
+      }
+      .commit_spans(obj, sp[-i], "remove spanning band")
+      pane_redraw(pane_redraw() + 1L)
+    })
+
+    shiny::observeEvent(input$span_label, {
+      obj <- selected_object(store)
+      i <- as.integer(input$span_label$i)
+      sp <- if (is.null(obj)) list() else obj@options$spans
+      sp <- if (is.list(sp)) sp else list()
+      if (is.null(obj) || is.na(i) || i < 1L || i > length(sp)) {
+        return()
+      }
+      sp[[i]]$label <- as.character(input$span_label$value)
+      .commit_spans(obj, sp, "relabel spanning band")
+    })
+
+    shiny::observeEvent(input$span_cols, {
+      obj <- selected_object(store)
+      i <- as.integer(input$span_cols$i)
+      sp <- if (is.null(obj)) list() else obj@options$spans
+      sp <- if (is.list(sp)) sp else list()
+      if (is.null(obj) || is.na(i) || i < 1L || i > length(sp)) {
+        return()
+      }
+      sp[[i]]$cols <- as.character(unlist(input$span_cols$value))
+      .commit_spans(obj, sp, "set spanning band columns")
     })
 
     # ---- stepper + statistics membership ----

@@ -660,3 +660,38 @@ test_that("blanking every band cell elides the band (no empty chrome)", {
     expect_null(obj()@options$pagefoot)
   })
 })
+
+test_that("spanning bands commit the list(label, cols) shape and elide empty", {
+  fx <- .mco_demo_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
+    obj <- function() shiny::isolate(selected_object(store))
+    session$flushReact()
+    expect_match(output$pane$html, "SPANNING HEADER", fixed = TRUE)
+
+    session$setInputs(span_add = list(nonce = 1))
+    sp <- obj()@options$spans
+    expect_length(sp, 1L)
+    expect_identical(sp[[1]]$label, "")
+
+    session$setInputs(span_label = list(i = 1, value = "Active", nonce = 2))
+    session$setInputs(
+      span_cols = list(
+        i = 1,
+        value = list("Xanomeline High Dose", "Xanomeline Low Dose"),
+        nonce = 3
+      )
+    )
+    sp <- obj()@options$spans
+    expect_identical(sp[[1]]$label, "Active")
+    expect_identical(
+      sp[[1]]$cols,
+      c("Xanomeline High Dose", "Xanomeline Low Dose")
+    )
+
+    # Removing the only band elides the key -> the engine default band.
+    session$setInputs(span_rm = list(i = 1, nonce = 4))
+    expect_null(obj()@options$spans)
+  })
+})
