@@ -1729,6 +1729,38 @@ input[type="radio"] {
   padding: 0;
 }
 
+/* wide text knobs (Header N template, margins list): the 88px right-align
+   numeric default reads wrong for templated text */
+.ar-opt-row-wide input[type="text"] {
+  width: 150px;
+  text-align: left;
+}
+
+/* -- running header/footer band rows: [left][center][right][remove] -- */
+.ar-band {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ar-band-label {
+  font-size: 10px;
+}
+.ar-band-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  align-items: center;
+  gap: 4px;
+}
+.ar-band-input {
+  min-width: 0;
+  width: 100%;
+  font-size: 11px;
+  font-family: "IBM Plex Mono", monospace;
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius);
+  padding: 3px 6px;
+}
+
 /* -- schema option rows: [label 1fr] [control auto] -- */
 .ar-opt-row {
   display: grid;

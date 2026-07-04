@@ -117,13 +117,66 @@
   S7::set_props(object, options = opts)
 }
 
-#' `.with_source()` mapped over every output of a report -- the export
-#' package's whole-report leg (both the async JSON handoff and the sync
-#' fallback build from the same injected copy).
+#' The Appendix-I footer datetime stamp, `ddMMMyyyy:hh:mm:ss`. Built from
+#' `month.abb` so the month abbreviation never follows the session locale.
+#' @noRd
+.chrome_stamp <- function(now = Sys.time()) {
+  lt <- as.POSIXlt(now)
+  sprintf(
+    "%02d%s%04d:%02d:%02d:%02d",
+    lt$mday,
+    toupper(month.abb[lt$mon + 1L]),
+    lt$year + 1900L,
+    lt$hour,
+    lt$min,
+    as.integer(lt$sec)
+  )
+}
+
+#' A copy of `object` with the render-time chrome tokens (`{datetime}`,
+#' `{program}`, `{program_path}`) substituted as LITERALS into the
+#' pagehead/pagefoot band strings. arpillar REJECTS those tokens (they
+#' would break its byte-deterministic emit), so the app stamps them at
+#' render/export time -- the same seam as `.with_source()`. The
+#' backend-resolved `{page}`/`{npages}` field codes pass through untouched.
+#' `now` is injectable for tests.
+#' @noRd
+.with_chrome <- function(object, now = NULL) {
+  opts <- object@options
+  if (is.null(opts$pagehead) && is.null(opts$pagefoot)) {
+    return(object)
+  }
+  stamp <- .chrome_stamp(now %||% Sys.time())
+  prog <- paste0("programs/", .output_slug(object), ".R")
+  sub_band <- function(b) {
+    if (!is.list(b)) {
+      return(b)
+    }
+    lapply(b, function(v) {
+      v <- gsub("{datetime}", stamp, as.character(v), fixed = TRUE)
+      v <- gsub("{program_path}", "programs", v, fixed = TRUE)
+      gsub("{program}", prog, v, fixed = TRUE)
+    })
+  }
+  opts$pagehead <- sub_band(opts$pagehead)
+  opts$pagefoot <- sub_band(opts$pagefoot)
+  S7::set_props(object, options = opts)
+}
+
+#' `.with_source()` + `.with_chrome()` mapped over every output of a
+#' report -- the export package's whole-report leg (both the async JSON
+#' handoff and the sync fallback build from the same injected copy). One
+#' `now` for the whole package so every output carries the same stamp.
 #' @noRd
 .report_with_source <- function(report) {
+  now <- Sys.time()
   pages <- lapply(report@pages, function(pg) {
-    S7::set_props(pg, objects = lapply(pg@objects, .with_source))
+    S7::set_props(
+      pg,
+      objects = lapply(pg@objects, function(o) {
+        .with_chrome(.with_source(o), now = now)
+      })
+    )
   })
   S7::set_props(report, pages = pages)
 }
@@ -541,7 +594,10 @@ mod_paper_server <- function(id, store) {
   tryCatch(
     {
       ard <- cached_ard(store, object)
-      spec <- arpillar::render_spec(ard, object)
+      # Chrome tokens ({datetime}/{program}) stamp to literals here too --
+      # the engine rejects them raw, and the canvas must show the same
+      # stamped band the RTF export carries.
+      spec <- arpillar::render_spec(ard, .with_chrome(object))
       list(
         ok = TRUE,
         content = shiny::div(

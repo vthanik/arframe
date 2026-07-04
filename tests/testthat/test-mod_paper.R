@@ -763,3 +763,73 @@ test_that("a malformed region payload is dropped, never a session error", {
     expect_identical(shiny::isolate(store$rv$region), "title")
   })
 })
+
+# ---- .with_chrome: render-time token stamping -------------------------------
+
+test_that(".with_chrome stamps {datetime}/{program} to literals, keeps {page}", {
+  obj <- arpillar::object(
+    id = "t9",
+    type = "summary",
+    dataset = "ADSL",
+    title = "Demo",
+    options = list(
+      pagehead = list(
+        left = "Protocol: XY123",
+        right = "Page {page} of {npages}"
+      ),
+      pagefoot = list(left = "Program: {program}", right = "{datetime}")
+    )
+  )
+  now <- as.POSIXct("2026-07-04 09:05:07", tz = "UTC")
+  out <- .with_chrome(obj, now = now)
+  # The engine-phase tokens are gone -- stamped as literals.
+  expect_identical(out@options$pagefoot$right, "04JUL2026:09:05:07")
+  expect_match(out@options$pagefoot$left, "^Program: programs/.+\\.R$")
+  # The backend-phase field codes pass through untouched.
+  expect_identical(out@options$pagehead$right, "Page {page} of {npages}")
+  expect_identical(out@options$pagehead$left, "Protocol: XY123")
+})
+
+test_that(".with_chrome is a no-op without bands and never double-stamps", {
+  obj <- arpillar::object(id = "t9", type = "summary", dataset = "ADSL")
+  expect_identical(.with_chrome(obj), obj)
+
+  # A band with no tokens comes through verbatim (idempotent on literals).
+  lit <- arpillar::object(
+    id = "t9",
+    type = "summary",
+    dataset = "ADSL",
+    options = list(pagefoot = list(right = "04JUL2026:00:00:00"))
+  )
+  expect_identical(
+    .with_chrome(lit)@options$pagefoot$right,
+    "04JUL2026:00:00:00"
+  )
+})
+
+test_that(".chrome_stamp is locale-independent ddMMMyyyy:hh:mm:ss", {
+  now <- as.POSIXct("2026-12-31 23:59:09", tz = "UTC")
+  expect_identical(.chrome_stamp(now), "31DEC2026:23:59:09")
+})
+
+test_that("the export report leg stamps every output's chrome tokens", {
+  # .report_with_source() composes .with_source() + .with_chrome() with ONE
+  # clock for the package, so no raw token ever reaches arpillar's emit.
+  obj <- arpillar::object(
+    id = "t9",
+    type = "summary",
+    dataset = "ADSL",
+    options = list(pagefoot = list(right = "{datetime}"))
+  )
+  rep <- arpillar::report(
+    id = "r9",
+    name = "R",
+    pages = list(arpillar::page(id = "p1", name = "P", objects = list(obj)))
+  )
+  out <- .report_with_source(rep)
+  o <- out@pages[[1]]@objects[[1]]
+  expect_no_match(o@options$pagefoot$right, "{datetime}", fixed = TRUE)
+  expect_match(o@options$pagefoot$right, "^[0-9]{2}[A-Z]{3}[0-9]{4}:")
+  # The source line still lands (the composition kept both stamps).
+  expect_match(o@options$source, "^Source: ADSL")
+})

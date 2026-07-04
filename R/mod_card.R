@@ -300,9 +300,10 @@ mod_card_server <- function(id, store) {
         }
         # Paper parity: bake the screen's own source line into the emitted
         # RTF (options$source; the engine renders it verbatim and never
-        # stamps a date itself). The ARD memo key ignores options, so the
-        # cached ARD is reused as-is.
-        obj <- .with_source(obj)
+        # stamps a date itself), and stamp the running-band chrome tokens
+        # to literals. The ARD memo key ignores options, so the cached ARD
+        # is reused as-is.
+        obj <- .with_chrome(.with_source(obj))
         if (.is_figure_type(obj@type)) {
           arpillar::render_figure_rtf(store$con, obj, file)
         } else {

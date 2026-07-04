@@ -346,12 +346,23 @@
 }
 
 #' The TITLE section: number + label word (both editable, addendum
-#' decision -- numbering is SAP-shell driven metadata, never re-derived)
-#' and the title line.
+#' decision -- numbering is SAP-shell driven metadata, never re-derived),
+#' the title line, and the Appendix-I continuation title lines
+#' (`options$titles` -- "Title 2 .. Title X", centered under the main
+#' title on paper).
 #' @noRd
 .opt_title_section <- function(ns, object) {
   labels <- c("Table", "Figure", "Listing")
   current_label <- object@options$number_label %||% ""
+  # Continuation title lines are a TABLE-leg feature (arpillar's
+  # .rtf_titles); a figure never shows the editor, so nothing silently
+  # no-ops.
+  is_table <- !.is_figure_type(object@type)
+  extra <- if (is_table) {
+    as.character(object@options$titles %||% character(0))
+  } else {
+    character(0)
+  }
   .opt_section(
     "TITLE",
     list(
@@ -377,7 +388,45 @@
         label = NULL,
         value = object@title,
         placeholder = "Output title"
-      )
+      ),
+      lapply(seq_along(extra), function(i) {
+        edit_js <- sprintf(
+          "Shiny.setInputValue('%s', {i: %d, value: this.value, nonce: Date.now()}, {priority: 'event'})",
+          ns("tl_edit"),
+          i
+        )
+        remove_js <- sprintf(
+          "Shiny.setInputValue('%s', {i: %d, nonce: Date.now()}, {priority: 'event'})",
+          ns("tl_remove"),
+          i
+        )
+        shiny::tags$div(
+          class = "ar-fn-row ar-tl-row",
+          shiny::tags$input(
+            type = "text",
+            class = "ar-fn-input",
+            value = extra[[i]],
+            placeholder = paste0("Title ", i + 1L),
+            onchange = edit_js,
+            `aria-label` = paste0("Title line ", i + 1L)
+          ),
+          shiny::tags$button(
+            type = "button",
+            class = "ar-icon-btn ar-fn-remove",
+            `aria-label` = paste0("Remove title line ", i + 1L),
+            onclick = remove_js,
+            .icon("close", 11)
+          )
+        )
+      }),
+      if (is_table) {
+        .action_btn(
+          ns("tl_add"),
+          "+ Add title line",
+          variant = "link",
+          class = "ar-fn-add"
+        )
+      }
     )
   )
 }
@@ -483,6 +532,221 @@
       })
     )
   })
+}
+
+# ---- layout sections (global-requirements parity) -------------------------
+
+# Display-name maps for the layout choice knobs: the stored value is the
+# engine generic ("mono"), the label the term a statistician expects
+# ("Courier New" -- the face Word actually substitutes for the generic).
+.LAYOUT_CHOICES <- list(
+  orientation = c(Landscape = "landscape", Portrait = "portrait"),
+  paper = c("US Letter" = "letter", A4 = "a4"),
+  width_mode = c(
+    "Auto-fit contents" = "content",
+    "Window (fill page)" = "window",
+    "Fixed" = "fixed"
+  ),
+  font_family = c(
+    "Courier New" = "mono",
+    "Arial" = "sans",
+    "Times New Roman" = "serif"
+  )
+)
+
+# The layout keys whose commits ride the generic `.commit_opt()` path
+# (text / int / choice kinds); lines, band, and margins have dedicated
+# observers.
+.LAYOUT_GENERIC_KEYS <- c(
+  "header_n",
+  "orientation",
+  "paper",
+  "font_family",
+  "font_size",
+  "width_mode"
+)
+
+#' One layout schema row by key (the layout twin of the option_schema
+#' lookup).
+#' @noRd
+.layout_row <- function(key) {
+  sch <- arpillar::layout_schema()
+  sch[sch$key == key, , drop = FALSE]
+}
+
+#' One running-band editor row: Left / Center / Right text inputs plus the
+#' remove button, posting the shared `band_edit` / `band_rm` inputs keyed
+#' by band + slot + row index.
+#' @noRd
+.band_row <- function(ns, band_key, i, values) {
+  slot_input <- function(slot, ph) {
+    edit_js <- sprintf(
+      "Shiny.setInputValue('%s', {band: '%s', slot: '%s', i: %d, value: this.value, nonce: Date.now()}, {priority: 'event'})",
+      ns("band_edit"),
+      band_key,
+      slot,
+      i
+    )
+    shiny::tags$input(
+      type = "text",
+      class = "ar-band-input",
+      value = values[[slot]] %||% "",
+      placeholder = ph,
+      onchange = edit_js,
+      `aria-label` = paste0(band_key, " row ", i, " ", slot)
+    )
+  }
+  remove_js <- sprintf(
+    "Shiny.setInputValue('%s', {band: '%s', i: %d, nonce: Date.now()}, {priority: 'event'})",
+    ns("band_rm"),
+    band_key,
+    i
+  )
+  shiny::tags$div(
+    class = "ar-band-row",
+    slot_input("left", "Left"),
+    slot_input("center", "Center"),
+    slot_input("right", "Right"),
+    shiny::tags$button(
+      type = "button",
+      class = "ar-icon-btn ar-fn-remove",
+      `aria-label` = paste0("Remove ", band_key, " row ", i),
+      onclick = remove_js,
+      .icon("close", 11)
+    )
+  )
+}
+
+#' One band editor (HEADER ROWS / FOOTER ROWS): the existing rows + add.
+#' @noRd
+.band_editor <- function(ns, object, band_key, label) {
+  b <- object@options[[band_key]]
+  n <- if (is.list(b)) max(lengths(b), 0L) else 0L
+  add_js <- sprintf(
+    "Shiny.setInputValue('%s', {band: '%s', nonce: Date.now()}, {priority: 'event'})",
+    ns("band_add"),
+    band_key
+  )
+  shiny::tags$div(
+    class = "ar-band",
+    shiny::tags$span(class = "ar-label ar-band-label", label),
+    lapply(seq_len(n), function(i) {
+      vals <- lapply(b, function(v) if (i <= length(v)) v[[i]] else "")
+      .band_row(ns, band_key, i, vals)
+    }),
+    shiny::tags$button(
+      type = "button",
+      class = "btn btn-link ar-fn-add",
+      onclick = add_js,
+      "+ Add row"
+    )
+  )
+}
+
+#' The layout sections (COLUMNS / PAGE & OUTPUT / RUNNING HEADER & FOOTER),
+#' rendered off `arpillar::layout_schema()` for TABLE outputs only -- the
+#' figure legs ignore every layout key, so a figure never shows dead knobs.
+#' @noRd
+.opt_layout_sections <- function(ns, object) {
+  if (.is_figure_type(object@type)) {
+    return(NULL)
+  }
+  sch <- arpillar::layout_schema()
+  row_of <- function(key) sch[sch$key == key, , drop = FALSE]
+  cur <- function(key) .opt_current(object, row_of(key))
+  choice_row <- function(key, width = "170px") {
+    shiny::tags$div(
+      class = "ar-opt-row",
+      shiny::tags$span(class = "ar-opt-label", row_of(key)$label),
+      shiny::selectInput(
+        ns(paste0("opt_", key)),
+        label = NULL,
+        choices = .LAYOUT_CHOICES[[key]],
+        selected = cur(key),
+        selectize = FALSE,
+        width = width
+      )
+    )
+  }
+  margins <- object@options$margins
+  list(
+    .opt_section(
+      "COLUMNS",
+      list(
+        shiny::tags$div(
+          class = "ar-opt-row ar-opt-row-wide",
+          shiny::tags$span(class = "ar-opt-label", "Header N"),
+          shiny::textInput(
+            ns("opt_header_n"),
+            label = NULL,
+            value = cur("header_n") %||% "",
+            placeholder = "(N={n})"
+          )
+        ),
+        shiny::tags$p(
+          class = "ar-opt-hint ar-mono",
+          "{n} = the arm's population N; blank = no N line."
+        )
+      )
+    ),
+    .opt_section(
+      "PAGE & OUTPUT",
+      list(
+        shiny::tags$div(
+          class = "ar-opt-row",
+          shiny::tags$span(class = "ar-opt-label", "Orientation"),
+          shiny::radioButtons(
+            ns("opt_orientation"),
+            label = NULL,
+            choices = .LAYOUT_CHOICES$orientation,
+            selected = cur("orientation"),
+            inline = TRUE
+          )
+        ),
+        choice_row("paper"),
+        choice_row("width_mode"),
+        choice_row("font_family"),
+        shiny::tags$div(
+          class = "ar-opt-row",
+          shiny::tags$span(class = "ar-opt-label", "Font size"),
+          .opt_int_control(
+            ns,
+            "font_size",
+            as.character(cur("font_size") %||% "")
+          )
+        ),
+        shiny::tags$div(
+          class = "ar-opt-row ar-opt-row-wide",
+          shiny::tags$span(class = "ar-opt-label", "Margins (in)"),
+          shiny::textInput(
+            ns("opt_margins"),
+            label = NULL,
+            value = if (is.null(margins)) {
+              ""
+            } else {
+              paste(margins, collapse = ", ")
+            },
+            placeholder = "1, 1, 1, 1"
+          )
+        ),
+        shiny::tags$p(
+          class = "ar-opt-hint ar-mono",
+          "top, right, bottom, left \u00b7 one value = all sides"
+        )
+      )
+    ),
+    .opt_section(
+      "RUNNING HEADER & FOOTER",
+      list(
+        .band_editor(ns, object, "pagehead", "HEADER ROWS"),
+        .band_editor(ns, object, "pagefoot", "FOOTER ROWS"),
+        shiny::tags$p(
+          class = "ar-opt-hint ar-mono",
+          "Tokens: {page}, {npages}, {program}, {datetime}."
+        )
+      )
+    )
+  )
 }
 
 # ---- UI ---------------------------------------------------------------
@@ -598,6 +862,7 @@ mod_card_options_server <- function(id, store) {
         .opt_title_section(ns, obj),
         .opt_footnotes_section(ns, obj),
         .opt_schema_sections(store$con, ns, obj, schema),
+        .opt_layout_sections(ns, obj),
         shiny::uiOutput(ns("opt_msg"))
       )
     }) |>
@@ -776,6 +1041,197 @@ mod_card_options_server <- function(id, store) {
       pane_redraw(pane_redraw() + 1L)
     })
 
+    # ---- continuation title lines (options$titles) ----
+    .commit_titles <- function(obj, lines, label) {
+      value <- as.character(lines)
+      if (length(value) == 0L) {
+        value <- NULL
+      }
+      if (identical(value, obj@options$titles)) {
+        return()
+      }
+      update_object(
+        store,
+        obj@id,
+        function(o) {
+          opts <- o@options
+          opts$titles <- value
+          S7::set_props(o, options = opts)
+        },
+        label = label
+      )
+    }
+
+    shiny::observeEvent(input$tl_add, {
+      obj <- selected_object(store)
+      if (is.null(obj)) {
+        return()
+      }
+      .commit_titles(
+        obj,
+        c(as.character(obj@options$titles %||% character(0)), ""),
+        "add title line"
+      )
+      pane_redraw(pane_redraw() + 1L)
+    })
+
+    shiny::observeEvent(input$tl_edit, {
+      obj <- selected_object(store)
+      i <- as.integer(input$tl_edit$i)
+      lines <- as.character(obj@options$titles %||% character(0))
+      if (is.null(obj) || is.na(i) || i < 1L || i > length(lines)) {
+        return()
+      }
+      lines[[i]] <- as.character(input$tl_edit$value)
+      .commit_titles(obj, lines, "edit title line")
+    })
+
+    shiny::observeEvent(input$tl_remove, {
+      obj <- selected_object(store)
+      i <- as.integer(input$tl_remove$i)
+      lines <- as.character(obj@options$titles %||% character(0))
+      if (is.null(obj) || is.na(i) || i < 1L || i > length(lines)) {
+        return()
+      }
+      .commit_titles(obj, lines[-i], "remove title line")
+      pane_redraw(pane_redraw() + 1L)
+    })
+
+    # ---- margins (unsorted numvec: top, right, bottom, left) ----
+    shiny::observeEvent(input$opt_margins, {
+      obj <- selected_object(store)
+      if (is.null(obj) || .is_figure_type(obj@type)) {
+        return()
+      }
+      raw <- trimws(input$opt_margins %||% "")
+      value <- NULL
+      if (nzchar(raw)) {
+        parts <- trimws(strsplit(raw, ",", fixed = TRUE)[[1]])
+        parts <- parts[nzchar(parts)]
+        vals <- suppressWarnings(as.numeric(parts))
+        # Order matters (top/right/bottom/left) -- NEVER the sorted
+        # `.opt_parse()` numvec path.
+        if (anyNA(vals) || !length(vals) %in% c(1L, 4L) || any(vals < 0)) {
+          rv_err(sprintf(
+            'Margins: "%s" is not 1 or 4 non-negative numbers.',
+            raw
+          ))
+          return()
+        }
+        value <- vals
+        if (all(value == 1)) {
+          value <- NULL # the engine default -- elide
+        }
+      }
+      if (identical(value, obj@options$margins)) {
+        rv_err(NULL)
+        return()
+      }
+      update_object(
+        store,
+        obj@id,
+        function(o) {
+          opts <- o@options
+          opts$margins <- value
+          S7::set_props(o, options = opts)
+        },
+        label = "set margins"
+      )
+      rv_err(NULL)
+    })
+
+    # ---- running header / footer bands ----
+    # Normalize a band to three equal-length slot vectors so row indexes
+    # stay aligned across left/center/right.
+    .band_norm <- function(b, n = NULL) {
+      slots <- c("left", "center", "right")
+      b <- if (is.list(b)) b else list()
+      n <- n %||% max(c(lengths(b[intersect(names(b), slots)]), 0L))
+      out <- lapply(slots, function(s) {
+        v <- as.character(b[[s]] %||% character(0))
+        length(v) <- n
+        v[is.na(v)] <- ""
+        v
+      })
+      stats::setNames(out, slots)
+    }
+
+    .commit_band <- function(obj, band_key, value, label) {
+      if (identical(value, obj@options[[band_key]])) {
+        return()
+      }
+      update_object(
+        store,
+        obj@id,
+        function(o) {
+          opts <- o@options
+          opts[[band_key]] <- value
+          S7::set_props(o, options = opts)
+        },
+        label = label
+      )
+    }
+
+    shiny::observeEvent(input$band_add, {
+      obj <- selected_object(store)
+      band_key <- as.character(input$band_add$band)
+      if (is.null(obj) || !band_key %in% c("pagehead", "pagefoot")) {
+        return()
+      }
+      b <- .band_norm(obj@options[[band_key]])
+      b <- lapply(b, function(v) c(v, ""))
+      .commit_band(obj, band_key, b, paste0("add ", band_key, " row"))
+      pane_redraw(pane_redraw() + 1L)
+    })
+
+    shiny::observeEvent(input$band_rm, {
+      obj <- selected_object(store)
+      band_key <- as.character(input$band_rm$band)
+      i <- as.integer(input$band_rm$i)
+      if (is.null(obj) || !band_key %in% c("pagehead", "pagefoot")) {
+        return()
+      }
+      b <- .band_norm(obj@options[[band_key]])
+      n <- length(b$left)
+      if (is.na(i) || i < 1L || i > n) {
+        return()
+      }
+      b <- lapply(b, function(v) v[-i])
+      if (length(b$left) == 0L) {
+        b <- NULL # the last row went -- elide the whole band
+      }
+      .commit_band(obj, band_key, b, paste0("remove ", band_key, " row"))
+      pane_redraw(pane_redraw() + 1L)
+    })
+
+    shiny::observeEvent(input$band_edit, {
+      obj <- selected_object(store)
+      band_key <- as.character(input$band_edit$band)
+      slot <- as.character(input$band_edit$slot)
+      i <- as.integer(input$band_edit$i)
+      if (
+        is.null(obj) ||
+          !band_key %in% c("pagehead", "pagefoot") ||
+          !slot %in% c("left", "center", "right")
+      ) {
+        return()
+      }
+      if (is.na(i) || i < 1L) {
+        return()
+      }
+      b <- .band_norm(obj@options[[band_key]])
+      if (i > length(b$left)) {
+        # A row index beyond the stored band (stale DOM after an undo):
+        # pad rather than truncate.
+        b <- .band_norm(b, n = i)
+      }
+      b[[slot]][[i]] <- as.character(input$band_edit$value)
+      if (all(vapply(b, function(v) all(!nzchar(v)), logical(1)))) {
+        b <- NULL # every cell blank -- elide
+      }
+      .commit_band(obj, band_key, b, paste0("edit ", band_key))
+    })
+
     # ---- stepper + statistics membership ----
     shiny::observeEvent(input$opt_step, {
       obj <- selected_object(store)
@@ -786,10 +1242,15 @@ mod_card_options_server <- function(id, store) {
         arpillar::option_schema(obj@type),
         error = function(e) NULL
       )
-      if (is.null(schema)) {
-        return()
+      row <- if (is.null(schema)) {
+        NULL
+      } else {
+        schema[schema$key == input$opt_step$key, , drop = FALSE]
       }
-      row <- schema[schema$key == input$opt_step$key, , drop = FALSE]
+      if (is.null(row) || nrow(row) != 1L) {
+        # A layout stepper (font_size) is not in the generator schema.
+        row <- .layout_row(input$opt_step$key)
+      }
       if (nrow(row) != 1L || !identical(row$kind, "int")) {
         return()
       }
@@ -918,6 +1379,28 @@ mod_card_options_server <- function(id, store) {
             character(1)
           )
           .commit_opt(store, rv_err, obj, row, order)
+        })
+      })
+    }
+
+    # The universal layout keys (text / int / choice kinds) commit through
+    # the same `.commit_opt()` path, with the row looked up in
+    # `layout_schema()` instead of the generator schema. Tables only --
+    # the layout sections never render for a figure.
+    for (lay_key in .LAYOUT_GENERIC_KEYS) {
+      local({
+        k <- lay_key
+        input_id <- paste0("opt_", k)
+        shiny::observeEvent(input[[input_id]], {
+          obj <- selected_object(store)
+          if (is.null(obj) || .is_figure_type(obj@type)) {
+            return()
+          }
+          row <- .layout_row(k)
+          if (nrow(row) != 1L) {
+            return()
+          }
+          .commit_opt(store, rv_err, obj, row, input[[input_id]])
         })
       })
     }

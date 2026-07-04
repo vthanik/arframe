@@ -469,3 +469,194 @@ test_that("ordering keys (hier_sort, x_order) no longer render in Options", {
     expect_match(html, "X axis label", fixed = TRUE)
   })
 })
+
+# ---- layout sections (global-requirements parity) ---------------------------
+
+test_that("a table pane renders the layout sections; a figure never does", {
+  fx <- .mco_demo_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
+    session$flushReact()
+    html <- output$pane$html
+    for (lbl in c(
+      "Header N",
+      "PAGE &amp; OUTPUT",
+      "Orientation",
+      "Margins (in)",
+      "RUNNING HEADER &amp; FOOTER",
+      "+ Add title line"
+    )) {
+      expect_match(html, lbl, fixed = TRUE)
+    }
+  })
+
+  km <- .mco_km_store()
+  withr::defer(arpillar::engine_close(km$con))
+  shiny::testServer(mod_card_options_server, args = list(store = km$store), {
+    session$flushReact()
+    html <- output$pane$html
+    expect_no_match(html, "PAGE &amp; OUTPUT", fixed = TRUE)
+    expect_no_match(html, "Header N", fixed = TRUE)
+    expect_no_match(html, "+ Add title line", fixed = TRUE)
+  })
+})
+
+test_that("layout choice/text commits round-trip with default-elision", {
+  fx <- .mco_demo_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
+    obj <- function() shiny::isolate(selected_object(store))
+
+    session$setInputs(opt_orientation = "portrait")
+    expect_identical(obj()@options$orientation, "portrait")
+    # Back to the engine default -- the key is ELIDED, never stored.
+    session$setInputs(opt_orientation = "landscape")
+    expect_null(obj()@options$orientation)
+
+    session$setInputs(opt_paper = "a4")
+    expect_identical(obj()@options$paper, "a4")
+
+    session$setInputs(opt_font_family = "sans")
+    expect_identical(obj()@options$font_family, "sans")
+
+    session$setInputs(opt_header_n = "(N={n})")
+    expect_identical(obj()@options$header_n, "(N={n})")
+    session$setInputs(opt_header_n = "")
+    expect_null(obj()@options$header_n)
+  })
+})
+
+test_that("margins commit UNSORTED (top/right/bottom/left is an order)", {
+  fx <- .mco_demo_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
+    obj <- function() shiny::isolate(selected_object(store))
+
+    session$setInputs(opt_margins = "1.5, 1, 1, 1")
+    expect_identical(obj()@options$margins, c(1.5, 1, 1, 1))
+
+    # All-1s IS the engine default -- elided.
+    session$setInputs(opt_margins = "1, 1, 1, 1")
+    expect_null(obj()@options$margins)
+
+    # 2 values is neither 1 nor 4: rejected, the last good value stands.
+    session$setInputs(opt_margins = "1, 2")
+    expect_null(obj()@options$margins)
+    session$flushReact()
+    expect_match(output$opt_msg$html, "not 1 or 4", fixed = TRUE)
+  })
+})
+
+test_that("title lines add/edit/remove commit options$titles", {
+  fx <- .mco_demo_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
+    obj <- function() shiny::isolate(selected_object(store))
+
+    session$setInputs(tl_add = list(nonce = 1))
+    expect_identical(obj()@options$titles, "")
+
+    session$setInputs(
+      tl_edit = list(i = 1, value = "Randomized Subjects", nonce = 2)
+    )
+    expect_identical(obj()@options$titles, "Randomized Subjects")
+
+    session$setInputs(tl_add = list(nonce = 3))
+    session$setInputs(
+      tl_edit = list(i = 2, value = "Full Analysis Set", nonce = 4)
+    )
+    expect_identical(
+      obj()@options$titles,
+      c("Randomized Subjects", "Full Analysis Set")
+    )
+
+    session$setInputs(tl_remove = list(i = 1, nonce = 5))
+    expect_identical(obj()@options$titles, "Full Analysis Set")
+    # Removing the last line elides the key entirely.
+    session$setInputs(tl_remove = list(i = 1, nonce = 6))
+    expect_null(obj()@options$titles)
+  })
+})
+
+test_that("band rows keep the list(left, center, right) storage shape", {
+  fx <- .mco_demo_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
+    obj <- function() shiny::isolate(selected_object(store))
+
+    session$setInputs(band_add = list(band = "pagehead", nonce = 1))
+    b <- obj()@options$pagehead
+    expect_named(b, c("left", "center", "right"))
+    expect_identical(lengths(b), c(left = 1L, center = 1L, right = 1L))
+
+    session$setInputs(
+      band_edit = list(
+        band = "pagehead",
+        slot = "left",
+        i = 1,
+        value = "Protocol: XY123-4567",
+        nonce = 2
+      )
+    )
+    session$setInputs(
+      band_edit = list(
+        band = "pagehead",
+        slot = "right",
+        i = 1,
+        value = "Page {page} of {npages}",
+        nonce = 3
+      )
+    )
+    b <- obj()@options$pagehead
+    expect_identical(b$left, "Protocol: XY123-4567")
+    expect_identical(b$right, "Page {page} of {npages}")
+    expect_identical(b$center, "")
+
+    # A second row keeps every slot aligned to the same length.
+    session$setInputs(band_add = list(band = "pagehead", nonce = 4))
+    expect_identical(
+      lengths(obj()@options$pagehead),
+      c(left = 2L, center = 2L, right = 2L)
+    )
+
+    # Removing both rows elides the band.
+    session$setInputs(band_rm = list(band = "pagehead", i = 2, nonce = 5))
+    session$setInputs(band_rm = list(band = "pagehead", i = 1, nonce = 6))
+    expect_null(obj()@options$pagehead)
+  })
+})
+
+test_that("blanking every band cell elides the band (no empty chrome)", {
+  fx <- .mco_demo_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
+    obj <- function() shiny::isolate(selected_object(store))
+    session$setInputs(band_add = list(band = "pagefoot", nonce = 1))
+    session$setInputs(
+      band_edit = list(
+        band = "pagefoot",
+        slot = "center",
+        i = 1,
+        value = "x",
+        nonce = 2
+      )
+    )
+    expect_identical(obj()@options$pagefoot$center, "x")
+    session$setInputs(
+      band_edit = list(
+        band = "pagefoot",
+        slot = "center",
+        i = 1,
+        value = "",
+        nonce = 3
+      )
+    )
+    expect_null(obj()@options$pagefoot)
+  })
+})
