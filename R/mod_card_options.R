@@ -542,6 +542,7 @@
 .LAYOUT_CHOICES <- list(
   orientation = c(Landscape = "landscape", Portrait = "portrait"),
   paper = c("US Letter" = "letter", A4 = "a4"),
+  page_n = c("Off" = "off", "In arm headers" = "headers"),
   width_mode = c(
     "Auto-fit contents" = "content",
     "Window (fill page)" = "window",
@@ -564,7 +565,11 @@
   "paper",
   "font_family",
   "font_size",
-  "width_mode"
+  "width_mode",
+  "page_by",
+  "page_n",
+  "page_banner",
+  "panels"
 )
 
 #' One layout schema row by key (the layout twin of the option_schema
@@ -641,6 +646,24 @@
       onclick = add_js,
       "+ Add row"
     )
+  )
+}
+
+#' The dataset's column metadata straight off the engine (no store cache
+#' here -- the options pane redraws rarely), empty frame on failure.
+#' @noRd
+.items_meta_for <- function(con, object) {
+  tryCatch(
+    arpillar::data_items(con, object@dataset),
+    error = function(e) {
+      data.frame(
+        name = character(0),
+        type = character(0),
+        sql_type = character(0),
+        label = character(0),
+        stringsAsFactors = FALSE
+      )
+    }
   )
 }
 
@@ -863,6 +886,59 @@
       )
     ),
     .opt_spans_section(con, ns, object),
+    .opt_section(
+      "SUBGROUP / PAGE BY",
+      list(
+        {
+          # Pageable columns: the dataset's categories, minus the arm var.
+          items <- .items_meta_for(con, object)
+          arm <- {
+            r <- .role_for_slot(object, "treatment")
+            if (!is.null(r) && length(r@items) > 0L) r@items[[1]]@name else ""
+          }
+          cats <- setdiff(items$name[items$type %in% "category"], arm)
+          shiny::tags$div(
+            class = "ar-opt-row",
+            shiny::tags$span(
+              class = "ar-opt-label",
+              "Page by (one table per level)"
+            ),
+            shiny::selectInput(
+              ns("opt_page_by"),
+              label = NULL,
+              choices = c("None" = "", cats),
+              selected = cur("page_by") %||% "",
+              selectize = FALSE,
+              width = "170px"
+            )
+          )
+        },
+        choice_row("page_n"),
+        shiny::tags$div(
+          class = "ar-opt-row ar-opt-row-wide",
+          shiny::tags$span(class = "ar-opt-label", "Banner label"),
+          shiny::textInput(
+            ns("opt_page_banner"),
+            label = NULL,
+            value = cur("page_banner") %||% "",
+            placeholder = "e.g. Sex: {SEX}"
+          )
+        ),
+        shiny::tags$p(
+          class = "ar-opt-hint ar-mono",
+          "Banner tokens are the page-by column name, e.g. {SEX}. Blank = auto."
+        ),
+        shiny::tags$div(
+          class = "ar-opt-row",
+          shiny::tags$span(class = "ar-opt-label", "Panels (column groups)"),
+          .opt_int_control(
+            ns,
+            "panels",
+            as.character(cur("panels") %||% "")
+          )
+        )
+      )
+    ),
     .opt_section(
       "RUNNING HEADER & FOOTER",
       list(

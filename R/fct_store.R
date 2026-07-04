@@ -287,11 +287,16 @@ rename_output <- function(store, id, title) {
     roles,
     object@filters
   )
-  # Conditional append: `total` changes the ARD (a pooled arm), so it is
-  # part of the key -- but ONLY when set, so every pre-total object keeps
-  # its legacy hash and nothing goes stale on upgrade.
+  # Conditional appends: `total` (a pooled arm) and `page_by` (a second
+  # grouping level) change the ARD, so they are part of the key -- but
+  # ONLY when set, so every earlier object keeps its legacy hash and
+  # nothing goes stale on upgrade.
   if (isTRUE(object@options$total)) {
     parts$total <- TRUE
+  }
+  pb <- object@options$page_by
+  if (length(pb) == 1L && !is.na(pb) && nzchar(pb)) {
+    parts$page_by <- as.character(pb)
   }
   paste0("ard::", rlang::hash(parts))
 }

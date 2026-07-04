@@ -695,3 +695,33 @@ test_that("spanning bands commit the list(label, cols) shape and elide empty", {
     expect_null(obj()@options$spans)
   })
 })
+
+test_that("the PAGING section commits page_by/page_n/banner and keys the ARD", {
+  fx <- .mco_demo_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
+    obj <- function() shiny::isolate(selected_object(store))
+    session$flushReact()
+    expect_match(output$pane$html, "SUBGROUP / PAGE BY", fixed = TRUE)
+
+    k0 <- .ard_key(obj())
+    session$setInputs(opt_page_by = "SEX")
+    expect_identical(obj()@options$page_by, "SEX")
+    # page_by is HEAVY: the key moves, so Run gates the re-collect.
+    expect_false(identical(.ard_key(obj()), k0))
+
+    session$setInputs(opt_page_n = "headers")
+    expect_identical(obj()@options$page_n, "headers")
+    session$setInputs(opt_page_banner = "Sex: {SEX}")
+    expect_identical(obj()@options$page_banner, "Sex: {SEX}")
+
+    # Back to None: every paging key elides, the legacy key returns.
+    session$setInputs(opt_page_by = "")
+    session$setInputs(opt_page_n = "off")
+    session$setInputs(opt_page_banner = "")
+    expect_null(obj()@options$page_by)
+    expect_null(obj()@options$page_n)
+    expect_identical(.ard_key(obj()), k0)
+  })
+})
