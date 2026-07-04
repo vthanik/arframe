@@ -177,7 +177,11 @@ test_that("a READY table is tabular's page alone -- ONE title block, no arframe 
       expect_identical(
         lengths(regmatches(
           html,
-          gregexpr("Demographics and Baseline Characteristics", html, fixed = TRUE)
+          gregexpr(
+            "Demographics and Baseline Characteristics",
+            html,
+            fixed = TRUE
+          )
         )),
         1L
       )
