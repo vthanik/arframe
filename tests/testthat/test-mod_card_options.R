@@ -485,7 +485,7 @@ test_that("a table pane renders the layout sections; a figure never does", {
       "Orientation",
       "Margins (in)",
       "RUNNING HEADER &amp; FOOTER",
-      "+ Add title line"
+      "Add title line"
     )) {
       expect_match(html, lbl, fixed = TRUE)
     }
@@ -498,7 +498,7 @@ test_that("a table pane renders the layout sections; a figure never does", {
     html <- output$pane$html
     expect_no_match(html, "PAGE &amp; OUTPUT", fixed = TRUE)
     expect_no_match(html, "Header N", fixed = TRUE)
-    expect_no_match(html, "+ Add title line", fixed = TRUE)
+    expect_no_match(html, "Add title line", fixed = TRUE)
   })
 })
 

@@ -41,6 +41,11 @@
 }
 
 :root {
+  /* chrome dimensions -- both labeled icon rails share one width; the
+     canvas toolbar height pairs with it (explorer-style frame, 2026-07-04) */
+  --ar-rail-w: 56px;
+  --ar-toolbar-h: 40px;
+
   /* surfaces */
   --ar-desk: #E9EBEA;
   --ar-chrome: #FBFBFA;

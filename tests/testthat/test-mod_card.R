@@ -1,6 +1,7 @@
-# The docked inspector (v5, decision #8): fixed-width right panel with the
-# Roles/Options/Filters/Ranks tab stack, the Run/.rtf/code action footer,
-# and the telemetry line. Tab state lives in the store (`rv$insp_tab`);
+# The docked inspector: fixed-width right panel with the explorer-style
+# Roles/Options/Filters/Ranks tab rail and the telemetry line (the action
+# footer moved to the canvas toolbar -- see test-mod_toolbar.R). Tab state
+# lives in the store (`rv$insp_tab`);
 # region clicks route to a tab through `open_card()` (tested in
 # test-fct_store.R); collapse is frame-owned (test-mod_frame.R).
 
@@ -38,7 +39,7 @@
   list(con = con, store = store)
 }
 
-test_that("mod_card_ui: tab strip, all four panes, action footer, slim strip", {
+test_that("mod_card_ui: labeled tab rail, all four panes, no footer or chevrons", {
   ui <- mod_card_ui("card")
   html <- as.character(ui)
 
@@ -46,13 +47,15 @@ test_that("mod_card_ui: tab strip, all four panes, action footer, slim strip", {
     expect_match(html, sprintf('data-ar-insp-tab="%s"', tab), fixed = TRUE)
     expect_match(html, sprintf("ar-insp-pane-%s", tab), fixed = TRUE)
   }
-  # Action footer: Run + the per-output .rtf download + code view.
-  expect_match(html, 'id="card-run"', fixed = TRUE)
-  expect_match(html, 'id="card-rtf"', fixed = TRUE)
-  expect_match(html, 'id="card-code"', fixed = TRUE)
-  # Both collapse affordances post through the frame's delegated handler.
-  expect_match(html, 'data-ar-collapse="insp"', fixed = TRUE)
-  expect_match(html, "ar-insp-slim", fixed = TRUE)
+  # Explorer-style rail (2026-07-04): visible labels on the tab buttons;
+  # the rail itself is the collapsed strip, so chevrons and the slim div
+  # are gone, and the action footer moved to the canvas toolbar.
+  expect_match(html, '<span class="ar-insp-tab-lbl">Roles</span>', fixed = TRUE)
+  expect_no_match(html, "ar-insp-slim", fixed = TRUE)
+  expect_no_match(html, "ar-insp-cv", fixed = TRUE)
+  expect_no_match(html, "ar-insp-act", fixed = TRUE)
+  expect_no_match(html, 'id="card-run"', fixed = TRUE)
+  expect_no_match(html, 'id="card-code"', fixed = TRUE)
   # No float-era chrome (v5): pin and close are gone.
   expect_no_match(html, "ar-card-pin", fixed = TRUE)
   expect_no_match(html, 'id="card-close"', fixed = TRUE)
@@ -114,124 +117,6 @@ test_that("mod_card_server: clicking a tab toggles the pane collapsed/open", {
   })
 })
 
-test_that("mod_card_server: Run drops the ARD memo and bumps run_nonce", {
-  fx <- .mc_ready_store()
-  withr::defer(arpillar::engine_close(fx$con))
-
-  shiny::testServer(mod_card_server, args = list(store = fx$store), {
-    # Prime the memo through the same seam the paper uses.
-    obj <- shiny::isolate(selected_object(store))
-    invisible(cached_ard(store, obj))
-    expect_length(grep("^ard::", ls(store$cache)), 1L)
-
-    # A heavy edit marked the proof stale; Run must clear it (decision #8).
-    obj_id <- shiny::isolate(store$rv$selected)
-    store$rv$stale <- obj_id
-
-    session$setInputs(run = 1)
-    expect_length(grep("^ard::", ls(store$cache)), 0L)
-    expect_identical(store$rv$run_nonce, 1L)
-    expect_identical(store$rv$stale, character(0))
-    # The run is logged for the QC sheet.
-    expect_match(store$rv$log[[length(store$rv$log)]], "run", fixed = TRUE)
-  })
-})
-
-test_that("mod_card_server: the code button toggles rv$code_view (v5)", {
-  fx <- .mc_ready_store()
-  withr::defer(arpillar::engine_close(fx$con))
-
-  shiny::testServer(mod_card_server, args = list(store = fx$store), {
-    expect_false(store$rv$code_view)
-    session$setInputs(code = 1)
-    expect_true(store$rv$code_view)
-    session$setInputs(code = 2)
-    expect_false(store$rv$code_view)
-  })
-})
-
-test_that("mod_card_server: the .rtf download names and writes a non-empty RTF", {
-  fx <- .mc_ready_store()
-  withr::defer(arpillar::engine_close(fx$con))
-
-  shiny::testServer(mod_card_server, args = list(store = fx$store), {
-    # In testServer the download handler RUNS: output$rtf is the written
-    # temp file's path, named by the handler's own filename function.
-    path <- output$rtf
-    expect_identical(
-      basename(path),
-      "t-14-1-1-demographics-and-baseline-characteristics.rtf"
-    )
-    expect_gt(file.size(path), 0)
-    first <- readLines(path, n = 1L, warn = FALSE)
-    expect_match(first, "\\{\\\\rtf", perl = TRUE)
-
-    # Paper parity: the emitted RTF carries the screen's whole chrome --
-    # the TLF number line, the population subtitle (title block AND
-    # footer = 2 hits), and the injected source line.
-    txt <- paste(readLines(path, warn = FALSE), collapse = "\n")
-    expect_match(txt, "Table 14.1.1", fixed = TRUE)
-    expect_identical(
-      lengths(regmatches(
-        txt,
-        gregexpr("Safety Population.", txt, fixed = TRUE)
-      )),
-      2L
-    )
-    expect_match(txt, "Source: ADSL - arframe", fixed = TRUE)
-    # The injection never leaks back into the live store object.
-    expect_null(shiny::isolate(selected_object(store))@options$source)
-  })
-})
-
-test_that(".output_slug: kind letter + number + title, filesystem-safe", {
-  obj <- arpillar::object(
-    id = "o1",
-    type = "km",
-    dataset = "ADTTE",
-    title = "Kaplan-Meier, OS",
-    options = list(number = "14.2.1", number_label = "Figure")
-  )
-  expect_identical(.output_slug(obj), "f-14-2-1-kaplan-meier-os")
-})
-
-test_that("mod_card_server: the .rtf download renders a FIGURE through the figure seam", {
-  con <- .demo_catalog()
-  withr::defer(arpillar::engine_close(con))
-  store <- shiny::isolate(new_store(con))
-  id <- shiny::isolate(add_from_generator(store, "line", "ADVS"))
-  shiny::isolate(update_object(store, id, function(o) {
-    S7::set_props(
-      o,
-      title = "Mean Systolic BP by Visit",
-      options = list(number = "14.2.1", number_label = "Figure"),
-      roles = list(
-        arpillar::role(
-          slot = "x",
-          items = list(arpillar::data_item(name = "AVISIT"))
-        ),
-        arpillar::role(
-          slot = "y",
-          items = list(arpillar::data_item(
-            name = "AVAL",
-            role_type = "measure"
-          ))
-        ),
-        arpillar::role(
-          slot = "group",
-          items = list(arpillar::data_item(name = "TRT01P"))
-        )
-      )
-    )
-  }))
-  shiny::isolate(store$rv$selected <- id)
-
-  shiny::testServer(mod_card_server, args = list(store = store), {
-    path <- output$rtf
-    expect_match(basename(path), "^f-14-2-1")
-    expect_gt(file.size(path), 0)
-  })
-})
 
 test_that("mod_card_server: telemetry reports 'no output selected' when nothing is selected", {
   con <- .demo_catalog()

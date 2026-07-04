@@ -53,7 +53,7 @@ test_that(".qc_sheet: running head, summary count, per-status stamps", {
 
   # Running head names the report (the QC sheet IS a document -- decision #7
   # allows the page chrome here, unlike the on-screen galley artifact).
-  expect_match(html, "QC", fixed = TRUE)
+  expect_match(html, "Review", fixed = TRUE)
   expect_match(html, report@name, fixed = TRUE)
   # Summary: exactly one of two outputs is ready (matches the oracle).
   expect_match(html, "1 of 2 outputs ready", fixed = TRUE)

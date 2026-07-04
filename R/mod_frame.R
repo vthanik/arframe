@@ -23,7 +23,8 @@
 mod_frame_ui <- function(id, report_body, data_body, qc_body, logs_body) {
   ns <- shiny::NS(id)
   shiny::div(
-    class = "ar-workspace ar-mode-report",
+    # Opens in Data mode (matches new_store()'s rv$mode default).
+    class = "ar-workspace ar-mode-data",
     .frame_bar(ns),
     shiny::div(
       class = "ar-main",
@@ -82,6 +83,7 @@ mod_frame_ui <- function(id, report_body, data_body, qc_body, logs_body) {
       id = ns("export_btn"),
       type = "button",
       class = "ar-btn-ink action-button",
+      .icon("package", 13),
       "Export package"
     ),
     shiny::tagAppendAttributes(
@@ -107,22 +109,31 @@ mod_frame_ui <- function(id, report_body, data_body, qc_body, logs_body) {
 .frame_actbar <- function(ns) {
   shiny::div(
     class = "ar-actbar",
-    .act_btn(ns("mode_report"), "report", "report", "Report"),
+    # Data leads the rail (user decision 2026-07-04): the data on-ramp
+    # comes before the report it feeds. Startup mode stays "report".
     .act_btn(ns("mode_data"), "data", "database", "Data"),
-    .act_btn(ns("mode_qc"), "qc", "check", "QC"),
+    .act_btn(ns("mode_report"), "report", "report", "Report"),
+    .act_btn(ns("mode_qc"), "qc", "check", "Review"),
     .act_btn(ns("mode_logs"), "logs", "logs", "Logs")
   )
 }
 
-#' One activity-bar button: an icon-only mode switch carrying its label as
-#' tooltip + aria-label (the rail is too narrow for words).
+#' One activity-bar button: icon with its label visible BELOW it
+#' (explorer-style rail, GOV.UK "visible label over tooltip" principle).
 #' @noRd
 .act_btn <- function(id, mode, icon, label) {
   shiny::tagAppendAttributes(
-    .action_btn(id, .icon(icon, 16), variant = "link", class = "ar-act-btn"),
+    .action_btn(
+      id,
+      shiny::tagList(
+        .icon(icon, 16),
+        shiny::span(class = "ar-act-lbl", label)
+      ),
+      variant = "link",
+      class = "ar-act-btn"
+    ),
     `data-ar-mode` = mode,
-    `aria-label` = label,
-    title = label
+    `aria-label` = label
   )
 }
 
@@ -177,11 +188,22 @@ mod_frame_server <- function(id, store) {
   shiny::moduleServer(id, function(input, output, session) {
     output$title_display <- shiny::renderText(store$rv$report@name)
 
-    # Activity-bar semantics (piece A): every destination has its own
-    # button, so clicks are idempotent -- no quiet-toggle special case
-    # (the old header QC toggle existed only because the right cluster
-    # had no "Report" button).
+    # Activity-bar semantics: clicking another mode switches; clicking the
+    # ACTIVE mode's item again toggles the adjacent panel (the contents
+    # rail) -- the explorer-style show/hide the user asked for. Collapse
+    # state stays frame-owned in the store, mirrored via ar-collapse.
     shiny::observeEvent(input$mode, {
+      if (identical(input$mode, store$rv$mode)) {
+        toggle_rail(store)
+        session$sendCustomMessage(
+          "ar-collapse",
+          list(
+            rail = isTRUE(store$rv$rail_collapsed),
+            insp = isTRUE(store$rv$insp_collapsed)
+          )
+        )
+        return()
+      }
       store$rv$mode <- input$mode
       session$sendCustomMessage("ar-mode", input$mode)
     })

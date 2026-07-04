@@ -724,6 +724,10 @@ test_that("arframe() Add-output overlay: opens, shows Recommended + domain-group
   )
   withr::defer(app$stop())
 
+  # The app opens in Data mode (2026-07-04): flip to Report first.
+  app$click(selector = '[data-ar-mode="report"]')
+  app$wait_for_idle()
+
   app$click(selector = "#contents-add_output")
   app$wait_for_idle()
 
@@ -757,6 +761,10 @@ test_that("arframe() Add-output overlay: focus moves into the dialog on open, ba
     width = 1440
   )
   withr::defer(app$stop())
+
+  # The app opens in Data mode (2026-07-04): flip to Report first.
+  app$click(selector = '[data-ar-mode="report"]')
+  app$wait_for_idle()
 
   app$click(selector = "#contents-add_output")
   app$wait_for_idle()

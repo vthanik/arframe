@@ -22,6 +22,10 @@ test_that("mod_frame_ui HTML contains the bar, activity bar, statusbar, and all 
   expect_match(html, 'data-ar-mode="report"', fixed = TRUE)
   expect_match(html, 'data-ar-mode="qc"', fixed = TRUE)
   expect_match(html, 'data-ar-mode="logs"', fixed = TRUE)
+  # Explorer-style rail (2026-07-04): each mode button carries a visible
+  # text label below its icon.
+  expect_match(html, '<span class="ar-act-lbl">Report</span>', fixed = TRUE)
+  expect_match(html, '<span class="ar-act-lbl">Logs</span>', fixed = TRUE)
   expect_match(html, "ar-statusbar", fixed = TRUE)
   expect_match(html, "ar-body-report", fixed = TRUE)
   expect_match(html, "ar-body-data", fixed = TRUE)
@@ -34,19 +38,26 @@ test_that("mod_frame_ui HTML contains the bar, activity bar, statusbar, and all 
   expect_match(html, "ar-hidden-dl", fixed = TRUE)
 })
 
-test_that("mod_frame_server: every activity-bar destination is idempotent (piece A)", {
+test_that("mod_frame_server: mode click switches; active-mode click toggles the rail", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
   store <- shiny::isolate(new_store(con))
 
   shiny::testServer(mod_frame_server, args = list(store = store), {
-    for (m in c("data", "report", "qc", "logs")) {
+    # Startup mode is "data" (2026-07-04), so lead with "report" -- the
+    # first click must be a SWITCH, not an active-mode toggle.
+    for (m in c("report", "data", "qc", "logs")) {
       session$setInputs(mode = m)
       expect_identical(store$rv$mode, m)
-      # Clicking the ACTIVE button is a no-op -- each destination has its
-      # own button, so no hidden "toggle back" behavior remains.
+      expect_false(store$rv$rail_collapsed)
+      # Clicking the ACTIVE button toggles the adjacent panel instead of
+      # re-switching (explorer-style show/hide, 2026-07-04): mode holds,
+      # rail collapse flips there and back.
       session$setInputs(mode = m)
       expect_identical(store$rv$mode, m)
+      expect_true(store$rv$rail_collapsed)
+      session$setInputs(mode = m)
+      expect_false(store$rv$rail_collapsed)
     }
   })
 })
@@ -109,7 +120,8 @@ test_that("arframe() launches: bar, mode buttons, all three bodies, mode switch,
   expect_match(html, "ar-body-data", fixed = TRUE)
   expect_match(html, "ar-body-qc", fixed = TRUE)
   expect_match(html, "ar-body-logs", fixed = TRUE)
-  expect_match(html, "ar-mode-report", fixed = TRUE)
+  # Opens in Data mode (user decision 2026-07-04).
+  expect_match(html, "ar-mode-data", fixed = TRUE)
 
   app$click(selector = '[data-ar-mode="qc"]')
   app$wait_for_idle()

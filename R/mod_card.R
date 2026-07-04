@@ -92,14 +92,15 @@
 
 # ---- UI ---------------------------------------------------------------
 
-#' The docked inspector UI (v5, decision #8): a fixed-width right panel --
-#' tab strip (Roles/Options/Filters/Ranks + collapse chevron), the pane
-#' stack (every pane mounts once, the `ar-insp-tab-*` class on the card
-#' root picks which shows -- matching `mod_frame_ui()`'s pattern, so a
-#' role edit made on one tab survives any amount of tab switching), the
-#' action footer (Run / .rtf / code), and the telemetry line. A second,
-#' slim strip renders when the workspace carries `ar-insp-collapsed`
-#' (frame-owned, see `toggle_insp()`).
+#' The docked inspector UI: a fixed-width right panel -- the pane stack
+#' (every pane mounts once, the `ar-insp-tab-*` class on the card root
+#' picks which shows -- matching `mod_frame_ui()`'s pattern, so a role
+#' edit made on one tab survives any amount of tab switching), the
+#' telemetry line, and the explorer-style labeled tab rail on the far
+#' right edge (Roles/Options/Filters/Ranks). When the workspace carries
+#' `ar-insp-collapsed` (frame-owned, see `toggle_insp()`) CSS hides only
+#' `.ar-insp-main` -- the tab rail itself is the collapsed strip. The
+#' action footer moved to the canvas toolbar (mod_toolbar.R, 2026-07-04).
 #' @param id *The module namespace.* `<character(1)>: required`.
 #' @noRd
 mod_card_ui <- function(id) {
@@ -116,20 +117,6 @@ mod_card_ui <- function(id) {
     ),
     shiny::div(
       class = "ar-insp-full",
-      # v5 refinement: the tab strip is VERTICAL on the rail's side (not a
-      # horizontal strip on top), so the editing panes get the full height.
-      shiny::div(
-        class = "ar-insp-tabs",
-        lapply(names(.INSP_TABS), function(tab) .insp_tab_btn(ns, tab)),
-        shiny::tags$div(class = "ar-insp-tabs-spacer"),
-        shiny::tags$button(
-          type = "button",
-          class = "ar-icon-btn ar-insp-cv",
-          `data-ar-collapse` = "insp",
-          `aria-label` = "Collapse inspector",
-          .icon("chevrons_right", 13)
-        )
-      ),
       shiny::div(
         class = "ar-insp-main",
         shiny::div(
@@ -151,42 +138,14 @@ mod_card_ui <- function(id) {
             mod_card_ranks_ui(ns("ranks"))
           )
         ),
-        shiny::div(
-          class = "ar-insp-act",
-          shiny::tags$button(
-            id = ns("run"),
-            type = "button",
-            class = "ar-insp-run action-button",
-            .icon("play", 11),
-            "Run",
-            # U+2318 PLACE OF INTEREST SIGN + U+21B5 CARRIAGE RETURN -- \u
-            # escapes keep R/ ASCII-clean (R CMD check portability rule).
-            shiny::span(class = "ar-insp-kbd ar-mono", "\u2318\u21b5")
-          ),
-          shiny::downloadLink(
-            ns("rtf"),
-            label = shiny::tagList(.icon("export", 12), ".rtf"),
-            class = "ar-insp-dl"
-          ),
-          shiny::tags$button(
-            id = ns("code"),
-            type = "button",
-            class = "ar-insp-dl action-button",
-            `aria-label` = "View reproduction code",
-            .icon("code", 12)
-          )
-        ),
         shiny::uiOutput(ns("telemetry"), class = "ar-insp-tel ar-mono")
-      )
-    ),
-    shiny::div(
-      class = "ar-insp-slim",
-      shiny::tags$button(
-        type = "button",
-        class = "ar-icon-btn",
-        `data-ar-collapse` = "insp",
-        `aria-label` = "Expand inspector",
-        .icon("chevrons_left", 13)
+      ),
+      # Explorer-style labeled tab rail on the inspector's FAR RIGHT edge
+      # (2026-07-04): the rail itself is the persistent slim strip when the
+      # pane is collapsed, so no chevrons and no separate slim div remain.
+      shiny::div(
+        class = "ar-insp-tabs",
+        lapply(names(.INSP_TABS), function(tab) .insp_tab_btn(ns, tab))
       )
     )
   )
@@ -194,25 +153,11 @@ mod_card_ui <- function(id) {
 
 # ---- server -------------------------------------------------------------
 
-#' A filesystem-safe slug for the selected output's download filename:
-#' `t-14-1-1-demographics.rtf` -- kind letter + number + title, lowercased,
-#' non-alnum runs collapsed to `-`.
-#' @noRd
-.output_slug <- function(object) {
-  label <- object@options$number_label %||% "Table"
-  kind <- tolower(substr(label, 1, 1))
-  raw <- paste(kind, object@options$number %||% "", object@title)
-  slug <- tolower(gsub("[^a-zA-Z0-9]+", "-", trimws(raw)))
-  gsub("^-+|-+$", "", slug)
-}
-
-#' The docked inspector server (v5): mounts the roles editor once, routes
-#' tab clicks into `rv$insp_tab` (region clicks route via `open_card()`),
+#' The docked inspector server: mounts the four panes once, routes tab
+#' clicks into `rv$insp_tab` (region clicks route via `open_card()`), and
 #' mirrors the tab to the card root's `ar-insp-tab-*` class (a message,
-#' never a `renderUI` -- switching tabs must not remount pane state), and
-#' owns the action footer: Run (drops the ARD memo and bumps `run_nonce`
-#' so the paper re-typesets fresh), the per-output `.rtf` download, and
-#' the code-view toggle (S4).
+#' never a `renderUI` -- switching tabs must not remount pane state).
+#' Run / .rtf / code-view moved to the canvas toolbar (mod_toolbar.R).
 #' @param id *The module namespace, matching `mod_card_ui()`.*
 #'   `<character(1)>: required`.
 #' @param store *The injected structured store.* `<list>: required`. From
@@ -235,6 +180,11 @@ mod_card_server <- function(id, store) {
     # the workspace class), so the CSS folds/unfolds the pane.
     lapply(names(.INSP_TABS), function(tab) {
       shiny::observeEvent(input[[paste0("tab_", tab)]], {
+        # Nothing selected = nothing to inspect: the rail stays a rail
+        # (2026-07-04) -- a tab click never opens an empty pane.
+        if (is.null(store$rv$selected)) {
+          return()
+        }
         # A direct tab click is navigation, NOT region routing: clear any
         # stale region focus so a pane never renders a region-narrowed (or
         # empty) subset after the user moved on from a jump-link.
@@ -257,6 +207,20 @@ mod_card_server <- function(id, store) {
       })
     })
 
+    # Selection drives the pane's very existence (2026-07-04): no output
+    # selected = inspector collapsed to its rail; selecting one opens it.
+    shiny::observe({
+      store$rv$insp_collapsed <- is.null(store$rv$selected)
+      session$sendCustomMessage(
+        "ar-collapse",
+        list(
+          rail = isTRUE(store$rv$rail_collapsed),
+          insp = isTRUE(store$rv$insp_collapsed)
+        )
+      )
+    }) |>
+      shiny::bindEvent(store$rv$selected, ignoreNULL = FALSE)
+
     # Tab -> class flip on the card root. Covers BOTH writers (a direct
     # tab click above, and `open_card()`'s region routing).
     shiny::observe({
@@ -266,52 +230,6 @@ mod_card_server <- function(id, store) {
       )
     }) |>
       shiny::bindEvent(store$rv$insp_tab)
-
-    # Run: drop every memoized ARD so the rebuild is honest (a stale
-    # upstream parquet re-collects rather than replaying the memo), clear
-    # the stale-proof flags (decision #8 -- Run IS the re-typeset), then
-    # bump the nonce the paper's renderers bind to.
-    shiny::observeEvent(input$run, {
-      keys <- grep("^ard::", ls(store$cache), value = TRUE)
-      rm(list = keys, envir = store$cache)
-      store$rv$stale <- character(0)
-      store$rv$run_nonce <- store$rv$run_nonce + 1L
-      log_line(store, "run: re-typeset requested")
-    })
-
-    # The code button toggles the desk's code view (mod_paper owns the
-    # panel DOM; this only flips the shared store flag).
-    shiny::observeEvent(input$code, {
-      store$rv$code_view <- !isTRUE(store$rv$code_view)
-    })
-
-    # The per-output RTF -- the SAME render seam as export (decision #7's
-    # one-spec rule): tables through render_rtf, figures through
-    # render_figure_rtf.
-    output$rtf <- shiny::downloadHandler(
-      filename = function() {
-        obj <- selected_object(store)
-        if (is.null(obj)) "output.rtf" else paste0(.output_slug(obj), ".rtf")
-      },
-      content = function(file) {
-        obj <- selected_object(store)
-        if (is.null(obj)) {
-          .abort_app("No output is selected.")
-        }
-        # Paper parity: bake the screen's own source line into the emitted
-        # RTF (options$source; the engine renders it verbatim and never
-        # stamps a date itself), and stamp the running-band chrome tokens
-        # to literals. The ARD memo key ignores options, so the cached ARD
-        # is reused as-is.
-        obj <- .with_chrome(.with_source(obj))
-        if (.is_figure_type(obj@type)) {
-          arpillar::render_figure_rtf(store$con, obj, file)
-        } else {
-          ard <- cached_ard(store, obj)
-          arpillar::render_rtf(ard, obj, file)
-        }
-      }
-    )
 
     # Telemetry (the teal steal): dataset + retained/total records through
     # the engine's own count -- no DBI call lives in this module.
@@ -335,6 +253,8 @@ mod_card_server <- function(id, store) {
       ))
     }) |>
       shiny::bindEvent(store$rv$report, store$rv$selected)
+    # Born hidden (the app opens in Data mode, 2026-07-04).
+    shiny::outputOptions(output, "telemetry", suspendWhenHidden = FALSE)
 
     invisible(NULL)
   })

@@ -187,24 +187,38 @@ input[type="radio"] {
   display: flex;
 }
 .ar-actbar {
-  flex: 0 0 44px;
+  flex: 0 0 var(--ar-rail-w);
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: var(--ar-space-1);
   padding: var(--ar-space-2) 0;
   background: var(--ar-chrome);
   border-right: 1px solid var(--ar-rule);
 }
 .ar-act-btn {
-  width: 32px;
-  height: 32px;
+  width: 100%;
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 2px;
+  padding: var(--ar-space-2) 0;
   color: var(--ar-ink-4);
   border-left: 2px solid transparent;
-  border-radius: var(--ar-radius);
+  border-radius: 0;
+}
+.ar-act-lbl {
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+/* The rail buttons are btn-link variants -- kill the link underline so
+   both rails read identically (consistency note, 2026-07-04). */
+.ar-act-btn,
+.ar-act-btn:hover,
+.ar-act-btn:focus {
+  text-decoration: none;
 }
 .ar-act-btn:hover {
   color: var(--ar-ink);
@@ -750,36 +764,46 @@ input[type="radio"] {
 .ar-showing-code > .ar-paper {
   display: none;
 }
+/* Light theme + top-aligned + scrollable (2026-07-04): the panel docks
+   right under the canvas toolbar and its BODY scrolls, so a long script
+   never pushes the bar off-screen or floats mid-desk. */
 .ar-code {
   display: none;
   width: 100%;
-  max-width: 720px;
-  margin: var(--ar-space-5) auto;
-  background: #20242a;
+  max-width: 900px;
+  margin: var(--ar-space-3) auto var(--ar-space-5);
+  background: var(--ar-chrome);
+  border: 1px solid var(--ar-rule);
   border-radius: var(--ar-radius);
   overflow: hidden;
 }
 /* `.ar-code` sits inside the `code_slot` uiOutput wrapper, not directly on
    the desk -- a descendant selector, not a child combinator. */
 .ar-showing-code .ar-code {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 160px);
 }
 .ar-code-bar {
   display: flex;
   align-items: center;
   gap: var(--ar-space-2);
   padding: var(--ar-space-2) var(--ar-space-3);
-  border-bottom: 1px solid #343a42;
-  color: #9aa3ab;
+  border-bottom: 1px solid var(--ar-rule);
+  color: var(--ar-ink-3);
   font-size: 10.5px;
+  flex: 0 0 auto;
 }
 .ar-code-name {
-  color: #c9d1d9;
+  color: var(--ar-ink);
 }
 .ar-code-act {
-  color: #9aa3ab;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ar-ink-2);
   background: transparent;
-  border: 1px solid #464d57;
+  border: 1px solid var(--ar-rule);
   border-radius: var(--ar-radius-sm);
   padding: 2px 8px;
   font-size: 10.5px;
@@ -787,18 +811,38 @@ input[type="radio"] {
   text-decoration: none;
 }
 .ar-code-act:hover {
-  color: #fff;
-  border-color: #6a7481;
+  color: var(--ar-ink);
+  border-color: var(--ar-ink-3);
   text-decoration: none;
 }
 .ar-code-body {
   margin: 0;
   padding: var(--ar-space-4);
-  color: #c9d1d9;
+  color: var(--ar-ink-2);
   font-size: 11px;
   line-height: 1.7;
   white-space: pre-wrap;
-  overflow-x: auto;
+  overflow: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+/* R syntax highlighting (server-side spans, .hl_r in mod_paper.R). */
+.ar-hl-com {
+  color: var(--ar-ink-4);
+  font-style: italic;
+}
+.ar-hl-str {
+  color: var(--ar-ready);
+}
+.ar-hl-num {
+  color: #6d28d9;
+}
+.ar-hl-kw {
+  color: #0369a1;
+  font-weight: 500;
+}
+.ar-hl-fn {
+  color: var(--ar-accent);
 }
 .ar-paper {
   background: var(--ar-paper);
@@ -1048,7 +1092,7 @@ input[type="radio"] {
    the show/hide toggle: clicking the active tab collapses, clicking any tab
    re-opens). The rail shrinks to just the icon strip. */
 .ar-insp-collapsed .ar-card {
-  flex-basis: 63px;
+  flex-basis: var(--ar-rail-w);
 }
 .ar-insp-full {
   display: flex;
@@ -1068,31 +1112,16 @@ input[type="radio"] {
 .ar-insp-collapsed .ar-insp-main {
   display: none;
 }
-/* The old full-collapse slim strip is superseded by the always-visible tab
-   strip; never show it. */
-.ar-insp-slim,
-.ar-insp-collapsed .ar-insp-slim {
-  display: none;
-}
-/* The collapse chevron points inward when open, outward when collapsed. */
-.ar-insp-collapsed .ar-insp-cv svg {
-  transform: rotate(180deg);
-}
-
-/* -- tab strip: VERTICAL, icon+label, on the rail's FAR-RIGHT edge. `order`
-   flips it past `.ar-insp-main` without swapping the DOM (so keyboard order
-   stays tabs-then-content). -- */
+/* -- tab rail: VERTICAL, icon+label, on the inspector's FAR-RIGHT edge
+   (explorer-style, 2026-07-04). The rail itself is the collapsed strip --
+   no chevrons, no slim div. Width shared with the left activity rail. -- */
 .ar-insp-tabs {
-  order: 1;
-  flex: 0 0 62px;
+  flex: 0 0 var(--ar-rail-w);
   display: flex;
   flex-direction: column;
   align-items: stretch;
   border-left: 1px solid var(--ar-rule);
   padding: var(--ar-space-2) 0;
-}
-.ar-insp-tabs-spacer {
-  flex: 1 1 auto;
 }
 .ar-insp-tab {
   display: flex;
@@ -1122,10 +1151,6 @@ input[type="radio"] {
   border-right-color: var(--ar-accent);
   font-weight: 500;
 }
-.ar-insp-cv {
-  align-self: center;
-}
-
 /* -- pane stack: every pane mounts, the root tab class picks one -- */
 .ar-insp-body {
   flex: 1 1 auto;
@@ -1143,38 +1168,62 @@ input[type="radio"] {
   display: block;
 }
 
-/* -- action footer: Run / .rtf / code -- */
-.ar-insp-act {
-  display: flex;
-  gap: var(--ar-space-1);
-  padding: var(--ar-space-1) var(--ar-space-3);
-  border-top: 1px solid var(--ar-rule);
+/* ============ 07a canvas toolbar ============ */
+/* Explorer-style (2026-07-04): Run / .rtf / Output|Code at the TOP of the
+   desk column. The controls are the Preact component (srcjs/toolbar.js);
+   these classes are what it renders. */
+.ar-toolbar {
+  flex: 0 0 var(--ar-toolbar-h);
+  align-self: stretch;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--ar-chrome);
+  border-bottom: 1px solid var(--ar-rule);
 }
-.ar-insp-run {
+.ar-toolbar-mount,
+.ar-tb-row {
+  height: 100%;
+}
+.ar-tb-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-2);
+  padding: 0 var(--ar-space-3);
+}
+.ar-tb-spacer {
   flex: 1 1 auto;
+}
+.ar-tb-seg {
+  display: inline-flex;
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius);
+  overflow: hidden;
+}
+.ar-tb-seg-btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  background: var(--ar-accent);
-  color: var(--ar-paper);
-  border: 1px solid var(--ar-accent);
-  border-radius: var(--ar-radius);
+  gap: 5px;
+  background: transparent;
+  border: none;
+  color: var(--ar-ink-3);
   font-size: 11px;
-  font-weight: 500;
-  padding: 4px 0;
+  padding: 4px 10px;
   cursor: pointer;
 }
-.ar-insp-run:hover {
-  background: var(--ar-accent-hover);
-  border-color: var(--ar-accent-hover);
+.ar-tb-seg-btn:hover {
+  color: var(--ar-ink);
 }
-.ar-insp-kbd {
-  font-size: 9.5px;
-  opacity: 0.55;
-  font-weight: 400;
+.ar-tb-seg-btn.ar-tb-on {
+  background: var(--ar-accent-weak);
+  color: var(--ar-accent);
+  font-weight: 500;
 }
-.ar-insp-dl {
+.ar-tb-stale {
+  font-size: 10px;
+  color: var(--ar-draft);
+}
+.ar-tb-btn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1183,14 +1232,38 @@ input[type="radio"] {
   background: transparent;
   color: var(--ar-ink-2);
   font-size: 11px;
-  padding: 3px 8px;
+  padding: 4px 10px;
   cursor: pointer;
-  text-decoration: none;
 }
-.ar-insp-dl:hover {
+.ar-tb-btn:hover:not(:disabled) {
   border-color: var(--ar-ink-3);
   color: var(--ar-ink);
-  text-decoration: none;
+}
+.ar-tb-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.ar-tb-run {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--ar-accent);
+  color: var(--ar-paper);
+  border: 1px solid var(--ar-accent);
+  border-radius: var(--ar-radius);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 14px;
+  cursor: pointer;
+}
+.ar-tb-run:hover {
+  background: var(--ar-accent-hover);
+  border-color: var(--ar-accent-hover);
+}
+.ar-tb-kbd {
+  font-size: 9.5px;
+  opacity: 0.55;
+  font-weight: 400;
 }
 
 /* -- telemetry line -- */
@@ -2046,45 +2119,93 @@ input[type="radio"] {
   border-color: var(--ar-ink-3);
   color: var(--ar-ink);
 }
-.ar-flt-row {
-  border-top: 1px solid var(--ar-rule-2);
-  padding: var(--ar-space-1) 0;
+/* Preset selected state: one chip language with the predicate chips. */
+.ar-flt-preset-on {
+  border-color: var(--ar-accent);
+  color: var(--ar-accent);
+  background: var(--ar-accent-weak);
+  font-weight: 500;
 }
-.ar-flt-row-main {
+/* -- predicate chips (2026-07-04): one compact chip per draft row -- */
+.ar-flt-sec {
+  margin: var(--ar-space-2) 0 var(--ar-space-1);
+}
+.ar-flt-chips {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: var(--ar-space-1);
 }
-/* The column picker takes its own full line; op + value + remove wrap
-   below -- a 260px card cannot seat all four inline. */
-.ar-flt-row-main > .form-group:first-child,
-.ar-flt-row-main > .shiny-input-container:first-child {
-  flex: 1 1 100%;
+.ar-flt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  border: 1px solid var(--ar-rule);
+  border-radius: 11px;
+  background: transparent;
+  color: var(--ar-ink-2);
+  padding: 2px 8px;
+  cursor: pointer;
 }
-.ar-flt-row-main .form-group,
-.ar-flt-row-main .shiny-input-container {
+.ar-flt-chip:hover {
+  border-color: var(--ar-ink-3);
+  color: var(--ar-ink);
+}
+.ar-flt-chip-on {
+  border-color: var(--ar-accent);
+  color: var(--ar-accent);
+  background: var(--ar-accent-weak);
+}
+.ar-flt-chip-bad {
+  border-style: dashed;
+}
+.ar-flt-chip-x {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ar-ink-4);
+}
+.ar-flt-chip-x:hover {
+  color: var(--ar-error);
+}
+/* -- the editor card for the open chip -- */
+.ar-flt-pop {
+  margin-top: var(--ar-space-2);
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius);
+  background: var(--ar-chrome);
+  padding: var(--ar-space-2);
+}
+.ar-flt-field {
+  margin-bottom: var(--ar-space-1);
+}
+.ar-flt-field .form-group,
+.ar-flt-field .shiny-input-container {
   margin-bottom: 0;
-  flex: 1 1 auto;
-  min-width: 0;
+  width: 100%;
 }
-.ar-flt-row-main select {
+.ar-flt-lbl {
+  display: block;
+  font-size: 10.5px;
+  color: var(--ar-ink-3);
+  margin-bottom: 2px;
+}
+.ar-flt-hint {
+  font-size: 10px;
+  color: var(--ar-ink-4);
+  margin-top: 2px;
+}
+.ar-flt-pop .checkbox {
+  margin: 0 0 var(--ar-space-1);
+  font-size: 11px;
+  color: var(--ar-ink-3);
+}
+.ar-flt-pop select {
   font-family: "IBM Plex Mono", monospace;
   font-size: 11px;
 }
-.ar-flt-rm {
-  flex: 0 0 auto;
-}
-.ar-flt-row-meta {
-  display: flex;
-  align-items: center;
-  gap: var(--ar-space-1);
-  padding-left: 2px;
-}
-.ar-flt-row-meta .checkbox {
-  margin: 0;
+.ar-flt-done {
   font-size: 11px;
-  color: var(--ar-ink-3);
 }
 .ar-flt-badge {
   font-size: 9px;
@@ -2354,4 +2475,75 @@ input[type="radio"] {
 }
 .ar-rail-collapsed .ar-src-cv svg {
   transform: rotate(180deg);
+}
+
+/* ============ 09 canvas context menu + desk hint (2026-07-04) ============ */
+.ar-ctx-menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 160px;
+  background: var(--ar-chrome);
+  border: 1px solid var(--ar-rule);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(27, 31, 35, 0.12);
+}
+.ar-ctx-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  font-size: 12.5px;
+  color: var(--ar-ink);
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.ar-ctx-item:hover {
+  background: var(--ar-accent-weak);
+  color: var(--ar-accent);
+}
+.ar-ctx-item-danger {
+  color: var(--ar-error);
+}
+.ar-ctx-item-danger:hover {
+  background: rgba(179, 38, 30, 0.07);
+  color: var(--ar-error);
+}
+.ar-desk-hint {
+  text-align: center;
+  font-size: 11px;
+  color: var(--ar-ink-4);
+  padding: 48px 0;
+}
+
+/* Left-panel resize handle (2026-07-04): mirrors .ar-insp-resize on the
+   panel's RIGHT edge; the panel is position:relative via [data-ar-resizable]. */
+[data-ar-resizable] {
+  position: relative;
+  transition: flex-basis var(--ar-motion-slow) var(--ar-motion-ease);
+}
+[data-ar-resizable].ar-resizing {
+  transition: none;
+  user-select: none;
+}
+.ar-rail-resize {
+  position: absolute;
+  right: -3px;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: col-resize;
+  z-index: 6;
+}
+.ar-rail-resize:hover,
+.ar-resizing > .ar-rail-resize {
+  background: linear-gradient(
+    to right,
+    transparent 2px,
+    var(--ar-accent) 2px,
+    var(--ar-accent) 4px,
+    transparent 4px
+  );
 }

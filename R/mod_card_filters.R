@@ -1,17 +1,20 @@
-# The Filters pane (design spec #8, plan Task 12): the Filters-tab content
-# of the docked inspector. Presets FIRST (one chip per `*FL` population
-# flag in the dataset, CDISC-mapped names; "Full set" clears), then
-# builder rows --
-# column (rich picker) - op (the EXACT engine set) - value (multi selectize
-# over distinct values for category/date, numeric text for measures, hidden
-# for null-tests) - include-missing - remove. Rows live in the store-side
-# draft (`rv$filter_draft`, seeded from `object@filters` on selection
-# change; never the DOM); a row commits ONLY when complete -- the engine's
-# `.filter_one` is drop-tolerant and would silently skip an incomplete
-# predicate, so the pane shows an honest `incomplete` badge instead of
-# letting it vanish. Every commit is a HEAVY edit (filters key the ARD):
-# on a proofed output it marks the proof STALE (fct_store.R's run
-# semantics); the live count beside the pane label stays live regardless --
+# The Filters pane (chips + editor, 2026-07-04 redesign): the Filters-tab
+# content of the docked inspector. Presets FIRST (one chip per `*FL`
+# population flag in the dataset, CDISC-mapped names, selected state when
+# the committed set IS that flag; "Full set" clears), then one compact
+# chip per predicate (`SAFFL = Y ×`, `AGE > 65 ×`) and a `+ Filter` chip.
+# Clicking a chip opens THE editor card (GOV.UK stacked labelled controls:
+# variable -> condition -> type-aware value with real level counts /
+# range hint -> include missing); only one editor exists at a time, so
+# the old 12-slot per-row observer pool collapsed to one set. Rows live
+# in the store-side draft (`rv$filter_draft`, seeded from `object@filters`
+# on selection change; the open chip index is `rv$filter_open` -- never
+# the DOM); a row commits ONLY when complete -- the engine's `.filter_one`
+# is drop-tolerant and would silently skip an incomplete predicate, so
+# the chip wears an honest `incomplete` badge instead of letting it
+# vanish. Every commit is a HEAVY edit (filters key the ARD): on a
+# proofed output it marks the proof STALE (fct_store.R's run semantics);
+# the live count beside the pane label stays live regardless --
 # `filter_count()` is a bare DuckDB COUNT, not a re-typeset.
 
 # ---- engine contract -------------------------------------------------------
@@ -157,41 +160,138 @@
   )
 }
 
-# ---- row UI -----------------------------------------------------------
+# ---- chips + editor UI (2026-07-04 redesign) ---------------------------
 
-#' The value control for one row: hidden for null-tests, numeric text for
-#' a measure comparison, multi selectize over
-#' `distinct_values(include_missing = TRUE)` otherwise (the NA level shows
-#' as "(missing)" via `.NA_TOKEN`).
+#' The compact chip text for one draft row: `SAFFL = Y`, `AGE > 65`,
+#' `RACE in 3 values`, `AEDECOD is missing`, or `New filter` before a
+#' column is picked.
 #' @noRd
-.flt_value_control <- function(con, ns, i, row, type, dataset) {
+.filter_chip_label <- function(row) {
+  col <- row$column %||% ""
+  if (!nzchar(col)) {
+    return("New filter")
+  }
+  op <- row$op %||% ""
+  if (op %in% c("is.na", "not.na")) {
+    word <- if (identical(op, "is.na")) "is missing" else "is present"
+    return(paste(col, word))
+  }
+  vals <- row$value
+  vals_chr <- as.character(vals[!is.na(vals)])
+  shown <- if (anyNA(vals)) c(vals_chr, "(missing)") else vals_chr
+  val_txt <- if (length(shown) == 0L) {
+    "\u2026"
+  } else if (length(shown) == 1L) {
+    shown
+  } else if (length(shown) == 2L) {
+    paste(shown, collapse = ", ")
+  } else {
+    sprintf("%d values", length(shown))
+  }
+  op_txt <- if (identical(op, "%in%")) {
+    if (length(shown) > 1L) "in" else "="
+  } else if (identical(op, "==")) {
+    "="
+  } else if (identical(op, "!=")) {
+    "\u2260"
+  } else {
+    op
+  }
+  paste(col, op_txt, val_txt)
+}
+
+#' One filter chip: the predicate summary, an honest `incomplete` badge
+#' when the engine would drop the row, and the inline remove button.
+#' Clicking the chip opens it in the editor card (`rv$filter_open`); the
+#' remove button stops propagation so it never also opens the chip.
+#' @noRd
+.flt_chip <- function(ns, i, row, open) {
+  open_js <- sprintf(
+    "Shiny.setInputValue('%s', {i: %d, nonce: Date.now()}, {priority: 'event'})",
+    ns("chip_open"),
+    i
+  )
+  rm_js <- sprintf(
+    "event.stopPropagation(); Shiny.setInputValue('%s', {i: %d, nonce: Date.now()}, {priority: 'event'})",
+    ns("chip_rm"),
+    i
+  )
+  shiny::tags$button(
+    type = "button",
+    class = paste0(
+      "ar-flt-chip",
+      if (isTRUE(open)) " ar-flt-chip-on",
+      if (!.filter_complete(row)) " ar-flt-chip-bad"
+    ),
+    onclick = open_js,
+    shiny::tags$span(class = "ar-mono", .filter_chip_label(row)),
+    if (!.filter_complete(row)) {
+      shiny::tags$span(class = "ar-flt-badge ar-mono", "incomplete")
+    },
+    shiny::tags$span(
+      class = "ar-flt-chip-x",
+      role = "button",
+      `aria-label` = paste0("Remove filter ", i),
+      onclick = rm_js,
+      .icon("close", 10)
+    )
+  )
+}
+
+#' The value control for the OPEN row: hidden for null-tests, numeric
+#' input with a live range hint for a measure comparison, multi selectize
+#' over the dataset's real levels labeled with their row counts otherwise
+#' (the NA level shows as "(missing)" via `.NA_TOKEN`).
+#' @noRd
+.flt_value_control <- function(con, ns, row, type, dataset) {
   if (row$op %in% c("is.na", "not.na")) {
     return(NULL)
   }
-  input_id <- paste0("f_val_", i)
   if (identical(type, "measure")) {
     val <- row$value
-    return(shiny::textInput(
-      ns(input_id),
-      label = NULL,
-      value = if (is.null(val)) "" else as.character(val[[1]]),
-      placeholder = "value"
+    rng <- tryCatch(
+      arpillar::column_range(con, dataset, row$column),
+      error = function(e) NULL
+    )
+    return(shiny::tagList(
+      shiny::textInput(
+        ns("f_val"),
+        label = NULL,
+        value = if (is.null(val)) "" else as.character(val[[1]]),
+        placeholder = "value"
+      ),
+      if (!is.null(rng)) {
+        shiny::tags$div(
+          class = "ar-flt-hint ar-mono",
+          sprintf("Range %s to %s in %s", rng[[1]], rng[[2]], tolower(dataset))
+        )
+      }
     ))
   }
+  counts <- tryCatch(
+    arpillar::value_counts(con, dataset, row$column),
+    error = function(e) NULL
+  )
   levels <- tryCatch(
     arpillar::distinct_values(con, dataset, row$column, include_missing = TRUE),
     error = function(e) character(0)
   )
-  choices <- stats::setNames(
-    ifelse(is.na(levels), .NA_TOKEN, levels),
-    ifelse(is.na(levels), "(missing)", levels)
+  labels <- vapply(
+    levels,
+    function(lv) {
+      base <- if (is.na(lv)) "(missing)" else lv
+      n <- if (!is.null(counts) && !is.na(lv)) counts[lv] else NA
+      if (length(n) == 1L && !is.na(n)) sprintf("%s (%s) ", base, n) else base
+    },
+    character(1)
   )
+  choices <- stats::setNames(ifelse(is.na(levels), .NA_TOKEN, levels), labels)
   selected <- row$value
   if (!is.null(selected)) {
     selected <- ifelse(is.na(selected), .NA_TOKEN, selected)
   }
   shiny::selectizeInput(
-    ns(input_id),
+    ns("f_val"),
     label = NULL,
     choices = choices,
     selected = selected %||% character(0),
@@ -200,11 +300,13 @@
   )
 }
 
-#' One builder row: column picker, then (once a column is set) op select,
-#' value control, include-missing checkbox, and the remove button; an
-#' incomplete row wears the honest badge.
+#' The editor card for the open chip (GOV.UK-style stacked labelled
+#' controls): column picker, condition, type-aware value, include-missing,
+#' Done. Rendered inline below the chip row -- the open chip is
+#' highlighted, so no floating-popover positioning JS is needed and the
+#' narrow rail never clips it.
 #' @noRd
-.flt_row <- function(con, ns, items, i, row, dataset) {
+.flt_editor <- function(con, ns, items, row, dataset) {
   has_col <- nzchar(row$column %||% "")
   type <- if (has_col) {
     hit <- items$type[items$name == row$column]
@@ -212,10 +314,8 @@
   } else {
     "category"
   }
-  # The picker's choices are packed NAME\x1fTYPE\x1fLABEL (what
-  # `.eligible_picker()` builds and what search matches on) -- the
-  # re-seeded selection must be packed the SAME way or selectize ignores
-  # it and the bind-post resets the row to the first column.
+  # Packed NAME\x1fTYPE\x1fLABEL -- the re-seeded selection must match
+  # `.eligible_picker()`'s packing or selectize resets the row.
   selected <- if (has_col) {
     lab_hit <- items$label[items$name == row$column]
     .pack_item_choice(
@@ -226,49 +326,50 @@
   } else {
     character(0)
   }
-
   shiny::tags$div(
-    class = "ar-flt-row",
+    class = "ar-flt-pop",
     shiny::tags$div(
-      class = "ar-flt-row-main",
+      class = "ar-flt-field",
+      shiny::tags$label(class = "ar-flt-lbl", "Variable"),
       .eligible_picker(
         ns,
-        paste0("f_col_", i),
+        "f_col",
         items,
         selected = selected,
         placeholder = "Column"
-      ),
-      if (has_col) {
+      )
+    ),
+    if (has_col) {
+      shiny::tags$div(
+        class = "ar-flt-field",
+        shiny::tags$label(class = "ar-flt-lbl", "Condition"),
         shiny::selectInput(
-          ns(paste0("f_op_", i)),
+          ns("f_op"),
           label = NULL,
           choices = .FILTER_OP_LABELS,
           selected = row$op,
-          selectize = FALSE,
-          width = "96px"
+          selectize = FALSE
         )
-      },
-      if (has_col) .flt_value_control(con, ns, i, row, type, dataset),
-      shiny::tags$button(
-        id = ns(paste0("f_rm_", i)),
-        type = "button",
-        class = "ar-icon-btn ar-flt-rm action-button",
-        `aria-label` = paste0("Remove filter ", i),
-        .icon("close", 11)
       )
-    ),
-    shiny::tags$div(
-      class = "ar-flt-row-meta",
-      if (has_col && !row$op %in% c("is.na", "not.na")) {
-        shiny::checkboxInput(
-          ns(paste0("f_miss_", i)),
-          label = "include missing",
-          value = isTRUE(row$include_missing)
-        )
-      },
-      if (!.filter_complete(row)) {
-        shiny::tags$span(class = "ar-flt-badge ar-mono", "incomplete")
-      }
+    },
+    if (has_col && !row$op %in% c("is.na", "not.na")) {
+      shiny::tags$div(
+        class = "ar-flt-field",
+        shiny::tags$label(class = "ar-flt-lbl", "Value"),
+        .flt_value_control(con, ns, row, type, dataset)
+      )
+    },
+    if (has_col && !row$op %in% c("is.na", "not.na")) {
+      shiny::checkboxInput(
+        ns("f_miss"),
+        label = "Include missing",
+        value = isTRUE(row$include_missing)
+      )
+    },
+    .action_btn(
+      ns("f_done"),
+      shiny::tagList(.icon("check", 11), "Done"),
+      class = "ar-flt-done"
     )
   )
 }
@@ -325,7 +426,8 @@ mod_card_filters_server <- function(id, store) {
     ns <- session$ns
 
     # Selection change re-seeds the draft from the committed predicates --
-    # a draft never survives across outputs.
+    # a draft never survives across outputs, and neither does an open
+    # editor (a stale filter_open would index into the wrong draft).
     shiny::observe({
       obj <- selected_object(store)
       store$rv$filter_draft <- if (is.null(obj)) {
@@ -333,8 +435,20 @@ mod_card_filters_server <- function(id, store) {
       } else {
         .seed_draft(obj@filters)
       }
+      store$rv$filter_open <- NULL
     }) |>
       shiny::bindEvent(store$rv$selected, ignoreNULL = FALSE)
+
+    # The open row, bounds-guarded: NULL when no editor is open OR the
+    # index outlived the draft it pointed into.
+    open_row <- function() {
+      i <- store$rv$filter_open
+      draft <- store$rv$filter_draft
+      if (is.null(i) || i < 1L || i > length(draft)) {
+        return(NULL)
+      }
+      i
+    }
 
     output$pane <- shiny::renderUI({
       obj <- selected_object(store)
@@ -349,6 +463,8 @@ mod_card_filters_server <- function(id, store) {
         return(shiny::div(class = "ar-flt-empty"))
       }
       draft <- store$rv$filter_draft
+      open_i <- open_row()
+      committed <- lapply(Filter(.filter_complete, draft), .filter_normalize)
       shiny::tagList(
         shiny::tags$div(
           class = "ar-flt-head",
@@ -362,42 +478,73 @@ mod_card_filters_server <- function(id, store) {
             # One chip per population-flag candidate (`*FL` category
             # columns): CDISC-mapped names first, the rest by their bare
             # predicate. Dynamic set -> ONE shared `preset_flag` input.
+            # A preset wears the selected state when the complete draft
+            # IS exactly its canonical predicate (one chip language,
+            # 2026-07-04).
             lapply(.population_flags(items), function(fl) {
               js <- sprintf(
                 "Shiny.setInputValue('%s', {column: '%s', nonce: Date.now()}, {priority: 'event'})",
                 ns("preset_flag"),
                 fl
               )
+              on <- identical(committed, list(.flag_filter(fl)))
               shiny::tags$button(
                 type = "button",
-                class = "ar-flt-preset btn btn-default action-button",
+                class = paste0(
+                  "ar-flt-preset btn btn-default action-button",
+                  if (on) " ar-flt-preset-on"
+                ),
                 onclick = js,
+                if (on) .icon("check", 10),
                 .flag_label(fl)
               )
             }),
             list(
               .action_btn(
                 ns("preset_full"),
-                "Full set",
-                class = "ar-flt-preset"
+                shiny::tagList(
+                  if (length(committed) == 0L) .icon("check", 10),
+                  "Full set"
+                ),
+                class = paste0(
+                  "ar-flt-preset",
+                  if (length(committed) == 0L) " ar-flt-preset-on"
+                )
               )
             )
           )
         ),
-        lapply(seq_along(draft), function(i) {
-          .flt_row(store$con, ns, items, i, draft[[i]], obj@dataset)
-        }),
-        if (length(draft) < .FILTER_MAX_ROWS) {
-          .action_btn(
-            ns("f_add"),
-            "+ Add filter",
-            variant = "link",
-            class = "ar-flt-add"
+        shiny::tags$div(class = "ar-label ar-flt-sec", "FILTERS"),
+        do.call(
+          shiny::tags$div,
+          c(
+            list(class = "ar-flt-chips"),
+            lapply(seq_along(draft), function(i) {
+              .flt_chip(ns, i, draft[[i]], open = identical(open_i, i))
+            }),
+            list(
+              if (length(draft) < .FILTER_MAX_ROWS) {
+                .action_btn(
+                  ns("f_add"),
+                  shiny::tagList(.icon("plus", 10), "Filter"),
+                  variant = "link",
+                  class = "ar-flt-add"
+                )
+              }
+            )
           )
+        ),
+        if (!is.null(open_i)) {
+          .flt_editor(store$con, ns, items, draft[[open_i]], obj@dataset)
         }
       )
     }) |>
-      shiny::bindEvent(store$rv$selected, store$rv$filter_draft)
+      shiny::bindEvent(
+        store$rv$selected,
+        store$rv$filter_draft,
+        store$rv$filter_open,
+        ignoreNULL = FALSE
+      )
 
     # The live count: filter_count() over the COMPLETE predicates only,
     # debounced 300ms -- a half-built row never fires a query.
@@ -448,142 +595,177 @@ mod_card_filters_server <- function(id, store) {
       .commit_filters(store)
     })
 
+    # + Filter appends a blank row AND opens it in the editor.
     shiny::observeEvent(input$f_add, {
       store$rv$filter_draft <- c(
         store$rv$filter_draft,
         list(list(column = "", op = "", value = NULL, include_missing = FALSE))
       )
+      store$rv$filter_open <- length(store$rv$filter_draft)
     })
 
-    # ---- the row observer pool ----
-    # Which f_val_<i> inputs have posted a real value at least once: the
-    # value observer must accept NULL ("user removed every selection")
-    # but NOT the NULL every input carries before its control first binds
-    # -- processing that init-NULL would wipe a freshly seeded draft value.
-    val_seen <- new.env(parent = emptyenv())
+    # ---- chips ----
+    shiny::observeEvent(input$chip_open, {
+      # JS posts numbers as double; the draft index is stored integer.
+      i <- as.integer(input$chip_open$i %||% 0L)
+      if (i < 1L || i > length(store$rv$filter_draft)) {
+        return()
+      }
+      # Clicking the open chip closes the editor; another chip moves it.
+      store$rv$filter_open <- if (identical(store$rv$filter_open, i)) {
+        NULL
+      } else {
+        i
+      }
+    })
 
-    for (row_i in seq_len(.FILTER_MAX_ROWS)) {
-      local({
-        ii <- row_i
+    shiny::observeEvent(input$chip_rm, {
+      i <- as.integer(input$chip_rm$i %||% 0L)
+      draft <- store$rv$filter_draft
+      if (i < 1L || i > length(draft)) {
+        return()
+      }
+      draft[[i]] <- NULL
+      store$rv$filter_draft <- draft
+      open_i <- store$rv$filter_open
+      if (!is.null(open_i)) {
+        store$rv$filter_open <- if (identical(open_i, i)) {
+          NULL
+        } else if (open_i > i) {
+          open_i - 1L
+        } else {
+          open_i
+        }
+      }
+      .commit_filters(store)
+    })
 
-        shiny::observeEvent(input[[paste0("f_col_", ii)]], {
-          choice <- input[[paste0("f_col_", ii)]]
-          draft <- store$rv$filter_draft
-          if (is.null(choice) || !nzchar(choice) || ii > length(draft)) {
-            return()
-          }
-          name <- .unpack_item_name(choice)
-          row <- draft[[ii]]
-          if (identical(row$column, name)) {
-            return()
-          }
-          # The packed half is the raw SQL type; the op default needs the
-          # ROLE type (measure vs category/date) -- look it up.
-          obj <- selected_object(store)
-          if (is.null(obj)) {
-            return()
-          }
-          items <- arpillar::data_items(store$con, obj@dataset)
-          hit <- items$type[items$name == name]
-          type <- if (length(hit) == 1L) hit else "category"
-          row$column <- name
-          # The op default follows the column's shape: set-membership for
-          # category/date, comparison for a measure.
-          row$op <- if (identical(type, "measure")) "==" else "%in%"
-          row$value <- NULL
-          row$include_missing <- FALSE
-          draft[[ii]] <- row
-          store$rv$filter_draft <- draft
-          .commit_filters(store)
-        })
+    shiny::observeEvent(input$f_done, {
+      store$rv$filter_open <- NULL
+    })
 
-        shiny::observeEvent(input[[paste0("f_op_", ii)]], {
-          op <- input[[paste0("f_op_", ii)]]
-          draft <- store$rv$filter_draft
-          if (
-            is.null(op) ||
-              !op %in% .FILTER_OPS ||
-              ii > length(draft) ||
-              identical(draft[[ii]]$op, op)
-          ) {
-            return()
-          }
-          draft[[ii]]$op <- op
-          if (op %in% c("is.na", "not.na")) {
-            draft[[ii]]$value <- NULL
-            draft[[ii]]$include_missing <- FALSE
-          }
-          store$rv$filter_draft <- draft
-          .commit_filters(store)
-        })
+    # ---- the editor observer set ----
+    # ONE set of observers (f_col/f_op/f_val/f_miss) targets the single
+    # open row -- only one editor exists at a time (2026-07-04; replaces
+    # the old 12-slot per-row pool). `val_seen` guards the value observer
+    # against the init-NULL every freshly bound input posts once: NULL is
+    # only meaningful ("user removed every selection") after a real post,
+    # and the guard resets whenever a different row opens.
+    val_seen <- shiny::reactiveVal(FALSE)
+    shiny::observeEvent(
+      store$rv$filter_open,
+      val_seen(FALSE),
+      ignoreNULL = FALSE
+    )
 
-        shiny::observeEvent(
-          input[[paste0("f_val_", ii)]],
-          {
-            raw <- input[[paste0("f_val_", ii)]]
-            if (is.null(raw) && !isTRUE(val_seen[[as.character(ii)]])) {
-              return()
-            }
-            if (!is.null(raw)) {
-              val_seen[[as.character(ii)]] <- TRUE
-            }
-            draft <- store$rv$filter_draft
-            if (ii > length(draft)) {
-              return()
-            }
-            row <- draft[[ii]]
-            obj <- selected_object(store)
-            if (is.null(obj) || !nzchar(row$column %||% "")) {
-              return()
-            }
-            items <- arpillar::data_items(store$con, obj@dataset)
-            hit <- items$type[items$name == row$column]
-            type <- if (length(hit) == 1L) hit else "category"
-            value <- if (identical(type, "measure")) {
-              v <- suppressWarnings(as.numeric(trimws(raw %||% "")))
-              if (length(v) == 1L && !is.na(v)) v else NULL
-            } else if (length(raw) == 0L) {
-              NULL
-            } else {
-              # Map the "(missing)" token back to a real NA level.
-              out <- as.character(raw)
-              out[out == .NA_TOKEN] <- NA_character_
-              out
-            }
-            if (identical(row$value, value)) {
-              return()
-            }
-            draft[[ii]]$value <- value
-            store$rv$filter_draft <- draft
-            .commit_filters(store)
-          },
-          ignoreNULL = FALSE
-        )
+    shiny::observeEvent(input$f_col, {
+      choice <- input$f_col
+      ii <- open_row()
+      if (is.null(choice) || !nzchar(choice) || is.null(ii)) {
+        return()
+      }
+      draft <- store$rv$filter_draft
+      name <- .unpack_item_name(choice)
+      row <- draft[[ii]]
+      if (identical(row$column, name)) {
+        return()
+      }
+      # The packed half is the raw SQL type; the op default needs the
+      # ROLE type (measure vs category/date) -- look it up.
+      obj <- selected_object(store)
+      if (is.null(obj)) {
+        return()
+      }
+      items <- arpillar::data_items(store$con, obj@dataset)
+      hit <- items$type[items$name == name]
+      type <- if (length(hit) == 1L) hit else "category"
+      row$column <- name
+      # The op default follows the column's shape: set-membership for
+      # category/date, comparison for a measure.
+      row$op <- if (identical(type, "measure")) "==" else "%in%"
+      row$value <- NULL
+      row$include_missing <- FALSE
+      draft[[ii]] <- row
+      store$rv$filter_draft <- draft
+      .commit_filters(store)
+    })
 
-        shiny::observeEvent(input[[paste0("f_miss_", ii)]], {
-          flag <- isTRUE(input[[paste0("f_miss_", ii)]])
-          draft <- store$rv$filter_draft
-          if (
-            ii > length(draft) || identical(draft[[ii]]$include_missing, flag)
-          ) {
-            return()
-          }
-          draft[[ii]]$include_missing <- flag
-          store$rv$filter_draft <- draft
-          .commit_filters(store)
-        })
+    shiny::observeEvent(input$f_op, {
+      op <- input$f_op
+      ii <- open_row()
+      draft <- store$rv$filter_draft
+      if (
+        is.null(op) ||
+          !op %in% .FILTER_OPS ||
+          is.null(ii) ||
+          identical(draft[[ii]]$op, op)
+      ) {
+        return()
+      }
+      draft[[ii]]$op <- op
+      if (op %in% c("is.na", "not.na")) {
+        draft[[ii]]$value <- NULL
+        draft[[ii]]$include_missing <- FALSE
+      }
+      store$rv$filter_draft <- draft
+      .commit_filters(store)
+    })
 
-        shiny::observeEvent(input[[paste0("f_rm_", ii)]], {
-          draft <- store$rv$filter_draft
-          if (ii > length(draft)) {
-            return()
-          }
-          draft[[ii]] <- NULL
-          store$rv$filter_draft <- draft
-          .commit_filters(store)
-        })
-      })
-    }
+    shiny::observeEvent(
+      input$f_val,
+      {
+        raw <- input$f_val
+        if (is.null(raw) && !isTRUE(val_seen())) {
+          return()
+        }
+        if (!is.null(raw)) {
+          val_seen(TRUE)
+        }
+        ii <- open_row()
+        if (is.null(ii)) {
+          return()
+        }
+        draft <- store$rv$filter_draft
+        row <- draft[[ii]]
+        obj <- selected_object(store)
+        if (is.null(obj) || !nzchar(row$column %||% "")) {
+          return()
+        }
+        items <- arpillar::data_items(store$con, obj@dataset)
+        hit <- items$type[items$name == row$column]
+        type <- if (length(hit) == 1L) hit else "category"
+        value <- if (identical(type, "measure")) {
+          v <- suppressWarnings(as.numeric(trimws(raw %||% "")))
+          if (length(v) == 1L && !is.na(v)) v else NULL
+        } else if (length(raw) == 0L) {
+          NULL
+        } else {
+          # Map the "(missing)" token back to a real NA level.
+          out <- as.character(raw)
+          out[out == .NA_TOKEN] <- NA_character_
+          out
+        }
+        if (identical(row$value, value)) {
+          return()
+        }
+        draft[[ii]]$value <- value
+        store$rv$filter_draft <- draft
+        .commit_filters(store)
+      },
+      ignoreNULL = FALSE
+    )
+
+    shiny::observeEvent(input$f_miss, {
+      flag <- isTRUE(input$f_miss)
+      ii <- open_row()
+      draft <- store$rv$filter_draft
+      if (is.null(ii) || identical(draft[[ii]]$include_missing, flag)) {
+        return()
+      }
+      draft[[ii]]$include_missing <- flag
+      store$rv$filter_draft <- draft
+      .commit_filters(store)
+    })
 
     invisible(NULL)
   })

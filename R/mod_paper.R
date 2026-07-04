@@ -26,26 +26,13 @@
   trimws(paste(label, number))
 }
 
-#' The population line: the object's first footnote, standing in for the
-#' population statement every preset already carries there (e.g. "Safety
-#' Population."). `NULL` when the object has no footnotes yet -- the paper
-#' shows nothing rather than fabricating placeholder text the RTF-only
-#' default (`.rtf_footnotes()`, arpillar) does not share.
-#' @noRd
-.population_line <- function(object) {
-  if (length(object@footnotes) == 0L || !nzchar(object@footnotes[[1]])) {
-    return(NULL)
-  }
-  object@footnotes[[1]]
-}
-
-#' The real (non-ghost) title block: number line, title, population line --
-#' all mono, wrapped in the `title` region so clicking it opens the card
-#' routed there, matching a ghost title block's own click target. When the
-#' output carries filters, the Population tag (Task 12) renders below,
-#' wearing its OWN `filters` region -- the jQuery delegation fires
-#' innermost-first with stopPropagation, so clicking the tag routes to the
-#' Filters pane, not the title.
+#' The real (non-ghost) title block: number line and title only -- what
+#' the options actually carry, nothing fabricated (the old
+#' footnote-promoted "population line" was an audit liability: the canvas
+#' showed a line the spec did not, 2026-07-04). Wrapped in the `title`
+#' region so clicking it opens the card routed there. When the output
+#' carries filters, the Population tag (Task 12) renders below, wearing
+#' its OWN `filters` region.
 #' @noRd
 .title_block <- function(object) {
   shiny::tags$div(
@@ -55,9 +42,6 @@
       class = "ar-paper-title-text",
       if (nzchar(object@title)) object@title else "Untitled output"
     ),
-    if (!is.null(.population_line(object))) {
-      shiny::tags$div(class = "ar-paper-population", .population_line(object))
-    },
     if (length(object@filters) > 0L) {
       shiny::tags$div(
         class = "ar-paper-filtertag",
@@ -210,22 +194,89 @@
         type = "button",
         class = "ar-code-act",
         `data-ar-copy` = pre_id,
+        .icon("copy", 11),
         "Copy"
       ),
       shiny::downloadLink(
         ns("code_dl"),
-        label = "Download .R",
+        label = shiny::tagList(.icon("export", 11), "Download .R"),
         class = "ar-code-act"
       ),
       .action_btn(
         ns("code_close"),
-        "Close",
+        shiny::tagList(.icon("close", 11), "Close"),
         variant = "link",
         class = "ar-code-act"
       )
     ),
-    shiny::tags$pre(id = pre_id, class = "ar-code-body ar-mono", script)
+    shiny::tags$pre(
+      id = pre_id,
+      class = "ar-code-body ar-mono",
+      shiny::HTML(.hl_r(script))
+    )
   )
+}
+
+#' Lightweight server-side R syntax highlighting: comments, strings,
+#' numbers, keywords, and function calls wrapped in `ar-hl-*` spans.
+#' Everything is HTML-escaped piecewise, so the pre's textContent (what
+#' the Copy button reads) stays byte-identical to the script.
+#' @noRd
+.hl_r <- function(code) {
+  # ponytail: one-alternation tokenizer, not a grammar -- strings and
+  # comments win by pattern order; nested quotes inside strings are the
+  # known ceiling (emit_code never produces them).
+  pat <- paste0(
+    "\"[^\"\n]*\"", # string
+    "|#[^\n]*", # comment
+    "|(?<![\\w.])\\d+(?:\\.\\d+)?(?![\\w.])", # number
+    "|\\b(?:library|function|if|else|for|TRUE|FALSE|NULL|NA)\\b",
+    "|[A-Za-z_.][A-Za-z0-9_.]*(?=\\()" # function call
+  )
+  esc <- function(x) htmltools::htmlEscape(x)
+  m <- gregexpr(pat, code, perl = TRUE)[[1]]
+  if (identical(m[1L], -1L)) {
+    return(esc(code))
+  }
+  lens <- attr(m, "match.length")
+  out <- character(0)
+  pos <- 1L
+  for (i in seq_along(m)) {
+    if (m[i] > pos) {
+      out <- c(out, esc(substr(code, pos, m[i] - 1L)))
+    }
+    tok <- substr(code, m[i], m[i] + lens[i] - 1L)
+    cls <- if (startsWith(tok, "\"")) {
+      "ar-hl-str"
+    } else if (startsWith(tok, "#")) {
+      "ar-hl-com"
+    } else if (grepl("^[0-9]", tok)) {
+      "ar-hl-num"
+    } else if (
+      tok %in%
+        c(
+          "library",
+          "function",
+          "if",
+          "else",
+          "for",
+          "TRUE",
+          "FALSE",
+          "NULL",
+          "NA"
+        )
+    ) {
+      "ar-hl-kw"
+    } else {
+      "ar-hl-fn"
+    }
+    out <- c(out, sprintf('<span class="%s">%s</span>', cls, esc(tok)))
+    pos <- m[i] + lens[i]
+  }
+  if (pos <= nchar(code)) {
+    out <- c(out, esc(substr(code, pos, nchar(code))))
+  }
+  paste(out, collapse = "")
 }
 
 # ---- stale notice (run semantics, decision #8) ----------------------------
@@ -344,6 +395,9 @@ mod_paper_ui <- function(id) {
   shiny::div(
     id = ns("desk"),
     class = "ar-desk-col",
+    # The canvas toolbar (2026-07-04): Run / .rtf / Output|Code at the top
+    # of the desk -- the Preact component mounts into this child module.
+    mod_toolbar_ui(ns("toolbar")),
     shiny::div(
       id = ns("sheet"),
       class = "ar-paper",
@@ -385,6 +439,8 @@ mod_paper_ui <- function(id) {
 mod_paper_server <- function(id, store) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
+
+    mod_toolbar_server("toolbar", store)
 
     # The whole sheet body: running head, title block (real or ghost), the
     # table/figure content (or its ghost), footnotes, source line. Gated to
@@ -469,9 +525,20 @@ mod_paper_server <- function(id, store) {
       open_card(store, region)
     })
 
-    # The empty-report CTA (ghost_shell's `.ghost_empty_report()` button).
+    # The canvas context menu (bridge.js, 2026-07-04): "Add output" posts
+    # add_first; "Delete output" posts ctx_remove and is only offered by
+    # the client when a TOC row is active, but the guard here keeps a
+    # stale click honest.
     shiny::observeEvent(input$add_first, {
       store$rv$adding <- TRUE
+    })
+
+    shiny::observeEvent(input$ctx_remove, {
+      id <- store$rv$selected
+      if (is.null(id)) {
+        return()
+      }
+      remove_output(store, id)
     })
 
     # ---- code view (v5) ----
@@ -516,6 +583,12 @@ mod_paper_server <- function(id, store) {
         arpillar::emit_code(store$con, obj, path = file)
       }
     )
+
+    # Born hidden (the app opens in Data mode, 2026-07-04): the desk's
+    # surfaces must keep computing so Report mode never opens blank.
+    shiny::outputOptions(output, "sheet_html_slot", suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "sheet_figure", suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "code_slot", suspendWhenHidden = FALSE)
 
     invisible(NULL)
   })

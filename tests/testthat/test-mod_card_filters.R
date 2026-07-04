@@ -99,8 +99,8 @@ test_that("a category row commits SEX %in% F and the live count matches filter_c
     # The column picker posts the packed NAME\x1fSQL_TYPE choice (the
     # same rich-picker contract as the Roles pane; the type half is the
     # RAW SQL type -- only the name half drives the commit).
-    session$setInputs(f_col_1 = "SEX\x1fVARCHAR")
-    session$setInputs(f_val_1 = "F")
+    session$setInputs(f_col = "SEX\x1fVARCHAR")
+    session$setInputs(f_val = "F")
 
     filters <- shiny::isolate(selected_object(store))@filters
     expect_identical(
@@ -126,15 +126,15 @@ test_that("include-missing folds into the committed predicate", {
 
   shiny::testServer(mod_card_filters_server, args = list(store = fx$store), {
     session$setInputs(f_add = 1)
-    session$setInputs(f_col_1 = "SEX\x1fVARCHAR")
-    session$setInputs(f_val_1 = "F")
-    session$setInputs(f_miss_1 = TRUE)
+    session$setInputs(f_col = "SEX\x1fVARCHAR")
+    session$setInputs(f_val = "F")
+    session$setInputs(f_miss = TRUE)
 
     filters <- shiny::isolate(selected_object(store))@filters
     expect_true(isTRUE(filters[[1]]$include_missing))
 
     # Flipping it back off drops the key (minimal predicate shape).
-    session$setInputs(f_miss_1 = FALSE)
+    session$setInputs(f_miss = FALSE)
     filters <- shiny::isolate(selected_object(store))@filters
     expect_null(filters[[1]]$include_missing)
   })
@@ -146,12 +146,12 @@ test_that("is.na hides the value control and commits value-less", {
 
   shiny::testServer(mod_card_filters_server, args = list(store = fx$store), {
     session$setInputs(f_add = 1)
-    session$setInputs(f_col_1 = "SEX\x1fVARCHAR")
-    session$setInputs(f_op_1 = "is.na")
+    session$setInputs(f_col = "SEX\x1fVARCHAR")
+    session$setInputs(f_op = "is.na")
     session$flushReact()
 
     # No value control renders for a null-test op.
-    expect_no_match(output$pane$html, "f_val_1", fixed = TRUE)
+    expect_no_match(output$pane$html, "f_val", fixed = TRUE)
 
     filters <- shiny::isolate(selected_object(store))@filters
     expect_identical(
@@ -167,9 +167,9 @@ test_that("a measure row parses the typed comparison value as numeric", {
 
   shiny::testServer(mod_card_filters_server, args = list(store = fx$store), {
     session$setInputs(f_add = 1)
-    session$setInputs(f_col_1 = "AGE\x1fDOUBLE")
-    session$setInputs(f_op_1 = ">=")
-    session$setInputs(f_val_1 = "65")
+    session$setInputs(f_col = "AGE\x1fDOUBLE")
+    session$setInputs(f_op = ">=")
+    session$setInputs(f_val = "65")
 
     filters <- shiny::isolate(selected_object(store))@filters
     expect_identical(
@@ -185,7 +185,7 @@ test_that("an incomplete row is NOT committed and shows the honest badge", {
 
   shiny::testServer(mod_card_filters_server, args = list(store = fx$store), {
     session$setInputs(f_add = 1)
-    session$setInputs(f_col_1 = "SEX\x1fVARCHAR")
+    session$setInputs(f_col = "SEX\x1fVARCHAR")
     session$flushReact()
 
     # Column + default op, but no value yet: the engine would silently
@@ -201,11 +201,11 @@ test_that("removing a row uncommits it", {
 
   shiny::testServer(mod_card_filters_server, args = list(store = fx$store), {
     session$setInputs(f_add = 1)
-    session$setInputs(f_col_1 = "SEX\x1fVARCHAR")
-    session$setInputs(f_val_1 = "F")
+    session$setInputs(f_col = "SEX\x1fVARCHAR")
+    session$setInputs(f_val = "F")
     expect_length(shiny::isolate(selected_object(store))@filters, 1L)
 
-    session$setInputs(f_rm_1 = 1)
+    session$setInputs(chip_rm = list(i = 1, nonce = 1))
     expect_identical(shiny::isolate(selected_object(store))@filters, list())
     expect_identical(shiny::isolate(store$rv$filter_draft), list())
   })
@@ -265,6 +265,8 @@ test_that("REGRESSION: a committed row re-seeds its picker with a REAL choice va
 
   shiny::testServer(mod_card_filters_server, args = list(store = fx$store), {
     session$setInputs(preset_flag = list(column = "SAFFL", nonce = 1))
+    # The picker lives in the editor card now: open the committed chip.
+    session$setInputs(chip_open = list(i = 1, nonce = 1))
     session$flushReact()
     html <- output$pane$html
     opt <- regmatches(
@@ -343,4 +345,100 @@ test_that("the paper tag names any recognized flag population", {
     )),
     "2 filters"
   )
+})
+
+# ---- chips + editor (2026-07-04 redesign) ----------------------------------
+
+test_that("+ Filter opens the new row's editor; chip clicks toggle/move it", {
+  fx <- .mcf_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_filters_server, args = list(store = fx$store), {
+    session$setInputs(f_add = 1)
+    expect_identical(shiny::isolate(store$rv$filter_open), 1L)
+    # Clicking the open chip closes the editor; clicking again reopens.
+    session$setInputs(chip_open = list(i = 1, nonce = 1))
+    expect_null(shiny::isolate(store$rv$filter_open))
+    session$setInputs(chip_open = list(i = 1, nonce = 2))
+    expect_identical(shiny::isolate(store$rv$filter_open), 1L)
+    # Done closes it.
+    session$setInputs(f_done = 1)
+    expect_null(shiny::isolate(store$rv$filter_open))
+  })
+})
+
+test_that("selection change clears the open editor (stale-index guard)", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  id_a <- shiny::isolate(add_from_generator(store, "summary", "ADSL"))
+  id_b <- shiny::isolate(add_from_generator(store, "summary", "ADSL"))
+
+  shiny::testServer(mod_card_filters_server, args = list(store = store), {
+    store$rv$selected <- id_a
+    session$flushReact()
+    session$setInputs(f_add = 1)
+    expect_identical(shiny::isolate(store$rv$filter_open), 1L)
+    store$rv$selected <- id_b
+    session$flushReact()
+    expect_null(shiny::isolate(store$rv$filter_open))
+  })
+})
+
+test_that("removing a chip below the open one shifts the open index down", {
+  fx <- .mcf_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_filters_server, args = list(store = fx$store), {
+    session$setInputs(f_add = 1)
+    session$setInputs(f_col = "SEX\x1fVARCHAR")
+    session$setInputs(f_val = "F")
+    session$setInputs(f_add = 2)
+    expect_identical(shiny::isolate(store$rv$filter_open), 2L)
+    session$setInputs(chip_rm = list(i = 1, nonce = 1))
+    expect_identical(shiny::isolate(store$rv$filter_open), 1L)
+    session$setInputs(chip_rm = list(i = 1, nonce = 2))
+    expect_null(shiny::isolate(store$rv$filter_open))
+  })
+})
+
+test_that("a preset chip wears the selected state when its predicate is committed", {
+  fx <- .mcf_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_filters_server, args = list(store = fx$store), {
+    session$flushReact()
+    # No filters: Full set is the selected chip.
+    expect_match(output$pane$html, "ar-flt-preset-on", fixed = TRUE)
+    session$setInputs(preset_flag = list(column = "SAFFL", nonce = 1))
+    session$flushReact()
+    html <- output$pane$html
+    at <- regexpr("<button[^>]*ar-flt-preset-on", html)
+    on <- substr(html, at, at + 1200L)
+    expect_match(on, "Safety population", fixed = TRUE)
+  })
+})
+
+test_that("the chip label reads as a compact predicate", {
+  expect_identical(
+    .filter_chip_label(list(column = "SAFFL", op = "==", value = "Y")),
+    "SAFFL = Y"
+  )
+  expect_identical(
+    .filter_chip_label(list(column = "AGE", op = ">", value = 65)),
+    "AGE > 65"
+  )
+  expect_identical(
+    .filter_chip_label(list(
+      column = "RACE",
+      op = "%in%",
+      value = c("WHITE", "ASIAN", "OTHER")
+    )),
+    "RACE in 3 values"
+  )
+  expect_identical(
+    .filter_chip_label(list(column = "AEDECOD", op = "is.na")),
+    "AEDECOD is missing"
+  )
+  expect_identical(.filter_chip_label(list(column = "")), "New filter")
 })

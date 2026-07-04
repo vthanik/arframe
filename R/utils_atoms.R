@@ -44,6 +44,10 @@
   redo = "arrow-rotate-right",
   open = "folder-open",
   save = "floppy-disk",
+  trash = "trash-can",
+  copy = "copy",
+  folder_plus = "folder-plus",
+  package = "box-archive",
   arrow_right = "arrow-right",
   calendar = "calendar",
   eye = "eye",
@@ -210,4 +214,17 @@
     btn <- shiny::tagAppendAttributes(btn, disabled = "disabled")
   }
   btn
+}
+
+#' A filesystem-safe slug for an output's download filename:
+#' `t-14-1-1-demographics.rtf` -- kind letter + number + title, lowercased,
+#' non-alnum runs collapsed to `-`. Shared by the canvas toolbar's .rtf
+#' download (mod_toolbar.R) and the paper's code bar (mod_paper.R).
+#' @noRd
+.output_slug <- function(object) {
+  label <- object@options$number_label %||% "Table"
+  kind <- tolower(substr(label, 1, 1))
+  raw <- paste(kind, object@options$number %||% "", object@title)
+  slug <- tolower(gsub("[^a-zA-Z0-9]+", "-", trimws(raw)))
+  gsub("^-+|-+$", "", slug)
 }

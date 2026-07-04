@@ -176,24 +176,18 @@ ghost_shell <- function(object) {
 
 # ---- empty report -----------------------------------------------------
 
-#' The blank-sheet shell shown when the report has NO outputs at all: a
-#' ghost title reading "Add your first output" and one CTA wired to
-#' `rv$adding` (posted as a `click` input the caller observes -- see
-#' `mod_paper.R`'s `add_first` observer).
+#' The blank-sheet hint shown when no output is selected: a quiet line
+#' naming the context-menu affordance (2026-07-04 -- the old CTA card is
+#' gone; right-click on the desk opens Add output / Delete output, wired
+#' in bridge.js to `mod_paper.R`'s `add_first` / `ctx_remove` observers).
+#' The visible sentence keeps the invisible menu honest (GOV.UK: never a
+#' gesture-only affordance).
 #' @param ns *The module namespace function.* `<function>: required`. From
 #'   `session$ns` in the calling module server.
 #' @noRd
 .ghost_empty_report <- function(ns) {
-  shiny::tagList(
-    shiny::tagAppendAttributes(
-      .ghost_slot("title", "Add your first output"),
-      class = "ar-ghost-title"
-    ),
-    shiny::tags$button(
-      type = "button",
-      id = ns("add_first"),
-      class = "btn btn-primary action-button ar-ghost-cta",
-      "Add output"
-    )
+  shiny::tags$div(
+    class = "ar-desk-hint ar-mono",
+    "Right-click the canvas to add an output"
   )
 }

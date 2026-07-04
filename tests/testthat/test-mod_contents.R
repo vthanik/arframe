@@ -394,7 +394,7 @@ test_that("+ Add output sets rv$adding TRUE", {
 
 test_that("arframe.js contains the Sortable bridge (_arSortable, shiny:value)", {
   js <- readLines(
-    system.file("www", "arframe.js", package = "arframe"),
+    system.file("www", "arframe.bundle.js", package = "arframe"),
     warn = FALSE
   )
   txt <- paste(js, collapse = "\n")
@@ -440,6 +440,14 @@ test_that("arframe() Contents: grouped rows, stamps, select, screenshot", {
     width = 1440
   )
   withr::defer(app$stop())
+
+  # The app opens in Data mode (2026-07-04): flip to Report so the TOC
+  # renders. A suspended-while-hidden output recomputes only after
+  # Shiny's visibility re-scan, which trails wait_for_idle -- wait for
+  # the first real TOC row instead.
+  app$click(selector = '[data-ar-mode="report"]')
+  app$wait_for_idle()
+  app$wait_for_js("!!document.querySelector('.ar-toc-row')", timeout = 10000)
 
   html <- app$get_html("body", outer_html = TRUE)
   expect_match(html, "ar-toc", fixed = TRUE)

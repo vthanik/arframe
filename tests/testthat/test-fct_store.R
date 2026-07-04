@@ -109,7 +109,8 @@ test_that("new_store default rv values match the pointer contract", {
   expect_null(rv$region)
   expect_false(rv$card)
   expect_false(rv$pinned)
-  expect_identical(rv$mode, "report")
+  # Data mode is the opening screen (2026-07-04).
+  expect_identical(rv$mode, "data")
   expect_null(rv$dataset)
   expect_null(rv$bridge_dataset)
   expect_false(rv$adding)
@@ -715,4 +716,11 @@ test_that("total enters the ARD key ONLY when set (legacy keys stable)", {
   # conditional append fires on isTRUE only.
   opts$total <- FALSE
   expect_identical(.ard_key(S7::set_props(obj, options = opts)), k0)
+})
+
+test_that("filter_open: NULL by default (the chips editor starts closed)", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  expect_null(shiny::isolate(store$rv$filter_open))
 })

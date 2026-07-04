@@ -22,18 +22,25 @@ test_that("the app bar's icon-only undo/redo buttons are labelled", {
   expect_match(html, 'aria-label="Undo"', fixed = TRUE)
   expect_match(html, 'aria-label="Redo"', fixed = TRUE)
   # The icon-only activity-bar buttons name their destination (piece A).
-  for (label in c("Report", "Data", "QC", "Logs")) {
+  for (label in c("Report", "Data", "Review", "Logs")) {
     expect_match(html, sprintf('aria-label="%s"', label), fixed = TRUE)
   }
   # The server-clicked hidden download link is removed from the a11y tree.
   expect_match(html, "ar-hidden-dl", fixed = TRUE)
 })
 
-test_that("the docked inspector's icon-only controls are labelled", {
+test_that("the inspector tab rail carries visible labels (no icon-only controls remain)", {
+  # The chevrons and the icon-only code button are gone (2026-07-04): the
+  # labeled tab rail is the collapse affordance, and Run/.rtf/code moved
+  # to the canvas toolbar. Every remaining tab button has a visible label.
   html <- as.character(mod_card_ui("card"))
-  expect_match(html, 'aria-label="Collapse inspector"', fixed = TRUE)
-  expect_match(html, 'aria-label="Expand inspector"', fixed = TRUE)
-  expect_match(html, 'aria-label="View reproduction code"', fixed = TRUE)
+  for (label in c("Roles", "Options", "Filters", "Ranks")) {
+    expect_match(
+      html,
+      sprintf('<span class="ar-insp-tab-lbl">%s</span>', label),
+      fixed = TRUE
+    )
+  }
 })
 
 test_that("the TOC row kebab is labelled", {

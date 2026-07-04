@@ -10,3 +10,17 @@ License: MIT
 Copyright (c) All contributors to Sortable
 https://github.com/SortableJS/Sortable
 Bundled unmodified as inst/www/Sortable.min.js
+
+Preact
+Version: 10.x
+License: MIT
+Copyright (c) 2015-present Jason Miller
+https://github.com/preactjs/preact
+Bundled (compiled) into inst/www/arframe.bundle.js
+
+htm
+Version: 3.x
+License: Apache-2.0
+Copyright 2018 Google Inc.
+https://github.com/developit/htm
+Bundled (compiled) into inst/www/arframe.bundle.js

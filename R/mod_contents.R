@@ -126,6 +126,13 @@ mod_contents_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::div(
     class = "ar-toc",
+    `data-ar-resizable` = "left",
+    # Drag handle on the panel's RIGHT edge (mirrors the inspector's).
+    shiny::tags$div(
+      class = "ar-rail-resize",
+      `data-ar-resize` = "left",
+      `aria-hidden` = "true"
+    ),
     .label("CONTENTS"),
     shiny::uiOutput(ns("toc")),
     .action_btn(
@@ -225,6 +232,7 @@ mod_contents_ui <- function(id) {
         type = "button",
         class = "ar-pop-menu-item",
         onclick = "this.closest('.ar-toc-kebab-wrap').classList.remove('ar-pop-menu-open'); this.closest('.ar-toc-kebab-wrap').classList.add('ar-pop-rename-open')",
+        .icon("pencil", 12),
         "Rename"
       ),
       shiny::tags$button(
@@ -234,12 +242,14 @@ mod_contents_ui <- function(id) {
           "this.closest('.ar-toc-kebab-wrap').classList.remove('ar-pop-menu-open');",
           dup_js
         ),
+        .icon("copy", 12),
         "Duplicate"
       ),
       shiny::tags$button(
         type = "button",
         class = "ar-pop-menu-item ar-pop-menu-item-danger",
         onclick = "this.closest('.ar-toc-kebab-wrap').classList.remove('ar-pop-menu-open'); this.closest('.ar-toc-kebab-wrap').classList.add('ar-pop-remove-open')",
+        .icon("trash", 12),
         "Remove"
       )
     ),
@@ -257,6 +267,7 @@ mod_contents_ui <- function(id) {
           rename_js,
           "; this.closest('.ar-toc-kebab-wrap').classList.remove('ar-pop-rename-open')"
         ),
+        .icon("check", 12),
         "Apply"
       )
     ),
@@ -267,12 +278,14 @@ mod_contents_ui <- function(id) {
         type = "button",
         class = "btn btn-danger ar-pop-apply",
         onclick = remove_js,
+        .icon("trash", 12),
         "Remove"
       ),
       shiny::tags$button(
         type = "button",
         class = "btn btn-outline-secondary",
         onclick = "this.closest('.ar-toc-kebab-wrap').classList.remove('ar-pop-remove-open')",
+        .icon("close", 12),
         "Cancel"
       )
     )
@@ -344,6 +357,10 @@ mod_contents_server <- function(id, store) {
       groups <- .toc_groups(rows)
       .toc_ui(ns, groups, store$rv$selected)
     })
+    # The app opens in Data mode (2026-07-04): the TOC is born hidden and
+    # must keep computing or Report mode opens onto a blank rail (the
+    # mod_data lesson, now pointing the other way).
+    shiny::outputOptions(output, "toc", suspendWhenHidden = FALSE)
 
     shiny::observeEvent(input$row_click, {
       store$rv$selected <- input$row_click

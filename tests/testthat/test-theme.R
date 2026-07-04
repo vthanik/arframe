@@ -19,7 +19,12 @@ test_that("head assets link both stylesheets and the bridge script from one reso
   )
   expect_match(head, "arwww/tokens.css", fixed = TRUE)
   expect_match(head, "arwww/arframe.css", fixed = TRUE)
-  expect_match(head, "arwww/arframe.js", fixed = TRUE)
+  expect_match(head, "arwww/arframe.bundle.js", fixed = TRUE)
+  # Sortable must load BEFORE the bundle -- bridge.js references the global.
+  expect_lt(
+    regexpr("arwww/Sortable.min.js", head, fixed = TRUE),
+    regexpr("arwww/arframe.bundle.js", head, fixed = TRUE)
+  )
 })
 
 test_that("Galley ink/paper pairs hold WCAG AA", {

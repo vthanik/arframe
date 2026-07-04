@@ -80,19 +80,11 @@
     )
   })
   shiny::tagList(
-    # The header carries a chevron that folds the whole rail to a slim strip
-    # (frame-owned `rail` collapse -- the same toggle the Report contents rail
-    # uses; one "left rail collapsed" preference).
+    # No chevron (2026-07-04): re-clicking the active Data item on the
+    # activity rail is the one show/hide affordance for the left panel.
     shiny::tags$div(
       class = "ar-src-head",
-      shiny::tags$div(class = "ar-label", "Sources"),
-      shiny::tags$button(
-        type = "button",
-        class = "ar-icon-btn ar-src-cv",
-        `data-ar-collapse` = "rail",
-        `aria-label` = "Collapse sources",
-        .icon("chevrons_left", 13)
-      )
+      shiny::tags$div(class = "ar-label", "Sources")
     ),
     shiny::tags$div(
       class = paste("ar-data-src ar-data-src-root ar-toc-row", root_sel),
@@ -196,7 +188,7 @@
       class = "ar-dx-bc ar-mono",
       .action_btn(
         ns("grid_back"),
-        "< sources",
+        shiny::tagList(.icon("chevrons_left", 11), "sources"),
         variant = "link",
         class = "ar-dx-bk"
       ),
@@ -237,6 +229,12 @@ mod_data_ui <- function(id) {
   shiny::tagList(
     shiny::div(
       class = "ar-data-rail",
+      `data-ar-resizable` = "left",
+      shiny::tags$div(
+        class = "ar-rail-resize",
+        `data-ar-resize` = "left",
+        `aria-hidden` = "true"
+      ),
       shiny::uiOutput(ns("sources"))
     ),
     shiny::div(
@@ -256,22 +254,26 @@ mod_data_ui <- function(id) {
           variant = "link",
           class = "ar-dx-tb ar-dx-tb-pri"
         ),
+        # shinyFiles buttons escape a tagList label to text -- pass the
+        # icon through their own `icon` slot instead.
         shinyFiles::shinyFilesButton(
           ns("import_file"),
           label = "Import file",
           title = "Choose a dataset file",
           multiple = FALSE,
+          icon = .icon("import", 13),
           class = "ar-dx-tb"
         ),
         shinyFiles::shinyDirButton(
           ns("import_folder"),
           label = "Import folder",
           title = "Choose a study folder",
+          icon = .icon("folder_plus", 13),
           class = "ar-dx-tb"
         ),
         .action_btn(
           ns("delete"),
-          shiny::tagList(.icon("close", 13), "Delete"),
+          shiny::tagList(.icon("trash", 13), "Delete"),
           variant = "link",
           class = "ar-dx-tb ar-dx-tb-danger"
         )

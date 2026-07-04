@@ -261,13 +261,13 @@ test_that("no selection at all renders the empty-report ghost with the CTA", {
     args = list(store = store),
     {
       html <- output$sheet_html_slot$html
-      expect_match(html, "Add your first output", fixed = TRUE)
-      expect_match(html, "ar-ghost-cta", fixed = TRUE)
+      expect_match(html, "ar-desk-hint", fixed = TRUE)
+      expect_match(html, "Right-click", fixed = TRUE)
     }
   )
 })
 
-test_that("clicking the empty-report CTA sets rv$adding TRUE", {
+test_that("the context menu's Add output (add_first) sets rv$adding TRUE", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
   store <- shiny::isolate(new_store(con))
@@ -557,6 +557,9 @@ test_that("mod_paper_ui mounts both the html slot and the figure plot slot, clas
   # v5 (decision #8): the code-view surface mounts alongside the sheet in
   # the desk column; a desk class picks which shows.
   expect_match(html, 'id="paper-code_slot"', fixed = TRUE)
+  # The canvas toolbar (2026-07-04) mounts as the desk's first child; the
+  # Preact component renders into its data-ar-toolbar div.
+  expect_match(html, 'data-ar-toolbar="paper-toolbar"', fixed = TRUE)
 })
 
 # ---- code view (v5, decision #8) -------------------------------------------
@@ -574,8 +577,18 @@ test_that("mod_paper code view renders the emit_code script when rv$code_view is
     html <- output$code_slot$html
     # The reproduction script: library, the assign, the emit, the filename
     # bar, and the three actions.
-    expect_match(html, "library(arpillar)", fixed = TRUE)
-    expect_match(html, "engine_open()", fixed = TRUE)
+    # Tokens are wrapped in ar-hl-* highlight spans (2026-07-04), so
+    # match the spanned forms; the pre's textContent stays byte-identical.
+    expect_match(
+      html,
+      '<span class="ar-hl-kw">library</span>(arpillar)',
+      fixed = TRUE
+    )
+    expect_match(
+      html,
+      '<span class="ar-hl-fn">engine_open</span>()',
+      fixed = TRUE
+    )
     expect_match(html, "14.1.1", fixed = TRUE)
     expect_match(html, "-demographics", fixed = TRUE)
     # Ids are namespaced by testServer's own proxy, so match the suffix.
@@ -612,9 +625,9 @@ test_that("mod_paper: the code download writes a parse()-clean .R", {
 
 # ---- JS bridge smoke test ----------------------------------------------
 
-test_that("arframe.js: the read-only canvas carries no region-click machinery", {
+test_that("the JS bundle: the read-only canvas carries no region-click machinery", {
   js <- readLines(
-    system.file("www", "arframe.js", package = "arframe"),
+    system.file("www", "arframe.bundle.js", package = "arframe"),
     warn = FALSE
   )
   txt <- paste(js, collapse = "\n")

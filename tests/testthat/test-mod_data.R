@@ -104,7 +104,7 @@ test_that("mod_data_ui has the sources rail, filter, and the four toolbar action
 
 test_that("arframe.js carries the Data-mode delegated handlers", {
   js <- readLines(
-    system.file("www", "arframe.js", package = "arframe"),
+    system.file("www", "arframe.bundle.js", package = "arframe"),
     warn = FALSE
   )
   txt <- paste(js, collapse = "\n")

@@ -1,0 +1,12 @@
+{
+  "name": "arframe-srcjs",
+  "private": true,
+  "description": "Source for the committed inst/www/arframe.bundle.js. Rebuild with Rscript tools/build.R.",
+  "dependencies": {
+    "htm": "^3.1.1",
+    "preact": "^10.25.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}

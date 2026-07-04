@@ -35,11 +35,18 @@ new_store <- function(con, report = NULL) {
       region = NULL,
       card = FALSE,
       pinned = FALSE,
-      mode = "report",
+      # Data mode is the opening screen (user decision 2026-07-04): the
+      # data on-ramp shows before the report it feeds. Must match
+      # mod_frame_ui()'s initial ar-mode-* class.
+      mode = "data",
       dataset = NULL,
       bridge_dataset = NULL,
       adding = FALSE,
       filter_draft = list(),
+      # The open filter chip's draft index (NULL = no popover). Cleared on
+      # selection change (the pane's seed observer); guarded against a
+      # stale index by every reader (chips + popover, 2026-07-04).
+      filter_open = NULL,
       path = NULL,
       dirty = FALSE,
       saved_at = NULL,

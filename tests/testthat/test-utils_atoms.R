@@ -54,3 +54,14 @@ test_that(".type_icon renders a distinct glyph per generator type, with a safe f
     as.character(.type_icon("summary"))
   )
 })
+
+test_that(".output_slug: kind letter + number + title, filesystem-safe", {
+  obj <- arpillar::object(
+    id = "o1",
+    type = "km",
+    dataset = "ADTTE",
+    title = "Kaplan-Meier, OS",
+    options = list(number = "14.2.1", number_label = "Figure")
+  )
+  expect_identical(.output_slug(obj), "f-14-2-1-kaplan-meier-os")
+})

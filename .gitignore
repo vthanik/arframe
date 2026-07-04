@@ -9,3 +9,4 @@ CLAUDE.local.md
 .DS_Store
 .superpowers/
 .claude/launch.json
+srcjs/node_modules/

@@ -309,7 +309,11 @@ mod_add_output_ui <- function(id) {
       }
     ),
     shiny::uiOutput(ns("picker_warning")),
-    .action_btn(ns(add_input_id), add_label, variant = "primary")
+    .action_btn(
+      ns(add_input_id),
+      shiny::tagList(.icon("plus", 12), add_label),
+      variant = "primary"
+    )
   )
 }
 

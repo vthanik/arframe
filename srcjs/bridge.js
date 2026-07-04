@@ -393,26 +393,122 @@ $(document).on("click", "[data-ar-copy]", function () {
 // set the rail width. Client-side only -- the inline flex-basis persists for
 // the session; `ar-resizing` disables the width transition + text selection
 // during the drag.
+// Generalized (2026-07-04): data-ar-resize="insp" drags the inspector's
+// LEFT edge (width measured from the right); data-ar-resize="left" drags
+// a left panel's RIGHT edge (contents rail, data sources rail).
 (function () {
-  var MIN = 220,
-    MAX = 640;
   var dragging = null;
+  var side = null;
   document.addEventListener("mousedown", function (e) {
     var h = e.target.closest ? e.target.closest("[data-ar-resize]") : null;
     if (!h) return;
-    dragging = h.closest(".ar-card");
+    side = h.getAttribute("data-ar-resize");
+    dragging =
+      side === "insp"
+        ? h.closest(".ar-card")
+        : h.closest("[data-ar-resizable]");
     if (!dragging) return;
     dragging.classList.add("ar-resizing");
     e.preventDefault();
   });
   document.addEventListener("mousemove", function (e) {
     if (!dragging) return;
-    var w = Math.max(MIN, Math.min(MAX, window.innerWidth - e.clientX));
+    var w;
+    if (side === "insp") {
+      w = Math.max(220, Math.min(640, window.innerWidth - e.clientX));
+    } else {
+      var left = dragging.getBoundingClientRect().left;
+      w = Math.max(180, Math.min(520, e.clientX - left));
+    }
     dragging.style.flexBasis = w + "px";
   });
   document.addEventListener("mouseup", function () {
     if (!dragging) return;
     dragging.classList.remove("ar-resizing");
     dragging = null;
+  });
+})();
+
+// Run-from-anywhere (2026-07-04): Cmd/Ctrl+Enter fires the canvas
+// toolbar's Run, in report mode only, and never while the Add-output
+// overlay is open. The namespace is read off the mounted [data-ar-toolbar]
+// element (matching the Esc/dismiss pattern above), never hardcoded.
+// Deliberately NOT suppressed in form fields -- Run-from-anywhere is the
+// point of the shortcut.
+$(document).on("keydown", function (e) {
+  if (e.key !== "Enter" || !(e.metaKey || e.ctrlKey)) return;
+  var ws = document.querySelector(".ar-workspace");
+  if (!ws || !ws.classList.contains("ar-mode-report")) return;
+  if (document.querySelector(".ar-add-card")) return;
+  var mount = document.querySelector("[data-ar-toolbar]");
+  if (!mount) return;
+  e.preventDefault();
+  Shiny.setInputValue(
+    mount.getAttribute("data-ar-toolbar") + "-run",
+    Date.now(),
+    { priority: "event" }
+  );
+});
+
+// The canvas context menu (2026-07-04): right-click on the desk offers
+// Add output (always) and Delete output (only when a TOC row is active).
+// Items post to mod_paper's add_first / ctx_remove inputs; the namespace
+// is read off [data-ar-paper], never hardcoded. Esc, any click, or a
+// second right-click elsewhere dismisses it.
+(function () {
+  var menu = null;
+  function hideCtxMenu() {
+    if (menu) {
+      menu.remove();
+      menu = null;
+    }
+  }
+  function ctxItem(label, danger, onPick) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "ar-ctx-item" + (danger ? " ar-ctx-item-danger" : "");
+    b.textContent = label;
+    b.addEventListener("click", function () {
+      hideCtxMenu();
+      onPick();
+    });
+    return b;
+  }
+  document.addEventListener("contextmenu", function (e) {
+    var desk = e.target.closest ? e.target.closest(".ar-desk-col") : null;
+    if (!desk) return hideCtxMenu();
+    var paper = document.querySelector("[data-ar-paper]");
+    if (!paper) return;
+    e.preventDefault();
+    hideCtxMenu();
+    var ns = paper.getAttribute("data-ar-paper");
+    menu = document.createElement("div");
+    menu.className = "ar-ctx-menu";
+    menu.setAttribute("role", "menu");
+    menu.appendChild(
+      ctxItem("Add output", false, function () {
+        Shiny.setInputValue(ns + "-add_first", Date.now(), {
+          priority: "event",
+        });
+      })
+    );
+    if (document.querySelector(".ar-toc-row-active")) {
+      menu.appendChild(
+        ctxItem("Delete output", true, function () {
+          Shiny.setInputValue(ns + "-ctx_remove", Date.now(), {
+            priority: "event",
+          });
+        })
+      );
+    }
+    document.body.appendChild(menu);
+    menu.style.left =
+      Math.min(e.clientX, window.innerWidth - menu.offsetWidth - 8) + "px";
+    menu.style.top =
+      Math.min(e.clientY, window.innerHeight - menu.offsetHeight - 8) + "px";
+  });
+  document.addEventListener("click", hideCtxMenu);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") hideCtxMenu();
   });
 })();

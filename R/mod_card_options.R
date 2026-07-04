@@ -111,21 +111,45 @@
 
 # ---- controls ---------------------------------------------------------
 
-#' A text input carrying `inputmode="numeric"` -- the plan's int control
-#' (mobile numeric keyboard, no spinner chrome). Width is pinned inline so
-#' the stepper's plus button never gets pushed off the row (bslib's
-#' shiny-input-container is 100%-wide by default).
+#' A blur/Enter-commit text input: a RAW <input> whose onchange posts the
+#' namespaced option input, so typing never commits per keystroke (audit
+#' note 2026-07-04) -- the value lands when the field loses focus or the
+#' user presses Enter. Shiny's own textInput would post on every keyup.
+#' @noRd
+.opt_change_input <- function(
+  ns,
+  input_id,
+  value,
+  placeholder = NULL,
+  width = NULL,
+  numeric = FALSE
+) {
+  js <- sprintf(
+    "Shiny.setInputValue('%s', this.value, {priority: 'event'})",
+    ns(input_id)
+  )
+  shiny::tags$input(
+    type = "text",
+    class = "form-control ar-opt-input",
+    value = value,
+    placeholder = placeholder,
+    onchange = js,
+    inputmode = if (numeric) "numeric",
+    style = if (!is.null(width)) paste0("width:", width, ";")
+  )
+}
+
+#' A text input carrying `inputmode="numeric"`#' A text input carrying `inputmode="numeric"` -- the plan's int control
+#' (mobile numeric keyboard, no spinner chrome; blur/Enter commit).
 #' @noRd
 .opt_numeric_text <- function(ns, key, value) {
-  ti <- shiny::textInput(
-    ns(paste0("opt_", key)),
-    label = NULL,
-    value = value,
-    width = "56px"
+  .opt_change_input(
+    ns,
+    paste0("opt_", key),
+    value,
+    width = "56px",
+    numeric = TRUE
   )
-  htmltools::tagQuery(ti)$find("input")$addAttrs(
-    inputmode = "numeric"
-  )$allTags()
 }
 
 #' An int row's stepper: minus / numeric text / plus. The buttons post the
@@ -273,16 +297,12 @@
       key,
       if (is.null(current)) "" else as.character(current)
     ),
-    numvec = shiny::textInput(
-      ns(input_id),
-      label = NULL,
-      value = if (is.null(current)) "" else paste(current, collapse = ", ")
+    numvec = .opt_change_input(
+      ns,
+      input_id,
+      if (is.null(current)) "" else paste(current, collapse = ", ")
     ),
-    text = shiny::textInput(
-      ns(input_id),
-      label = NULL,
-      value = current %||% ""
-    ),
+    text = .opt_change_input(ns, input_id, current %||% ""),
     flag = shiny::checkboxInput(
       ns(input_id),
       label = NULL,
@@ -422,7 +442,7 @@
       if (is_table) {
         .action_btn(
           ns("tl_add"),
-          "+ Add title line",
+          shiny::tagList(.icon("plus", 11), "Add title line"),
           variant = "link",
           class = "ar-fn-add"
         )
@@ -434,10 +454,11 @@
 #' One footnote line: a drag grip (footnote order is part of the output), a
 #' plain text input posting through the shared `fn_edit` input on change
 #' (blur/Enter -- footnotes are sentences, not live-typed previews), and a
-#' remove button posting `fn_remove`. Line 1 still doubles as the paper's
-#' population subtitle (`.population_line()`), but that convention is
-#' carried by position alone -- no badge. Dynamic per-line controls use the
-#' same single-shared-input pattern as `.assigned_row()`/`.toc_kebab()`.
+#' remove button posting `fn_remove`. Footnote 1 renders ONLY as a
+#' footnote (the old promotion into the title block was removed
+#' 2026-07-04 -- the canvas shows what the options carry, nothing more).
+#' Dynamic per-line controls use the same single-shared-input pattern as
+#' `.assigned_row()`/`.toc_kebab()`.
 #' @noRd
 .fn_row <- function(ns, i, value) {
   edit_js <- sprintf(
@@ -498,7 +519,7 @@
       ),
       .action_btn(
         ns("fn_add"),
-        "+ Add footnote",
+        shiny::tagList(.icon("plus", 11), "Add footnote"),
         variant = "link",
         class = "ar-fn-add"
       )
@@ -569,7 +590,9 @@
   "page_by",
   "page_n",
   "page_banner",
-  "panels"
+  "panels",
+  "group_skip",
+  "stub_label"
 )
 
 #' One layout schema row by key (the layout twin of the option_schema
@@ -813,16 +836,40 @@
         shiny::tags$div(
           class = "ar-opt-row ar-opt-row-wide",
           shiny::tags$span(class = "ar-opt-label", "Header N"),
-          shiny::textInput(
-            ns("opt_header_n"),
-            label = NULL,
-            value = cur("header_n") %||% "",
-            placeholder = "(N={n})"
+          .opt_change_input(
+            ns,
+            "opt_header_n",
+            cur("header_n") %||% "",
+            placeholder = "(N={n})",
+            width = "140px"
           )
         ),
         shiny::tags$p(
           class = "ar-opt-hint ar-mono",
           "{n} = the arm's population N; blank = no N line."
+        ),
+        shiny::tags$div(
+          class = "ar-opt-row ar-opt-row-wide",
+          shiny::tags$span(class = "ar-opt-label", "Stub column header"),
+          .opt_change_input(
+            ns,
+            "opt_stub_label",
+            cur("stub_label") %||% "",
+            placeholder = "e.g. Parameter",
+            width = "140px"
+          )
+        ),
+        shiny::tags$div(
+          class = "ar-opt-row",
+          shiny::tags$span(
+            class = "ar-opt-label",
+            "Blank row between blocks"
+          ),
+          shiny::checkboxInput(
+            ns("opt_group_skip"),
+            label = NULL,
+            value = !identical(cur("group_skip"), FALSE)
+          )
         ),
         shiny::tags$div(
           class = "ar-opt-row",
@@ -868,10 +915,10 @@
         shiny::tags$div(
           class = "ar-opt-row ar-opt-row-wide",
           shiny::tags$span(class = "ar-opt-label", "Margins (in)"),
-          shiny::textInput(
-            ns("opt_margins"),
-            label = NULL,
-            value = if (is.null(margins)) {
+          .opt_change_input(
+            ns,
+            "opt_margins",
+            if (is.null(margins)) {
               ""
             } else {
               paste(margins, collapse = ", ")
@@ -917,11 +964,12 @@
         shiny::tags$div(
           class = "ar-opt-row ar-opt-row-wide",
           shiny::tags$span(class = "ar-opt-label", "Banner label"),
-          shiny::textInput(
-            ns("opt_page_banner"),
-            label = NULL,
-            value = cur("page_banner") %||% "",
-            placeholder = "e.g. Sex: {SEX}"
+          .opt_change_input(
+            ns,
+            "opt_page_banner",
+            cur("page_banner") %||% "",
+            placeholder = "e.g. Sex: {SEX}",
+            width = "170px"
           )
         ),
         shiny::tags$p(
