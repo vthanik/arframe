@@ -691,3 +691,28 @@ test_that(".ard_key ignores display-label edits (labels are display-only)", {
   retyped <- .retype_item(obj, "summarize", "AGE", "category")
   expect_false(identical(.ard_key(retyped), k0))
 })
+
+test_that("total enters the ARD key ONLY when set (legacy keys stable)", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  id <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
+  obj <- shiny::isolate({
+    store$rv$selected <- id
+    selected_object(store)
+  })
+
+  k0 <- .ard_key(obj)
+  # An UNRELATED option never moves the key (the legacy contract).
+  opts <- obj@options
+  opts$header_n <- "(N={n})"
+  expect_identical(.ard_key(S7::set_props(obj, options = opts)), k0)
+  # total = TRUE moves it (a pooled arm is a different ARD)...
+  opts$total <- TRUE
+  k1 <- .ard_key(S7::set_props(obj, options = opts))
+  expect_false(identical(k1, k0))
+  # ...and total = FALSE (explicit but default) keeps the legacy key: the
+  # conditional append fires on isTRUE only.
+  opts$total <- FALSE
+  expect_identical(.ard_key(S7::set_props(obj, options = opts)), k0)
+})

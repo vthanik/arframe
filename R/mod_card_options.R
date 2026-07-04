@@ -559,6 +559,7 @@
 # observers.
 .LAYOUT_GENERIC_KEYS <- c(
   "header_n",
+  "total",
   "orientation",
   "paper",
   "font_family",
@@ -686,6 +687,19 @@
         shiny::tags$p(
           class = "ar-opt-hint ar-mono",
           "{n} = the arm's population N; blank = no N line."
+        ),
+        shiny::tags$div(
+          class = "ar-opt-row",
+          shiny::tags$span(class = "ar-opt-label", "Total column"),
+          shiny::checkboxInput(
+            ns("opt_total"),
+            label = NULL,
+            value = isTRUE(cur("total"))
+          )
+        ),
+        shiny::tags$p(
+          class = "ar-opt-hint ar-mono",
+          "Pooled across arms; a heavy edit \u2014 Run re-collects."
         )
       )
     ),

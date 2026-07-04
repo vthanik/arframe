@@ -281,15 +281,19 @@ rename_output <- function(store, id, title) {
       })
     )
   })
-  paste0(
-    "ard::",
-    rlang::hash(list(
-      object@dataset,
-      object@type,
-      roles,
-      object@filters
-    ))
+  parts <- list(
+    object@dataset,
+    object@type,
+    roles,
+    object@filters
   )
+  # Conditional append: `total` changes the ARD (a pooled arm), so it is
+  # part of the key -- but ONLY when set, so every pre-total object keeps
+  # its legacy hash and nothing goes stale on upgrade.
+  if (isTRUE(object@options$total)) {
+    parts$total <- TRUE
+  }
+  paste0("ard::", rlang::hash(parts))
 }
 
 #' A keyed [arpillar::build_ard()] memo -- the two-stage render seam.
