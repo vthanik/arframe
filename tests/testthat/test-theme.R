@@ -3,7 +3,7 @@ test_that("ar_theme is Bootstrap brand variables only, Galley values", {
   expect_s3_class(th, "bs_theme")
   expect_identical(
     bslib::bs_get_variables(th, "primary")[["primary"]],
-    "#2D5FA8"
+    "#0378CD"
   )
 })
 
@@ -43,6 +43,8 @@ test_that("Galley ink/paper pairs hold WCAG AA", {
   #                                           ink-5 are decoration only (leader
   #                                           dots, hairlines) -- never info text.
   expect_gte(cr("#B3261E", "#FFFFFF"), 4.5) # error on paper
+  expect_gte(cr("#0378CD", "#FFFFFF"), 4.5) # accent (Run button fill under
+  #                                           white label; links on paper)
   # Stamp text sits in the TOC on the desk, so each stamp hex must clear 4.5:1
   # THERE (mockup greens/ambers are indicative; tune the three hexes to pass).
   for (hex in c("#257045", "#7A5409", "#B3261E")) {

@@ -1123,9 +1123,9 @@ input[type="radio"] {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: var(--ar-ink);
+  background: var(--ar-accent);
   color: var(--ar-paper);
-  border: 1px solid var(--ar-ink);
+  border: 1px solid var(--ar-accent);
   border-radius: var(--ar-radius);
   font-size: 11px;
   font-weight: 500;
@@ -1133,7 +1133,8 @@ input[type="radio"] {
   cursor: pointer;
 }
 .ar-insp-run:hover {
-  background: var(--ar-ink-2);
+  background: var(--ar-accent-hover);
+  border-color: var(--ar-accent-hover);
 }
 .ar-insp-kbd {
   font-size: 9.5px;
@@ -1391,10 +1392,15 @@ input[type="radio"] {
 .ar-peek-range,
 .ar-peek-precision,
 .ar-peek-more,
-.ar-peek-none {
+.ar-peek-none,
+.ar-peek-why {
   font-size: 10.5px;
   color: var(--ar-ink-3);
   margin: 0;
+}
+.ar-peek-why {
+  font-size: 10px;
+  overflow-wrap: anywhere;
 }
 .ar-peek-more {
   color: var(--ar-ink-5);

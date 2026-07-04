@@ -62,9 +62,11 @@
   --ar-ink-4: #7A838C;
   --ar-ink-5: #9AA3AB;
 
-  /* accent -- selection/active/links/focus-ring pair */
-  --ar-accent: #2D5FA8;
-  --ar-accent-weak: rgba(45, 95, 168, 0.07);
+  /* accent -- selection/active/links/focus-ring pair (explorer blue,
+     user decision 2026-07-04; 4.64:1 on paper, AA for normal text) */
+  --ar-accent: #0378CD;
+  --ar-accent-hover: #0369B1;
+  --ar-accent-weak: rgba(3, 120, 205, 0.07);
 
   /* stamps -- WCAG-AA-reconciled against --ar-desk (4.5:1 floor), NOT the
      spec's original indicative mockup hexes (ready #2E7D4F = 4.21:1, draft

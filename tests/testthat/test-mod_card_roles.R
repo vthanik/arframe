@@ -197,6 +197,66 @@ test_that("the peek shows min/median/max + precision for a measure", {
   })
 })
 
+test_that("a failed peek is never memoized -- the next render retries", {
+  # A transient catalog error (view dropped mid-register) used to be cached
+  # as NULL for the whole generation, pinning "Distribution unavailable."
+  # until the nonce moved. Failures must stay uncached so the next render
+  # retries, and the swallowed condition must reach the log.
+  fx <- .mcr_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  calls <- 0L
+  real <- arpillar::value_counts
+  testthat::local_mocked_bindings(
+    value_counts = function(...) {
+      calls <<- calls + 1L
+      if (calls == 1L) {
+        stop("catalog view momentarily dropped")
+      }
+      real(...)
+    },
+    .package = "arpillar"
+  )
+
+  facts1 <- shiny::isolate(.peek_facts(fx$store, "ADSL", "SEX", NULL))
+  expect_identical(facts1$kind, "error")
+  expect_match(facts1$message, "momentarily dropped")
+  expect_false(exists("peek::ADSL::SEX::0", envir = fx$store$cache))
+  expect_match(
+    paste(shiny::isolate(fx$store$rv$log), collapse = "\n"),
+    "peek failed: ADSL$SEX",
+    fixed = TRUE
+  )
+
+  # Second render: the engine is back, the peek recovers and memoizes.
+  facts2 <- shiny::isolate(.peek_facts(fx$store, "ADSL", "SEX", NULL))
+  expect_identical(facts2$kind, "counts")
+  expect_true(exists("peek::ADSL::SEX::0", envir = fx$store$cache))
+})
+
+test_that("a peek failure shows its reason in the panel", {
+  fx <- .mcr_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  testthat::local_mocked_bindings(
+    column_range = function(...) stop("no such view: ADSL"),
+    .package = "arpillar"
+  )
+
+  shiny::testServer(mod_card_roles_server, args = list(store = fx$store), {
+    session$setInputs(peek = list(name = "AGE", nonce = 1))
+    session$flushReact()
+    html <- output$slots$html
+    expect_match(html, "Distribution unavailable.", fixed = TRUE)
+    expect_match(html, "no such view", fixed = TRUE)
+    expect_match(
+      paste(store$rv$log, collapse = "\n"),
+      "peek failed: ADSL$AGE",
+      fixed = TRUE
+    )
+  })
+})
+
 test_that("the treat-as toggle never renders for a text column", {
   fx <- .mcr_store()
   withr::defer(arpillar::engine_close(fx$con))

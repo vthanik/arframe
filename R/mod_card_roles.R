@@ -309,33 +309,49 @@
 #' a measure column gets its min/median/max landmarks + observed decimal
 #' precision; anything else gets its per-value counts. All pushed-down
 #' aggregates (`column_range`/`column_precision`/`value_counts`) -- the
-#' column itself never leaves DuckDB. `NULL` when the dataset/column is
-#' unreachable; the panel says so rather than erroring.
+#' column itself never leaves DuckDB. A failure yields an UNCACHED
+#' `kind = "error"` record (the next render retries -- a transient
+#' catalog error must never poison the whole generation) and logs the
+#' condition so the field failure is diagnosable from the console strip.
 #' @noRd
 .peek_facts <- function(store, dataset, column, meta) {
   key <- paste0("peek::", dataset, "::", column, "::", store$rv$catalog_nonce)
-  if (!exists(key, envir = store$cache)) {
-    numeric_col <- !is.null(meta) && identical(meta$type, "measure")
-    facts <- tryCatch(
-      {
-        if (numeric_col) {
-          list(
-            kind = "range",
-            range = arpillar::column_range(store$con, dataset, column),
-            precision = arpillar::column_precision(store$con, dataset, column)
-          )
-        } else {
-          list(
-            kind = "counts",
-            counts = arpillar::value_counts(store$con, dataset, column)
-          )
-        }
-      },
-      error = function(e) NULL
-    )
+  if (exists(key, envir = store$cache)) {
+    return(get(key, envir = store$cache))
+  }
+  numeric_col <- !is.null(meta) && identical(meta$type, "measure")
+  facts <- tryCatch(
+    {
+      if (numeric_col) {
+        list(
+          kind = "range",
+          range = arpillar::column_range(store$con, dataset, column),
+          precision = arpillar::column_precision(store$con, dataset, column)
+        )
+      } else {
+        list(
+          kind = "counts",
+          counts = arpillar::value_counts(store$con, dataset, column)
+        )
+      }
+    },
+    error = function(e) {
+      log_line(
+        store,
+        sprintf(
+          "peek failed: %s$%s (%s)",
+          dataset,
+          column,
+          conditionMessage(e)
+        )
+      )
+      list(kind = "error", message = conditionMessage(e))
+    }
+  )
+  if (!identical(facts$kind, "error")) {
     assign(key, facts, envir = store$cache)
   }
-  get(key, envir = store$cache)
+  facts
 }
 
 # The number of distribution bars a category peek shows before folding the
@@ -417,10 +433,15 @@
 #' Render the distribution half of a peek panel from `.peek_facts()`.
 #' @noRd
 .peek_distribution <- function(facts) {
-  if (is.null(facts)) {
-    return(shiny::tags$p(
-      class = "ar-peek-none ar-mono",
-      "Distribution unavailable."
+  if (is.null(facts) || identical(facts$kind, "error")) {
+    return(htmltools::tagList(
+      shiny::tags$p(
+        class = "ar-peek-none ar-mono",
+        "Distribution unavailable."
+      ),
+      if (!is.null(facts$message)) {
+        shiny::tags$p(class = "ar-peek-why ar-mono", facts$message)
+      }
     ))
   }
   if (identical(facts$kind, "range")) {

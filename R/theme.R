@@ -15,7 +15,7 @@
 ar_theme <- function() {
   bslib::bs_theme(
     version = 5,
-    primary = "#2D5FA8",
+    primary = "#0378CD",
     bg = "#FFFFFF",
     fg = "#1B1F23",
     danger = "#B3261E",
