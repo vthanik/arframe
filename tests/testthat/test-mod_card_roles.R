@@ -341,3 +341,123 @@ test_that("the roles pane's empty state directs action when nothing is selected"
     expect_match(output$slots$html, "No output selected", fixed = TRUE)
   })
 })
+
+# ---- levels editor (order / include / display-as / expected) ---------------
+
+test_that("the category peek renders the levels editor with observed values", {
+  fx <- .mcr_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_roles_server, args = list(store = fx$store), {
+    session$setInputs(peek = list(name = "SEX", nonce = 1))
+    session$flushReact()
+    html <- output$slots$html
+    expect_match(html, "ar-levels-editor", fixed = TRUE)
+    expect_match(html, "ar-level-row", fixed = TRUE)
+    expect_match(html, "Add expected level", fixed = TRUE)
+    # A measure peek never shows it.
+    session$setInputs(peek = list(name = "SEX", nonce = 2)) # fold
+    session$setInputs(peek = list(name = "AGE", nonce = 3))
+    session$flushReact()
+    expect_no_match(output$slots$html, "ar-levels-editor", fixed = TRUE)
+  })
+})
+
+test_that("level edits commit @levels and stay CHEAP (never stale)", {
+  fx <- .mcr_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_roles_server, args = list(store = fx$store), {
+    session$setInputs(peek = list(name = "SEX", nonce = 1))
+    item <- function() {
+      obj <- shiny::isolate(selected_object(store))
+      r <- .role_for_slot(obj, "summarize")
+      r@items[[which(vapply(r@items, function(i) i@name, "") == "SEX")]]
+    }
+
+    # DISPLAY AS recode.
+    session$setInputs(
+      lvl_display = list(
+        slot = "summarize",
+        name = "SEX",
+        value = "M",
+        display = "Male",
+        nonce = 2
+      )
+    )
+    lv <- item()@levels
+    expect_identical(lv[[1]]$value, "M")
+    expect_identical(lv[[1]]$display, "Male")
+
+    # Include toggle off.
+    session$setInputs(
+      lvl_include = list(
+        slot = "summarize",
+        name = "SEX",
+        value = "F",
+        on = FALSE,
+        nonce = 3
+      )
+    )
+    lv <- item()@levels
+    expect_true(isFALSE(lv[[2]]$include))
+
+    # Add an expected (dummy) level.
+    session$setInputs(
+      lvl_add = list(
+        slot = "summarize",
+        name = "SEX",
+        value = "U",
+        nonce = 4
+      )
+    )
+    lv <- item()@levels
+    expect_true(isTRUE(lv[[3]]$expected))
+
+    # Reorder: U first, M second; F keeps its entry (reconcile).
+    session$setInputs(
+      lvl_reorder = list(
+        order = list("U", "M", "F"),
+        slot = "summarize",
+        name = "SEX",
+        nonce = 5
+      )
+    )
+    lv <- item()@levels
+    expect_identical(
+      vapply(lv, function(m) m$value, ""),
+      c("U", "M", "F")
+    )
+    expect_identical(lv[[2]]$display, "Male") # fields survived the reorder
+
+    # Remove the expected level.
+    session$setInputs(
+      lvl_rm = list(
+        slot = "summarize",
+        name = "SEX",
+        value = "U",
+        nonce = 6
+      )
+    )
+    expect_false("U" %in% vapply(item()@levels, function(m) m$value, ""))
+
+    # Every one of those edits was display-only: nothing went stale.
+    expect_identical(shiny::isolate(store$rv$stale), character(0))
+  })
+})
+
+test_that("level edits never move the ARD cache key (display-only contract)", {
+  fx <- .mcr_store()
+  withr::defer(arpillar::engine_close(fx$con))
+  obj <- shiny::isolate(selected_object(fx$store))
+  k0 <- .ard_key(obj)
+  edited <- .update_item(obj, "summarize", "SEX", function(it) {
+    S7::set_props(
+      it,
+      levels = list(list(value = "M", display = "Male", include = TRUE))
+    )
+  })
+  expect_identical(.ard_key(edited), k0)
+  # But the pane digest DOES move -- the editor repaints.
+  expect_false(identical(.roles_digest(edited), .roles_digest(obj)))
+})

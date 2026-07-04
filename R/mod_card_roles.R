@@ -390,7 +390,128 @@
       )
     ),
     if (can_retype) .retype_control(ns, slot$slot, item),
-    .peek_distribution(facts)
+    .peek_distribution(facts),
+    if (!is.null(facts) && identical(facts$kind, "counts")) {
+      .levels_editor(ns, slot$slot, item, facts)
+    }
+  )
+}
+
+# The levels editor renders up to this many rows; a higher-cardinality
+# category (SITEID, USUBJID-ish) keeps the distribution peek only.
+# ponytail: flat cap, no paging -- revisit if a real table needs more.
+.LEVELS_EDITOR_CAP <- 24L
+
+#' The per-variable LEVELS editor inside a category peek: drag order,
+#' include checkbox, DISPLAY AS recode, and "Add expected level" for
+#' dummy levels the data never observes (they render as zero rows). All
+#' edits are CHEAP (display-only) -- they re-render live off the cached
+#' ARD, never marking the proof stale.
+#' @noRd
+.levels_editor <- function(ns, slot_id, item, facts) {
+  observed <- names(facts$counts %||% integer(0))
+  meta <- item@levels
+  declared <- vapply(meta, function(m) as.character(m$value), character(1))
+  if (length(observed) > .LEVELS_EDITOR_CAP) {
+    return(shiny::tags$p(
+      class = "ar-peek-none ar-mono",
+      sprintf("%d levels - too many to edit here.", length(observed))
+    ))
+  }
+  all_vals <- c(declared, setdiff(observed, declared))
+  if (length(all_vals) == 0L) {
+    return(NULL)
+  }
+  post <- function(input, value, extra = "") {
+    sprintf(
+      "Shiny.setInputValue('%s', {slot: '%s', name: '%s', value: '%s'%s, nonce: Date.now()}, {priority: 'event'})",
+      ns(input),
+      slot_id,
+      item@name,
+      value,
+      extra
+    )
+  }
+  rows <- lapply(all_vals, function(v) {
+    i <- match(v, declared)
+    m <- if (is.na(i)) NULL else meta[[i]]
+    included <- !isFALSE(m$include)
+    unobserved <- !(v %in% observed)
+    display <- as.character(m$display %||% "")
+    shiny::tags$div(
+      class = "ar-level-row",
+      `data-ar-item` = v,
+      shiny::tags$span(class = "ar-level-grip", .icon("grip", 11)),
+      shiny::tags$input(
+        type = "checkbox",
+        class = "ar-level-include",
+        checked = if (included) "checked",
+        onchange = post("lvl_include", v, ", on: this.checked"),
+        `aria-label` = paste0("Include level ", v)
+      ),
+      shiny::tags$span(
+        class = paste0("ar-level-val ar-mono", if (unobserved) " ar-level-exp"),
+        v
+      ),
+      shiny::tags$input(
+        type = "text",
+        class = "ar-level-display",
+        value = display,
+        placeholder = "(keep)",
+        onchange = post("lvl_display", v, ", display: this.value"),
+        `aria-label` = paste0("Display ", v, " as")
+      ),
+      if (unobserved) {
+        shiny::tags$button(
+          type = "button",
+          class = "ar-icon-btn ar-level-rm",
+          `aria-label` = paste0("Remove expected level ", v),
+          onclick = post("lvl_rm", v),
+          .icon("close", 10)
+        )
+      }
+    )
+  })
+  add_js <- sprintf(
+    "var inp = this.previousElementSibling; var v = inp.value.trim(); if (v) { Shiny.setInputValue('%s', {slot: '%s', name: '%s', value: v, nonce: Date.now()}, {priority: 'event'}); inp.value = ''; }",
+    ns("lvl_add"),
+    slot_id,
+    item@name
+  )
+  shiny::tags$div(
+    class = "ar-levels-editor",
+    shiny::tags$span(class = "ar-label ar-levels-label", "Levels"),
+    shiny::tags$div(
+      class = "ar-levels-list",
+      `data-ar-sortable` = "true",
+      `data-ar-sortable-handle` = ".ar-level-grip",
+      `data-ar-sortable-item` = ".ar-level-row",
+      `data-ar-sortable-attr` = "data-ar-item",
+      `data-ar-sortable-input` = ns("lvl_reorder"),
+      # ponytail: hand-rolled JSON -- slot ids and CDISC column names are
+      # [A-Za-z0-9_.], no escaping needed; avoids a jsonlite Import.
+      `data-ar-sortable-extra` = sprintf(
+        '{"slot":"%s","name":"%s"}',
+        slot_id,
+        item@name
+      ),
+      rows
+    ),
+    shiny::tags$div(
+      class = "ar-levels-add",
+      shiny::tags$input(
+        type = "text",
+        class = "ar-level-display",
+        placeholder = "Add expected level\u2026",
+        `aria-label` = paste0("Add expected level to ", item@name)
+      ),
+      shiny::tags$button(
+        type = "button",
+        class = "btn btn-link ar-fn-add",
+        onclick = add_js,
+        "+ Add"
+      )
+    )
   )
 }
 
@@ -705,7 +826,14 @@ mod_card_roles_ui <- function(id) {
     list(
       slot = r@slot,
       items = lapply(r@items, function(it) {
-        list(name = it@name, label = it@label, role_type = it@role_type)
+        list(
+          name = it@name,
+          label = it@label,
+          role_type = it@role_type,
+          # Level edits (order/include/display-as/expected) must repaint
+          # the pane; they stay OUT of `.ard_key()` (display-only).
+          levels = it@levels
+        )
       })
     )
   }))
@@ -751,6 +879,53 @@ mod_card_roles_ui <- function(id) {
   .update_item(object, slot, item_name, function(it) {
     S7::set_props(it, role_type = role_type)
   })
+}
+
+# ---- level metadata edits (all CHEAP: display-only) ------------------------
+
+#' Ensure a `@levels` entry for `value` exists, then apply `fn` to it.
+#' Entries stay once created (no trivial-entry elision -- an all-default
+#' entry only pins a position, which is itself information).
+#' @noRd
+.set_level_meta <- function(levels, value, fn) {
+  vals <- vapply(levels, function(m) as.character(m$value), character(1))
+  i <- match(value, vals)
+  if (is.na(i)) {
+    levels[[length(levels) + 1L]] <- fn(list(value = value))
+  } else {
+    levels[[i]] <- fn(levels[[i]])
+  }
+  levels
+}
+
+#' Rebuild `@levels` in the dragged order, preserving each entry's fields;
+#' a value new to the metadata gets a bare entry (its position is now
+#' declared). Declared values missing from a stale/partial payload keep
+#' their entries, appended -- the `.reorder_slot()` reconcile discipline.
+#' @noRd
+.reorder_level_meta <- function(levels, order) {
+  vals <- vapply(levels, function(m) as.character(m$value), character(1))
+  out <- lapply(order, function(v) {
+    i <- match(v, vals)
+    if (is.na(i)) list(value = v) else levels[[i]]
+  })
+  c(out, levels[!vals %in% order])
+}
+
+#' Apply a `@levels` transform to one item -- every lvl_* observer's
+#' shared commit path.
+#' @noRd
+.edit_item_levels <- function(store, object, slot, item_name, label, fn) {
+  update_object(
+    store,
+    object@id,
+    function(o) {
+      .update_item(o, slot, item_name, function(it) {
+        S7::set_props(it, levels = fn(it@levels))
+      })
+    },
+    label = label
+  )
 }
 
 #' Append `item` to the alias-matched existing role on `object`, or create
@@ -1051,6 +1226,76 @@ mod_card_roles_server <- function(id, store) {
         function(o) .retype_item(o, req$slot, req$name, req$role_type),
         label = paste0("treat ", req$name, " as ", req$role_type)
       )
+    })
+
+    # ---- level metadata edits (all CHEAP: display-only) ----
+    # Shared commit: look the selected object up, apply the @levels
+    # transform through .edit_item_levels(); the pane repaints via the
+    # roles digest (levels are part of it).
+    .lvl_commit <- function(req, label, fn) {
+      obj <- selected_object(store)
+      if (is.null(obj) || is.null(req$slot) || is.null(req$name)) {
+        return()
+      }
+      .edit_item_levels(store, obj, req$slot, req$name, label, fn)
+    }
+
+    shiny::observeEvent(input$lvl_include, {
+      req <- input$lvl_include
+      v <- as.character(req$value)
+      on <- isTRUE(req$on)
+      .lvl_commit(req, paste0("toggle level ", v), function(lv) {
+        .set_level_meta(lv, v, function(m) {
+          m$include <- on
+          m
+        })
+      })
+    })
+
+    shiny::observeEvent(input$lvl_display, {
+      req <- input$lvl_display
+      v <- as.character(req$value)
+      dsp <- trimws(as.character(req$display %||% ""))
+      .lvl_commit(req, paste0("relabel level ", v), function(lv) {
+        .set_level_meta(lv, v, function(m) {
+          m$display <- if (nzchar(dsp)) dsp else NULL
+          m
+        })
+      })
+    })
+
+    shiny::observeEvent(input$lvl_add, {
+      req <- input$lvl_add
+      v <- trimws(as.character(req$value))
+      if (!nzchar(v)) {
+        return()
+      }
+      .lvl_commit(req, paste0("add expected level ", v), function(lv) {
+        .set_level_meta(lv, v, function(m) {
+          m$expected <- TRUE
+          m
+        })
+      })
+    })
+
+    shiny::observeEvent(input$lvl_rm, {
+      req <- input$lvl_rm
+      v <- as.character(req$value)
+      .lvl_commit(req, paste0("remove level ", v), function(lv) {
+        vals <- vapply(lv, function(m) as.character(m$value), character(1))
+        lv[vals != v]
+      })
+    })
+
+    shiny::observeEvent(input$lvl_reorder, {
+      req <- input$lvl_reorder
+      order <- vapply(req$order, as.character, character(1))
+      if (length(order) == 0L) {
+        return()
+      }
+      .lvl_commit(req, "reorder levels", function(lv) {
+        .reorder_level_meta(lv, order)
+      })
     })
 
     # The panes are always mounted and CSS-toggled (never remounted), so the
