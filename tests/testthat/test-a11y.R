@@ -16,10 +16,15 @@ test_that("the app bar's icon-only undo/redo buttons are labelled", {
     "frame",
     report_body = shiny::div(),
     data_body = shiny::div(),
-    qc_body = shiny::div()
+    qc_body = shiny::div(),
+    logs_body = shiny::div()
   ))
   expect_match(html, 'aria-label="Undo"', fixed = TRUE)
   expect_match(html, 'aria-label="Redo"', fixed = TRUE)
+  # The icon-only activity-bar buttons name their destination (piece A).
+  for (label in c("Report", "Data", "QC", "Logs")) {
+    expect_match(html, sprintf('aria-label="%s"', label), fixed = TRUE)
+  }
   # The server-clicked hidden download link is removed from the a11y tree.
   expect_match(html, "ar-hidden-dl", fixed = TRUE)
 })

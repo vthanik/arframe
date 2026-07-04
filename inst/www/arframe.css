@@ -137,10 +137,11 @@ input[type="radio"] {
 }
 
 /* ============ 02 frame ============ */
-/* One 100vh frame: 42px app bar, a body that mounts all three mode furniture
-   sets at once, 26px status bar. The `ar-mode-*` class on `.ar-workspace`
-   (set by arframe.js's "ar-mode" handler) selects which `.ar-body-*` shows;
-   the other two stay mounted (display: none), never unmounted. See
+/* One 100vh frame: 42px app bar, then a row of [44px activity bar | body
+   mounting all four mode furniture sets at once], 26px status bar. The
+   `ar-mode-*` class on `.ar-workspace` (set by arframe.js's "ar-mode"
+   handler) selects which `.ar-body-*` shows; the others stay mounted
+   (display: none), never unmounted. See
    docs/superpowers/specs/2026-07-02-arframe-galley-design-system.md #3. */
 .ar-workspace {
   display: flex;
@@ -175,44 +176,46 @@ input[type="radio"] {
   font-size: 11px;
   color: var(--ar-ink-4);
 }
-.ar-bar-mode {
-  color: var(--ar-ink-3);
-  text-decoration: none;
-  border-bottom: 2px solid transparent;
-  padding: 2px 0;
-  border-radius: 0;
+/* -- activity bar (mockup piece A, supersedes the v5 segmented toggle) --
+   a 44px far-left vertical rail of icon-only mode buttons. The ACTIVE
+   button is a pure CSS rule off the workspace's own mode class -- no
+   server round-trip is spent restyling the buttons on every mode switch.
+   Each button pre-reserves a 2px left indicator (color, never layout). */
+.ar-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
 }
-.ar-bar-mode:hover {
+.ar-actbar {
+  flex: 0 0 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ar-space-1);
+  padding: var(--ar-space-2) 0;
+  background: var(--ar-chrome);
+  border-right: 1px solid var(--ar-rule);
+}
+.ar-act-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ar-ink-4);
+  border-left: 2px solid transparent;
+  border-radius: var(--ar-radius);
+}
+.ar-act-btn:hover {
   color: var(--ar-ink);
 }
-/* Active mode is a pure CSS rule off the workspace's own mode class -- no
-   server round-trip is spent restyling the buttons on every mode switch. */
-.ar-mode-data .ar-bar-mode[data-ar-mode="data"],
-.ar-mode-qc .ar-bar-mode[data-ar-mode="qc"] {
+.ar-mode-report .ar-act-btn[data-ar-mode="report"],
+.ar-mode-data .ar-act-btn[data-ar-mode="data"],
+.ar-mode-qc .ar-act-btn[data-ar-mode="qc"],
+.ar-mode-logs .ar-act-btn[data-ar-mode="logs"] {
   color: var(--ar-accent);
-  border-bottom-color: var(--ar-accent);
-}
-/* v5 (decision #8): the [Data | Report] segmented toggle. The two segments
-   are ordinary .ar-bar-mode buttons under one bordered strip; the ACTIVE
-   segment is filled ink-on-paper, again keyed off the workspace mode class.
-   Inside the segment the underline treatment is disabled -- the fill IS the
-   active state. */
-.ar-seg {
-  display: flex;
-  border: 1px solid var(--ar-rule);
-  border-radius: var(--ar-radius);
-  overflow: hidden;
-}
-.ar-seg .ar-bar-mode {
-  font-size: 11.5px;
-  padding: 3px 12px;
-  border-bottom: none;
-}
-.ar-mode-data .ar-seg .ar-bar-mode[data-ar-mode="data"],
-.ar-mode-report .ar-seg .ar-bar-mode[data-ar-mode="report"] {
-  background: var(--ar-ink);
-  color: var(--ar-paper);
-  border-bottom: none;
+  border-left-color: var(--ar-accent);
+  background: var(--ar-accent-weak);
 }
 .ar-btn-ink {
   background: var(--ar-ink);
@@ -257,15 +260,17 @@ input[type="radio"] {
   display: block;
 }
 
-/* -- body: all three mode furniture sets mount at once -- */
+/* -- body: all four mode furniture sets mount at once -- */
 .ar-body {
   flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
   position: relative;
 }
 .ar-body-report,
 .ar-body-data,
-.ar-body-qc {
+.ar-body-qc,
+.ar-body-logs {
   display: none;
   height: 100%;
 }
@@ -276,6 +281,9 @@ input[type="radio"] {
   display: flex;
 }
 .ar-mode-qc .ar-body-qc {
+  display: flex;
+}
+.ar-mode-logs .ar-body-logs {
   display: flex;
 }
 
@@ -2198,12 +2206,7 @@ input[type="radio"] {
 .ar-qc-problems a:focus-visible {
   text-decoration: underline;
 }
-/* -- the rule + run log -- */
-.ar-qc-rule {
-  height: 1px;
-  background: var(--ar-rule);
-  margin: var(--ar-space-4) 0 var(--ar-space-3);
-}
+/* -- the run log (its own Logs sheet since piece A) -- */
 .ar-qc-log-lines {
   font-size: 11px;
   line-height: 1.7;

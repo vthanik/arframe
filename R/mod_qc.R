@@ -115,12 +115,14 @@
   )
 }
 
-#' The whole proof-check sheet: running head, summary line, one row per
-#' output, a rule, then the run log. `broken`/`stale` fold into the row
-#' status exactly as the TOC does (`.toc_rows()`), so a stamp here can never
-#' disagree with the same output's stamp in the Contents column.
+#' The proof-check sheet: running head, summary line, one row per output.
+#' The run log lives on its own Logs sheet (`.logs_sheet()`) since the
+#' activity bar (piece A) made QC and Logs separate destinations.
+#' `broken`/`stale` fold into the row status exactly as the TOC does
+#' (`.toc_rows()`), so a stamp here can never disagree with the same
+#' output's stamp in the Contents column.
 #' @noRd
-.qc_sheet <- function(ns, report, broken, stale, log) {
+.qc_sheet <- function(ns, report, broken, stale) {
   rows <- .toc_rows(report, broken, stale)
   ready_n <- sum(vapply(
     rows,
@@ -133,7 +135,7 @@
     # U+2014 EM DASH -- \u escape keeps R/ ASCII-clean (portability rule).
     shiny::tags$div(
       class = "ar-qc-head ar-mono",
-      paste0("Logs \u2014 ", report@name)
+      paste0("QC \u2014 ", report@name)
     ),
     shiny::tags$div(
       class = "ar-qc-summary ar-mono",
@@ -151,8 +153,21 @@
         class = "ar-qc-rows",
         lapply(rows, function(r) .qc_row(ns, report, r))
       )
-    },
-    shiny::tags$div(class = "ar-qc-rule"),
+    }
+  )
+}
+
+#' The Logs sheet: running head + the run log, on the same paper-styled
+#' desk as QC. Its own activity-bar destination (piece A).
+#' @noRd
+.logs_sheet <- function(report, log) {
+  shiny::tags$div(
+    class = "ar-qc-sheet",
+    shiny::tags$div(
+      class = "ar-qc-head ar-mono",
+      # U+2014 EM DASH -- \u escape keeps R/ ASCII-clean (portability rule).
+      paste0("Logs \u2014 ", report@name)
+    ),
     .qc_log(log)
   )
 }
@@ -168,6 +183,19 @@ mod_qc_ui <- function(id) {
   shiny::div(
     class = "ar-qc",
     shiny::uiOutput(ns("sheet"))
+  )
+}
+
+#' The Logs mode body: the same scrolling desk, holding the run-log sheet.
+#' Shares `mod_qc_server()`'s namespace -- one module renders both sheets.
+#' @param id *The module namespace, matching `mod_qc_ui()`.*
+#'   `<character(1)>: required`.
+#' @noRd
+mod_logs_ui <- function(id) {
+  ns <- shiny::NS(id)
+  shiny::div(
+    class = "ar-qc",
+    shiny::uiOutput(ns("log_sheet"))
   )
 }
 
@@ -189,15 +217,18 @@ mod_qc_server <- function(id, store) {
         ns,
         store$rv$report,
         store$rv$broken,
-        store$rv$stale,
-        store$rv$log
+        store$rv$stale
       )
+    })
+    output$log_sheet <- shiny::renderUI({
+      .logs_sheet(store$rv$report, store$rv$log)
     })
     # The QC body is shown/hidden by the custom `ar-mode` class, NOT a Shiny
     # tabset, so Shiny never learns the body became visible and would leave a
     # suspended output blank when the user switches to QC. Force it to
     # compute while hidden (the same fix the inspector panes needed).
     shiny::outputOptions(output, "sheet", suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "log_sheet", suspendWhenHidden = FALSE)
 
     # A jump link: select the output, flip to Report mode (mirror the class
     # to the client -- setting rv$mode directly bypasses the frame's own
