@@ -54,6 +54,7 @@
   chevrons_left = "angles-left",
   chevrons_right = "angles-right",
   play = "play",
+  info = "circle-info",
   # Activity-bar glyphs (the far-left mode rail, mockup piece A).
   report = "file-lines",
   logs = "terminal",
@@ -86,6 +87,23 @@
     fill = "currentColor",
     margin_left = "0px",
     margin_right = "0px"
+  )
+}
+
+#' A small info icon plus its detail rendered inline. The icon is chrome
+#' -- it signals "info about the selection" -- and the detail sits right
+#' next to it so users never have to hover-and-wait for a tooltip. The
+#' native `title` still carries the same text for screen-reader parity.
+#' @noRd
+.info_icon <- function(detail) {
+  headline <- strsplit(detail, "\n", fixed = TRUE)[[1]][1]
+  shiny::tags$span(
+    class = "ar-info-icon",
+    tabindex = "0",
+    title = detail,
+    `aria-label` = detail,
+    .icon("info", 12),
+    shiny::tags$span(class = "ar-info-text", headline)
   )
 }
 

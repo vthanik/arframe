@@ -589,6 +589,10 @@ mod_paper_server <- function(id, store) {
     shiny::outputOptions(output, "sheet_html_slot", suspendWhenHidden = FALSE)
     shiny::outputOptions(output, "sheet_figure", suspendWhenHidden = FALSE)
     shiny::outputOptions(output, "code_slot", suspendWhenHidden = FALSE)
+    # `.ar-hidden-dl` is display:none, which suspends the download binding
+    # -- href stays `#`, so the programmatic click falls back to the page
+    # URL and saves `download.html`. See mod_toolbar.R.
+    shiny::outputOptions(output, "code_dl", suspendWhenHidden = FALSE)
 
     invisible(NULL)
   })

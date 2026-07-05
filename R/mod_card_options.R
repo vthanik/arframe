@@ -139,6 +139,32 @@
   )
 }
 
+# Multi-line variant for header cells that legitimately span rows (the
+# tabular renderer honors literal "\n" as a line break inside a stub /
+# spanner header). Same blur/Enter commit contract as .opt_change_input.
+.opt_change_textarea <- function(
+  ns,
+  input_id,
+  value,
+  placeholder = NULL,
+  width = NULL,
+  rows = 2
+) {
+  js <- sprintf(
+    "Shiny.setInputValue('%s', this.value, {priority: 'event'})",
+    ns(input_id)
+  )
+  shiny::tags$textarea(
+    id = ns(paste0(input_id, "_ta")),
+    class = "form-control ar-opt-input",
+    rows = rows,
+    placeholder = placeholder,
+    onchange = js,
+    style = if (!is.null(width)) paste0("width:", width, ";"),
+    value
+  )
+}
+
 #' A text input carrying `inputmode="numeric"`#' A text input carrying `inputmode="numeric"` -- the plan's int control
 #' (mobile numeric keyboard, no spinner chrome; blur/Enter commit).
 #' @noRd
@@ -659,7 +685,12 @@
   shiny::tags$div(
     class = "ar-band",
     shiny::tags$span(class = "ar-label ar-band-label", label),
-    lapply(seq_len(n), function(i) {
+    # Display rows in the same top-to-bottom order the canvas prints them
+    # -- arpillar renders row [[N]] at the top of the header band and row
+    # [[1]] at the bottom, so a top-to-bottom Options list must iterate
+    # `rev(seq_len(n))`. The stored index passed to `.band_row()` stays
+    # the raw i so band_edit / band_rm still address the right row.
+    lapply(rev(seq_len(n)), function(i) {
       vals <- lapply(b, function(v) if (i <= length(v)) v[[i]] else "")
       .band_row(ns, band_key, i, vals)
     }),
@@ -713,14 +744,18 @@
 #' One spanning-band row: label input + arm multi-select + remove, all
 #' posting shared inputs keyed by row index.
 #' @noRd
-.span_row <- function(ns, i, band, arms) {
+.span_row <- function(ns, i, band, arms, claimed = character(0)) {
   label_js <- sprintf(
     "Shiny.setInputValue('%s', {i: %d, value: this.value, nonce: Date.now()}, {priority: 'event'})",
     ns("span_label"),
     i
   )
+  # A per-row delegated posting shape: on any checkbox change inside this
+  # row's box, gather the currently-checked arm names and post them. Cheaper
+  # and more discoverable than the native <select multiple> (which needed a
+  # Cmd/Ctrl-click users never guess).
   cols_js <- sprintf(
-    "Shiny.setInputValue('%s', {i: %d, value: Array.from(this.selectedOptions).map(function(o){return o.value;}), nonce: Date.now()}, {priority: 'event'})",
+    "(function(box){Shiny.setInputValue('%s', {i: %d, value: Array.prototype.map.call(box.querySelectorAll('input[type=checkbox]:checked'), function(c){return c.value;}), nonce: Date.now()}, {priority: 'event'})})(this.closest('.ar-span-cols'))",
     ns("span_cols"),
     i
   )
@@ -740,17 +775,28 @@
       onchange = label_js,
       `aria-label` = paste0("Spanning band ", i, " label")
     ),
-    shiny::tags$select(
+    shiny::tags$div(
       class = "ar-span-cols",
-      multiple = "multiple",
-      size = min(max(length(arms), 2L), 4L),
-      onchange = cols_js,
       `aria-label` = paste0("Spanning band ", i, " columns"),
       lapply(arms, function(a) {
-        shiny::tags$option(
-          value = a,
-          selected = if (a %in% selected) "selected",
-          a
+        # An arm claimed by an EARLIER band cannot go into this band --
+        # tabular's `headers()` errors when the same column sits under
+        # two bands. Render greyed + disabled + unchecked so the user
+        # cannot compose the conflict at all.
+        is_claimed <- a %in% claimed
+        shiny::tags$label(
+          class = paste(
+            "ar-span-col",
+            if (is_claimed) "ar-span-col-disabled"
+          ),
+          shiny::tags$input(
+            type = "checkbox",
+            value = a,
+            checked = if (!is_claimed && a %in% selected) "checked",
+            disabled = if (is_claimed) "disabled",
+            onchange = cols_js
+          ),
+          shiny::tags$span(a)
         )
       })
     ),
@@ -784,8 +830,18 @@
           "Assign a treatment variable first."
         )
       } else {
+        # Threaded `claimed` set: each band's row sees the arms already
+        # taken by EARLIER bands and disables their checkboxes, so the
+        # user cannot compose a two-band-per-column conflict.
+        claimed <- character(0)
+        rows <- lapply(seq_along(sp), function(i) {
+          row <- .span_row(ns, i, sp[[i]], arms, claimed = claimed)
+          own <- as.character(unlist(sp[[i]]$cols %||% character(0)))
+          claimed <<- unique(c(claimed, setdiff(own, claimed)))
+          row
+        })
         shiny::tagList(
-          lapply(seq_along(sp), function(i) .span_row(ns, i, sp[[i]], arms)),
+          rows,
           shiny::tags$button(
             type = "button",
             class = "btn btn-link ar-fn-add",
@@ -851,12 +907,16 @@
         shiny::tags$div(
           class = "ar-opt-row ar-opt-row-wide",
           shiny::tags$span(class = "ar-opt-label", "Stub column header"),
-          .opt_change_input(
+          # Textarea, left-aligned: the header often wraps across two lines
+          # (e.g. "Baseline\nCharacteristics"). Enter inside the field
+          # inserts a real newline; blur/Enter+Ctrl commits.
+          .opt_change_textarea(
             ns,
             "opt_stub_label",
             cur("stub_label") %||% "",
             placeholder = "e.g. Parameter",
-            width = "140px"
+            width = "150px",
+            rows = 2
           )
         ),
         shiny::tags$div(
@@ -1548,7 +1608,15 @@ mod_card_options_server <- function(id, store) {
       if (is.null(obj) || is.na(i) || i < 1L || i > length(sp)) {
         return()
       }
-      sp[[i]]$cols <- as.character(unlist(input$span_cols$value))
+      # Defensive: drop any incoming arm already claimed by an EARLIER
+      # band, in case a stale saved report or an out-of-order client
+      # message sneaks past the UI's disabled-checkbox guard. tabular's
+      # `headers()` would abort the render otherwise.
+      incoming <- as.character(unlist(input$span_cols$value))
+      claimed_by_others <- unlist(lapply(sp[seq_len(i - 1L)], function(b) {
+        as.character(unlist(b$cols %||% character(0)))
+      }))
+      sp[[i]]$cols <- setdiff(incoming, claimed_by_others)
       .commit_spans(obj, sp, "set spanning band columns")
     })
 
@@ -1720,7 +1788,15 @@ mod_card_options_server <- function(id, store) {
           if (nrow(row) != 1L) {
             return()
           }
-          .commit_opt(store, rv_err, obj, row, input[[input_id]])
+          raw <- input[[input_id]]
+          # Stub label ergonomics: users type either a real Enter (the
+          # textarea honors it) or the two-character literal `\n`. Both
+          # must render as a line break in the tabular stub column, so
+          # translate the literal on commit.
+          if (identical(k, "stub_label") && is.character(raw)) {
+            raw <- gsub("\\n", "\n", raw, fixed = TRUE)
+          }
+          .commit_opt(store, rv_err, obj, row, raw)
         })
       })
     }

@@ -187,13 +187,19 @@ input[type="radio"] {
   display: flex;
 }
 .ar-actbar {
-  flex: 0 0 var(--ar-rail-w);
+  /* Longhand: Chrome drops `flex: 0 0 var(...)` because var() cannot be
+     classified as grow-vs-basis at parse time, so the shorthand becomes
+     `0 1 auto` and the rail collapses to icon width. */
+  flex-grow: 0;
+  flex-shrink: 0;
+  flex-basis: var(--ar-rail-w);
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: var(--ar-space-1);
   padding: var(--ar-space-2) 0;
-  background: var(--ar-chrome);
+  /* White, VS-Code-style (2026-07-04 request) -- not the grey chrome. */
+  background: var(--ar-paper);
   border-right: 1px solid var(--ar-rule);
 }
 .ar-act-btn {
@@ -315,20 +321,28 @@ input[type="radio"] {
   flex: 1 1 auto;
   display: flex;
   align-items: center;
-  justify-content: center;
+  /* NO justify-content: center -- the desk is a COLUMN flexbox, so it
+     became vertical centering and floated the sticky toolbar mid-desk. */
   position: relative;
 }
 /* v5 collapse (decision #8): the workspace classes mirrored from the store
    by the ar-collapse message fold each side panel to a 34px strip. What
    shows INSIDE a folded panel (status dots / icon strip) is that module's
    own concern -- the frame only owns the width. */
+/* Full-hide (VS-Code-style): the mode button in the activity bar is the
+   re-opener, so a persistent stub column would just look broken.
+   `display: none` is used over `flex-basis: 0` because Chrome refuses to
+   shrink a flex item below its min-content width regardless of
+   `flex-basis: 0 !important` + `min-width: 0 !important` -- only
+   `display: none` or `max-width: 0` actually removes the column. */
 .ar-rail-collapsed .ar-body-report > :first-child {
-  flex: 0 0 34px;
+  display: none;
 }
-/* The inspector folds to its tab strip (not a 34px stub): the strip stays
-   visible and doubles as the show/hide toggle. */
+/* The inspector folds to exactly the tab strip's own width -- no leftover
+   card padding on the right of Roles/Options/Filters/Ranks (the strip
+   itself is the show/hide toggle, so it must stay visible). */
 .ar-insp-collapsed .ar-body-report > :nth-child(3) {
-  flex: 0 0 63px;
+  flex-basis: var(--ar-rail-w) !important;
 }
 
 /* A stand-in for a mode body whose real module lands in a later task. */
@@ -364,6 +378,14 @@ input[type="radio"] {
 .ar-toc {
   height: 100%;
   overflow-y: auto;
+  /* VS-Code style (2026-07-04): explicit x=hidden kills the bogus horizontal
+     scrollbar that browsers emit when only overflow-y is set. */
+  overflow-x: hidden;
+  /* White contents column with its own thin separator against the grey
+     canvas -- three visually distinct bands (activity bar / contents / desk),
+     each ruled off with a 1px line. */
+  background: var(--ar-paper);
+  border-right: 1px solid var(--ar-rule);
   padding: var(--ar-space-4) var(--ar-space-3);
   display: flex;
   flex-direction: column;
@@ -642,32 +664,6 @@ input[type="radio"] {
   gap: var(--ar-space-2);
 }
 
-/* -- Recommended for your data -- */
-.ar-add-rec-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ar-space-1);
-  margin-bottom: var(--ar-space-2);
-}
-.ar-add-rec-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ar-space-2);
-  padding: var(--ar-space-2);
-  background: var(--ar-accent-weak);
-  border-radius: var(--ar-radius);
-}
-.ar-add-rec-label {
-  font-size: 12.5px;
-  color: var(--ar-ink);
-}
-.ar-add-rec-btn {
-  flex: 0 0 auto;
-  font-size: 11.5px;
-  padding: 3px 10px;
-}
-
 /* -- Preset library: search + domain-grouped rows -- */
 .ar-add-lib-list {
   display: flex;
@@ -757,6 +753,10 @@ input[type="radio"] {
   display: flex;
   flex-direction: column;
   align-items: center;
+  /* Beat the frame's `.ar-body-report > :nth-child(2)` centering: in this
+     column flexbox it becomes VERTICAL centering, which floats the sticky
+     toolbar mid-desk instead of pinning it to the top. */
+  justify-content: flex-start;
 }
 /* v5 code view (decision #8): the desk holds both the artifact and the
    reproduction-script panel; `ar-showing-code` (flipped by the
@@ -945,6 +945,13 @@ input[type="radio"] {
 .tabular-doc .tabular-table {
   font-size: 11px !important;
 }
+/* Stub column header (first `<th>`): the user's `stub_label` reads as a
+   heading over the row-stub column ("Age", "n", "Mean (SD)", ...), which
+   is itself left-aligned. Centering the header floats it off-column. */
+.tabular-doc .tabular-table thead th:first-child {
+  text-align: left !important;
+  white-space: pre-line !important;
+}
 .tabular-doc .tabular-footnote {
   color: var(--ar-ink-3) !important;
 }
@@ -1116,7 +1123,9 @@ input[type="radio"] {
    (explorer-style, 2026-07-04). The rail itself is the collapsed strip --
    no chevrons, no slim div. Width shared with the left activity rail. -- */
 .ar-insp-tabs {
-  flex: 0 0 var(--ar-rail-w);
+  flex-grow: 0;
+  flex-shrink: 0;
+  flex-basis: var(--ar-rail-w);
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -1173,7 +1182,9 @@ input[type="radio"] {
    desk column. The controls are the Preact component (srcjs/toolbar.js);
    these classes are what it renders. */
 .ar-toolbar {
-  flex: 0 0 var(--ar-toolbar-h);
+  flex-grow: 0;
+  flex-shrink: 0;
+  flex-basis: var(--ar-toolbar-h);
   align-self: stretch;
   position: sticky;
   top: 0;
@@ -1266,12 +1277,36 @@ input[type="radio"] {
   font-weight: 400;
 }
 
-/* -- telemetry line -- */
+/* -- telemetry line: an (i) icon plus the record-count headline shown
+   INLINE (no waiting for a tooltip). The title still carries the fuller
+   detail for keyboard/hover users. -- */
 .ar-insp-tel {
   padding: 6px var(--ar-space-3) 8px;
   border-top: 1px solid var(--ar-rule);
   font-size: 10.5px;
   color: var(--ar-ink-4);
+  display: flex;
+  justify-content: flex-end;
+}
+.ar-info-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ar-ink-4);
+  cursor: help;
+  padding: 2px 6px;
+  border-radius: var(--ar-radius);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+}
+.ar-info-icon:hover,
+.ar-info-icon:focus {
+  color: var(--ar-accent);
+  background: var(--ar-accent-weak);
+  outline: none;
+}
+.ar-info-text {
+  white-space: nowrap;
 }
 
 /* -- roles editor: one fieldset per slot -- */
@@ -1468,9 +1503,15 @@ input[type="radio"] {
 }
 .ar-peek-bar-row {
   display: grid;
-  grid-template-columns: minmax(48px, 38%) 1fr auto;
+  /* Fixed right column so the count width (1 vs 2 vs 3 digits) does not
+     shift the `1fr` bar column between rows -- otherwise every bar ends
+     at a different x-coordinate. Right-aligned inside a 32px slot. */
+  grid-template-columns: minmax(48px, 38%) 1fr 32px;
   align-items: center;
   gap: var(--ar-space-1);
+}
+.ar-peek-n {
+  text-align: right;
 }
 .ar-peek-val {
   font-size: 10.5px;
@@ -1549,6 +1590,17 @@ input[type="radio"] {
   border-radius: var(--ar-radius);
   padding: 2px 5px;
 }
+/* Focus indicator: Bootstrap's default `.form-control:focus` draws a
+   0.25rem outer box-shadow, which the inspector body's overflow clips on
+   the right (the input is flush against the pane edge). Redraw as an
+   INSET outline so it stays inside the input's border-box. */
+.ar-level-display:focus,
+.ar-levels-add input:focus {
+  outline: 2px solid var(--ar-accent);
+  outline-offset: -2px;
+  box-shadow: none;
+  border-color: var(--ar-accent);
+}
 .ar-levels-add {
   display: flex;
   gap: 4px;
@@ -1608,10 +1660,13 @@ input[type="radio"] {
 }
 .ar-data-rail {
   flex: 0 0 224px;
-  background: var(--ar-chrome);
+  background: var(--ar-paper);
   border-right: 1px solid var(--ar-rule);
   padding: var(--ar-space-3) var(--ar-space-2);
   overflow-y: auto;
+  /* Same treatment as .ar-toc: kill the extraneous horizontal scrollbar
+     the browser emits when only overflow-y is set. */
+  overflow-x: hidden;
 }
 .ar-data-src {
   display: flex;
@@ -1839,8 +1894,37 @@ input[type="radio"] {
   flex-direction: column;
   gap: var(--ar-space-1);
 }
-.ar-opt-sec-label {
-  display: block;
+/* Filled band so each section header reads as a header, not another
+   option row. Applies to every inspector-pane section label:
+   Options   -- TITLE, FOOTNOTES, ROWS, COLUMNS, PAGE & OUTPUT, ...
+   Roles     -- SOURCE, TREATMENT ARMS, SUMMARIZE, ...
+   Filters   -- POPULATION, ...
+   Ranks     -- ORDER, HIERARCHY, ...
+   `.ar-role-src` (the top SOURCE line) is banded as a whole -- it's not
+   just a label, it packs {SOURCE, ADSL, kind, dims}.
+   `<legend>` in the roles pane defaults to intrinsic content-width even
+   with `display: block`; force it to 100% + box-sizing so the band
+   full-bleeds across the pane regardless of drag-resize width. */
+.ar-opt-sec-label,
+.ar-insp-pane legend.ar-label,
+.ar-insp-pane > .ar-label,
+.ar-insp-pane .ar-role-src {
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-1);
+  width: auto;
+  box-sizing: border-box;
+  background: rgba(27, 31, 35, 0.05);
+  color: var(--ar-ink-3);
+  padding: 5px var(--ar-space-3);
+  margin: 0 calc(-1 * var(--ar-space-3)) 4px;
+  border-top: 0;
+  border-bottom: 0;
+}
+/* Legend needs width:100% AND float:none to actually stretch. */
+.ar-insp-pane legend.ar-label {
+  width: calc(100% + var(--ar-space-3) * 2);
+  float: none;
 }
 .ar-opt-sec .form-group,
 .ar-opt-sec .shiny-input-container {
@@ -1888,11 +1972,24 @@ input[type="radio"] {
   padding: 0;
 }
 
-/* wide text knobs (Header N template, margins list): the 88px right-align
-   numeric default reads wrong for templated text */
-.ar-opt-row-wide input[type="text"] {
+/* wide text knobs (Header N template, margins list, stub label): the 88px
+   right-align numeric default reads wrong for templated text. Two-class
+   specificity so the later `.ar-opt-row input[type="text"]` right-align
+   default does not win. Textarea covers the stub-label multi-line case. */
+.ar-opt-row.ar-opt-row-wide input[type="text"],
+.ar-opt-row.ar-opt-row-wide textarea {
   width: 150px;
   text-align: left;
+}
+.ar-opt-row.ar-opt-row-wide textarea.ar-opt-input {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  line-height: 1.35;
+  min-height: 28px;
+  resize: vertical;
+  padding: 3px 6px;
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius);
 }
 
 /* -- running header/footer band rows: [left][center][right][remove] -- */
@@ -1934,6 +2031,33 @@ input[type="radio"] {
   font-size: 10.5px;
   border: 1px solid var(--ar-rule);
   border-radius: var(--ar-radius);
+  padding: 4px 6px;
+  background: var(--ar-paper);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 140px;
+  overflow-y: auto;
+}
+.ar-span-col {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 11px;
+  color: var(--ar-ink);
+  cursor: pointer;
+}
+.ar-span-col input[type="checkbox"] {
+  margin: 0;
+  flex: 0 0 auto;
+}
+.ar-span-col-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.ar-span-col-disabled input {
+  cursor: not-allowed;
 }
 
 /* -- schema option rows: [label 1fr] [control auto] -- */
@@ -2460,21 +2584,10 @@ input[type="radio"] {
 .ar-src-head .ar-label {
   margin: 0;
 }
+/* Same full-hide as the Report contents rail (VS-Code style; see the
+   note above about why `display: none` beats flex-basis: 0). */
 .ar-rail-collapsed .ar-data-rail {
-  flex-basis: 34px;
-  padding-left: 2px;
-  padding-right: 2px;
-}
-.ar-rail-collapsed .ar-data-rail .ar-label,
-.ar-rail-collapsed .ar-data-rail .ar-data-src,
-.ar-rail-collapsed .ar-data-rail .ar-add-cta {
   display: none;
-}
-.ar-rail-collapsed .ar-data-rail .ar-src-head {
-  justify-content: center;
-}
-.ar-rail-collapsed .ar-src-cv svg {
-  transform: rotate(180deg);
 }
 
 /* ============ 09 canvas context menu + desk hint (2026-07-04) ============ */

@@ -96,6 +96,13 @@ mod_toolbar_server <- function(id, store) {
         }
       }
     )
+    # Keep the download output non-suspended: the anchor lives under
+    # `.ar-hidden-dl` (`display: none`), which Shiny normally treats as
+    # not-visible and suspends -- leaving the <a>'s href stuck at `#`, so
+    # a programmatic .click() falls back to the current page URL and
+    # macOS's save dialog offers `download.html`. Must run AFTER the
+    # `output$rtf <-` assignment; `outputOptions()` errors otherwise.
+    shiny::outputOptions(output, "rtf", suspendWhenHidden = FALSE)
 
     # State push: everything the Preact component displays. The client
     # buffers the last message until the component mounts, so ordering

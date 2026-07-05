@@ -1,93 +1,10 @@
 # The Add-output overlay (design spec #4, "Add output"): a centred dialog
-# shown when `store$rv$adding` is TRUE. Three sections -- data-driven
-# recommendations, the searchable preset library grouped by domain, and a
-# bare-generator "start from scratch" path -- all three end at either
-# `add_from_preset()` or `add_from_generator()` (fct_store.R), which already
-# append + select + close nothing: THIS module clears `rv$adding` itself once
-# the mutation lands.
-
-# ---- recommendations ----------------------------------------------------
-
-#' The preset id(s) to recommend for one dataset, keyed off its
-#' `detect_structure()` classification plus a literal AEBODSYS/AEDECOD
-#' column check (belt-and-suspenders alongside the `"occurrence"` structure
-#' match) and a literal `CNSR` column check. A dataset can collect
-#' recommendations from more than one rule (e.g. `ADTTE` is `"subject"`
-#' AND carries `CNSR`, so it recommends both `demographics` and `km_os`) --
-#' the rules are independent flags, not a mutually exclusive switch.
-#' @noRd
-.rec_preset_ids <- function(con, dataset) {
-  items <- arpillar::data_items(con, dataset)
-  cols <- items$name
-  structure <- arpillar::detect_structure(con, dataset)
-  is_occurrence <- identical(structure, "occurrence") ||
-    all(c("AEBODSYS", "AEDECOD") %in% cols)
-
-  ids <- character(0)
-  if (identical(structure, "subject")) {
-    ids <- c(ids, "demographics")
-  }
-  if (identical(structure, "bds")) {
-    ids <- c(ids, "mean_over_time", "box_by_visit")
-  }
-  if (is_occurrence) {
-    ids <- c(ids, "ae_overall", "ae_soc_pt")
-  }
-  if ("CNSR" %in% cols) {
-    ids <- c(ids, "km_os")
-  }
-  ids
-}
-
-#' One recommendation row: `preset_id`, `dataset`, and the display `label`
-#' ("<preset label> \u2014 from <DATASET>").
-#' @noRd
-.rec_row <- function(preset_id, dataset) {
-  pr <- arpillar::preset(preset_id)
-  list(
-    preset_id = preset_id,
-    dataset = dataset,
-    label = paste0(pr$label, " \u2014 from ", dataset)
-  )
-}
-
-#' Every recommendation row across every catalog dataset, in catalog then
-#' rule order, FILTERED to only the (preset, dataset) pairs that will
-#' actually render -- a candidate is dropped when `dataset` is missing any
-#' of the preset's role vars (`.missing_vars()`, the same var-coverage
-#' check the manual preset-library path uses for its warning). The
-#' one-click recommendation Add has no dataset picker to show a warning
-#' in, so an unrenderable recommendation would add silently; filtering
-#' here is both the fix for that AND for the over-eager heuristic (e.g.
-#' `demographics` recommended from `ADTTE`, which has none of AGE/SEX/
-#' RACE -- `detect_structure()` alone cannot see that). Memoized in
-#' `store$cache` under a `"rec::"`-prefixed key keyed on `catalog_nonce`
-#' (fct_store.R's `cached_ard()` reserves this prefix) --
-#' `detect_structure()`/`data_items()` are metadata-only queries, cheap
-#' even unmemoized at demo scale, but the memo keeps this module
-#' consistent with the two-stage cache seam and avoids re-querying on
-#' every render while the overlay is open.
-#' @noRd
-.recommendations <- function(store) {
-  key <- paste0("rec::", store$rv$catalog_nonce)
-  hit <- store$cache[[key]]
-  if (!is.null(hit)) {
-    return(hit)
-  }
-  grid <- arpillar::catalog_grid(store$con)
-  rows <- list()
-  for (dataset in grid$name) {
-    for (preset_id in .rec_preset_ids(store$con, dataset)) {
-      pr <- arpillar::preset(preset_id)
-      if (length(.missing_vars(store$con, pr, dataset)) > 0L) {
-        next
-      }
-      rows[[length(rows) + 1L]] <- .rec_row(preset_id, dataset)
-    }
-  }
-  store$cache[[key]] <- rows
-  rows
-}
+# shown when `store$rv$adding` is TRUE. Two sections -- the searchable
+# preset library grouped by domain, and a bare-generator "start from
+# scratch" path -- both end at either `add_from_preset()` or
+# `add_from_generator()` (fct_store.R), which already append + select +
+# close nothing: THIS module clears `rv$adding` itself once the mutation
+# lands.
 
 # ---- preset library -------------------------------------------------------
 
@@ -154,6 +71,22 @@
   unique(unlist(preset$roles, use.names = FALSE))
 }
 
+#' `preset`'s role vars absent from `ds_cols`, with the CDISC arm-var
+#' swap: a preset-listed arm var (presets hard-code "TRT01P") counts as
+#' satisfied whenever the dataset carries any of `.ARM_VAR_ALTS`, because
+#' `.roles_from_preset()` swaps to whichever is present. Without this,
+#' every BDS dataset (ADAE / ADCM / ADLB / ADVS) falsely reports "missing
+#' TRT01P" even though TRTA covers the treatment slot.
+#' @noRd
+.effective_missing <- function(vars, ds_cols) {
+  vars <- if (any(.ARM_VAR_ALTS %in% ds_cols)) {
+    setdiff(vars, .ARM_VAR_ALTS)
+  } else {
+    vars
+  }
+  setdiff(vars, ds_cols)
+}
+
 #' The catalog dataset whose columns cover the MOST of `preset`'s role
 #' vars, or `NULL` when no catalog dataset covers even one. Ties break by
 #' `catalog_grid()`'s own (insertion) order -- the first-registered
@@ -168,7 +101,10 @@
   }
   coverage <- vapply(
     grid$name,
-    function(ds) sum(vars %in% arpillar::data_items(con, ds)$name),
+    function(ds) {
+      length(vars) -
+        length(.effective_missing(vars, arpillar::data_items(con, ds)$name))
+    },
     integer(1)
   )
   if (max(coverage) == 0L) {
@@ -185,9 +121,10 @@
   if (is.null(dataset) || !nzchar(dataset)) {
     return(character(0))
   }
-  vars <- .preset_vars(preset)
-  cols <- arpillar::data_items(con, dataset)$name
-  setdiff(vars, cols)
+  .effective_missing(
+    .preset_vars(preset),
+    arpillar::data_items(con, dataset)$name
+  )
 }
 
 # ---- UI ---------------------------------------------------------------
@@ -202,32 +139,6 @@
 mod_add_output_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::uiOutput(ns("overlay"), class = "ar-add-overlay-slot")
-}
-
-#' One recommendation row: label + a one-click Add. The Add button posts a
-#' single shared `input$rec_add` input carrying `{preset_id, dataset}`
-#' (the `.toc_kebab()`/`.toc_row()` pattern in mod_contents.R -- one
-#' `Shiny.setInputValue` per click, no per-row dynamically-named input/
-#' observer pair to keep in sync with how many recommendations exist on a
-#' given render).
-#' @noRd
-.rec_ui <- function(ns, row) {
-  add_js <- sprintf(
-    "Shiny.setInputValue('%s', {preset_id: '%s', dataset: '%s', nonce: Date.now()}, {priority: 'event'})",
-    ns("rec_add"),
-    row$preset_id,
-    row$dataset
-  )
-  shiny::tags$div(
-    class = "ar-add-rec-row",
-    shiny::tags$span(class = "ar-add-rec-label", row$label),
-    shiny::tags$button(
-      type = "button",
-      class = "btn btn-outline-secondary ar-add-rec-btn",
-      onclick = add_js,
-      "Add"
-    )
-  )
 }
 
 #' One preset library row: kind glyph + label + generator caption, opens
@@ -348,7 +259,6 @@ mod_add_output_ui <- function(id) {
   live_dataset = NULL,
   search_seed = search
 ) {
-  recs <- .recommendations(store)
   groups <- .library_groups(.library_rows(), search)
   gens <- arpillar::generators()
 
@@ -398,15 +308,6 @@ mod_add_output_ui <- function(id) {
       ),
       shiny::tags$div(
         class = "ar-add-body",
-        if (length(recs) > 0L) {
-          shiny::tagList(
-            .label("Recommended for your data"),
-            shiny::tags$div(
-              class = "ar-add-rec-list",
-              lapply(recs, function(row) .rec_ui(ns, row))
-            )
-          )
-        },
         .label("Preset library"),
         shiny::textInput(
           ns("search"),
@@ -581,16 +482,6 @@ mod_add_output_server <- function(id, store) {
     shiny::observeEvent(input$pick_generator, {
       picked(list(kind = "generator", id = input$pick_generator))
       override_dataset(NULL)
-    })
-
-    # Recommendation one-click add: `.rec_ui()` posts `{preset_id, dataset}`
-    # straight off the row it renders (mirroring mod_contents.R's
-    # `.toc_kebab()` inline-onclick pattern), so this is ONE observer
-    # regardless of how many recommendation rows exist on a given render --
-    # no per-row dynamic input/observer pair to keep in sync.
-    shiny::observeEvent(input$rec_add, {
-      add_from_preset(store, input$rec_add$preset_id, input$rec_add$dataset)
-      .close_overlay()
     })
 
     shiny::observeEvent(input$add_preset, {

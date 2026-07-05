@@ -338,6 +338,8 @@ mod_frame_server <- function(id, store) {
       filename = function() paste0(.report_slug(store$rv$report), ".zip"),
       content = function(file) file.copy(ex$zip, file, overwrite = TRUE)
     )
+    # See mod_toolbar.R: hidden-link download outputs must stay unsuspended.
+    shiny::outputOptions(output, "export_dl", suspendWhenHidden = FALSE)
 
     # store$undo is a plain (non-reactive) environment; store$rv$report is
     # the reactive proxy every commit()/undo()/redo() writes last, so reading

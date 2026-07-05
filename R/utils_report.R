@@ -78,6 +78,16 @@
 
 # ---- construction ---------------------------------------------------------
 
+#' CDISC arm-var alternatives, in `.roles_from_preset()`'s preference order:
+#' actual-safety first (TRT01A), then planned (TRT01P), then BDS occurrence
+#' actual (TRTA) / planned (TRTP). Shared by `.roles_from_preset()`,
+#' `.missing_vars()`, and `.best_dataset()` so a preset that hard-codes
+#' "TRT01P" is treated as satisfied whenever the target dataset carries any
+#' of these -- no misleading "missing TRT01P" warning on ADAE, no penalty in
+#' dataset auto-suggestion.
+#' @noRd
+.ARM_VAR_ALTS <- c("TRT01A", "TRT01P", "TRTA", "TRTP")
+
 #' Build the `roles` list for a preset: one [arpillar::role()] per slot,
 #' each holding one [arpillar::data_item()] per variable name in
 #' `preset$roles[[slot]]`, with `role_type` resolved off the catalog
@@ -98,8 +108,21 @@
     hit <- if (is.null(items)) character(0) else items[[col]][items$name == v]
     if (length(hit) == 1L && !is.na(hit)) hit else default
   }
+  # CDISC arm-var resolution for the "treatment" slot. Presets hard-code
+  # "TRT01P" (planned, ADSL-style), but safety analyses are on the actual
+  # arm (TRT01A) and BDS datasets (ADAE / ADCM / ADLB / ADVS / ...) carry
+  # TRTA / TRTP, not TRT01A/P. Swap the preset-listed name for the first
+  # column the target dataset actually has, in preference order:
+  # TRT01A -> TRT01P -> TRTA -> TRTP (see .ARM_VAR_ALTS). No match ->
+  # keep the preset name (validate flags it downstream).
+  arm_pick <- if (is.null(items)) NULL else {
+    Find(function(nm) nm %in% items$name, .ARM_VAR_ALTS)
+  }
   lapply(names(preset_roles), function(slot) {
     vars <- preset_roles[[slot]]
+    if (identical(slot, "treatment") && !is.null(arm_pick)) {
+      vars <- rep(arm_pick, length(vars))
+    }
     arpillar::role(
       slot = slot,
       items = lapply(vars, function(v) {
@@ -129,7 +152,11 @@
     roles = .roles_from_preset(con, dataset, preset$roles),
     filters = preset$filters %||% list(),
     options = preset$options %||% list(),
-    footnotes = as.character(preset$footnotes %||% character(0))
+    # Presets carry a canned footnote (e.g. "Safety Population.") that reads
+    # as noise most of the time: the population is already declared by the
+    # filter row (SAFFL == "Y") and the arframe title block. Start empty
+    # like `.object_from_generator()`; users can add their own.
+    footnotes = character(0)
   )
 }
 

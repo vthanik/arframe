@@ -231,26 +231,41 @@ mod_card_server <- function(id, store) {
     }) |>
       shiny::bindEvent(store$rv$insp_tab)
 
-    # Telemetry (the teal steal): dataset + retained/total records through
-    # the engine's own count -- no DBI call lives in this module.
+    # Telemetry (2026-07-04): a small info icon whose native `title` tooltip
+    # carries the detail (dataset, matched/total, filter status). The full
+    # line got noisy at the bottom of the inspector; the icon keeps the
+    # information one hover away without eating a whole row.
     output$telemetry <- shiny::renderUI({
       obj <- selected_object(store)
       if (is.null(obj)) {
-        return(shiny::span("no output selected"))
+        return(.info_icon("no output selected"))
       }
       counts <- tryCatch(
         arpillar::filter_count(store$con, obj@dataset, obj@filters),
         error = function(e) NULL
       )
       if (is.null(counts)) {
-        return(shiny::span(tolower(obj@dataset)))
+        return(.info_icon(sprintf("Dataset: %s", tolower(obj@dataset))))
       }
-      shiny::span(sprintf(
-        "%s \u00b7 %s of %s records",
+      filtered <- counts$total - counts$matched
+      # Headline (visible next to the icon) stays compact -- the fuller
+      # detail (with filtered-out count) goes into the hover title.
+      headline <- sprintf(
+        "%s · %s of %s records",
         tolower(obj@dataset),
         format(counts$matched, big.mark = ","),
         format(counts$total, big.mark = ",")
-      ))
+      )
+      detail <- paste(
+        c(
+          headline,
+          if (filtered > 0L) {
+            sprintf("Filtered out: %s", format(filtered, big.mark = ","))
+          }
+        ),
+        collapse = "\n"
+      )
+      .info_icon(detail)
     }) |>
       shiny::bindEvent(store$rv$report, store$rv$selected)
     # Born hidden (the app opens in Data mode, 2026-07-04).
