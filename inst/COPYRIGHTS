@@ -1,8 +1,10 @@
-IBM Plex Sans, IBM Plex Mono (subset: latin, woff2)
+IBM Plex Sans Regular (weight 400, woff2), IBM Plex Mono (subset: latin, woff2)
+Sans face is IBM Plex Sans Regular; heavier weights synth-bold from it.
 License: SIL Open Font License 1.1
 Copyright IBM Corp.
 https://github.com/IBM/plex
-Bundled in inst/www/fonts/
+Bundled in inst/www/fonts/ as IBMPlexSans-Regular.woff2,
+IBMPlexMono-Regular-Latin1.woff2, IBMPlexMono-Medium-Latin1.woff2.
 
 SortableJS
 Version: 1.15.6

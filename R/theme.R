@@ -5,20 +5,26 @@
 # can be referenced by hand-rolled chrome that bslib does not own. See
 # docs/superpowers/specs/2026-07-02-arframe-galley-design-system.md #1-2.
 
-#' The Galley bslib theme (ink-stamp blue, IBM Plex, 2px radius).
+#' The Galley bslib theme — Linear-family aesthetic (indigo accent,
+#' near-monochrome ink, 4px radius, IBM Plex Sans Regular).
 #'
 #' Sets only the Bootstrap-level brand variables. The desk/paper/chrome
-#' surfaces, the ink scale, stamps, chips, spacing, and motion tokens live in
-#' `inst/www/tokens.css` (linked via `.head_assets()`). IBM Plex Sans / Mono
-#' are self-hosted via `@font-face` in that stylesheet.
+#' surfaces, ink scale, stamps, chips, spacing, and motion tokens live in
+#' `inst/www/tokens.css` (linked via `.head_assets()`). IBM Plex Sans
+#' Regular (sans) + IBM Plex Mono are self-hosted via `@font-face` in
+#' that stylesheet. Palette + radius values here mirror the `--ar-*`
+#' tokens so bslib-owned surfaces (form controls, modals, dropdown
+#' menus) match arframe's hand-rolled chrome.
 #' @noRd
 ar_theme <- function() {
   bslib::bs_theme(
     version = 5,
-    primary = "#0378CD",
-    bg = "#FFFFFF",
-    fg = "#1B1F23",
-    danger = "#B3261E",
+    primary = "#0378cd",
+    bg = "#ffffff",
+    fg = "#08090a",
+    danger = "#dc2626",
+    success = "#16a34a",
+    warning = "#b45309",
     base_font = bslib::font_collection(
       "IBM Plex Sans",
       "system-ui",
@@ -37,7 +43,9 @@ ar_theme <- function() {
       "Menlo",
       "monospace"
     ),
-    "border-radius" = "2px"
+    "border-radius" = "4px",
+    "btn-border-radius" = "4px",
+    "input-border-radius" = "4px"
   )
 }
 

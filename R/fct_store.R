@@ -104,14 +104,23 @@ install_autosave <- function(store) {
       }
       later::later(
         function() {
-          if (isTRUE(store$rv$dirty) && !is.null(store$rv$path)) {
-            tryCatch(
-              save_touched(store),
-              error = function(e) {
-                log_line(store, sprintf("save failed: %s", conditionMessage(e)))
-              }
-            )
-          }
+          # `later` fires OUTSIDE the reactive graph, so bare reads of
+          # `store$rv$*` abort with "outside of reactive consumer". Wrap
+          # in `isolate()` -- the writes happen inside `save_touched`,
+          # which walks the store non-reactively anyway.
+          shiny::isolate({
+            if (isTRUE(store$rv$dirty) && !is.null(store$rv$path)) {
+              tryCatch(
+                save_touched(store),
+                error = function(e) {
+                  log_line(
+                    store,
+                    sprintf("save failed: %s", conditionMessage(e))
+                  )
+                }
+              )
+            }
+          })
         },
         delay = 0.5
       )

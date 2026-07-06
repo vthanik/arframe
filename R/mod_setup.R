@@ -1,25 +1,134 @@
-# Setup mode: 4 collapsible sections on ONE scrollable page. No tab rail.
-# Each section = a titled block with inline groups; the whole page is one
-# `renderUI` output so a `commit()` on any field re-renders in place. Writes
-# straight into `store$rv$report@theme`; auto-save observer flips `dirty`
-# and writes `setup.yml`.
+# Setup mode: SIX sections on ONE scrollable page.
+#   1. Study         (Identity + Extraction)
+#   2. Paths         (data + programs + output + logs) - the ONE section
+#                    where every filesystem pointer lives, folded up from
+#                    Data + Preferences+Paths + Sources.
+#   3. Treatment     (trtvar / trtvarn + arm decode grid)
+#   4. Populations   (ADaM-flag library)
+#   5. Page & Style  (Geometry + Header/footer bands + Footnote register)
+#   6. Summaries     (Continuous rows + Categorical rules + Precision)
+#   7. Team          (roster + activity + presence)
 #
-# Sections (final, 2026-07-06 -- see plan revision):
-#   1. Study        - Identity + Extraction + Data paths
-#   2. Populations  - ADaM-flag library (no estimand field; estimand is
-#                     per-output via options$arm_mode, not study-wide)
-#   3. Page         - Geometry + Running header + Running footer
-#   4. Summaries    - Continuous rows + Categorical rules + Precision
-#
-# Deleted: Data / Arm / Numbering / Decimals sub-tabs (folded into Study /
-# per-output / Summaries respectively). Arm entirely gone (estimand is
-# per-output).
+# Design (Stage 1, 2026-07-06 rebuild):
+#   * `.SETUP_SPEC` is the single declarative registry of every scalar
+#     value input the module owns. `.wire_all()` installs one observer
+#     per entry -- dead bindings become structurally impossible. Adding
+#     a new field means one row in the spec + a renderer placement at
+#     the declared id.
+#   * Structural mutations (add-row / delete-row, folder pickers) stay
+#     hand-wired -- their semantics are diverse enough that a
+#     declarative registry buys nothing.
+#   * The store's autosave observer already writes `setup.yml` on every
+#     commit; every entry here rides that path.
+
+# Precision fields render as free-form text; only accept non-negative
+# integers, otherwise drop the edit silently.
+.as_prec <- function(v) {
+  iv <- suppressWarnings(as.integer(v))
+  if (length(iv) != 1L || is.na(iv) || iv < 0L) NULL else iv
+}
+
+# Declarative registry of every SCALAR setup input.
+#   id     : Shiny input id (namespaced via `session$ns` at render time).
+#   path   : character() path into `report@theme` (nested via `[[`).
+#   coerce : optional; identity by default. Runs before the write.
+# See `.wire_all()` below.
+.SETUP_SPEC <- list(
+  # ---- Study --------------------------------------------------------------
+  list(id = "study_sponsor", path = c("study", "sponsor")),
+  list(id = "study_protocol", path = c("study", "protocol")),
+  list(id = "study_study", path = c("study", "study")),
+  list(id = "study_indication", path = c("study", "indication")),
+  list(id = "study_data_date", path = c("study", "data_date")),
+  list(id = "study_status", path = c("study", "status")),
+  # ---- Data (ADaM/SDTM + population bindings) ----------------------------
+  list(id = "data_adam_dir", path = c("data", "adam_dir")),
+  list(id = "data_sdtm_dir", path = c("data", "sdtm_dir")),
+  list(id = "data_pop_dataset", path = c("data", "pop_dataset")),
+  list(id = "data_subject_id", path = c("data", "subject_id")),
+  list(id = "data_pop_treatment_var", path = c("data", "pop_treatment_var")),
+  # ---- Treatment (Stage 2) ----------------------------------------------
+  list(id = "treatment_trtvar", path = c("treatment", "trtvar")),
+  list(id = "treatment_trtvarn", path = c("treatment", "trtvarn")),
+  # ---- Paths / Report conventions ---------------------------------------
+  list(
+    id = "preferences_numbering_scheme",
+    path = c("preferences", "numbering_scheme")
+  ),
+  list(
+    id = "preferences_sponsor_style",
+    path = c("preferences", "sponsor_style")
+  ),
+  list(id = "paths_programs_dir", path = c("paths", "programs_dir")),
+  list(id = "paths_output_rtf_dir", path = c("paths", "output_rtf_dir")),
+  list(id = "paths_datasets_dir", path = c("paths", "datasets_dir")),
+  list(id = "paths_logs_dir", path = c("paths", "logs_dir")),
+  # ---- Page geometry -----------------------------------------------------
+  list(id = "page_orientation", path = c("page", "orientation")),
+  list(id = "page_paper", path = c("page", "paper")),
+  list(id = "page_font_family", path = c("page", "font_family")),
+  list(
+    id = "page_font_size",
+    path = c("page", "font_size"),
+    coerce = function(v) {
+      iv <- suppressWarnings(as.integer(v))
+      if (length(iv) != 1L || is.na(iv)) NULL else iv
+    }
+  ),
+  # ---- Arm column headers -----------------------------------------------
+  list(
+    id = "arm_show_header_n",
+    path = c("arm", "show_header_n"),
+    coerce = function(v) identical(v, "yes")
+  ),
+  list(id = "arm_header_n_format", path = c("arm", "header_n_format")),
+  # ---- Summaries: categorical rules (previously dead) --------------------
+  list(
+    id = "cat_header_stat",
+    path = c("summaries", "categorical", "header_stat")
+  ),
+  list(
+    id = "cat_level_format",
+    path = c("summaries", "categorical", "level_format")
+  ),
+  list(
+    id = "cat_show_missing",
+    path = c("summaries", "categorical", "show_missing")
+  ),
+  list(
+    id = "cat_missing_label",
+    path = c("summaries", "categorical", "missing_label")
+  ),
+  # ---- Summaries: precision (previously dead) ----------------------------
+  list(id = "decimals_n", path = c("decimals", "n"), coerce = .as_prec),
+  list(id = "decimals_pct", path = c("decimals", "pct"), coerce = .as_prec),
+  list(id = "decimals_mean", path = c("decimals", "mean"), coerce = .as_prec),
+  list(id = "decimals_sd", path = c("decimals", "sd"), coerce = .as_prec),
+  list(
+    id = "decimals_median",
+    path = c("decimals", "median"),
+    coerce = .as_prec
+  ),
+  list(id = "decimals_min", path = c("decimals", "min"), coerce = .as_prec),
+  list(id = "decimals_max", path = c("decimals", "max"), coerce = .as_prec),
+  # ---- Top-level selectors -----------------------------------------------
+  list(id = "top_default_population", path = "default_population")
+)
 
 #' @noRd
 mod_setup_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::div(
     class = "ar-setup",
+    # `<datalist>` for continuous-stats-row atom autocomplete. Lives
+    # in the static UI so a renderUI re-fire never orphans it. The id
+    # is not namespaced -- HTML `<input list="...">` looks up by the
+    # id in the same document, and datalists have no server-side
+    # state.
+    shiny::tags$datalist(
+      id = "ar-stat-atoms",
+      lapply(.CONT_ATOMS, function(a) shiny::tags$option(value = a))
+    ),
     # shinyFiles binds its client-side handler at UI-build time to buttons
     # that already exist in the DOM -- a button rendered later inside a
     # renderUI never gets the binding. Instantiate the two pickers here in
@@ -27,6 +136,7 @@ mod_setup_ui <- function(id) {
     # (see `.ar-setup [data-ar-adam-pick]` / `[data-ar-sdtm-pick]`).
     shiny::div(
       class = "ar-setup-pickers",
+      `aria-hidden` = "true",
       shinyFiles::shinyDirButton(
         ns("data_adam_pick"),
         label = "Browse",
@@ -82,8 +192,9 @@ mod_setup_server <- function(id, store) {
     })
 
     output$page <- shiny::renderUI({
-      # React to catalog + whole-report edits so completion glyphs and the
-      # Sources list stay live.
+      # React to catalog + whole-report edits so completion glyphs stay
+      # live. Six pharma-aligned sections; Sources / Data / Preferences
+      # folded into Paths.
       store$rv$report
       store$rv$catalog_nonce
       shiny::tagList(
@@ -97,17 +208,17 @@ mod_setup_server <- function(id, store) {
         ),
         .setup_section(
           ns,
-          "sources",
-          "Sources",
-          .section_status_glyph(store, "sources"),
-          .setup_sources(ns, store)
+          "paths",
+          "Paths",
+          .section_status_glyph(store, "paths"),
+          .setup_paths(ns, store)
         ),
         .setup_section(
           ns,
-          "data",
-          "Data",
-          .section_status_glyph(store, "data"),
-          .setup_data(ns, store)
+          "treatment",
+          "Treatment",
+          .section_status_glyph(store, "treatment"),
+          .setup_treatment(ns, store)
         ),
         .setup_section(
           ns,
@@ -119,7 +230,7 @@ mod_setup_server <- function(id, store) {
         .setup_section(
           ns,
           "page",
-          "Page",
+          "Page & Style",
           .section_status_glyph(store, "page"),
           .setup_page_body(ns, store)
         ),
@@ -132,13 +243,6 @@ mod_setup_server <- function(id, store) {
         ),
         .setup_section(
           ns,
-          "preferences",
-          "Preferences & Paths",
-          .section_status_glyph(store, "preferences"),
-          .setup_preferences(ns, store)
-        ),
-        .setup_section(
-          ns,
           "team",
           "Team",
           .section_status_glyph(store, "team"),
@@ -148,20 +252,10 @@ mod_setup_server <- function(id, store) {
     })
     shiny::outputOptions(output, "page", suspendWhenHidden = FALSE)
 
-    # Study block bindings
-    .bind_theme_field(input, store, "study", "sponsor")
-    .bind_theme_field(input, store, "study", "protocol")
-    .bind_theme_field(input, store, "study", "study")
-    .bind_theme_field(input, store, "study", "indication")
-    .bind_theme_field(input, store, "study", "data_date")
-    .bind_theme_field(input, store, "study", "status")
-
-    # Data block bindings
-    .bind_theme_field(input, store, "data", "adam_dir")
-    .bind_theme_field(input, store, "data", "sdtm_dir")
-    .bind_theme_field(input, store, "data", "pop_dataset")
-    .bind_theme_field(input, store, "data", "subject_id")
-    .bind_theme_field(input, store, "data", "pop_treatment_var")
+    # Every scalar field is wired via the declarative `.SETUP_SPEC`. See
+    # top of file. Structural mutations (add/delete rows, folder pickers)
+    # stay hand-wired below.
+    .wire_all(input, store)
 
     # ADaM / SDTM / Sources folder pickers: shinyDirChoose delegates to a
     # modal; on a picked path, update the text field AND fire mount_folder
@@ -190,13 +284,6 @@ mod_setup_server <- function(id, store) {
       )
     })
 
-    # Preferences + Paths bindings (Stage 3).
-    .bind_theme_field(input, store, "preferences", "numbering_scheme")
-    .bind_theme_field(input, store, "preferences", "sponsor_style")
-    .bind_theme_field(input, store, "paths", "programs_dir")
-    .bind_theme_field(input, store, "paths", "output_rtf_dir")
-    .bind_theme_field(input, store, "paths", "datasets_dir")
-    .bind_theme_field(input, store, "paths", "logs_dir")
     lapply(c("adam", "sdtm"), function(kind) {
       shiny::observeEvent(input[[paste0("data_", kind, "_pick")]], {
         dir <- shinyFiles::parseDirPath(
@@ -226,41 +313,11 @@ mod_setup_server <- function(id, store) {
       })
     })
 
-    # Page block bindings
-    .bind_theme_field(input, store, "page", "orientation")
-    .bind_theme_field(input, store, "page", "paper")
-    .bind_theme_field(input, store, "page", "font_family")
-    .bind_theme_field(input, store, "page", "font_size")
-    .bind_theme_field(input, store, "page", "pagehead")
-    .bind_theme_field(input, store, "page", "pagefoot")
-
-    # Populations default
-    .bind_theme_top(input, store, "default_population")
-
-    # Arm column-header bindings (show N + format; the "Treatment" label is
-    # arpillar's built-in default, not a user setting).
-    .bind_theme_field(input, store, "arm", "header_n_format")
-    # show_header_n is a seg control with yes/no -- coerce to boolean.
-    shiny::observeEvent(
-      input$arm_show_header_n,
-      {
-        val <- identical(input$arm_show_header_n, "yes")
-        r <- store$rv$report
-        theme <- r@theme
-        if (is.null(theme$arm)) {
-          theme$arm <- list()
-        }
-        if (identical(theme$arm$show_header_n, val)) {
-          return()
-        }
-        theme$arm$show_header_n <- val
-        commit(store, S7::set_props(r, theme = theme), label = "edit setup")
-      },
-      ignoreInit = TRUE
-    )
-
     # Populations library observer: on any pop_* field edit, rebuild
     # `theme$populations` from the current inputs (ordered by row index).
+    # Count-mismatch guard: skip mid-flush when the input map lags the
+    # theme by one flush cycle (e.g. right after pop_add / pop_delete),
+    # otherwise we clobber the just-added or -removed row.
     shiny::observe({
       pops <- .collect_pops(input)
       if (length(pops) == 0L) {
@@ -268,6 +325,10 @@ mod_setup_server <- function(id, store) {
       }
       r <- store$rv$report
       theme <- r@theme
+      prior <- theme$populations %||% list()
+      if (length(prior) > 0L && length(pops) != length(prior)) {
+        return()
+      }
       if (identical(theme$populations, pops)) {
         return()
       }
@@ -306,6 +367,175 @@ mod_setup_server <- function(id, store) {
       )
     })
 
+    # Treatment arm library: same shape as populations. Rebuild `arms`
+    # from arm_row_* inputs; separate add / delete events for structural
+    # mutations.
+    shiny::observe({
+      arms <- .collect_arms(input)
+      if (length(arms) == 0L) {
+        return()
+      }
+      r <- store$rv$report
+      theme <- r@theme
+      if (is.null(theme$treatment)) {
+        theme$treatment <- list()
+      }
+      prior <- theme$treatment$arms %||% list()
+      # Skip mid-flush after arm_add / arm_delete.
+      if (length(prior) > 0L && length(arms) != length(prior)) {
+        return()
+      }
+      if (identical(theme$treatment$arms, arms)) {
+        return()
+      }
+      theme$treatment$arms <- arms
+      commit(store, S7::set_props(r, theme = theme), label = "edit arms")
+    })
+    shiny::observeEvent(input$arm_add, {
+      r <- store$rv$report
+      theme <- r@theme
+      if (is.null(theme$treatment)) {
+        theme$treatment <- list()
+      }
+      arms <- theme$treatment$arms %||% .ARM_SEEDS
+      arms <- c(
+        arms,
+        list(list(level_n = length(arms) + 1L, label = ""))
+      )
+      theme$treatment$arms <- arms
+      commit(store, S7::set_props(r, theme = theme), label = "add arm")
+    })
+    shiny::observeEvent(input$arm_delete, {
+      i <- as.integer(input$arm_delete)
+      r <- store$rv$report
+      theme <- r@theme
+      arms <- theme$treatment$arms %||% list()
+      if (i >= 1L && i <= length(arms)) {
+        arms <- arms[-i]
+      }
+      theme$treatment$arms <- arms
+      commit(store, S7::set_props(r, theme = theme), label = "delete arm")
+    })
+
+    # Footnote register: same shape as populations / arms. Rebuild
+    # `theme$footnotes` from foot_key_* + foot_text_* inputs; add + delete
+    # events for structural mutations.
+    shiny::observe({
+      foots <- .collect_foots(input)
+      r <- store$rv$report
+      theme <- r@theme
+      prior <- theme$footnotes %||% list()
+      # Skip mid-flush after foot_add / foot_delete.
+      if (length(prior) > 0L && length(foots) != length(prior)) {
+        return()
+      }
+      if (identical(theme$footnotes, foots)) {
+        return()
+      }
+      theme$footnotes <- foots
+      commit(store, S7::set_props(r, theme = theme), label = "edit footnotes")
+    })
+    shiny::observeEvent(input$foot_add, {
+      r <- store$rv$report
+      theme <- r@theme
+      reg <- theme$footnotes %||% list()
+      i <- length(reg) + 1L
+      new_key <- paste0("FN", i)
+      while (new_key %in% names(reg)) {
+        i <- i + 1L
+        new_key <- paste0("FN", i)
+      }
+      reg[[new_key]] <- ""
+      theme$footnotes <- reg
+      commit(store, S7::set_props(r, theme = theme), label = "add footnote")
+    })
+    shiny::observeEvent(input$foot_delete, {
+      i <- as.integer(input$foot_delete)
+      r <- store$rv$report
+      theme <- r@theme
+      reg <- theme$footnotes %||% list()
+      if (i >= 1L && i <= length(reg)) {
+        reg[[i]] <- NULL
+      }
+      theme$footnotes <- reg
+      commit(
+        store,
+        S7::set_props(r, theme = theme),
+        label = "delete footnote"
+      )
+    })
+
+    # Continuous statistic rows: same shape as populations. Rebuild from
+    # cont_label_* + cont_format_* + the row-level atoms; add + delete
+    # events for structural mutations. The atoms per row are display-
+    # only (they render as chips derived from stats), so the observer
+    # only tracks label + format.
+    shiny::observe({
+      collected <- .collect_conts(input)
+      if (length(collected) == 0L) {
+        return()
+      }
+      r <- store$rv$report
+      theme <- r@theme
+      if (is.null(theme$summaries)) {
+        theme$summaries <- list()
+      }
+      prior <- theme$summaries$continuous %||% .CONT_SEEDS
+      # Skip mid-flush: the input map lags the theme by one flush cycle
+      # right after a structural change (add / delete row). Rewriting
+      # here would clobber the just-appended or -removed row.
+      if (length(collected) != length(prior)) {
+        return()
+      }
+      # All three of label / stats / format now come from user input --
+      # `.collect_conts` parses the comma-separated stats field into a
+      # character vector.
+      rows <- collected
+      if (identical(theme$summaries$continuous, rows)) {
+        return()
+      }
+      theme$summaries$continuous <- rows
+      commit(
+        store,
+        S7::set_props(r, theme = theme),
+        label = "edit continuous rows"
+      )
+    })
+    shiny::observeEvent(input$cont_add, {
+      r <- store$rv$report
+      theme <- r@theme
+      if (is.null(theme$summaries)) {
+        theme$summaries <- list()
+      }
+      rows <- theme$summaries$continuous %||% .CONT_SEEDS
+      # Append a blank row using the same shape .CONT_SEEDS uses.
+      rows <- c(
+        rows,
+        list(list(label = "", stats = character(0), format = "a"))
+      )
+      theme$summaries$continuous <- rows
+      commit(
+        store,
+        S7::set_props(r, theme = theme),
+        label = "add continuous row"
+      )
+    })
+    shiny::observeEvent(input$cont_delete, {
+      i <- as.integer(input$cont_delete)
+      r <- store$rv$report
+      theme <- r@theme
+      rows <- theme$summaries$continuous %||% .CONT_SEEDS
+      if (i >= 1L && i <= length(rows)) {
+        rows <- rows[-i]
+      }
+      theme$summaries$continuous <- rows
+      commit(
+        store,
+        S7::set_props(r, theme = theme),
+        label = "delete continuous row"
+      )
+    })
+
     # Running header/footer: each row is 3 inputs (left/center/right).
     # The observer packs them into `list(left = <chr>, center = <chr>,
     # right = <chr>)` -- the shape tabular's page-band consumer expects.
@@ -316,6 +546,15 @@ mod_setup_server <- function(id, store) {
         theme <- r@theme
         if (is.null(theme$page)) {
           theme$page <- list()
+        }
+        # Skip mid-flush after band_*_add / band_*_delete: the band shape
+        # is `list(left = <chr>, center = <chr>, right = <chr>)`, so the
+        # row count is the length of any side vector.
+        prior <- theme$page[[key]]
+        prior_n <- if (is.list(prior)) length(prior$left %||% character(0)) else 0L
+        band_n <- length(band$left %||% character(0))
+        if (prior_n > 0L && band_n != prior_n) {
+          return()
         }
         if (identical(theme$page[[key]], band)) {
           return()
@@ -473,6 +712,12 @@ mod_setup_server <- function(id, store) {
 
 .section_status_glyph <- function(store, section) {
   status <- .section_status(store$rv$report@theme, section)
+  # Only render a status pill for `ok` (green check) or `partial` (missing-
+  # field count). Empty sections stay dot-less -- a bullet next to every
+  # unfilled title was visual noise (2026-07-06 user feedback).
+  if (identical(status$state, "none")) {
+    return(NULL)
+  }
   cls <- switch(
     status$state,
     ok = "ar-setup-glyph ar-setup-glyph-ok",
@@ -483,7 +728,7 @@ mod_setup_server <- function(id, store) {
     status$state,
     ok = "\u2713",
     partial = as.character(status$missing),
-    "\u2022"
+    ""
   )
   shiny::span(class = cls, text)
 }
@@ -492,15 +737,30 @@ mod_setup_server <- function(id, store) {
   need <- switch(
     section,
     study = c("sponsor", "protocol", "study", "data_date"),
-    data = c("adam_dir", "pop_dataset", "subject_id", "pop_treatment_var"),
+    paths = character(0), # scored across data + paths blocks
+    treatment = character(0), # scored on treatment$arms length
     populations = character(0),
-    sources = character(0),
     page = c("orientation", "paper"),
     summaries = character(0),
-    preferences = character(0),
     team = character(0),
     character(0)
   )
+  if (section == "paths") {
+    # ADaM directory is the minimum path a study needs; the rest are
+    # nice-to-haves. Green when it's set, muted when not.
+    v <- theme$data$adam_dir %||% theme$study$adam_dir %||% ""
+    if (nzchar(v)) {
+      return(list(state = "ok", missing = 0L))
+    }
+    return(list(state = "none", missing = 1L))
+  }
+  if (section == "treatment") {
+    arms <- theme$treatment$arms %||% list()
+    if (length(arms) == 0L) {
+      return(list(state = "none", missing = 0L))
+    }
+    return(list(state = "ok", missing = 0L))
+  }
   block <- theme[[section]] %||% list()
   if (section == "populations") {
     pops <- theme$populations %||% list()
@@ -580,12 +840,22 @@ mod_setup_server <- function(id, store) {
       "Extraction",
       shiny::div(
         class = "ar-setup-grid",
-        .flat_input(
-          ns,
-          "study_data_date",
-          "Data extraction date",
-          s$data_date %||% "",
-          placeholder = "YYYY-MM-DD"
+        # Native `<input type="date">` -- the OS provides its own picker;
+        # no JS library, no CSS overrides needed. Reads/writes ISO
+        # `YYYY-MM-DD` which is what `theme$study$data_date` stores.
+        shiny::div(
+          class = "ar-setup-field",
+          shiny::tags$label(
+            class = "ar-label",
+            `for` = ns("study_data_date"),
+            "Data extraction date"
+          ),
+          shiny::tags$input(
+            id = ns("study_data_date"),
+            class = "ar-input-flat",
+            type = "date",
+            value = s$data_date %||% ""
+          )
         ),
         .seg_control(
           ns,
@@ -599,18 +869,31 @@ mod_setup_server <- function(id, store) {
   )
 }
 
-# ---- Data section --------------------------------------------------------
+# ---- Paths section (merges Data + Preferences + Sources, Stage 2) --------
 
-.setup_data <- function(ns, store) {
+#' Setup > Paths: every filesystem pointer in one section. Groups:
+#' Data sources (ADaM + SDTM + Add-folder proxy), Population defaults
+#' (pop dataset + subject id + pop treatment var, once a catalog is
+#' mounted), Output directories, and Report conventions. Persists to
+#' `setup.yml` across the `data`, `paths`, and `preferences` theme
+#' blocks (unchanged shapes; only the UI is folded).
+#' @noRd
+.setup_paths <- function(ns, store) {
   d <- store$rv$report@theme$data %||% list()
+  prefs <- store$rv$report@theme$preferences %||% list()
+  paths <- store$rv$report@theme$paths %||% list()
   # Live-catalog probe: which datasets are mounted right now? Used to
   # populate the pop-dataset dropdown after import.
   cat <- tryCatch(arpillar::catalog_grid(store$con), error = function(e) NULL)
   ds_names <- if (is.null(cat) || nrow(cat) == 0L) character(0) else cat$name
   pop_dataset <- d$pop_dataset %||%
-    (if ("ADSL" %in% ds_names) "ADSL" else ds_names[[1L]] %||% "")
-  # Column vocabulary of the chosen population dataset -- feeds the
-  # subject_id + treatment-var dropdowns.
+    (if ("ADSL" %in% ds_names) {
+      "ADSL"
+    } else if (length(ds_names) > 0L) {
+      ds_names[[1L]]
+    } else {
+      ""
+    })
   cols <- character(0)
   if (nzchar(pop_dataset) && !is.null(store$con)) {
     cols <- tryCatch(
@@ -618,8 +901,8 @@ mod_setup_server <- function(id, store) {
       error = function(e) character(0)
     )
   }
-  # L-107 (Global TFL Reqs): subject IDs can stack -- USUBJID + SUBJID for
-  # rollover / long-term extension studies. Store as a comma-separated list.
+  # L-107 (Global TFL Reqs): subject IDs can stack for rollover /
+  # extension studies -- USUBJID + SUBJID, comma-separated.
   subject_id <- d$subject_id %||%
     (if ("USUBJID" %in% cols) "USUBJID" else "")
   pop_arm <- d$pop_treatment_var %||%
@@ -633,48 +916,59 @@ mod_setup_server <- function(id, store) {
   bindings_ready <- length(ds_names) > 0L
   shiny::tagList(
     .setup_group(
-      "Folder paths",
-      shiny::div(
-        class = "ar-setup-grid",
+      "Data sources",
+      shiny::tagList(
         shiny::div(
-          class = "ar-setup-field",
-          shiny::tags$label(class = "ar-label", "ADaM directory"),
+          class = "ar-setup-grid",
           shiny::div(
-            class = "ar-path-row",
-            .picker_proxy(ns("data_adam_pick")),
-            shiny::tags$input(
-              id = ns("data_adam_dir"),
-              class = "ar-input-flat ar-mono",
-              type = "text",
-              value = d$adam_dir %||% s_study(store)$adam_dir %||% "",
-              placeholder = "/path/to/adam"
+            class = "ar-setup-field",
+            shiny::tags$label(class = "ar-label", "ADaM directory"),
+            shiny::div(
+              class = "ar-path-row",
+              .picker_proxy(ns("data_adam_pick")),
+              shiny::tags$input(
+                id = ns("data_adam_dir"),
+                class = "ar-input-flat ar-mono",
+                type = "text",
+                value = d$adam_dir %||% s_study(store)$adam_dir %||% "",
+                placeholder = "/path/to/adam"
+              )
+            )
+          ),
+          shiny::div(
+            class = "ar-setup-field",
+            shiny::tags$label(class = "ar-label", "SDTM directory (optional)"),
+            shiny::div(
+              class = "ar-path-row",
+              .picker_proxy(ns("data_sdtm_pick")),
+              shiny::tags$input(
+                id = ns("data_sdtm_dir"),
+                class = "ar-input-flat ar-mono",
+                type = "text",
+                value = d$sdtm_dir %||% s_study(store)$sdtm_dir %||% "",
+                placeholder = "/path/to/sdtm"
+              )
             )
           )
         ),
+        # Add-folder proxy: mount an additional data folder without
+        # overwriting the ADaM/SDTM paths above. The full mounted
+        # catalog is displayed in Data mode.
         shiny::div(
-          class = "ar-setup-field",
-          shiny::tags$label(class = "ar-label", "SDTM directory (optional)"),
-          shiny::div(
-            class = "ar-path-row",
-            .picker_proxy(ns("data_sdtm_pick")),
-            shiny::tags$input(
-              id = ns("data_sdtm_dir"),
-              class = "ar-input-flat ar-mono",
-              type = "text",
-              value = d$sdtm_dir %||% s_study(store)$sdtm_dir %||% "",
-              placeholder = "/path/to/sdtm"
-            )
+          class = "ar-setup-extra-source",
+          .picker_proxy(ns("sources_pick")),
+          shiny::span(
+            class = "ar-muted ar-mono",
+            " Add another folder — the full catalog lives in Data mode."
           )
         )
       )
     ),
-    .setup_group(
-      "Bindings",
-      if (!bindings_ready) {
-        # No catalog yet -- render nothing here rather than an apologetic
-        # placeholder. Sources section above guides the user to add a folder.
-        NULL
-      } else {
+    if (!bindings_ready) {
+      NULL
+    } else {
+      .setup_group(
+        "Population defaults",
         shiny::div(
           class = "ar-setup-grid",
           .select_input(
@@ -707,7 +1001,71 @@ mod_setup_server <- function(id, store) {
             pop_arm
           )
         )
-      }
+      )
+    },
+    .setup_group(
+      "Output directories",
+      shiny::tagList(
+        shiny::div(
+          class = "ar-setup-grid",
+          .flat_input(
+            ns,
+            "paths_programs_dir",
+            "Programs folder",
+            paths$programs_dir %||% "",
+            mono = TRUE,
+            placeholder = "./programs/"
+          ),
+          .flat_input(
+            ns,
+            "paths_output_rtf_dir",
+            "RTF output folder",
+            paths$output_rtf_dir %||% "",
+            mono = TRUE,
+            placeholder = "./output/"
+          ),
+          .flat_input(
+            ns,
+            "paths_datasets_dir",
+            "Datasets folder",
+            paths$datasets_dir %||% "",
+            mono = TRUE,
+            placeholder = "./data/"
+          ),
+          .flat_input(
+            ns,
+            "paths_logs_dir",
+            "Logs folder",
+            paths$logs_dir %||% "",
+            mono = TRUE,
+            placeholder = "./.arframe/logs/"
+          )
+        ),
+        shiny::p(
+          class = "ar-muted ar-mono",
+          "Empty = fall back to the default shown in the placeholder. Absolute paths pass through; relative paths resolve against the project root."
+        )
+      )
+    ),
+    .setup_group(
+      "Report conventions",
+      shiny::div(
+        class = "ar-setup-grid",
+        .seg_control(
+          ns,
+          "preferences_numbering_scheme",
+          "Default numbering",
+          c("14.x.x", "T-01", "None"),
+          prefs$numbering_scheme %||% "14.x.x"
+        ),
+        .flat_input(
+          ns,
+          "preferences_sponsor_style",
+          "Sponsor style library",
+          prefs$sponsor_style %||% "",
+          placeholder = "(none)"
+        )
+      )
     )
   )
 }
@@ -749,6 +1107,129 @@ s_study <- function(store) {
       })
     )
   )
+}
+
+# ---- Treatment section (Stage 2) ------------------------------------------
+
+# Two default arms so a fresh study sees the shape. Overwritten as soon
+# as the user edits or adds. Matches every GSK/BMS driver's convention:
+# planned treatment 1 = active, 0 or 2 = comparator, plus a Total column
+# built by the arm column headers when `arm$show_header_n` is on.
+.ARM_SEEDS <- list(
+  list(level_n = 1L, label = "Placebo"),
+  list(level_n = 2L, label = "Active")
+)
+
+#' Setup > Treatment: the analysis-treatment column names + arm decode
+#' grid. `trtvar` / `trtvarn` name the ADaM columns used at build time;
+#' `arms` is an ordered list of `list(level_n = <int>, label = <chr>)`
+#' rows -- what SAS studies encode as `proc format value MDRGSRTF ...`.
+#' Rows write to `theme$treatment$arms`; the running header / footer
+#' resolves `{arm-label}` from the row currently on-screen.
+#' @noRd
+.setup_treatment <- function(ns, store) {
+  t <- store$rv$report@theme$treatment %||% list()
+  arms <- t$arms %||% .ARM_SEEDS
+  if (length(arms) == 0L) {
+    arms <- .ARM_SEEDS
+  }
+  header <- shiny::div(
+    class = "ar-setup-pop-header ar-setup-arm-header",
+    shiny::span(class = "ar-mono", "LEVEL"),
+    shiny::span("LABEL"),
+    shiny::span("")
+  )
+  rows <- lapply(seq_along(arms), function(i) {
+    a <- arms[[i]]
+    shiny::div(
+      class = "ar-setup-pop-row ar-setup-arm-row",
+      `data-ar-arm-index` = i,
+      .flat_input(
+        ns,
+        paste0("arm_row_level_", i),
+        NULL,
+        as.character(a$level_n %||% i),
+        mono = TRUE,
+        placeholder = "1"
+      ),
+      .flat_input(
+        ns,
+        paste0("arm_row_label_", i),
+        NULL,
+        a$label %||% "",
+        placeholder = "Treatment label"
+      ),
+      shiny::tags$button(
+        type = "button",
+        class = "ar-pop-delete",
+        onclick = sprintf(
+          "Shiny.setInputValue('%s', %d, {priority: 'event'})",
+          ns("arm_delete"),
+          i
+        ),
+        title = "Delete arm",
+        "×"
+      )
+    )
+  })
+  shiny::tagList(
+    .setup_group(
+      "Analysis treatment column",
+      shiny::div(
+        class = "ar-setup-grid",
+        .flat_input(
+          ns,
+          "treatment_trtvar",
+          "Treatment variable",
+          t$trtvar %||% "TRT01P",
+          mono = TRUE,
+          placeholder = "TRT01P"
+        ),
+        .flat_input(
+          ns,
+          "treatment_trtvarn",
+          "Numeric level variable",
+          t$trtvarn %||% "TRT01PN",
+          mono = TRUE,
+          placeholder = "TRT01PN"
+        )
+      )
+    ),
+    .setup_group(
+      "Arm decode",
+      shiny::tagList(
+        shiny::div(class = "ar-setup-pops ar-setup-arms", header, rows),
+        shiny::tags$button(
+          id = ns("arm_add"),
+          type = "button",
+          class = "ar-pop-add action-button",
+          "+ Add arm"
+        ),
+        shiny::p(
+          class = "ar-muted ar-mono",
+          shiny::HTML(
+            "Substitutes into a running header or footer as <code>{arm-label}</code>; the arm column header consumes this decode when rendering a per-arm summary."
+          )
+        )
+      )
+    )
+  )
+}
+
+# Rebuild `theme$treatment$arms` from the current arm_row_* inputs.
+.collect_arms <- function(input) {
+  level_ids <- grep("^arm_row_level_[0-9]+$", names(input), value = TRUE)
+  if (length(level_ids) == 0L) {
+    return(list())
+  }
+  idx <- as.integer(sub("arm_row_level_", "", level_ids))
+  ord <- order(idx)
+  out <- lapply(idx[ord], function(i) {
+    lvl <- suppressWarnings(as.integer(input[[paste0("arm_row_level_", i)]]))
+    lbl <- as.character(input[[paste0("arm_row_label_", i)]] %||% "")
+    list(level_n = if (is.na(lvl)) i else lvl, label = lbl)
+  })
+  out
 }
 
 # ---- Populations section --------------------------------------------------
@@ -914,8 +1395,126 @@ s_study <- function(store) {
     .setup_group(
       "Footer rows",
       .band_rows(ns, "pagefoot", p$pagefoot)
+    ),
+    .setup_group(
+      "Footnote register",
+      .footnote_register(ns, store)
     )
   )
+}
+
+# Editable keyword -> text list, written to `theme$footnotes`. Rows
+# rendered as `foot_key_<i>` + `foot_text_<i>` pairs; the observer in
+# `mod_setup_server` rebuilds the register from the current inputs.
+# Reference from any output's footnote as `@KEY` (expanded at render /
+# export time -- see `.with_footnotes`).
+.footnote_register <- function(ns, store) {
+  reg <- store$rv$report@theme$footnotes %||% list()
+  if (length(reg) == 0L) {
+    reg <- list(SAFPOP = "Safety Population.")
+  }
+  header <- shiny::div(
+    class = "ar-setup-pop-header ar-setup-foot-header",
+    shiny::span(class = "ar-mono", "KEY"),
+    shiny::span("TEXT"),
+    shiny::span("")
+  )
+  keys <- names(reg)
+  rows <- lapply(seq_along(reg), function(i) {
+    shiny::div(
+      class = "ar-setup-pop-row ar-setup-foot-row",
+      `data-ar-foot-key` = keys[[i]],
+      .flat_input(
+        ns,
+        paste0("foot_key_", i),
+        NULL,
+        keys[[i]],
+        mono = TRUE,
+        placeholder = "KEY"
+      ),
+      .flat_input(
+        ns,
+        paste0("foot_text_", i),
+        NULL,
+        as.character(reg[[i]] %||% ""),
+        placeholder = "Registered footnote text"
+      ),
+      shiny::tags$button(
+        type = "button",
+        class = "ar-pop-delete",
+        onclick = sprintf(
+          "Shiny.setInputValue('%s', %d, {priority: 'event'})",
+          ns("foot_delete"),
+          i
+        ),
+        title = "Delete entry",
+        "×"
+      )
+    )
+  })
+  shiny::tagList(
+    shiny::div(class = "ar-setup-pops ar-setup-foots", header, rows),
+    shiny::tags$button(
+      id = ns("foot_add"),
+      type = "button",
+      class = "ar-pop-add action-button",
+      "+ Add entry"
+    ),
+    shiny::p(
+      class = "ar-muted ar-mono",
+      shiny::HTML(
+        "Reference from any output's footnote as <code>@KEY</code>; unregistered keys pass through as literal text."
+      )
+    )
+  )
+}
+
+# Rebuild `theme$summaries$continuous` from the current cont_label_* +
+# cont_format_* inputs. Row indices come from the input names; atoms
+# (the stats vector) survive across the round-trip because the
+# renderer reads them from theme and the observer preserves whatever
+# atoms the row had -- only the label + format are user-edited scalars.
+.collect_conts <- function(input) {
+  label_ids <- grep("^cont_label_[0-9]+$", names(input), value = TRUE)
+  if (length(label_ids) == 0L) {
+    return(list())
+  }
+  idx <- as.integer(sub("cont_label_", "", label_ids))
+  ord <- order(idx)
+  out <- lapply(idx[ord], function(i) {
+    stats_raw <- as.character(input[[paste0("cont_stats_", i)]] %||% "")
+    # Comma-separated -> character vector; drop empty tokens so a
+    # trailing comma doesn't leave a "".
+    stats <- trimws(strsplit(stats_raw, ",", fixed = TRUE)[[1L]])
+    stats <- stats[nzchar(stats)]
+    list(
+      label = as.character(input[[paste0("cont_label_", i)]] %||% ""),
+      stats = stats,
+      format = as.character(input[[paste0("cont_format_", i)]] %||% "a")
+    )
+  })
+  out
+}
+
+# Rebuild `theme$footnotes` from the current foot_key_* + foot_text_*
+# inputs. Empty keys are skipped so a half-typed entry does not clobber
+# the register.
+.collect_foots <- function(input) {
+  key_ids <- grep("^foot_key_[0-9]+$", names(input), value = TRUE)
+  if (length(key_ids) == 0L) {
+    return(list())
+  }
+  idx <- as.integer(sub("foot_key_", "", key_ids))
+  ord <- order(idx)
+  out <- list()
+  for (i in idx[ord]) {
+    key <- as.character(input[[paste0("foot_key_", i)]] %||% "")
+    if (!nzchar(key)) {
+      next
+    }
+    out[[key]] <- as.character(input[[paste0("foot_text_", i)]] %||% "")
+  }
+  out
 }
 
 # Render `key` as a stack of {left, center, right} rows. Reads the current
@@ -1165,19 +1764,20 @@ s_study <- function(store) {
       row$label %||% "",
       placeholder = "Row label"
     ),
-    shiny::div(
-      class = "ar-cont-atoms",
-      lapply(stats, function(st) {
-        shiny::tags$span(class = "ar-cont-atom ar-mono", st)
-      }),
-      if (length(stats) < 2L) {
-        NULL
-      } else {
-        shiny::tags$span(
-          class = "ar-cont-fmt-badge ar-mono",
-          row$format %||% "a"
-        )
-      }
+    # Editable stats field: comma-separated atoms (`n, mean, sd`).
+    # Chips render underneath as a live-echo of what parsed. Position
+    # letters in the format field (`a`, `b`, ...) map to atoms by
+    # index. Datalist gives autocomplete on the well-known atoms
+    # without restricting -- users can type any name the engine
+    # accepts.
+    .flat_input(
+      ns,
+      paste0("cont_stats_", i),
+      NULL,
+      paste(stats, collapse = ", "),
+      mono = TRUE,
+      placeholder = "n, mean, sd",
+      list_id = "ar-stat-atoms"
     ),
     .flat_input(
       ns,
@@ -1201,163 +1801,15 @@ s_study <- function(store) {
   )
 }
 
-# ---- Sources section (Stage 3) --------------------------------------------
+# Well-known continuous stat atoms; user can type any string but this
+# datalist gives autocomplete for the common ones. Rendered once
+# per module UI mount as a hidden `<datalist>`.
+.CONT_ATOMS <- c(
+  "n", "mean", "sd", "se", "median",
+  "q1", "q3", "iqr", "min", "max", "geomean"
+)
 
-#' Setup > Sources: the team-shared source catalog. Mounts the shared
-#' `.catalog_list_surface()` primitive (mod_catalog_list.R) with an
-#' "Add folder" tool that dispatches to the static-UI shinyDirButton. The
-#' 8-column grid renders the current arpillar catalog; teammate edits show
-#' up on the next Refresh (`catalog_nonce` bump).
-#' @noRd
-.setup_sources <- function(ns, store) {
-  grid <- tryCatch(arpillar::catalog_grid(store$con), error = function(e) NULL)
-  if (!is.null(grid) && nrow(grid) > 0L) {
-    # Overlay arframe's source-tracking (folder + kind) onto the arpillar
-    # catalog so the shared list-surface columns render populated.
-    grid$folder <- vapply(
-      grid$name,
-      function(n) .source_folder(store, n),
-      character(1)
-    )
-    grid$kind <- vapply(
-      grid$name,
-      function(n) .source_kind(store, n),
-      character(1)
-    )
-  }
-  items <- if (is.null(grid) || nrow(grid) == 0L) {
-    list()
-  } else {
-    .catalog_items_from_grid(grid)
-  }
-  rows <- lapply(items, function(it) .catalog_grid_row(ns, it))
-  scope <- if (length(items) == 0L) "No sources yet" else "All sources"
-  shiny::div(
-    class = "ar-setup-secbody",
-    .catalog_list_surface(
-      ns,
-      tools = shiny::tagList(
-        # Proxy button click-dispatches to the static shinyDirButton so
-        # shinyFiles' UI-build-time binding still fires.
-        shiny::tags$button(
-          type = "button",
-          class = "btn btn-outline-secondary ex-btn-sm",
-          onclick = sprintf(
-            "var t=document.getElementById('%s'); if(t) t.click();",
-            ns("sources_pick")
-          ),
-          .icon("folder_plus", 13),
-          " Add folder"
-        )
-      )
-    ),
-    # Static count strip + grid rendered inline (rather than through the
-    # renderUI slots that Data mode uses) so the Sources section stays
-    # self-contained in the Setup page's single-renderUI reactive.
-    shiny::tags$script(sprintf(
-      "(function(){var c=document.getElementById('%s');if(c){c.innerHTML='';}})();",
-      ns("catalog_count")
-    )),
-    shiny::div(
-      class = "ex-manage-header ar-sources-count",
-      .catalog_count(scope, length(items))
-    ),
-    if (length(items) == 0L) {
-      shiny::div(
-        class = "ex-empty",
-        shiny::div(
-          class = "ex-empty-title",
-          "No sources yet"
-        ),
-        shiny::div(
-          class = "ex-empty-sub",
-          "Click Add folder to point arframe at your ADaM / SDTM directory. Teammates opening this project will see the same sources."
-        )
-      )
-    } else {
-      .catalog_grid_table(rows)
-    }
-  )
-}
-
-# ---- Preferences + Paths section (Stage 3) --------------------------------
-
-#' Setup > Preferences & Paths: numbering scheme and per-project directory
-#' overrides. Persisted to `setup.yml` under `preferences:` and `paths:`;
-#' a teammate opening the same folder inherits the same values.
-#' @noRd
-.setup_preferences <- function(ns, store) {
-  prefs <- store$rv$report@theme$preferences %||% list()
-  paths <- store$rv$report@theme$paths %||% list()
-  shiny::tagList(
-    .setup_group(
-      "Preferences",
-      shiny::div(
-        class = "ar-setup-grid",
-        .seg_control(
-          ns,
-          "preferences_numbering_scheme",
-          "Default numbering",
-          c("14.x.x", "T-01", "None"),
-          prefs$numbering_scheme %||% "14.x.x"
-        ),
-        .flat_input(
-          ns,
-          "preferences_sponsor_style",
-          "Sponsor style library",
-          prefs$sponsor_style %||% "",
-          placeholder = "(none)"
-        )
-      )
-    ),
-    .setup_group(
-      "Paths",
-      shiny::tagList(
-        shiny::div(
-          class = "ar-setup-grid",
-          .flat_input(
-            ns,
-            "paths_programs_dir",
-            "Programs folder",
-            paths$programs_dir %||% "",
-            mono = TRUE,
-            placeholder = "./programs/"
-          ),
-          .flat_input(
-            ns,
-            "paths_output_rtf_dir",
-            "RTF output folder",
-            paths$output_rtf_dir %||% "",
-            mono = TRUE,
-            placeholder = "./output/"
-          ),
-          .flat_input(
-            ns,
-            "paths_datasets_dir",
-            "Datasets folder",
-            paths$datasets_dir %||% "",
-            mono = TRUE,
-            placeholder = "./data/"
-          ),
-          .flat_input(
-            ns,
-            "paths_logs_dir",
-            "Logs folder",
-            paths$logs_dir %||% "",
-            mono = TRUE,
-            placeholder = "./.arframe/logs/"
-          )
-        ),
-        shiny::p(
-          class = "ar-muted ar-mono",
-          "Empty = fall back to the default shown in the placeholder. Absolute paths pass through; relative paths resolve against the project root."
-        )
-      )
-    )
-  )
-}
-
-# ---- Team section (Stage 3) -----------------------------------------------
+# ---- Team section ---------------------------------------------------------
 
 #' Setup > Team: current user, activity feed, and who's working now.
 #' Wired to `.arframe/team.json`, `.arframe/activity/*.jsonl`, and
@@ -1383,38 +1835,31 @@ s_study <- function(store) {
       )
     ))
   }
+  # Simple roster only (2026-07-06 user feedback): "just list the user
+  # who has used / using the arframe". No You card, no activity feed,
+  # no explainer paragraph. Users come from `.arframe/team.json`; the
+  # current user is added automatically on save (see `save_touched`).
+  members <- if (is.null(path)) list() else .read_team(path)
+  # Always show the current user, even before a project is opened,
+  # so the section isn't empty on first launch.
+  if (length(members) == 0L) {
+    members <- list(list(name = me))
+  }
   shiny::tagList(
-    .setup_group(
-      "You",
-      shiny::div(
-        class = "ar-team-you",
+    shiny::div(
+      class = "ar-team-roster",
+      lapply(members, function(m) {
+        nm <- as.character(m$name %||% "")
         shiny::div(
-          class = "ar-team-avatar ar-team-avatar-you",
-          .team_initials(me)
-        ),
-        shiny::div(
-          class = "ar-team-you-meta",
-          shiny::div(class = "ar-team-you-name", me),
-          shiny::div(
-            class = "ar-team-you-badge",
-            shiny::span(class = "ex-conn-dot"),
-            if (is.null(path)) "Waiting for a project folder" else "Working now"
-          )
+          class = if (identical(nm, me)) {
+            "ar-team-row ar-team-row-you"
+          } else {
+            "ar-team-row"
+          },
+          shiny::div(class = "ar-team-avatar", .team_initials(nm)),
+          shiny::span(class = "ar-team-name", nm)
         )
-      )
-    ),
-    .setup_group("Working now", .team_presence_rail(path, me)),
-    .setup_group("Recent activity", .team_activity_feed(path, me)),
-    .setup_group(
-      "How team sync works",
-      shiny::p(
-        class = "ar-muted",
-        "Every save appends to ",
-        shiny::tags$code(".arframe/activity/", .team_slug(me), ".jsonl"),
-        " and every 30s updates ",
-        shiny::tags$code(".arframe/presence/", .team_slug(me), ".json"),
-        ". Open the same folder from another machine and Refresh -- teammates' edits and presence show up here. `.arframe/` never ships in the Package export."
-      )
+      })
     )
   )
 }
@@ -1562,7 +2007,8 @@ s_study <- function(store) {
   label,
   value = "",
   placeholder = NULL,
-  mono = FALSE
+  mono = FALSE,
+  list_id = NULL
 ) {
   cls <- if (mono) "ar-input-flat ar-mono" else "ar-input-flat"
   shiny::div(
@@ -1577,7 +2023,8 @@ s_study <- function(store) {
       class = cls,
       type = "text",
       value = value,
-      placeholder = placeholder %||% ""
+      placeholder = placeholder %||% "",
+      list = list_id
     )
   )
 }
@@ -1621,6 +2068,62 @@ s_study <- function(store) {
 }
 
 # ---- binding helpers ------------------------------------------------------
+
+# Iterate `.SETUP_SPEC` and install one `observeEvent` per entry via a
+# `lapply` closure -- the pattern shiny's `observeEvent(input[[nm]], ...)`
+# reliably supports. Every scalar field carries the same semantics: read
+# the input, coerce, walk the nested theme path, commit only on genuine
+# change. `.theme_set()`'s idempotence guard drops no-op writes so the
+# module can safely re-render with pre-existing values without churning
+# the dirty bit. A NULL from `coerce` (parse failure -- e.g. non-integer
+# in a precision field) drops the edit silently; the user's next
+# keystroke re-attempts. `ignoreNULL = TRUE` skips the initial NULL and
+# is more robust in testServer than `ignoreInit = TRUE`.
+.wire_all <- function(input, store) {
+  lapply(.SETUP_SPEC, function(e) {
+    shiny::observeEvent(
+      input[[e$id]],
+      {
+        val <- input[[e$id]]
+        coerce <- e$coerce %||% identity
+        val <- coerce(val)
+        if (is.null(val)) {
+          return()
+        }
+        r <- store$rv$report
+        theme <- .theme_set(r@theme, e$path, val)
+        if (identical(theme, r@theme)) {
+          return()
+        }
+        commit(store, S7::set_props(r, theme = theme), label = "edit setup")
+      },
+      ignoreInit = FALSE,
+      ignoreNULL = TRUE
+    )
+  })
+  invisible(NULL)
+}
+
+# Set a nested path in `theme` to `value`, returning a new theme (or
+# the unchanged input if the value is idempotent). Missing parents are
+# created as empty lists.
+.theme_set <- function(theme, path, value) {
+  if (length(path) == 1L) {
+    if (identical(theme[[path]], value)) {
+      return(theme)
+    }
+    theme[[path]] <- value
+    return(theme)
+  }
+  head <- path[[1L]]
+  parent <- theme[[head]] %||% list()
+  new_parent <- .theme_set(parent, path[-1L], value)
+  if (identical(new_parent, parent)) {
+    return(theme)
+  }
+  theme[[head]] <- new_parent
+  theme
+}
 
 .bind_theme_field <- function(input, store, block, key) {
   input_id <- paste0(block, "_", key)

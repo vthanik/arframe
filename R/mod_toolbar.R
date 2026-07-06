@@ -87,7 +87,11 @@ mod_toolbar_server <- function(id, store) {
         # stamps a date itself), and stamp the running-band chrome tokens
         # to literals. The ARD memo key ignores options, so the cached ARD
         # is reused as-is.
-        obj <- .with_chrome(.with_source(obj))
+        theme <- store$rv$report@theme
+        obj <- .with_chrome(
+          .with_footnotes(.with_source(obj), theme = theme),
+          theme = theme
+        )
         if (.is_figure_type(obj@type)) {
           arpillar::render_figure_rtf(store$con, obj, file)
         } else {

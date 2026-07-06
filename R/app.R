@@ -146,12 +146,18 @@ arframe <- function(project = NULL, data = NULL, folders = NULL, daemons = 2L) {
     # `.heartbeat()` is a no-op when there is no project OR the user is
     # generic; the observer stays cheap either way.
     presence_tick <- function() {
+      # `later` fires outside the reactive graph; `isolate()` lets us
+      # read the store fields without an "outside of reactive consumer"
+      # abort. `.heartbeat()` is a no-op when `path` is NULL, so the
+      # tick stays cheap even for un-opened projects.
       tryCatch(
-        .heartbeat(
-          store$rv$path,
-          .who_am_i(),
-          mode = store$rv$mode,
-          current_output = store$rv$selected
+        shiny::isolate(
+          .heartbeat(
+            store$rv$path,
+            .who_am_i(),
+            mode = store$rv$mode,
+            current_output = store$rv$selected
+          )
         ),
         error = function(e) NULL
       )

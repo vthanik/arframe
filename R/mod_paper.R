@@ -118,29 +118,65 @@
   )
 }
 
-#' A copy of `object` with the render-time chrome tokens (`{datetime}`,
-#' `{program}`, `{program_path}`) substituted as LITERALS into the
-#' pagehead/pagefoot band strings. arpillar REJECTS those tokens (they
-#' would break its byte-deterministic emit), so the app stamps them at
-#' render/export time -- the same seam as `.with_source()`. The
-#' backend-resolved `{page}`/`{npages}` field codes pass through untouched.
-#' `now` is injectable for tests.
+#' A copy of `object` with the render-time chrome tokens substituted as
+#' LITERALS into the pagehead/pagefoot band strings. arpillar REJECTS
+#' those tokens (they would break its byte-deterministic emit), so the
+#' app stamps them at render/export time -- the same seam as
+#' `.with_source()`. The backend-resolved `{page}`/`{npages}` field
+#' codes pass through untouched, as do unknown `{tokens}` -- never
+#' silently drop what a user typed.
+#'
+#' Recognised tokens:
+#'   * Chrome (independent of theme): `{datetime}`, `{program}`,
+#'     `{program_path}`.
+#'   * Study meta (from `theme$study`): `{sponsor}`, `{protocol}`,
+#'     `{study}`, `{study_id}`, `{indication}`, `{data_date}`,
+#'     `{status}`.
+#'   * Population label: `{analysis-set}` -- the object's population
+#'     override, else `theme$default_population`, looked up in
+#'     `theme$populations`.
+#'   * Arm label: `{arm-label}` -- from `theme$arm$label` (per-object
+#'     arm-column resolution is a render-leg concern).
+#'
+#' `now` is injectable for tests; `theme` defaults to empty so callers
+#' outside a report context stay correct.
 #' @noRd
-.with_chrome <- function(object, now = NULL) {
+.with_chrome <- function(object, now = NULL, theme = list()) {
   opts <- object@options
   if (is.null(opts$pagehead) && is.null(opts$pagefoot)) {
     return(object)
   }
-  stamp <- .chrome_stamp(now %||% Sys.time())
-  prog <- paste0("programs/", .output_slug(object), ".R")
+  study <- theme$study %||% list()
+  tokens <- c(
+    datetime = .chrome_stamp(now %||% Sys.time()),
+    program = paste0("programs/", .output_slug(object), ".R"),
+    program_path = "programs",
+    sponsor = as.character(study$sponsor %||% ""),
+    protocol = as.character(study$protocol %||% ""),
+    study = as.character(study$study %||% ""),
+    study_id = as.character(study$study_id %||% ""),
+    indication = as.character(study$indication %||% ""),
+    data_date = as.character(study$data_date %||% ""),
+    status = as.character(study$status %||% "")
+  )
+  as_lbl <- .resolve_analysis_set(object, theme)
+  if (!is.null(as_lbl)) {
+    tokens[["analysis-set"]] <- as_lbl
+  }
+  arm_lbl <- .resolve_arm_label(object, theme)
+  if (!is.null(arm_lbl)) {
+    tokens[["arm-label"]] <- arm_lbl
+  }
   sub_band <- function(b) {
     if (!is.list(b)) {
       return(b)
     }
     lapply(b, function(v) {
-      v <- gsub("{datetime}", stamp, as.character(v), fixed = TRUE)
-      v <- gsub("{program_path}", "programs", v, fixed = TRUE)
-      gsub("{program}", prog, v, fixed = TRUE)
+      v <- as.character(v)
+      for (tok in names(tokens)) {
+        v <- gsub(paste0("{", tok, "}"), tokens[[tok]], v, fixed = TRUE)
+      }
+      v
     })
   }
   opts$pagehead <- sub_band(opts$pagehead)
@@ -148,18 +184,106 @@
   S7::set_props(object, options = opts)
 }
 
+#' `{analysis-set}` resolver: the population attached to `object` (via
+#' `object@options$population`) wins; else `theme$default_population`;
+#' looked up in `theme$populations` for the display label. Returns NULL
+#' when no population applies -- caller drops the token from the token
+#' map so an unresolved `{analysis-set}` passes through unchanged.
+#' @noRd
+.resolve_analysis_set <- function(object, theme) {
+  pop_id <- object@options$population
+  if (is.null(pop_id) || !nzchar(as.character(pop_id))) {
+    pop_id <- theme$default_population
+  }
+  if (is.null(pop_id) || !nzchar(as.character(pop_id))) {
+    return(NULL)
+  }
+  pops <- theme$populations %||% list()
+  entry <- pops[[as.character(pop_id)]]
+  if (is.null(entry)) {
+    return(NULL)
+  }
+  as.character(entry$label %||% "")
+}
+
+#' `{arm-label}` resolver: `theme$arm$label` when set (the arframe
+#' Setup > Page-and-Style band's default is "Treatment" per
+#' `.SPEC_ARM`). Returns NULL when unset so the token passes through.
+#' @noRd
+.resolve_arm_label <- function(object, theme) {
+  lbl <- theme$arm$label
+  if (is.null(lbl) || !nzchar(as.character(lbl))) {
+    return(NULL)
+  }
+  as.character(lbl)
+}
+
+#' A copy of `object` with `@KEY` footnote references resolved against
+#' `theme$footnotes` (a keyword -> text register mirroring BMS
+#' QC_MasterFile.xlsm's Footnote sheet). Applied at render/export time,
+#' same seam as `.with_chrome()`, so the raw `@KEY` reference stays in
+#' `emit_code()` output for reproducibility. An entry that is exactly
+#' `@KEY` resolves to the registered text; a mixed line like
+#' `"@SAFPOP; N is the enrolled count"` also resolves the leading `@KEY`
+#' at the start of the string. `@UNKNOWN` (no matching register entry)
+#' passes through as a literal -- never silently drop what a user typed.
+#' @noRd
+.with_footnotes <- function(object, theme = list()) {
+  register <- theme$footnotes %||% list()
+  fns <- as.character(object@footnotes)
+  if (length(fns) == 0L) {
+    return(object)
+  }
+  resolved <- vapply(
+    fns,
+    function(fn) .expand_key_ref(fn, register),
+    character(1),
+    USE.NAMES = FALSE
+  )
+  if (identical(resolved, fns)) {
+    return(object)
+  }
+  S7::set_props(object, footnotes = resolved)
+}
+
+# Expand a `@KEY` reference at the start of a footnote line into the
+# registered text. Supported shapes:
+#   * "@KEY"           -> register[["KEY"]]
+#   * "@KEY something" -> paste(register[["KEY"]], "something")
+# Unregistered keys pass through as-is. Non-`@`-prefixed strings pass
+# through unchanged.
+.expand_key_ref <- function(fn, register) {
+  m <- regmatches(fn, regexec("^@([A-Za-z_][A-Za-z0-9_]*)(.*)$", fn))[[1L]]
+  if (length(m) < 3L) {
+    return(fn)
+  }
+  key <- m[[2L]]
+  rest <- m[[3L]]
+  hit <- register[[key]]
+  if (is.null(hit)) {
+    return(fn)
+  }
+  paste0(as.character(hit), rest)
+}
+
 #' `.with_source()` + `.with_chrome()` mapped over every output of a
 #' report -- the export package's whole-report leg (both the async JSON
-#' handoff and the sync fallback build from the same injected copy). One
-#' `now` for the whole package so every output carries the same stamp.
+#' handoff and the sync fallback build from the same injected copy).
+#' One `now` for the whole package so every output carries the same
+#' stamp; the report's own `theme` supplies study-meta tokens.
 #' @noRd
 .report_with_source <- function(report) {
   now <- Sys.time()
+  theme <- report@theme
   pages <- lapply(report@pages, function(pg) {
     S7::set_props(
       pg,
       objects = lapply(pg@objects, function(o) {
-        .with_chrome(.with_source(o), now = now)
+        .with_chrome(
+          .with_footnotes(.with_source(o), theme = theme),
+          now = now,
+          theme = theme
+        )
       })
     )
   })
@@ -684,7 +808,13 @@ mod_paper_server <- function(id, store) {
       # source line and chrome literals the .rtf download gets -- tabular
       # renders the whole page (title block through source), the sheet
       # adds nothing.
-      spec <- arpillar::render_spec(ard, .with_chrome(.with_source(object)))
+      spec <- arpillar::render_spec(
+        ard,
+        .with_chrome(
+          .with_footnotes(.with_source(object), theme = store$rv$report@theme),
+          theme = store$rv$report@theme
+        )
+      )
       orient <- object@options$orientation %||% "landscape"
       list(
         ok = TRUE,

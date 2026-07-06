@@ -1,8 +1,10 @@
 test_that("ar_theme is Bootstrap brand variables only, Galley values", {
   th <- ar_theme()
   expect_s3_class(th, "bs_theme")
+  # Linear-family chrome + explorer-blue accent (2026-07-06 redesign).
+  # Case-insensitive compare — bslib normalises to uppercase on read.
   expect_identical(
-    bslib::bs_get_variables(th, "primary")[["primary"]],
+    toupper(bslib::bs_get_variables(th, "primary")[["primary"]]),
     "#0378CD"
   )
 })
