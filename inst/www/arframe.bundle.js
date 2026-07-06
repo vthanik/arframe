@@ -34,6 +34,17 @@
     var el = document.getElementById(m3.id);
     if (el) el.toggleAttribute("disabled", !!m3.disabled);
   });
+  Shiny.addCustomMessageHandler("ar-save-state", function(m3) {
+    var el = document.getElementById(m3.id);
+    if (!el) return;
+    if (m3.state) el.setAttribute("data-state", m3.state);
+    var lbl = el.querySelector(".ar-save-chip-lbl");
+    if (lbl && m3.label) lbl.textContent = m3.label;
+  });
+  Shiny.addCustomMessageHandler("ar-preview-frame", function(m3) {
+    var el = document.getElementById(m3.id);
+    if (el) el.innerHTML = m3.html || "";
+  });
   $(document).on("click", ".ar-title-wrap", function(e3) {
     if ($(this).hasClass("ar-title-editing")) return;
     var $input = $(this).find("input[type=text]");

@@ -41,8 +41,28 @@ arframe <- function(project = NULL, data = NULL, folders = NULL, daemons = 2L) {
       arpillar::register_dataset(con, nm, data[[nm]])
     }
   }
-  report <- if (!is.null(project)) arpillar::report_from_json(project) else NULL
+  report <- NULL
+  project_dir <- NULL
+  if (!is.null(project)) {
+    # `project` accepts either a report.json file (v0 single-file) OR a project
+    # folder (v1 folder format). A folder wins when both would resolve.
+    if (dir.exists(project)) {
+      project_dir <- normalizePath(project)
+      report <- arpillar::report_from_folder(project_dir)
+    } else {
+      report <- arpillar::report_from_json(project)
+    }
+  }
   store <- new_store(con, report = report)
+  if (!is.null(project_dir)) {
+    # Both writes to `rv$` AND the mtime scan (which reads `rv$path`) must run
+    # under isolate(): we are outside any reactive context at package load.
+    shiny::isolate({
+      store$rv$path <- project_dir
+      store$rv$saved_at <- Sys.time()
+      .refresh_mtimes(store)
+    })
+  }
 
   # The async-export daemon pool (Task 16): a per-launch, named compute
   # profile (NEVER set at package load -- that would spawn processes on
@@ -75,7 +95,8 @@ arframe <- function(project = NULL, data = NULL, folders = NULL, daemons = 2L) {
         ),
         data_body = mod_data_ui("data"),
         qc_body = mod_qc_ui("qc"),
-        logs_body = mod_logs_ui("qc")
+        logs_body = mod_logs_ui("qc"),
+        setup_body = mod_setup_ui("setup")
       ),
       mod_add_output_ui("add_output")
     )
@@ -103,6 +124,17 @@ arframe <- function(project = NULL, data = NULL, folders = NULL, daemons = 2L) {
     mod_add_output_server("add_output", store)
     mod_data_server("data", store)
     mod_qc_server("qc", store)
+    mod_setup_server("setup", store)
+
+    # Auto-save observer: writes to disk 500ms after any dirty flip, when a
+    # project folder is bound.
+    install_autosave(store)
+
+    # Tab-focus refresh: bridge.js posts `ar_refresh` on visibilitychange; we
+    # rescan the outputs folder for changes from other sessions.
+    shiny::observeEvent(input[["ar_refresh"]], {
+      scan_and_merge(store)
+    }, ignoreInit = TRUE)
   }
 
   shiny::onStop(function() {

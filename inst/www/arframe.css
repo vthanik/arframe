@@ -232,7 +232,8 @@ input[type="radio"] {
 .ar-mode-report .ar-act-btn[data-ar-mode="report"],
 .ar-mode-data .ar-act-btn[data-ar-mode="data"],
 .ar-mode-qc .ar-act-btn[data-ar-mode="qc"],
-.ar-mode-logs .ar-act-btn[data-ar-mode="logs"] {
+.ar-mode-logs .ar-act-btn[data-ar-mode="logs"],
+.ar-mode-setup .ar-act-btn[data-ar-mode="setup"] {
   color: var(--ar-accent);
   border-left-color: var(--ar-accent);
   background: var(--ar-accent-weak);
@@ -290,7 +291,8 @@ input[type="radio"] {
 .ar-body-report,
 .ar-body-data,
 .ar-body-qc,
-.ar-body-logs {
+.ar-body-logs,
+.ar-body-setup {
   display: none;
   height: 100%;
 }
@@ -305,6 +307,567 @@ input[type="radio"] {
 }
 .ar-mode-logs .ar-body-logs {
   display: flex;
+}
+.ar-mode-setup .ar-body-setup {
+  display: flex;
+}
+
+/* -- setup mode: left sub-tab rail + right panel -- */
+/* ---- Setup: 4-section scrollable page (no tab rail) ---- */
+.ar-setup {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--ar-paper);
+}
+.ar-setup > * {
+  display: block !important; /* shiny-html-output uses display:contents */
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 24px 40px 100px;
+  width: 100%;
+}
+.ar-setup > * > .ar-setup-section {
+  display: block;
+}
+.ar-setup-section {
+  padding: 24px 0 8px;
+  border-top: 1px solid var(--ar-rule);
+}
+.ar-setup-section:first-of-type {
+  border-top: none;
+  padding-top: 8px;
+}
+.ar-setup-sechead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.ar-setup-sechead-title {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ar-ink);
+}
+.ar-setup-glyph {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+.ar-setup-glyph-ok {
+  background: var(--ar-ok, #d1f5d3);
+  color: #1a5c1f;
+}
+.ar-setup-glyph-partial {
+  background: var(--ar-warn, #fdf1d1);
+  color: #7a5c04;
+}
+.ar-setup-glyph-none {
+  background: var(--ar-chrome-2);
+  color: var(--ar-ink-3);
+}
+.ar-setup-secbody {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.ar-setup-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ar-setup-group-lbl {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: var(--ar-ink-3);
+  font-weight: 600;
+}
+.ar-setup-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px 20px;
+}
+.ar-setup-precision {
+  grid-template-columns: repeat(4, 1fr);
+}
+.ar-setup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ar-setup-field .ar-label {
+  font-size: 12px;
+  color: var(--ar-ink-2);
+}
+.ar-setup-empty {
+  border: 1px dashed var(--ar-rule);
+  border-radius: var(--ar-radius);
+  padding: 16px;
+  color: var(--ar-ink-3);
+  font-size: 12.5px;
+}
+.ar-setup-empty p {
+  margin: 0 0 4px;
+}
+.ar-setup-empty pre {
+  margin: 8px 0 0;
+  padding: 8px;
+  background: var(--ar-chrome);
+  border-radius: var(--ar-radius);
+  font-size: 11.5px;
+  line-height: 1.5;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+/* ---- Setup: Populations rows ---- */
+.ar-setup-pops {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ar-setup-pop-header {
+  display: grid;
+  grid-template-columns: 100px 1.5fr 90px 1.5fr 40px 32px;
+  gap: 8px;
+  padding: 4px 12px;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--ar-ink-3);
+  font-weight: 600;
+}
+.ar-setup-pop-row {
+  display: grid;
+  grid-template-columns: 100px 1.5fr 90px 1.5fr 40px 32px;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--ar-chrome);
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius);
+  align-items: center;
+}
+.ar-setup-pop-row .ar-setup-field {
+  gap: 0;
+}
+.ar-setup-pop-default {
+  border-color: var(--ar-accent);
+  box-shadow: inset 3px 0 0 var(--ar-accent);
+}
+.ar-pop-default-btn {
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  color: var(--ar-ink-3);
+  cursor: pointer;
+  padding: 4px;
+}
+.ar-pop-default-on {
+  color: var(--ar-accent, #3b56b3);
+}
+.ar-pop-delete {
+  border: none;
+  background: transparent;
+  color: var(--ar-ink-3);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: var(--ar-radius);
+}
+.ar-pop-delete:hover {
+  background: var(--ar-danger, #fdecec);
+  color: #8c1414;
+}
+.ar-pop-add {
+  margin-top: 6px;
+  padding: 6px 12px;
+  border: 1px dashed var(--ar-rule);
+  background: transparent;
+  color: var(--ar-ink-2);
+  border-radius: var(--ar-radius);
+  cursor: pointer;
+  font-size: 12.5px;
+}
+.ar-pop-add:hover {
+  border-color: var(--ar-accent);
+  color: var(--ar-accent);
+}
+
+/* ---- Setup: running header/footer -- 3-column rows (L | C | R | ×) ---- */
+.ar-band-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ar-band-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 32px;
+  gap: 6px;
+  align-items: center;
+}
+.ar-band-row .ar-pop-delete {
+  align-self: center;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* + Add row spans only the L/C/R inputs, not the × column. */
+.ar-band-lines .ar-pop-add {
+  margin-right: 38px; /* 32px delete col + 6px grid gap */
+}
+
+/* ---- Setup: continuous rows Explorer ---- */
+.ar-cont-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ar-cont-row {
+  display: grid;
+  grid-template-columns: 24px 1.4fr 2fr 100px 32px;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 12px;
+  background: var(--ar-chrome);
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius);
+}
+.ar-cont-grip {
+  cursor: grab;
+  color: var(--ar-ink-3);
+  font-size: 14px;
+  line-height: 1;
+  user-select: none;
+}
+.ar-cont-atoms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+.ar-cont-atom {
+  padding: 2px 8px;
+  background: var(--ar-paper);
+  border: 1px solid var(--ar-rule);
+  border-radius: 999px;
+  font-size: 11.5px;
+  color: var(--ar-ink);
+}
+.ar-cont-fmt-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--ar-accent-weak, #eef2ff);
+  color: var(--ar-accent, #3b56b3);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* ---- Topbar Package button shortcut chip ---- */
+.ar-btn-kbd {
+  padding: 1px 6px;
+  margin-left: 6px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.14);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+}
+
+/* ---- Flat input (Notion-style borderless field) ---- */
+.ar-input-flat {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius);
+  background: var(--ar-paper);
+  font-size: 13px;
+  color: var(--ar-ink);
+  font-family: inherit;
+  transition: border-color 0.12s ease;
+}
+.ar-input-flat:focus {
+  outline: none;
+  border-color: var(--ar-accent);
+}
+.ar-input-flat.ar-mono {
+  font-family: var(--ar-font-mono, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: 12.5px;
+}
+.ar-textarea {
+  resize: vertical;
+  min-height: 44px;
+  line-height: 1.5;
+}
+
+/* ---- Segmented control ---- */
+.ar-seg {
+  display: inline-flex;
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius);
+  background: var(--ar-paper);
+  overflow: hidden;
+  align-self: flex-start;
+}
+.ar-seg-opt {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--ar-ink-2);
+  border-right: 1px solid var(--ar-rule);
+  transition: background 0.1s ease;
+}
+.ar-seg-opt:last-of-type {
+  border-right: none;
+}
+.ar-seg-opt:hover {
+  background: var(--ar-chrome);
+}
+.ar-seg-opt-active {
+  background: var(--ar-accent);
+  color: var(--ar-paper);
+}
+.ar-seg-opt-active:hover {
+  background: var(--ar-accent);
+}
+.ar-seg-input {
+  display: none;
+}
+
+/* ---- Reviewed banner ---- */
+.ar-review-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--ar-chrome);
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius);
+  font-size: 12px;
+  color: var(--ar-ink-2);
+  margin-bottom: 24px;
+}
+.ar-review-banner-on {
+  background: var(--ar-ok, #eaf7ec);
+  border-color: #b6e0ba;
+  color: #1a5c1f;
+}
+.ar-review-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ar-ink-3);
+  flex-shrink: 0;
+}
+.ar-review-banner-on .ar-review-dot {
+  background: #38a145;
+}
+.ar-review-lbl {
+  font-weight: 500;
+}
+
+/* ---- Icon buttons that show a text label beside the glyph ---- */
+.ar-icon-btn-labeled {
+  padding: 4px 10px;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--ar-ink-2);
+}
+
+/* ---- shinyFiles: Glyphicons Halflings are dead in BS5; substitute
+       Unicode glyphs so the folder tree, toolbar, and buttons render. ---- */
+.glyphicon {
+  display: inline-block;
+  font-family: inherit;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1;
+  text-align: center;
+  width: 1em;
+  color: inherit;
+}
+.glyphicon::before {
+  font-size: inherit;
+}
+.glyphicon-plus-sign::before { content: "\002B"; } /* + */
+.glyphicon-remove::before,
+.glyphicon-remove-sign::before,
+.glyphicon-remove-circle::before { content: "\00D7"; } /* × */
+.glyphicon-ok::before,
+.glyphicon-ok-sign::before,
+.glyphicon-ok-circle::before { content: "\2713"; } /* ✓ */
+.glyphicon-refresh::before { content: "\21BB"; } /* ↻ */
+.glyphicon-arrow-left::before,
+.glyphicon-chevron-left::before,
+.glyphicon-triangle-left::before { content: "\25C0"; } /* ◀ */
+.glyphicon-arrow-right::before,
+.glyphicon-chevron-right::before,
+.glyphicon-triangle-right::before,
+.glyphicon-play::before { content: "\25B6"; } /* ▶ */
+.glyphicon-arrow-up::before,
+.glyphicon-chevron-up::before,
+.glyphicon-triangle-top::before { content: "\25B2"; } /* ▲ */
+.glyphicon-arrow-down::before,
+.glyphicon-chevron-down::before,
+.glyphicon-triangle-bottom::before { content: "\25BC"; } /* ▼ */
+.glyphicon-hdd::before { content: "\1F5C4"; } /* 🗄 */
+.glyphicon-folder-open::before { content: "\1F4C2"; } /* 📂 */
+.glyphicon-folder-close::before { content: "\1F4C1"; } /* 📁 */
+.glyphicon-file::before { content: "\1F4C4"; } /* 📄 */
+.glyphicon-sort::before,
+.glyphicon-sort-by-alphabet::before,
+.glyphicon-sort-by-attributes::before,
+.glyphicon-sort-by-order::before { content: "\2195"; } /* ↕ */
+.glyphicon-pencil::before,
+.glyphicon-edit::before { content: "\270E"; } /* ✎ */
+.glyphicon-search::before { content: "\1F50D"; } /* 🔍 */
+.glyphicon-info-sign::before,
+.glyphicon-question-sign::before { content: "\24D8"; } /* ⓘ */
+.glyphicon-cog::before { content: "\2699"; } /* ⚙ */
+
+/* jsTree's own theme-icon spans use the same glyph fallback pattern. */
+.jstree-default .jstree-icon.jstree-ocl {
+  background: none !important;
+  color: var(--ar-ink-3);
+  font-family: inherit;
+  font-size: 10px;
+  text-align: center;
+}
+.jstree-default .jstree-closed > .jstree-ocl::before { content: "\25B6"; }
+.jstree-default .jstree-open > .jstree-ocl::before { content: "\25BC"; }
+
+/* ---- Setup > Data: path picker row ---- */
+.ar-path-row {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 6px;
+  align-items: center;
+}
+.ar-picker-slot {
+  min-width: 88px;
+}
+/* Stash for the static Browse buttons -- JS teleports them into
+   `.ar-picker-slot` at render time, so this hidden holder can never be
+   visible. `display: none` is safe: shinyFiles' handler binds at load time
+   before the CSS applies. */
+.ar-setup-pickers {
+  display: none;
+}
+select.ar-input-flat {
+  padding: 6px 8px;
+  background-color: var(--ar-paper);
+}
+
+/* ---- Save-state chip (topbar) ---- */
+.ar-save-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  color: var(--ar-ink-3);
+  background: var(--ar-chrome);
+}
+.ar-save-chip[data-state="saving"] {
+  color: var(--ar-accent);
+}
+.ar-save-chip[data-state="failed"] {
+  background: var(--ar-danger, #fdecec);
+  color: #8c1414;
+}
+.ar-save-chip[data-state="readonly"] {
+  background: var(--ar-warn, #fdf1d1);
+  color: #7a5c04;
+}
+
+/* ---- Roles inheritance chips ---- */
+.ar-role-inherit {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  background: var(--ar-chrome);
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius);
+  margin-bottom: 12px;
+}
+.ar-chip-inherit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--ar-paper);
+  border: 1px solid var(--ar-rule);
+  font-size: 11.5px;
+  width: auto;
+  height: auto;
+  margin: 0;
+}
+.ar-chip-inherit .ar-chip-lbl {
+  color: var(--ar-ink-3);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.ar-chip-inherit .ar-chip-val {
+  color: var(--ar-ink);
+  font-weight: 500;
+}
+.ar-chip-inherit .ar-chip-tag {
+  padding: 1px 6px;
+  background: var(--ar-accent-weak, #eef2ff);
+  color: var(--ar-accent, #3b56b3);
+  border-radius: 4px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* ---- Live preview pane ---- */
+.ar-preview-pane {
+  border-left: 1px solid var(--ar-rule);
+  background: var(--ar-desk, #f7f5f0);
+  padding: 24px 20px;
+  overflow-y: auto;
+}
+.ar-preview-pane-title {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: var(--ar-ink-3);
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.ar-preview-frame {
+  background: var(--ar-paper);
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius);
+  padding: 18px;
+  font-size: 11.5px;
+  min-height: 200px;
+}
+.ar-preview-frame table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.ar-preview-frame th,
+.ar-preview-frame td {
+  padding: 3px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--ar-rule);
+}
+.ar-preview-frame th {
+  font-weight: 600;
+  color: var(--ar-ink-2);
 }
 
 /* The report body is the three-region contents/desk/card row. Contents sits
@@ -1723,7 +2286,10 @@ input[type="radio"] {
   background: var(--ar-paper);
   color: var(--ar-ink);
 }
-.ar-dx-tb {
+/* Beat Bootstrap 5's default `.btn` specificity (shinyFiles adds
+   `btn btn-default` to its buttons, which fights our styling). Anchor
+   `.ar-dx-tb` twice so it wins on specificity without !important. */
+.ar-dx-tb.ar-dx-tb {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -1735,17 +2301,19 @@ input[type="radio"] {
   color: var(--ar-ink-2);
   background: var(--ar-paper);
 }
-.ar-dx-tb:hover {
+.ar-dx-tb.ar-dx-tb:hover {
   border-color: var(--ar-ink-3);
   color: var(--ar-ink);
+  background: var(--ar-paper);
 }
-.ar-dx-tb-pri {
+.ar-dx-tb-pri.ar-dx-tb-pri {
   background: var(--ar-ink);
   border-color: var(--ar-ink);
   color: var(--ar-paper);
 }
-.ar-dx-tb-pri:hover {
+.ar-dx-tb-pri.ar-dx-tb-pri:hover {
   background: var(--ar-ink-2);
+  border-color: var(--ar-ink-2);
   color: var(--ar-paper);
 }
 .ar-dx-tb-danger {

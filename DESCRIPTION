@@ -20,6 +20,7 @@ Imports:
     datasetviewer,
     fontawesome,
     htmltools,
+    later,
     mirai,
     rlang,
     S7,

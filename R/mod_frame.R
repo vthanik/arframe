@@ -20,11 +20,11 @@
 #' @param qc_body *QC-mode body content.* `<tag/tagList>: required`.
 #' @param logs_body *Logs-mode body content.* `<tag/tagList>: required`.
 #' @noRd
-mod_frame_ui <- function(id, report_body, data_body, qc_body, logs_body) {
+mod_frame_ui <- function(id, report_body, data_body, qc_body, logs_body, setup_body = NULL) {
   ns <- shiny::NS(id)
   shiny::div(
-    # Opens in Data mode (matches new_store()'s rv$mode default).
-    class = "ar-workspace ar-mode-data",
+    # Opens in Setup mode -- study configuration is the first stop.
+    class = "ar-workspace ar-mode-setup",
     .frame_bar(ns),
     shiny::div(
       class = "ar-main",
@@ -34,7 +34,8 @@ mod_frame_ui <- function(id, report_body, data_body, qc_body, logs_body) {
         shiny::div(class = "ar-body-report", report_body),
         shiny::div(class = "ar-body-data", data_body),
         shiny::div(class = "ar-body-qc", qc_body),
-        shiny::div(class = "ar-body-logs", logs_body)
+        shiny::div(class = "ar-body-logs", logs_body),
+        shiny::div(class = "ar-body-setup", setup_body)
       )
     ),
     .frame_statusbar(ns)
@@ -52,7 +53,35 @@ mod_frame_ui <- function(id, report_body, data_body, qc_body, logs_body) {
     shiny::span(class = "ar-bar-mark ar-mono", "arframe"),
     shiny::div(class = "ar-bar-divider"),
     .frame_title(ns),
+    # Save-state chip -- updated via `ar-save-state` message. Idle default
+    # so the user sees the affordance without waiting for a first save.
+    shiny::span(
+      id = ns("save_chip"),
+      class = "ar-save-chip",
+      `data-state` = "idle",
+      shiny::span(class = "ar-save-chip-lbl", "Saved")
+    ),
     shiny::div(class = "ar-bar-spacer"),
+    # Open folder (project switcher). shinyDirButton returns a tagList, so
+    # tagAppendAttributes leaks extra attrs as text -- keep it plain and let
+    # the label ("Open") stand.
+    shinyFiles::shinyDirButton(
+      ns("open_project"),
+      label = "Open",
+      title = "Open project folder",
+      class = "ar-icon-btn ar-icon-btn-labeled ar-icon-btn-open"
+    ),
+    # Refresh: rescan on-disk state (scan_and_merge)
+    shiny::tagAppendAttributes(
+      .action_btn(
+        ns("refresh_btn"),
+        .icon("redo", 14),
+        variant = "link",
+        class = "ar-icon-btn"
+      ),
+      `aria-label` = "Refresh"
+    ),
+    # Undo / Redo -- kept until the top-bar Preact stage supersedes them.
     shiny::tagAppendAttributes(
       .action_btn(
         ns("undo_btn"),
@@ -71,20 +100,16 @@ mod_frame_ui <- function(id, report_body, data_body, qc_body, logs_body) {
       ),
       `aria-label` = "Redo"
     ),
-    # Empty on the server -- arframe.js fills it per the CLIENT's OS
-    # (navigator.platform: Mac -> the Command glyph, else "Ctrl K"). The server
-    # cannot know the browser's OS, so this cannot be decided in R.
+    # Command palette hint (arframe.js fills the glyph per navigator.platform).
     shiny::span(class = "ar-bar-hint ar-mono"),
-    # Async export (Task 16): a plain action button kicks the render onto the
-    # daemon pool; the hidden download link beside it is clicked by the server
-    # (`ar-click`) once the zip is assembled -- a browser download must be
-    # initiated by an <a>, but the render must NOT block the request.
+    # Package -- ships the report tree as a submission-ready zip.
     shiny::tags$button(
       id = ns("export_btn"),
       type = "button",
       class = "ar-btn-ink action-button",
       .icon("package", 13),
-      "Export package"
+      shiny::span("Package"),
+      shiny::span(class = "ar-btn-kbd ar-mono", shiny::HTML("&#8984;&#8679;E"))
     ),
     shiny::tagAppendAttributes(
       shiny::downloadLink(
@@ -109,8 +134,10 @@ mod_frame_ui <- function(id, report_body, data_body, qc_body, logs_body) {
 .frame_actbar <- function(ns) {
   shiny::div(
     class = "ar-actbar",
-    # Data leads the rail (user decision 2026-07-04): the data on-ramp
-    # comes before the report it feeds. Startup mode stays "report".
+    # Setup leads the rail (user decision 2026-07-06): the study configuration
+    # is the first stop; Data / Report follow. Startup mode still opens on
+    # whichever `store$rv$mode` was seeded with by the caller.
+    .act_btn(ns("mode_setup"), "setup", "gear", "Setup"),
     .act_btn(ns("mode_data"), "data", "database", "Data"),
     .act_btn(ns("mode_report"), "report", "report", "Report"),
     .act_btn(ns("mode_qc"), "qc", "check", "Review"),
@@ -242,6 +269,59 @@ mod_frame_server <- function(id, store) {
 
     shiny::observeEvent(input$undo_btn, undo(store))
     shiny::observeEvent(input$redo_btn, redo(store))
+
+    # Open project (shinyFiles). Root at ~ so the picker starts local.
+    open_volumes <- c(home = path.expand("~"), root = "/")
+    shinyFiles::shinyDirChoose(
+      input,
+      "open_project",
+      roots = open_volumes
+    )
+    shiny::observeEvent(input$open_project, {
+      dir <- shinyFiles::parseDirPath(open_volumes, input$open_project)
+      if (length(dir) == 1L && nzchar(dir)) {
+        tryCatch(
+          open_project(store, dir),
+          error = function(e) {
+            log_line(store, sprintf("open failed: %s", conditionMessage(e)))
+            shiny::showNotification(
+              paste("Could not open project:", conditionMessage(e)),
+              type = "error"
+            )
+          }
+        )
+      }
+    })
+
+    # Refresh: rescan on-disk state (bring in other-session edits).
+    shiny::observeEvent(input$refresh_btn, {
+      tryCatch(
+        scan_and_merge(store),
+        error = function(e) {
+          log_line(store, sprintf("refresh failed: %s", conditionMessage(e)))
+        }
+      )
+    })
+
+    # Save-state chip driver. States:
+    #   readonly  = no project folder mounted
+    #   saving    = dirty flag on
+    #   idle      = clean, `saved_at` populated
+    shiny::observe({
+      state <- if (is.null(store$rv$path)) {
+        list(state = "readonly", label = "No folder — Open one")
+      } else if (isTRUE(store$rv$dirty)) {
+        list(state = "saving", label = "Saving…")
+      } else if (!is.null(store$rv$saved_at)) {
+        list(state = "idle", label = "Saved")
+      } else {
+        list(state = "idle", label = "Ready")
+      }
+      session$sendCustomMessage(
+        "ar-save-state",
+        list(id = session$ns("save_chip"), state = state$state, label = state$label)
+      )
+    })
 
     # Export package (decision #8, async per Task 16): render every ready
     # output on the daemon pool through the export-identical seam, then

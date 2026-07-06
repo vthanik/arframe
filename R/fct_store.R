@@ -38,7 +38,7 @@ new_store <- function(con, report = NULL) {
       # Data mode is the opening screen (user decision 2026-07-04): the
       # data on-ramp shows before the report it feeds. Must match
       # mod_frame_ui()'s initial ar-mode-* class.
-      mode = "data",
+      mode = "setup",
       dataset = NULL,
       bridge_dataset = NULL,
       adding = FALSE,
@@ -77,7 +77,47 @@ new_store <- function(con, report = NULL) {
     # reactive) -- the explorer reads them under `catalog_nonce`, which
     # every mount/delete bumps.
     sources = new.env(parent = emptyenv()),
-    kinds = new.env(parent = emptyenv())
+    kinds = new.env(parent = emptyenv()),
+    # Output-file mtimes tracked by open_project() / save_touched() /
+    # scan_and_merge() (fct_project.R). Keyed by basename; values are
+    # numeric POSIX seconds. Empty until a project folder is opened.
+    mtimes = new.env(parent = emptyenv())
+  )
+}
+
+#' Install the auto-save observer.
+#'
+#' Watches `store$rv$dirty` and, whenever it flips TRUE while the project has
+#' a path set, schedules a 500ms trailing debounce that writes to disk via
+#' `save_touched()`. `later::later` is preferred over `shiny::debounce` here
+#' because we want a background timer that survives Shiny's flush cycle, not
+#' a reactive expression tied to any specific consumer.
+#'
+#' Called once per Shiny session, after `new_store()`.
+#' @noRd
+install_autosave <- function(store) {
+  shiny::observeEvent(
+    store$rv$dirty,
+    {
+      if (!isTRUE(store$rv$dirty) || is.null(store$rv$path)) {
+        return()
+      }
+      later::later(
+        function() {
+          if (isTRUE(store$rv$dirty) && !is.null(store$rv$path)) {
+            tryCatch(
+              save_touched(store),
+              error = function(e) {
+                log_line(store, sprintf("save failed: %s", conditionMessage(e)))
+              }
+            )
+          }
+        },
+        delay = 0.5
+      )
+    },
+    ignoreInit = TRUE,
+    ignoreNULL = TRUE
   )
 }
 
@@ -179,6 +219,10 @@ update_object <- function(store, id, fn, label = "") {
   ) {
     store$rv$stale <- union(store$rv$stale, id)
   }
+  # Stamp modified_by/at AND clear any Reviewed signature (every edit
+  # invalidates the QC stamp). Undo/redo does NOT stamp -- it just replays
+  # a prior snapshot.
+  new_obj <- .stamp_meta(new_obj, "modify")
   new_report <- .replace_object(store$rv$report, id, new_obj)
   commit(store, new_report, label = label)
 }
@@ -187,6 +231,8 @@ update_object <- function(store, id, fn, label = "") {
 #' `add_from_preset()`/`add_from_generator()`.
 #' @noRd
 .append_and_select <- function(store, obj, label) {
+  # Stamp created_by/at + initial modified_by/at on a fresh output.
+  obj <- .stamp_meta(obj, "create")
   pages <- store$rv$report@pages
   first <- pages[[1]]
   pages[[1]] <- S7::set_props(first, objects = c(first@objects, list(obj)))

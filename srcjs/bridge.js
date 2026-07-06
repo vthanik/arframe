@@ -49,6 +49,24 @@ Shiny.addCustomMessageHandler("ar-disable", function (m) {
   if (el) el.toggleAttribute("disabled", !!m.disabled);
 });
 
+// Save-state chip: server pushes {id, state, label} whenever the report's
+// dirty / path / saved_at signals move.
+Shiny.addCustomMessageHandler("ar-save-state", function (m) {
+  var el = document.getElementById(m.id);
+  if (!el) return;
+  if (m.state) el.setAttribute("data-state", m.state);
+  var lbl = el.querySelector(".ar-save-chip-lbl");
+  if (lbl && m.label) lbl.textContent = m.label;
+});
+
+// Live preview frame (Setup mode): server ships a rendered HTML table
+// (`ar-preview-frame`) whenever Setup edits invalidate the preview. Innerhtml
+// swap only -- no scripts inside.
+Shiny.addCustomMessageHandler("ar-preview-frame", function (m) {
+  var el = document.getElementById(m.id);
+  if (el) el.innerHTML = m.html || "";
+});
+
 // The report title: click the wrapper to flip into edit mode (CSS shows the
 // text input, hides the static span); Enter or blur flips back and lets the
 // input's native change event (which Shiny's text-input binding already
