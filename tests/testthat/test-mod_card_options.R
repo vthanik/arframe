@@ -6,12 +6,22 @@
 # persisted JSON and emitted code minimal.
 
 # A store with the demographics preset on ADSL, selected -- the summary
-# generator's schema is the minimal one (a single decimals int row).
+# generator's schema is the minimal one (a single decimals int row). Also
+# seeds one population footnote: `.object_from_preset()` intentionally
+# drops the preset's canned footnote (2026-07-06 redesign), so tests that
+# exercise footnote editing seed one here to match the "user has added a
+# population line" starting state.
 .mco_demo_store <- function() {
   con <- .demo_catalog()
   store <- shiny::isolate(new_store(con))
   id <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
   shiny::isolate(store$rv$selected <- id)
+  shiny::isolate(update_object(
+    store,
+    id,
+    function(o) S7::set_props(o, footnotes = "Safety Population."),
+    label = "seed population footnote"
+  ))
   list(con = con, store = store, id = id)
 }
 

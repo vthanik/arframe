@@ -109,8 +109,9 @@ test_that("new_store default rv values match the pointer contract", {
   expect_null(rv$region)
   expect_false(rv$card)
   expect_false(rv$pinned)
-  # Data mode is the opening screen (2026-07-04).
-  expect_identical(rv$mode, "data")
+  # Setup mode is the opening screen (2026-07-06: Setup as first-class,
+  # team-shared hub — study config is the first stop on a fresh project).
+  expect_identical(rv$mode, "setup")
   expect_null(rv$dataset)
   expect_null(rv$bridge_dataset)
   expect_false(rv$adding)
@@ -250,7 +251,10 @@ test_that("add_from_preset copies type/title/footnotes/options, binds dataset, s
   expect_identical(obj@type, "summary")
   expect_identical(obj@dataset, "ADSL")
   expect_identical(obj@title, pr$title)
-  expect_identical(obj@footnotes, as.character(pr$footnotes))
+  # `.object_from_preset()` intentionally drops the preset's canned
+  # footnote (reads as noise; population is already declared elsewhere).
+  # See test-utils_report.R for the same invariant.
+  expect_identical(obj@footnotes, character(0))
   expect_identical(obj@options$number, pr$options$number)
   expect_identical(obj@options$number_label, pr$options$number_label)
   expect_identical(shiny::isolate(store$rv$selected), id)

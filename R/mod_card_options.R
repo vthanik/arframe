@@ -1194,16 +1194,7 @@ mod_card_options_server <- function(id, store) {
     output$pane <- shiny::renderUI({
       obj <- selected_object(store)
       if (is.null(obj)) {
-        return(shiny::tags$div(
-          class = "ar-insp-empty",
-          shiny::tags$p(
-            class = "ar-insp-empty-text",
-            paste0(
-              "No output selected. Choose one in Contents, ",
-              "or add one with the + button."
-            )
-          )
-        ))
+        return(NULL)
       }
       schema <- tryCatch(
         arpillar::option_schema(obj@type),

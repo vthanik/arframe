@@ -160,8 +160,12 @@
 
 #' Zip the export package `dir` into `zipfile`, rooted at the package
 #' folder so the archive extracts to a single `<report>/` directory.
+#' `.arframe/` (team state -- roster, activity log, presence) is stripped
+#' from the staging directory before zipping so team churn never leaks
+#' into the sponsor deliverable.
 #' @noRd
 .zip_export <- function(dir, zipfile) {
+  unlink(file.path(dir, ".arframe"), recursive = TRUE, force = TRUE)
   zip::zipr(zipfile, files = dir)
   invisible(zipfile)
 }

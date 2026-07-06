@@ -10,3 +10,4 @@ CLAUDE.local.md
 .superpowers/
 .claude/launch.json
 srcjs/node_modules/
+dev.R

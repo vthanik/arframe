@@ -121,7 +121,11 @@ test_that(".roles_from_preset builds one role per slot with per-var role_type", 
   expect_length(roles, 2L)
   expect_identical(roles[[1]]@slot, "treatment")
   expect_length(roles[[1]]@items, 1L)
-  expect_identical(roles[[1]]@items[[1]]@name, "TRT01P")
+  # `.roles_from_preset()` swaps the preset-listed "TRT01P" for the first
+  # CDISC arm-var alternative the target dataset actually carries; the
+  # demo ADSL ships both TRT01A and TRT01P, and TRT01A wins per
+  # `.ARM_VAR_ALTS` order (safety-actual first).
+  expect_identical(roles[[1]]@items[[1]]@name, "TRT01A")
   expect_identical(roles[[1]]@items[[1]]@role_type, "category")
 
   expect_identical(roles[[2]]@slot, "summarize")
@@ -159,7 +163,11 @@ test_that(".object_from_preset copies type/title/footnotes/filters/options and b
   expect_identical(obj@type, "summary")
   expect_identical(obj@title, pr$title)
   expect_identical(obj@dataset, "ADSL")
-  expect_identical(obj@footnotes, as.character(pr$footnotes))
+  # Presets carry a canned footnote (e.g. "Safety Population.") that reads
+  # as noise most of the time: `.object_from_preset()` intentionally starts
+  # `footnotes` empty like `.object_from_generator()`; users can add their
+  # own. `title`/`filters`/`options` still carry through.
+  expect_identical(obj@footnotes, character(0))
   expect_identical(obj@filters, pr$filters)
   expect_identical(obj@options$number, "14.1.1")
   expect_identical(obj@options$number_label, "Table")
@@ -174,7 +182,9 @@ test_that(".object_from_preset builds roles for every preset slot", {
   slots <- vapply(obj@roles, function(r) r@slot, character(1))
   expect_identical(slots, names(pr$roles))
   treatment_role <- obj@roles[[which(slots == "treatment")]]
-  expect_identical(treatment_role@items[[1]]@name, "TRT01P")
+  # See the `.roles_from_preset()` test above: TRT01A wins over the
+  # preset's hard-coded "TRT01P" on the demo ADSL.
+  expect_identical(treatment_role@items[[1]]@name, "TRT01A")
 })
 
 test_that(".object_from_preset carries population for an occurrence preset", {

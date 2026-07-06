@@ -58,30 +58,92 @@ page, proof-stamp statuses, and a summonable/pinnable galley card. The deliverab
    keep the arframe-side title block + source line (no spec exists there).
    Chrome tokens `{datetime}`/`{program}` are stamped to literals arframe-side
    (`.with_chrome()`); `{page}`/`{npages}` stay as field codes.
-8. **v5 UI frame — LOCKED 2026-07-02** (five mockup iterations, converged):
-   - Header: `arframe` wordmark · `[Data | Report]` segmented toggle (top-LEFT,
-     modes are peers) · report name · QC · ⌘K · `Export package`.
-   - Report mode: explorer CONTENTS tree (ICH numbers mono, per-generator icons,
-     proof stamps; chevron-collapsible to a status-dot strip) | chrome-free
-     artifact with proofreader **margin-mark** region hit-zones bound to
-     tabular's own classes (`.tabular-title`, `thead`, `tbody`,
+8. **v6 UI frame — LOCKED 2026-07-06** (supersedes v5 2026-07-02 after the
+   Setup-as-team-hub redesign):
+   - Header: `arframe` wordmark · **5-mode segmented switch** (Setup · Data ·
+     Report · Review · Logs — all peers, `role="tablist"`) · click-to-edit
+     report name (natively centered via flex) · Open folder · save chip ·
+     Refresh · Undo/Redo · ⌘K palette hint · `Package`. Segments are pure
+     CSS-toggled via `.ar-mode-*` on `.ar-workspace`; no server round-trip on
+     switch. Presence avatars (heartbeat-lit ring) planned inline before
+     Package but land in a follow-up.
+   - Setup mode (the team hub, first stop on open — pre-Report): Study ·
+     Sources (list-surface catalog with Add folder / Import file · shinyFiles
+     wrapped in `.ar-picker` so Bootstrap variants own colour) · Populations ·
+     Preferences + Paths (`programs_dir` / `output_rtf_dir` / `datasets_dir` /
+     `logs_dir` written to `setup.yml` under `paths:`) · Team (roster from
+     `.arframe/team.json`, activity feed from per-user `.arframe/activity/
+     <slug>.jsonl`, presence rail from `.arframe/presence/<slug>.json`
+     heartbeat). Same project folder opened by two users shows each other's
+     edits and presence.
+   - Report mode: explorer CONTENTS tree (ICH numbers mono, per-generator
+     icons, proof stamps; chevron-collapsible to a status-dot strip) |
+     chrome-free artifact with proofreader **margin-mark** region hit-zones
+     bound to tabular's own classes (`.tabular-title`, `thead`, `tbody`,
      `.tabular-footnote`) | fixed-width docked inspector (Roles / Options /
-     Filters / Ranks tabs; chevron-collapsible to icon strip) with action footer
-     **Run ⌘↵ · .rtf · `</>`** (code view = `arpillar::emit_code()` script,
-     copy + download). Live telemetry line (`adsl · 254 subjects · 254 records`).
+     Filters / Ranks tabs; chevron-collapsible to icon strip) with action
+     footer **Run ⌘↵ · .rtf · `</>`** (code view = `arpillar::emit_code()`
+     script, copy + download). Live telemetry line
+     (`adsl · 254 subjects · 254 records`).
    - Data mode: datasetviewer manage-data, full-width (no inspector): SOURCES
-     multi-folder tree (+ Add folder), toolbar (Filter · View data · Import file ·
-     Import folder · Delete), explorer detail table (NAME / FOLDER / KIND / COLS /
-     ROWS / SIZE / STATUS=LAZY / MODIFIED), double-click OR View data → grid with
-     breadcrumb + column picker (typed badges); Delete unmounts.
-   - Export package tree: `outputs/` + `programs/` (emit_code per output +
-     run-all.R) + `report.json` + `manifest.csv`. Run semantics: cheap edits
-     render live; heavy role/filter changes mark the proof STALE, Run re-typesets.
+     multi-folder tree (+ Add folder), toolbar (Filter · View data · Import
+     file · Import folder · Delete), explorer detail table (NAME / FOLDER /
+     KIND / COLS / ROWS / SIZE / STATUS=LAZY / MODIFIED), double-click OR
+     View data → grid with breadcrumb + column picker (typed badges); Delete
+     unmounts. Import file/folder INTENTIONALLY duplicated with Setup >
+     Sources — the two mounts share `.catalog_list_surface()`
+     (`R/mod_catalog_list.R`), so the on-ramps do not drift.
+   - Export package tree: `outputs/` (spec .json) + `programs/` (emit_code
+     per output + run-all.R) + `report.json` + `manifest.csv`. The team
+     folder `.arframe/` is EXCLUDED from the tarball (`.zip_export()` unlinks
+     it before zipping) — sponsor deliverables never carry team activity.
+     Run semantics: cheap edits render live; heavy role/filter changes mark
+     the proof STALE, Run re-typesets.
 9. **Real data, always** (2026-07-02): dev sessions, eyeball verification, and
    screenshots ALWAYS mount `/Users/vignesh/projects/data/cdisc-adam-pilot`
    (15 ADaM parquet) and `/Users/vignesh/projects/data/cdisc-sdtm-pilot` (SDTM
    xpt) — never a synthetic demo catalog for any visual claim. testthat fixtures
    stay minimal/bundled (CRAN), but verification is real-data only.
+
+10. **Folder IS the format** (2026-07-06): the shared unit of collaboration is
+    the project folder — opened by teammate A on Dropbox / SMB / a git-tracked
+    dir, opened simultaneously by teammate B; each runs their own arframe
+    session; the files are the source of truth. Canonical layout (mirrors SAS
+    pharma `pgms/`, `output/`, `data/`, `logs/`):
+
+    ```
+    <project root>/
+      setup.yml                     study config, sources, populations,
+                                    preferences, paths (Setup writes here)
+      outputs/<id>.json             spec — canonical source of truth
+      programs/<id>.R               emit_code(spec) — team-visible artifact,
+                                    regenerated every save
+      programs/run-all.R            reproduces the whole package via
+                                    `Rscript programs/run-all.R`
+      output/<id>.rtf|.pdf          renders (destination configurable)
+      data/                         inputs (destination configurable)
+      report.json + manifest.csv    report-level metadata
+      .arframe/                     TEAM STATE — excluded from tarball export
+        team.json                   roster (name, email, initials, colour)
+        activity/<slug>.jsonl       per-user activity log (no flock —
+                                    concurrent writes eliminated by
+                                    per-user files)
+        presence/<slug>.json        30s heartbeat via `later::later()`;
+                                    reader filters mtime > now - 60s
+    ```
+
+    Source of truth is the `.json` spec, not the `.R` script. The `.R` is
+    deterministically re-emitted every save; external `.R` edits do NOT
+    round-trip in v1 (would need parsing arbitrary R back into a spec —
+    deferred). Generic effective user (`root`, `www-data`, `runner`, `user`,
+    unset) shows the Setup > Team "Set your name" banner and emits ZERO
+    activity/presence lines — prevents anonymous churn.
+
+11. **Setup is first-class, first stop** (2026-07-06): `arframe()` opens in
+    Setup mode (`.ar-workspace` gets `ar-mode-setup`), NOT Report — study
+    config is the first thing a fresh project needs. Setup's Sources section
+    is the "data on-ramp" that item 5 above called out; the `.list_surface`
+    primitive is shared with Data mode so the two read visually identical.
 
 ## Working conventions (arframe-specific)
 
@@ -106,6 +168,36 @@ page, proof-stamp statuses, and a summonable/pinnable galley card. The deliverab
   per-session approval.
 - Subagent execution hygiene: verify INLINE — do not spawn nested background
   sub-agents (they orphan into un-killable "Running" tasks).
+
+## Team-state file inventory (2026-07-06)
+
+Modules for the team hub and the shared list surface:
+
+- `R/fct_activity.R` — `.log_activity(dir, user, action, targets)`,
+  `.read_activity(dir, tail_n)`, `.rotate_activity(dir)`. Per-user JSONL
+  eliminates the append race.
+- `R/fct_presence.R` — `.heartbeat(dir, user, mode, current_output)`,
+  `.presence_list(dir, since_s = 60)`, `.gc_presence(dir, max_age_s = 86400)`.
+- `R/fct_team.R` — `.read_team(dir)`, `.write_team(dir, team)`,
+  `.ensure_team_member(dir, user)`, `.team_slug(user)` (filesystem-safe),
+  `.user_is_generic(user)`.
+- `R/mod_catalog_list.R` — `.catalog_list_surface(ns, tools)`,
+  `.catalog_grid_table(rows)`, `.catalog_grid_row(ns, item, selected)`,
+  `.catalog_type_chip()`, `.catalog_status_pill()`,
+  `.catalog_items_from_grid(grid)`. Shared by Setup > Sources and Data mode.
+- `R/mod_setup.R` (extended) — Sources, Team, Preferences + Paths sections
+  on top of the original Study / Data / Populations / Page / Summaries.
+- `R/fct_project.R` — `save_touched()` now emits `programs/<id>.R` per
+  output + `programs/run-all.R` + one batched activity line + ensures the
+  team roster contains the current user; new `.refresh_all(store)`
+  consolidates the two prior refresh paths; new `.emit_programs()` and
+  `.is_absolute_path()` helpers.
+- `R/fct_export.R` — `.zip_export()` unlinks `.arframe/` before zipping so
+  the tarball never leaks team activity.
+- `R/app.R` — presence heartbeat via `later::later()` at 30s cadence.
+
+All exports still enforced: `arframe()` is the only export; everything
+above is `@noRd` internal.
 
 ## Golden gates (preserved through the rebuild)
 

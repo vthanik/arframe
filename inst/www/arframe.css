@@ -149,95 +149,12 @@ input[type="radio"] {
   height: 100vh;
 }
 
-/* -- app bar -- */
-.ar-bar {
-  flex: 0 0 42px;
-  display: flex;
-  align-items: center;
-  gap: var(--ar-space-3);
-  padding: 0 var(--ar-space-4);
-  background: var(--ar-chrome);
-  border-bottom: 1px solid var(--ar-rule);
-}
-.ar-bar-mark {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ar-ink);
-}
-.ar-bar-divider {
-  width: 1px;
-  height: 18px;
-  background: var(--ar-rule);
-}
-.ar-bar-spacer {
-  flex: 1 1 auto;
-}
-.ar-bar-hint {
-  font-size: 11px;
-  color: var(--ar-ink-4);
-}
-/* -- activity bar (mockup piece A, supersedes the v5 segmented toggle) --
-   a 44px far-left vertical rail of icon-only mode buttons. The ACTIVE
-   button is a pure CSS rule off the workspace's own mode class -- no
-   server round-trip is spent restyling the buttons on every mode switch.
-   Each button pre-reserves a 2px left indicator (color, never layout). */
-.ar-main {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-}
-.ar-actbar {
-  /* Longhand: Chrome drops `flex: 0 0 var(...)` because var() cannot be
-     classified as grow-vs-basis at parse time, so the shorthand becomes
-     `0 1 auto` and the rail collapses to icon width. */
-  flex-grow: 0;
-  flex-shrink: 0;
-  flex-basis: var(--ar-rail-w);
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--ar-space-1);
-  padding: var(--ar-space-2) 0;
-  /* White, VS-Code-style (2026-07-04 request) -- not the grey chrome. */
-  background: var(--ar-paper);
-  border-right: 1px solid var(--ar-rule);
-}
-.ar-act-btn {
-  width: 100%;
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  padding: var(--ar-space-2) 0;
-  color: var(--ar-ink-4);
-  border-left: 2px solid transparent;
-  border-radius: 0;
-}
-.ar-act-lbl {
-  font-size: 9px;
-  letter-spacing: 0.04em;
-  line-height: 1;
-}
-/* The rail buttons are btn-link variants -- kill the link underline so
-   both rails read identically (consistency note, 2026-07-04). */
-.ar-act-btn,
-.ar-act-btn:hover,
-.ar-act-btn:focus {
-  text-decoration: none;
-}
-.ar-act-btn:hover {
-  color: var(--ar-ink);
-}
-.ar-mode-report .ar-act-btn[data-ar-mode="report"],
-.ar-mode-data .ar-act-btn[data-ar-mode="data"],
-.ar-mode-qc .ar-act-btn[data-ar-mode="qc"],
-.ar-mode-logs .ar-act-btn[data-ar-mode="logs"],
-.ar-mode-setup .ar-act-btn[data-ar-mode="setup"] {
-  color: var(--ar-accent);
-  border-left-color: var(--ar-accent);
-  background: var(--ar-accent-weak);
-}
+/* App bar chrome moved to the `.ex-appbar` skeleton (section 15 below).
+   The old .ar-bar / .ar-bar-* / .ar-main / .ar-actbar / .ar-act-btn CSS
+   was deleted in Stage 2 when mode switching folded into the header's
+   segmented control (`.ex-section-switch` / `.ex-seg`). Active-mode
+   coloring is driven from the workspace's `ar-mode-*` class via a rule
+   in section 15. */
 .ar-btn-ink {
   background: var(--ar-ink);
   color: var(--ar-chrome);
@@ -288,27 +205,18 @@ input[type="radio"] {
   min-height: 0;
   position: relative;
 }
-.ar-body-report,
-.ar-body-data,
-.ar-body-qc,
-.ar-body-logs,
-.ar-body-setup {
+/* All five mode bodies stay mounted; CSS shows only the one whose class
+   matches the workspace's `ar-mode-*`. One attribute-selector rule beats
+   five hand-listed pairs. */
+[class*="ar-body-"] {
   display: none;
   height: 100%;
 }
-.ar-mode-report .ar-body-report {
-  display: flex;
-}
-.ar-mode-data .ar-body-data {
-  display: flex;
-}
-.ar-mode-qc .ar-body-qc {
-  display: flex;
-}
-.ar-mode-logs .ar-body-logs {
-  display: flex;
-}
-.ar-mode-setup .ar-body-setup {
+.ar-mode-report  .ar-body-report,
+.ar-mode-data    .ar-body-data,
+.ar-mode-qc      .ar-body-qc,
+.ar-mode-logs    .ar-body-logs,
+.ar-mode-setup   .ar-body-setup {
   display: flex;
 }
 
@@ -404,27 +312,6 @@ input[type="radio"] {
   font-size: 12px;
   color: var(--ar-ink-2);
 }
-.ar-setup-empty {
-  border: 1px dashed var(--ar-rule);
-  border-radius: var(--ar-radius);
-  padding: 16px;
-  color: var(--ar-ink-3);
-  font-size: 12.5px;
-}
-.ar-setup-empty p {
-  margin: 0 0 4px;
-}
-.ar-setup-empty pre {
-  margin: 8px 0 0;
-  padding: 8px;
-  background: var(--ar-chrome);
-  border-radius: var(--ar-radius);
-  font-size: 11.5px;
-  line-height: 1.5;
-  max-height: 180px;
-  overflow-y: auto;
-}
-
 /* ---- Setup: Populations rows ---- */
 .ar-setup-pops {
   display: flex;
@@ -916,22 +803,6 @@ select.ar-input-flat {
   width: 100%;
   color: var(--ar-ink-4);
   font-size: 12px;
-}
-
-/* -- status bar -- */
-.ar-statusbar {
-  flex: 0 0 26px;
-  display: flex;
-  align-items: center;
-  gap: var(--ar-space-3);
-  padding: 0 var(--ar-space-4);
-  background: var(--ar-chrome);
-  border-top: 1px solid var(--ar-rule);
-  font-size: 11px;
-  color: var(--ar-ink-3);
-}
-.ar-statusbar-spacer {
-  flex: 1 1 auto;
 }
 
 /* ============ 03 contents ============ */
@@ -2180,16 +2051,6 @@ select.ar-input-flat {
   color: var(--ar-ink-5);
 }
 
-/* -- pane empty state: an invitation to act, not a blank sheet -- */
-.ar-insp-empty {
-  padding: var(--ar-space-3) var(--ar-space-2);
-}
-.ar-insp-empty-text {
-  font-size: 11.5px;
-  color: var(--ar-ink-4);
-  margin: 0;
-}
-
 /* -- the eligible-variable rich picker: two-line options (chip+name, then
    the muted CDISC label, or the type word when unlabeled) -- selectize's
    own `render.option` markup, targeted here since it renders OUTSIDE the
@@ -2269,62 +2130,13 @@ select.ar-input-flat {
   flex-direction: column;
 }
 
-/* -- manage toolbar -- */
-.ar-dx-bar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: var(--ar-space-3);
-}
-.ar-dx-filter {
-  width: 220px;
-  height: 28px;
-  font-size: 12px;
-  border: 1px solid var(--ar-rule);
-  border-radius: var(--ar-radius);
-  padding: 0 8px;
-  background: var(--ar-paper);
-  color: var(--ar-ink);
-}
-/* Beat Bootstrap 5's default `.btn` specificity (shinyFiles adds
-   `btn btn-default` to its buttons, which fights our styling). Anchor
-   `.ar-dx-tb` twice so it wins on specificity without !important. */
-.ar-dx-tb.ar-dx-tb {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  width: auto;
-  font-size: 12px;
-  border: 1px solid var(--ar-rule);
-  border-radius: var(--ar-radius);
-  padding: 4px 10px;
-  color: var(--ar-ink-2);
-  background: var(--ar-paper);
-}
-.ar-dx-tb.ar-dx-tb:hover {
-  border-color: var(--ar-ink-3);
-  color: var(--ar-ink);
-  background: var(--ar-paper);
-}
-.ar-dx-tb-pri.ar-dx-tb-pri {
-  background: var(--ar-ink);
-  border-color: var(--ar-ink);
-  color: var(--ar-paper);
-}
-.ar-dx-tb-pri.ar-dx-tb-pri:hover {
-  background: var(--ar-ink-2);
-  border-color: var(--ar-ink-2);
-  color: var(--ar-paper);
-}
-.ar-dx-tb-danger {
-  color: var(--ar-error);
-  border-color: var(--ar-error);
-  margin-left: auto;
-}
-.ar-dx-tb-danger:hover {
-  color: var(--ar-error);
-  background: rgba(179, 38, 30, 0.05);
-}
+/* The Data-mode toolbar and Setup > Sources catalog both mount the shared
+   `.ex-manage-*` primitives ported from explorer (see the "list surface"
+   section further down). No arframe-owned button dialect lives here now --
+   `.ex-btn-sm` + Bootstrap variants (`.btn-primary`, `.btn-outline-secondary`,
+   `.btn-outline-danger`) own colour, and `.ar-picker` isolates shinyFiles'
+   `btn btn-default` contract so the previous doubled-selector hack is
+   unneeded. */
 
 /* -- explorer detail table -- */
 .ar-dx-table {
@@ -2380,12 +2192,6 @@ select.ar-input-flat {
   border-radius: var(--ar-radius-sm);
   color: var(--ar-ink-4);
 }
-.ar-dx-empty {
-  color: var(--ar-ink-4);
-  font-size: 12px;
-  padding: var(--ar-space-4);
-}
-
 /* -- drill grid -- */
 .ar-dx-bc {
   display: flex;
@@ -3227,4 +3033,535 @@ select.ar-input-flat {
     var(--ar-accent) 4px,
     transparent 4px
   );
+}
+
+/* ============ 15 explorer parity (shared atoms + list surface) =============
+   Ported verbatim from /Users/vignesh/projects/r/explorer/explorer/inst/www/
+   explorer.css. The `.ex-*` classes are the shared primitives with explorer;
+   `.ar-picker` scopes shinyFiles' Bootstrap `btn btn-default` contract so
+   the earlier `.ar-dx-tb.ar-dx-tb` doubled-selector hack is retired. */
+
+/* -- buttons -- */
+.ex-btn-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  font-size: 12px;
+  border-radius: var(--dv-radius);
+}
+.ex-btn-neutral {
+  color: var(--dv-ink);
+  background: var(--dv-paper);
+  border: 1px solid var(--dv-rule);
+  transition: border-color var(--ex-dur-fast) var(--ex-ease),
+    color var(--ex-dur-fast) var(--ex-ease);
+}
+.ex-btn-neutral:hover {
+  border-color: var(--dv-signal);
+  color: var(--dv-signal);
+}
+.ex-icon-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--dv-ink-2);
+  border-radius: var(--dv-radius);
+}
+.ex-icon-btn:hover {
+  background: var(--dv-paper-2);
+  border-color: var(--dv-rule);
+  color: var(--dv-ink);
+}
+.ex-icon-btn.ex-danger:hover {
+  color: var(--dv-danger);
+}
+.ex-tb-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--dv-rule);
+  margin: 0 4px;
+}
+
+/* -- appbar (Stage 2 wires these into mod_frame.R) -- */
+.ex-appbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 46px;
+  padding: 0 12px;
+  background: var(--dv-paper);
+  border-bottom: 1px solid var(--dv-rule);
+}
+.ex-appbar-brand {
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  color: var(--dv-ink);
+}
+.ex-appbar-title {
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 12.5px;
+  color: var(--dv-ink-2);
+  min-width: 0;
+}
+.ex-appbar-title .ar-title-wrap {
+  gap: 6px;
+}
+.ex-appbar-title .ar-title {
+  font-weight: 500;
+  color: var(--dv-ink);
+}
+.ex-appbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+.ex-appbar-user {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: 4px;
+  color: var(--dv-ink-2);
+}
+.ex-section-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 10px;
+}
+.ex-seg {
+  padding: 4px 11px;
+  font-size: 12.5px;
+  color: var(--dv-ink-2);
+  border-radius: var(--dv-radius);
+  text-decoration: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--ex-dur-fast) var(--ex-ease),
+    color var(--ex-dur-fast) var(--ex-ease);
+}
+.ex-seg:hover {
+  background: var(--dv-paper-2);
+  color: var(--dv-ink);
+}
+.ex-seg.active,
+.ar-mode-setup  .ex-seg[data-ar-mode="setup"],
+.ar-mode-data   .ex-seg[data-ar-mode="data"],
+.ar-mode-report .ex-seg[data-ar-mode="report"],
+.ar-mode-qc     .ex-seg[data-ar-mode="qc"],
+.ar-mode-logs   .ex-seg[data-ar-mode="logs"] {
+  color: var(--dv-signal);
+  background: var(--dv-signal-weak);
+  font-weight: 600;
+}
+
+/* -- presence dot (Stage 2 wires this into the header) -- */
+.ex-conn-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #16a34a;
+  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.18);
+}
+
+/* -- list surface (Stage 2b: mounted by Setup > Sources AND Data mode) -- */
+.ex-manage-list {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.ex-manage-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  background: var(--dv-paper);
+  border-bottom: 1px solid var(--dv-rule-2);
+}
+.ex-manage-tools {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ex-search {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 240px;
+}
+.ex-search > svg {
+  position: absolute !important;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--dv-ink-3);
+  pointer-events: none;
+}
+.ex-search .form-group,
+.ex-search .shiny-input-container {
+  margin: 0;
+  width: 100%;
+}
+.ex-search .form-control {
+  height: 30px;
+  padding: 4px 10px 4px 30px;
+  font-size: 12.5px;
+}
+.ex-import {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ex-import .btn {
+  margin: 0;
+}
+.ex-manage-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 16px;
+  border-bottom: 1px solid var(--dv-rule-2);
+}
+.ex-manage-count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 9px;
+}
+.ex-scope {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--dv-ink);
+}
+.ex-scope-n {
+  font-size: var(--ex-fs-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 600;
+  color: var(--dv-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -- the dataset grid (Stage 2b) -- */
+.ex-grid {
+  flex: 1 1 auto;
+  overflow: auto;
+}
+.ex-grid-head,
+.ex-grid-row {
+  display: grid;
+  /* Name | Folder | Type | Columns | Rows | Size | Status | Date */
+  grid-template-columns:
+    minmax(200px, 2fr) 1.1fr 86px 84px 84px 94px 124px 1.2fr;
+  align-items: center;
+  padding: 0 16px;
+}
+.ex-grid-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--dv-paper);
+  border-bottom: 1px solid var(--dv-rule);
+}
+.ex-grid-head .ex-gcell {
+  height: 34px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  color: var(--dv-ink-3);
+}
+.ex-grid-row {
+  border-bottom: 1px solid var(--dv-rule-2);
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  transition: background var(--ex-dur-fast) var(--ex-ease);
+}
+.ex-grid-row:hover {
+  background: var(--dv-paper-2);
+}
+.ex-grid-row.selected {
+  border-left-color: var(--dv-signal);
+  background: var(--dv-signal-weak);
+}
+.ex-gcell {
+  height: 29px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: var(--dv-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 12px;
+}
+.ex-gcell-num {
+  justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
+  padding-right: 20px;
+}
+.ex-gcell-name {
+  gap: 7px;
+}
+.ex-gcell-folder {
+  color: var(--dv-ink-2);
+}
+.ex-ftype {
+  color: var(--dv-ink-3);
+  display: inline-flex;
+}
+.ex-type-chip {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--dv-ink-3);
+  background: var(--dv-paper-2);
+  border-radius: var(--dv-radius-sm);
+  padding: 2px 6px;
+}
+.ex-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 8px 3px 6px;
+  border-radius: 999px;
+}
+.ex-status-lazy {
+  color: var(--dv-ink-3);
+  background: var(--dv-paper-2);
+}
+.ex-status-mem {
+  color: var(--dv-signal);
+  background: var(--dv-signal-weak);
+}
+.ex-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1.4px solid var(--dv-ink-3);
+  box-sizing: border-box;
+}
+.ex-status-ico {
+  font-size: 11px;
+}
+
+/* -- viewer canvas takeover (Stage 4 wires this into Data mode) -- */
+.ex-manage-viewer {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.ex-viewer-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 16px;
+  background: var(--dv-paper);
+  border-bottom: 1px solid var(--dv-rule);
+}
+.ex-viewer-crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.ex-crumb-folder {
+  font-size: 12px;
+  color: var(--dv-ink-3);
+}
+.ex-crumb-sep {
+  color: var(--dv-ink-3);
+}
+.ex-crumb-name {
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--dv-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ex-viewer-close {
+  margin-left: auto;
+}
+.ex-viewer-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+.ex-viewer-stage > div {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* -- first-run empty state for Setup > Sources (used sparingly per the
+      design-quality proof: only where the section has genuine first-run
+      guidance, never as apologetic placeholder) -- */
+.ex-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 6px;
+  color: var(--dv-ink-3);
+  text-align: center;
+}
+.ex-empty-title {
+  font-size: var(--ex-fs-title);
+  font-weight: 600;
+  color: var(--dv-ink-2);
+}
+.ex-empty-sub {
+  font-size: 12px;
+  max-width: 360px;
+}
+
+/* -- palette hint span: bridge.js fills it with the platform-appropriate
+      glyph (⌘K on macOS, Ctrl+K elsewhere). Sits in .ex-appbar-actions. */
+.ar-bar-hint {
+  font-size: 11px;
+  color: var(--dv-ink-3);
+  padding: 0 4px;
+}
+/* -- generic flex spacer: pushes siblings apart in a row. Used inside
+      breadcrumbs and toolbars. */
+.ar-bar-spacer {
+  flex: 1 1 auto;
+}
+
+/* -- Setup > Team section: current-user pill + activity feed rows -- */
+.ar-team-you {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--dv-paper);
+  border: 1px solid var(--dv-rule);
+  border-radius: var(--dv-radius);
+}
+.ar-team-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--dv-paper-2);
+  color: var(--dv-ink-2);
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  flex: 0 0 auto;
+}
+.ar-team-avatar-you {
+  background: var(--dv-signal-weak);
+  color: var(--dv-signal);
+  box-shadow: 0 0 0 2px var(--dv-signal);
+}
+.ar-team-you-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ar-team-you-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--dv-ink);
+}
+.ar-team-you-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--dv-ink-3);
+}
+.ar-team-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ar-team-feed-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: var(--dv-radius);
+  background: var(--dv-paper);
+  border: 1px solid var(--dv-rule-2);
+}
+.ar-team-feed-row .ar-team-avatar {
+  width: 24px;
+  height: 24px;
+  font-size: 10.5px;
+}
+.ar-team-feed-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.ar-team-feed-who {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--dv-ink);
+}
+.ar-team-feed-what {
+  font-size: 12px;
+  color: var(--dv-ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ar-team-feed-ts {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--dv-ink-3);
+  font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+}
+.ar-sources-count {
+  padding-left: 0;
+  padding-right: 0;
+  border-bottom: none;
+}
+.ar-muted {
+  color: var(--dv-ink-3);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+/* -- shinyFiles wrapper: scopes the picker's Bootstrap `btn btn-default`
+      dialect so it doesn't fight the app-level `.btn` variables. The old
+      .ar-dx-tb.ar-dx-tb doubled-selector hack (arframe.css pre-Stage 1)
+      is retired; normal specificity wins because `.btn` inside `.ar-picker`
+      only ever carries the variant (btn-primary / btn-outline-secondary /
+      btn-outline-danger) plus `.ex-btn-sm` for size. */
+.ar-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ar-picker .btn {
+  margin: 0;
 }

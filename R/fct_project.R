@@ -80,9 +80,89 @@ save_touched <- function(store) {
   # relies on arpillar's atomic per-file writes so no reader sees a partial
   # state. A later stage can diff and write only the changed output.
   arpillar::report_to_folder(store$rv$report, store$rv$path)
+  # Emit per-output .R programs + a run-all.R (SAS-pharma convention: every
+  # output has a program; a teammate can reproduce the package from the CLI
+  # with `Rscript programs/run-all.R`). Path comes from setup.yml's
+  # `paths.programs_dir` block, defaulting to `./programs/` relative to the
+  # project root.
+  .emit_programs(store)
+  # One activity line per debounce batch, and a team-roster ensure so the
+  # first save of a fresh project seeds `.arframe/team.json`.
+  user <- .who_am_i()
+  ids <- vapply(.all_objects(store$rv$report), function(o) o@id, character(1))
+  tryCatch(
+    .log_activity(store$rv$path, user, "edited", ids),
+    error = function(e) NULL
+  )
+  tryCatch(
+    .ensure_team_member(store$rv$path, user),
+    error = function(e) NULL
+  )
   store$rv$dirty <- FALSE
   store$rv$saved_at <- Sys.time()
   .refresh_mtimes(store)
+  invisible(NULL)
+}
+
+#' Emit `programs/<id>.R` per output and a `programs/run-all.R` that runs
+#' them in numbering order. Path from `theme$paths$programs_dir`; default
+#' `./programs/` relative to the project root. Absolute paths pass through.
+#' Errors are swallowed per-output so one failing generator does not block
+#' the save.
+#' @noRd
+.emit_programs <- function(store) {
+  if (is.null(store$rv$path)) {
+    return(invisible(NULL))
+  }
+  paths <- store$rv$report@theme$paths %||% list()
+  prog_dir <- paths$programs_dir %||% "./programs/"
+  if (!.is_absolute_path(prog_dir)) {
+    prog_dir <- file.path(store$rv$path, sub("^\\./", "", prog_dir))
+  }
+  dir.create(prog_dir, recursive = TRUE, showWarnings = FALSE)
+  objs <- .all_objects(store$rv$report)
+  for (obj in objs) {
+    out <- file.path(prog_dir, paste0(obj@id, ".R"))
+    tryCatch(
+      arpillar::emit_code(store$con, obj, path = out),
+      error = function(e) NULL
+    )
+  }
+  tryCatch(
+    arpillar::emit_report_code(
+      store$con,
+      store$rv$report,
+      path = file.path(prog_dir, "run-all.R")
+    ),
+    error = function(e) NULL
+  )
+  invisible(prog_dir)
+}
+
+#' TRUE for POSIX absolute paths (`/`), Windows drive paths (`C:\`), and
+#' UNC paths (`\\server`). Used to decide whether a Setup > Paths entry
+#' resolves against the project root.
+#' @noRd
+.is_absolute_path <- function(path) {
+  if (!is.character(path) || length(path) != 1L || !nzchar(path)) {
+    return(FALSE)
+  }
+  grepl("^([/~]|[A-Za-z]:[\\\\/]|\\\\\\\\)", path)
+}
+
+#' The one refresh path (Stage 3 consolidation).
+#'
+#' Rescans on-disk outputs (`scan_and_merge()`), garbage-collects stale
+#' presence files, and bumps `catalog_nonce` so every reactive that
+#' watches team state (the Setup > Team feed, the Sources list) picks up
+#' the change. Debounced upstream by the caller -- both the manual
+#' refresh button and the tab-focus event route through this helper so
+#' there is one place to add or reorder steps.
+#' @noRd
+.refresh_all <- function(store) {
+  scan_and_merge(store)
+  tryCatch(.gc_presence(store$rv$path), error = function(e) NULL)
+  store$rv$catalog_nonce <- store$rv$catalog_nonce + 1L
   invisible(NULL)
 }
 

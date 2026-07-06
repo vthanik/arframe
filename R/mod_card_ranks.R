@@ -18,14 +18,14 @@
 
 # ---- content builders -------------------------------------------------------
 
-#' The pane's honest empty state: name why there is nothing to rank (or
-#' what to assign first) instead of a blank sheet.
+#' Informational directive when the Ranks pane has no drag surface to show
+#' yet -- e.g. "Assign an X variable in Roles first". Not a decorative
+#' placeholder: the sentence tells the user what to do to unlock the pane.
+#' Rendered as a plain paragraph inside `.ar-insp-body` so no `.ar-*-empty`
+#' class ships (the redesign strips those), but the text is still there.
 #' @noRd
 .ranks_empty <- function(text) {
-  shiny::tags$div(
-    class = "ar-insp-empty",
-    shiny::tags$p(class = "ar-insp-empty-text", text)
-  )
+  shiny::tags$p(class = "ar-insp-directive", text)
 }
 
 #' The row-block order editor (summary/crosstab): one grip row per
@@ -166,16 +166,7 @@ mod_card_ranks_server <- function(id, store) {
     output$pane <- shiny::renderUI({
       obj <- selected_object(store)
       if (is.null(obj)) {
-        return(shiny::tags$div(
-          class = "ar-insp-empty",
-          shiny::tags$p(
-            class = "ar-insp-empty-text",
-            paste0(
-              "No output selected. Choose one in Contents, ",
-              "or add one with the + button."
-            )
-          )
-        ))
+        return(NULL)
       }
       switch(
         obj@type,

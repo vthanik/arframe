@@ -1,201 +1,187 @@
-# The Galley frame: the whole 100vh workspace -- app bar, the activity bar
-# (the far-left mode rail, mockup piece A), the four mounted mode bodies
-# (report/data/qc/logs), and the status bar (design spec #3). Layout only:
-# every body is handed in by the caller as opaque tag content and all four
-# stay MOUNTED at once (draft state lives in the store, never the DOM --
-# see the suspend-contract regression in test-fct_store.R). CSS shows only the
-# one matching `store$rv$mode` via the `ar-mode-*` class on `.ar-workspace`,
-# set by arframe.js's "ar-mode" custom message handler.
+# The Galley frame: a 46px .ex-appbar on top of five mounted mode bodies
+# (report/data/qc/logs/setup). Layout only: every body is handed in by the
+# caller as opaque tag content and all five stay MOUNTED at once (draft
+# state lives in the store, never the DOM -- see the suspend-contract
+# regression in test-fct_store.R). CSS shows only the one matching
+# `store$rv$mode` via the `ar-mode-*` class on `.ar-workspace`, set by
+# arframe.js's "ar-mode" custom message handler.
 
-#' The Galley frame UI: app bar, activity bar, the four mode bodies,
-#' status bar.
+#' The Galley frame UI: a single-row appbar over the five mounted mode bodies.
 #'
-#' `report_body`/`data_body`/`qc_body`/`logs_body` are opaque tag content --
-#' this module does not know what is inside them, only which `.ar-body-*`
-#' container each sits in. The report body is itself the three-region
-#' contents/desk/card row; the caller composes that (see [arframe()]).
+#' Mode switching lives in the header's `.ex-section-switch` segmented control
+#' (Stage 2 rebuild); the earlier far-left `.ar-actbar` rail is gone. Each
+#' segment carries `data-ar-mode`, picked up by arframe.js's delegated click
+#' handler which fires `input$mode` -- the observer at `mod_frame_server()`
+#' still owns the mode-toggle semantics.
 #' @param id *The module namespace.* `<character(1)>: required`.
-#' @param report_body *Report-mode body content.* `<tag/tagList>: required`.
-#' @param data_body *Data-mode body content.* `<tag/tagList>: required`.
-#' @param qc_body *QC-mode body content.* `<tag/tagList>: required`.
-#' @param logs_body *Logs-mode body content.* `<tag/tagList>: required`.
+#' @param report_body,data_body,qc_body,logs_body,setup_body *Per-mode body
+#'   content.* `<tag/tagList>: required`. Opaque to this module.
 #' @noRd
-mod_frame_ui <- function(id, report_body, data_body, qc_body, logs_body, setup_body = NULL) {
+mod_frame_ui <- function(
+  id,
+  report_body,
+  data_body,
+  qc_body,
+  logs_body,
+  setup_body = NULL
+) {
   ns <- shiny::NS(id)
   shiny::div(
     # Opens in Setup mode -- study configuration is the first stop.
     class = "ar-workspace ar-mode-setup",
     .frame_bar(ns),
     shiny::div(
-      class = "ar-main",
-      .frame_actbar(ns),
-      shiny::div(
-        class = "ar-body",
-        shiny::div(class = "ar-body-report", report_body),
-        shiny::div(class = "ar-body-data", data_body),
-        shiny::div(class = "ar-body-qc", qc_body),
-        shiny::div(class = "ar-body-logs", logs_body),
-        shiny::div(class = "ar-body-setup", setup_body)
-      )
-    ),
-    .frame_statusbar(ns)
-  )
-}
-
-#' The 42px app bar (mockup piece A supersedes the v5 segmented toggle):
-#' wordmark, report title (click-to-edit), then the right action cluster:
-#' undo/redo, the command-palette hint, Export package. Mode switching
-#' lives in the activity bar (`.frame_actbar()`).
-#' @noRd
-.frame_bar <- function(ns) {
-  shiny::div(
-    class = "ar-bar",
-    shiny::span(class = "ar-bar-mark ar-mono", "arframe"),
-    shiny::div(class = "ar-bar-divider"),
-    .frame_title(ns),
-    # Save-state chip -- updated via `ar-save-state` message. Idle default
-    # so the user sees the affordance without waiting for a first save.
-    shiny::span(
-      id = ns("save_chip"),
-      class = "ar-save-chip",
-      `data-state` = "idle",
-      shiny::span(class = "ar-save-chip-lbl", "Saved")
-    ),
-    shiny::div(class = "ar-bar-spacer"),
-    # Open folder (project switcher). shinyDirButton returns a tagList, so
-    # tagAppendAttributes leaks extra attrs as text -- keep it plain and let
-    # the label ("Open") stand.
-    shinyFiles::shinyDirButton(
-      ns("open_project"),
-      label = "Open",
-      title = "Open project folder",
-      class = "ar-icon-btn ar-icon-btn-labeled ar-icon-btn-open"
-    ),
-    # Refresh: rescan on-disk state (scan_and_merge)
-    shiny::tagAppendAttributes(
-      .action_btn(
-        ns("refresh_btn"),
-        .icon("redo", 14),
-        variant = "link",
-        class = "ar-icon-btn"
-      ),
-      `aria-label` = "Refresh"
-    ),
-    # Undo / Redo -- kept until the top-bar Preact stage supersedes them.
-    shiny::tagAppendAttributes(
-      .action_btn(
-        ns("undo_btn"),
-        .icon("undo", 14),
-        variant = "link",
-        class = "ar-icon-btn"
-      ),
-      `aria-label` = "Undo"
-    ),
-    shiny::tagAppendAttributes(
-      .action_btn(
-        ns("redo_btn"),
-        .icon("redo", 14),
-        variant = "link",
-        class = "ar-icon-btn"
-      ),
-      `aria-label` = "Redo"
-    ),
-    # Command palette hint (arframe.js fills the glyph per navigator.platform).
-    shiny::span(class = "ar-bar-hint ar-mono"),
-    # Package -- ships the report tree as a submission-ready zip.
-    shiny::tags$button(
-      id = ns("export_btn"),
-      type = "button",
-      class = "ar-btn-ink action-button",
-      .icon("package", 13),
-      shiny::span("Package"),
-      shiny::span(class = "ar-btn-kbd ar-mono", shiny::HTML("&#8984;&#8679;E"))
-    ),
-    shiny::tagAppendAttributes(
-      shiny::downloadLink(
-        ns("export_dl"),
-        label = NULL,
-        class = "ar-hidden-dl"
-      ),
-      `aria-hidden` = "true",
-      tabindex = "-1"
+      class = "ar-body",
+      shiny::div(class = "ar-body-setup", setup_body),
+      shiny::div(class = "ar-body-data", data_body),
+      shiny::div(class = "ar-body-report", report_body),
+      shiny::div(class = "ar-body-qc", qc_body),
+      shiny::div(class = "ar-body-logs", logs_body)
     )
   )
 }
 
-#' The activity bar (mockup piece A): a narrow far-left vertical rail of
-#' icon buttons, one per mode destination -- Report, Data, QC, Logs. The
-#' ACTIVE button is a pure CSS rule keyed off the workspace `ar-mode-*`
-#' class, so switching never round-trips just to restyle. `data-ar-mode`
-#' is what arframe.js's delegated click handler reads to fire `input$mode`.
-#' Distinct from the collapsible CONTENTS rail (`rv$rail_collapsed`) --
-#' the activity bar never collapses.
+#' The 46px `.ex-appbar`: wordmark, segmented mode switch, click-to-edit
+#' title (natively centered in the title slot via flex), then the actions
+#' cluster (Open \u00b7 save chip \u00b7 Refresh \u00b7 Undo/Redo \u00b7 palette hint \u00b7
+#' Package). Presence avatars are wired in Stage 3.
 #' @noRd
-.frame_actbar <- function(ns) {
+.frame_bar <- function(ns) {
   shiny::div(
-    class = "ar-actbar",
-    # Setup leads the rail (user decision 2026-07-06): the study configuration
-    # is the first stop; Data / Report follow. Startup mode still opens on
-    # whichever `store$rv$mode` was seeded with by the caller.
-    .act_btn(ns("mode_setup"), "setup", "gear", "Setup"),
-    .act_btn(ns("mode_data"), "data", "database", "Data"),
-    .act_btn(ns("mode_report"), "report", "report", "Report"),
-    .act_btn(ns("mode_qc"), "qc", "check", "Review"),
-    .act_btn(ns("mode_logs"), "logs", "logs", "Logs")
+    class = "ex-appbar",
+    shiny::span(class = "ex-appbar-brand ar-mono", "arframe"),
+    .frame_section_switch(),
+    .frame_title(ns),
+    shiny::div(
+      class = "ex-appbar-actions",
+      # Open folder (project switcher). shinyDirButton returns a tagList.
+      shiny::div(
+        class = "ar-picker",
+        shinyFiles::shinyDirButton(
+          ns("open_project"),
+          label = "Open",
+          title = "Open project folder",
+          class = "ex-btn-sm btn btn-outline-secondary"
+        )
+      ),
+      # Save-state chip -- updated via `ar-save-state` message.
+      shiny::span(
+        id = ns("save_chip"),
+        class = "ar-save-chip",
+        `data-state` = "idle",
+        shiny::span(class = "ar-save-chip-lbl", "Saved")
+      ),
+      shiny::span(class = "ex-tb-sep"),
+      shiny::tagAppendAttributes(
+        .action_btn(
+          ns("refresh_btn"),
+          .icon("redo", 14),
+          variant = "link",
+          class = "ex-icon-btn"
+        ),
+        `aria-label` = "Refresh"
+      ),
+      shiny::tagAppendAttributes(
+        .action_btn(
+          ns("undo_btn"),
+          .icon("undo", 14),
+          variant = "link",
+          class = "ex-icon-btn"
+        ),
+        `aria-label` = "Undo"
+      ),
+      shiny::tagAppendAttributes(
+        .action_btn(
+          ns("redo_btn"),
+          .icon("redo", 14),
+          variant = "link",
+          class = "ex-icon-btn"
+        ),
+        `aria-label` = "Redo"
+      ),
+      # Command palette hint (arframe.js fills the glyph per navigator.platform).
+      shiny::span(class = "ar-bar-hint ar-mono"),
+      shiny::span(class = "ex-tb-sep"),
+      # Package -- ships the report tree as a submission-ready zip.
+      shiny::tags$button(
+        id = ns("export_btn"),
+        type = "button",
+        class = "ar-btn-ink action-button",
+        .icon("package", 13),
+        shiny::span("Package"),
+        shiny::span(
+          class = "ar-btn-kbd ar-mono",
+          shiny::HTML("&#8984;&#8679;E")
+        )
+      ),
+      shiny::tagAppendAttributes(
+        shiny::downloadLink(
+          ns("export_dl"),
+          label = NULL,
+          class = "ar-hidden-dl"
+        ),
+        `aria-hidden` = "true",
+        tabindex = "-1"
+      )
+    )
   )
 }
 
-#' One activity-bar button: icon with its label visible BELOW it
-#' (explorer-style rail, GOV.UK "visible label over tooltip" principle).
+#' The segmented mode switch inside the appbar. Setup / Data / Report /
+#' Review / Logs are peers; the ACTIVE segment is a pure CSS rule keyed
+#' off the workspace `ar-mode-*` class (no server round-trip on switch).
+#' Each segment carries `data-ar-mode` for arframe.js's delegated click
+#' handler, which posts `input$mode`.
 #' @noRd
-.act_btn <- function(id, mode, icon, label) {
-  shiny::tagAppendAttributes(
-    .action_btn(
-      id,
-      shiny::tagList(
-        .icon(icon, 16),
-        shiny::span(class = "ar-act-lbl", label)
-      ),
-      variant = "link",
-      class = "ar-act-btn"
-    ),
+.frame_section_switch <- function() {
+  shiny::div(
+    class = "ex-section-switch",
+    role = "tablist",
+    .seg("setup", "Setup"),
+    .seg("data", "Data"),
+    .seg("report", "Report"),
+    .seg("qc", "Review"),
+    .seg("logs", "Logs")
+  )
+}
+
+#' One appbar segment: a plain <button> that the delegated click handler
+#' reads via `data-ar-mode`. No Shiny action-button wrapper -- the input
+#' is posted from JS, so a bare <button> keeps the DOM minimal.
+#' @noRd
+.seg <- function(mode, label) {
+  shiny::tags$button(
+    type = "button",
+    class = "ex-seg",
+    role = "tab",
     `data-ar-mode` = mode,
-    `aria-label` = label
+    `aria-label` = label,
+    label
   )
 }
 
 #' The click-to-edit report title: a static span with a pencil affordance
 #' that JS flips to a text input (`ar-title-editing` class on the wrapper,
 #' CSS-driven visibility so no inline styles are toggled from JS); Enter/blur
-#' hands the value back through `input$name`.
+#' hands the value back through `input$name`. Sits inside `.ex-appbar-title`
+#' which centers the interior in the title slot via flex.
 #' @noRd
 .frame_title <- function(ns) {
   shiny::div(
-    id = ns("title_wrap"),
-    class = "ar-title-wrap",
-    shiny::tagAppendAttributes(
-      shiny::textOutput(ns("title_display"), inline = TRUE),
-      class = "ar-title"
-    ),
-    .icon("pencil", 12),
+    class = "ex-appbar-title",
     shiny::div(
-      class = "ar-title-input",
-      shiny::textInput(ns("name"), label = NULL, value = "")
+      id = ns("title_wrap"),
+      class = "ar-title-wrap",
+      shiny::tagAppendAttributes(
+        shiny::textOutput(ns("title_display"), inline = TRUE),
+        class = "ar-title"
+      ),
+      .icon("pencil", 12),
+      shiny::div(
+        class = "ar-title-input",
+        shiny::textInput(ns("name"), label = NULL, value = "")
+      )
     )
-  )
-}
-
-#' The 26px mono status bar: output/ready counts, active dataset, saved time.
-#' Filled in by later tasks (Contents owns the counts, Data mode the active
-#' dataset); this task ships the empty structural shell.
-#' @noRd
-.frame_statusbar <- function(ns) {
-  shiny::div(
-    class = "ar-statusbar ar-mono",
-    shiny::span(id = ns("status_counts")),
-    shiny::div(class = "ar-statusbar-spacer"),
-    shiny::span(id = ns("status_dataset")),
-    shiny::span(id = ns("status_saved"))
   )
 }
 
@@ -293,10 +279,13 @@ mod_frame_server <- function(id, store) {
       }
     })
 
-    # Refresh: rescan on-disk state (bring in other-session edits).
+    # Refresh: rescan on-disk state (bring in other-session edits) via
+    # the consolidated `.refresh_all()` helper. Both the manual button
+    # and the tab-focus event route through the same call site so any
+    # additional refresh step lands in one place.
     shiny::observeEvent(input$refresh_btn, {
       tryCatch(
-        scan_and_merge(store),
+        .refresh_all(store),
         error = function(e) {
           log_line(store, sprintf("refresh failed: %s", conditionMessage(e)))
         }
@@ -309,9 +298,9 @@ mod_frame_server <- function(id, store) {
     #   idle      = clean, `saved_at` populated
     shiny::observe({
       state <- if (is.null(store$rv$path)) {
-        list(state = "readonly", label = "No folder — Open one")
+        list(state = "readonly", label = "No folder \u2014 Open one")
       } else if (isTRUE(store$rv$dirty)) {
-        list(state = "saving", label = "Saving…")
+        list(state = "saving", label = "Saving\u2026")
       } else if (!is.null(store$rv$saved_at)) {
         list(state = "idle", label = "Saved")
       } else {
@@ -319,7 +308,11 @@ mod_frame_server <- function(id, store) {
       }
       session$sendCustomMessage(
         "ar-save-state",
-        list(id = session$ns("save_chip"), state = state$state, label = state$label)
+        list(
+          id = session$ns("save_chip"),
+          state = state$state,
+          label = state$label
+        )
       )
     })
 

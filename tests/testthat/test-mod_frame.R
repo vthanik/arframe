@@ -1,38 +1,44 @@
-# The Galley frame: app bar + activity bar + status bar + the four mounted
-# mode bodies (report/data/qc/logs), shown/hidden by a workspace mode class.
-# Server-side, the frame owns mode switching, undo/redo, and the report-title
-# edit -- all through the injected store, never local reactiveVal state.
+# The Galley frame: the `.ex-appbar` header (brand + segmented mode
+# switch + centered title + actions cluster) atop five mounted mode
+# bodies (setup/data/report/qc/logs), shown/hidden by a workspace mode
+# class. Server-side, the frame owns mode switching, undo/redo, and the
+# report-title edit -- all through the injected store, never local
+# reactiveVal state. Redesigned in the Stage 2 rebuild: the old
+# `.ar-actbar` rail folded into the header, and the empty
+# `.ar-statusbar` shell was deleted (dead chrome).
 
-test_that("mod_frame_ui HTML contains the bar, activity bar, statusbar, and all four mode-body containers", {
+test_that("mod_frame_ui HTML contains the appbar, segmented mode switch, and all five mode-body containers", {
   ui <- mod_frame_ui(
     "frame",
     report_body = shiny::div("report placeholder"),
     data_body = shiny::div("data placeholder"),
     qc_body = shiny::div("qc placeholder"),
-    logs_body = shiny::div("logs placeholder")
+    logs_body = shiny::div("logs placeholder"),
+    setup_body = shiny::div("setup placeholder")
   )
   html <- as.character(ui)
 
-  expect_match(html, "ar-bar", fixed = TRUE)
-  # Piece A: the far-left activity bar carries one icon button per mode
-  # destination -- it supersedes the v5 segmented toggle + header QC button.
-  expect_match(html, "ar-actbar", fixed = TRUE)
-  expect_no_match(html, "ar-seg", fixed = TRUE)
+  # The explorer-parity appbar skeleton (Stage 2).
+  expect_match(html, "ex-appbar", fixed = TRUE)
+  expect_match(html, "ex-appbar-brand", fixed = TRUE)
+  expect_match(html, "ex-section-switch", fixed = TRUE)
+  expect_match(html, "ex-appbar-title", fixed = TRUE)
+  expect_match(html, "ex-appbar-actions", fixed = TRUE)
+  # One segment per mode, each carrying `data-ar-mode` for bridge.js's
+  # delegated click handler.
+  expect_match(html, 'data-ar-mode="setup"', fixed = TRUE)
   expect_match(html, 'data-ar-mode="data"', fixed = TRUE)
   expect_match(html, 'data-ar-mode="report"', fixed = TRUE)
   expect_match(html, 'data-ar-mode="qc"', fixed = TRUE)
   expect_match(html, 'data-ar-mode="logs"', fixed = TRUE)
-  # Explorer-style rail (2026-07-04): each mode button carries a visible
-  # text label below its icon.
-  expect_match(html, '<span class="ar-act-lbl">Report</span>', fixed = TRUE)
-  expect_match(html, '<span class="ar-act-lbl">Logs</span>', fixed = TRUE)
-  expect_match(html, "ar-statusbar", fixed = TRUE)
+  # Five mounted mode bodies.
+  expect_match(html, "ar-body-setup", fixed = TRUE)
   expect_match(html, "ar-body-report", fixed = TRUE)
   expect_match(html, "ar-body-data", fixed = TRUE)
   expect_match(html, "ar-body-qc", fixed = TRUE)
   expect_match(html, "ar-body-logs", fixed = TRUE)
-  # Async export (Task 16): a plain action button (not a download link) plus a
-  # hidden download link the server clicks once the zip is ready.
+  # Async export: plain action button + hidden download link the server
+  # clicks once the zip is ready.
   expect_match(html, 'id="frame-export_btn"', fixed = TRUE)
   expect_match(html, 'id="frame-export_dl"', fixed = TRUE)
   expect_match(html, "ar-hidden-dl", fixed = TRUE)
@@ -109,19 +115,20 @@ test_that("arframe() launches: bar, mode buttons, all three bodies, mode switch,
   withr::defer(app$stop())
 
   html <- app$get_html("body", outer_html = TRUE)
-  expect_match(html, "ar-bar", fixed = TRUE)
-  expect_match(html, "ar-actbar", fixed = TRUE)
+  expect_match(html, "ex-appbar", fixed = TRUE)
+  expect_match(html, "ex-section-switch", fixed = TRUE)
+  expect_match(html, 'data-ar-mode="setup"', fixed = TRUE)
   expect_match(html, 'data-ar-mode="data"', fixed = TRUE)
   expect_match(html, 'data-ar-mode="report"', fixed = TRUE)
   expect_match(html, 'data-ar-mode="qc"', fixed = TRUE)
   expect_match(html, 'data-ar-mode="logs"', fixed = TRUE)
-  expect_match(html, "ar-statusbar", fixed = TRUE)
+  expect_match(html, "ar-body-setup", fixed = TRUE)
   expect_match(html, "ar-body-report", fixed = TRUE)
   expect_match(html, "ar-body-data", fixed = TRUE)
   expect_match(html, "ar-body-qc", fixed = TRUE)
   expect_match(html, "ar-body-logs", fixed = TRUE)
-  # Opens in Data mode (user decision 2026-07-04).
-  expect_match(html, "ar-mode-data", fixed = TRUE)
+  # Opens in Setup mode (user decision 2026-07-06).
+  expect_match(html, "ar-mode-setup", fixed = TRUE)
 
   app$click(selector = '[data-ar-mode="qc"]')
   app$wait_for_idle()

@@ -23,6 +23,11 @@
   adsl <- data.frame(
     USUBJID = sprintf("SUBJ-%03d", 1:12),
     TRT01P = rep(c("Placebo", "Xanomeline"), each = 6L),
+    # TRT01A: actual treatment mirrors planned in a compliant on-study
+    # cohort. Real ADSL always ships both; the ae_overall / ae_soc_pt
+    # presets specify arm_mode = "actual" so the demo fixture needs both
+    # or arpillar aborts with "TRTA is not in the dataset".
+    TRT01A = rep(c("Placebo", "Xanomeline"), each = 6L),
     AGE = c(63L, 71L, 58L, 66L, 74L, 61L, 69L, 55L, 72L, 64L, 60L, 68L),
     SEX = rep(c("M", "F"), 6L),
     SAFFL = rep("Y", 12L),
@@ -86,6 +91,12 @@
   adae <- data.frame(
     USUBJID = rep(adsl$USUBJID, each = 2L),
     TRT01P = rep(adsl$TRT01P, each = 2L),
+    # TRTA / TRTP: BDS occurrence datasets carry the short arm-var pair
+    # (TRTA/TRTP) instead of TRT01A/TRT01P. arpillar's resolve_arm() picks
+    # TRTA when arm_mode = "actual" (ae_overall / ae_soc_pt presets), so
+    # the demo fixture needs it to build the ARD without erroring.
+    TRTA = rep(adsl$TRT01A, each = 2L),
+    TRTP = rep(adsl$TRT01P, each = 2L),
     AEBODSYS = rep(
       c("Gastrointestinal disorders", "Cardiac disorders"),
       times = 12L
@@ -104,6 +115,7 @@
     c(
       USUBJID = "Unique Subject Identifier",
       TRT01P = "Planned Treatment for Period 01",
+      TRT01A = "Actual Treatment for Period 01",
       AGE = "Age",
       SEX = "Sex",
       SAFFL = "Safety Population Flag",
@@ -126,6 +138,8 @@
   adae <- .demo_label(
     adae,
     c(
+      TRTA = "Actual Treatment",
+      TRTP = "Planned Treatment",
       AEBODSYS = "Body System or Organ Class",
       AEDECOD = "Dictionary-Derived Term",
       TRTEMFL = "Treatment Emergent Analysis Flag"

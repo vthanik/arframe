@@ -12,3 +12,4 @@
 ^handoff\.md$
 ^\.claude$
 ^srcjs$
+^dev\.R$

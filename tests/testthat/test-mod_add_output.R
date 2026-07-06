@@ -20,143 +20,10 @@ withr::defer(shiny::reactiveConsole(FALSE), teardown_env())
   list(con = con, store = store)
 }
 
-# ---- recommendations -------------------------------------------------------
-
-test_that(".rec_preset_ids: subject -> demographics, bds -> mean_over_time/box_by_visit", {
-  fx <- .ao_store()
-  withr::defer(arpillar::engine_close(fx$con))
-
-  expect_setequal(.rec_preset_ids(fx$con, "ADSL"), "demographics")
-  expect_setequal(
-    .rec_preset_ids(fx$con, "ADVS"),
-    c("mean_over_time", "box_by_visit")
-  )
-})
-
-test_that(".rec_preset_ids: occurrence -> ae_overall/ae_soc_pt", {
-  fx <- .ao_store()
-  withr::defer(arpillar::engine_close(fx$con))
-
-  expect_setequal(.rec_preset_ids(fx$con, "ADAE"), c("ae_overall", "ae_soc_pt"))
-})
-
-test_that(".rec_preset_ids: a CNSR column adds km_os, independent of the structure rule", {
-  fx <- .ao_store()
-  withr::defer(arpillar::engine_close(fx$con))
-
-  # ADTTE has no PARAMCD/*TERM|*DECOD, so detect_structure() falls back to
-  # "subject" via the bare USUBJID rule -- it must recommend BOTH
-  # demographics (structure) AND km_os (the CNSR column), not just one.
-  expect_identical(arpillar::detect_structure(fx$con, "ADTTE"), "subject")
-  ids <- .rec_preset_ids(fx$con, "ADTTE")
-  expect_true("demographics" %in% ids)
-  expect_true("km_os" %in% ids)
-})
-
-test_that(".recommendations: one row per (dataset, preset) pair that will actually render", {
-  fx <- .ao_store()
-  withr::defer(arpillar::engine_close(fx$con))
-
-  # box_by_visit/ae_overall/ae_soc_pt/km_os/demographics/mean_over_time are
-  # all fully covered by their recommended dataset on the enriched demo
-  # catalog (RACE on ADSL, CHG on ADVS) -- these are the surviving rows.
-  recs <- .recommendations(fx$store)
-  pairs <- vapply(recs, function(r) paste(r$preset_id, r$dataset), character(1))
-  expect_true("box_by_visit ADVS" %in% pairs)
-  expect_true("ae_overall ADAE" %in% pairs)
-  expect_true("ae_soc_pt ADAE" %in% pairs)
-  expect_true("km_os ADTTE" %in% pairs)
-  expect_true("demographics ADSL" %in% pairs)
-  expect_true("mean_over_time ADVS" %in% pairs)
-})
-
-test_that(".recommendations: label is '<preset label> \u2014 from <DATASET>'", {
-  fx <- .ao_store()
-  withr::defer(arpillar::engine_close(fx$con))
-
-  recs <- .recommendations(fx$store)
-  hit <- Filter(
-    function(r) {
-      identical(r$preset_id, "ae_overall") && identical(r$dataset, "ADAE")
-    },
-    recs
-  )
-  expect_length(hit, 1L)
-  expect_identical(
-    hit[[1]]$label,
-    "Overall Summary of Adverse Events \u2014 from ADAE"
-  )
-})
-
-test_that(".recommendations drops every candidate missing a role var -- only fully-covered pairs survive", {
-  fx <- .ao_store()
-  withr::defer(arpillar::engine_close(fx$con))
-
-  # Reproduce the drop set from first principles against every candidate
-  # .rec_preset_ids() would emit, independent of .recommendations()'s own
-  # filtering logic -- proves the invariant, not just today's fixture
-  # values.
-  grid <- arpillar::catalog_grid(fx$con)
-  candidates <- list()
-  for (dataset in grid$name) {
-    for (preset_id in .rec_preset_ids(fx$con, dataset)) {
-      candidates[[length(candidates) + 1L]] <- list(
-        preset_id = preset_id,
-        dataset = dataset
-      )
-    }
-  }
-  expect_true(length(candidates) > 0L)
-
-  recs <- .recommendations(fx$store)
-  rec_pairs <- vapply(
-    recs,
-    function(r) paste(r$preset_id, r$dataset),
-    character(1)
-  )
-
-  for (cand in candidates) {
-    pr <- arpillar::preset(cand$preset_id)
-    missing <- .missing_vars(fx$con, pr, cand$dataset)
-    pair <- paste(cand$preset_id, cand$dataset)
-    if (length(missing) > 0L) {
-      expect_false(
-        pair %in% rec_pairs,
-        info = sprintf(
-          "%s should be dropped (missing %s)",
-          pair,
-          toString(missing)
-        )
-      )
-    } else {
-      expect_true(
-        pair %in% rec_pairs,
-        info = sprintf("%s is fully covered and should be recommended", pair)
-      )
-    }
-  }
-
-  # On the demo catalog specifically: demographics-from-ADTTE (ADTTE has
-  # none of AGE/SEX/RACE) is dropped, but demographics-from-ADSL and
-  # mean_over_time-from-ADVS are both fully covered (RACE/CHG were added to
-  # the demo catalog) and survive.
-  expect_false("demographics ADTTE" %in% rec_pairs)
-  expect_true("demographics ADSL" %in% rec_pairs)
-  expect_true("mean_over_time ADVS" %in% rec_pairs)
-})
-
-test_that(".recommendations is memoized under a 'rec::' key on catalog_nonce", {
-  fx <- .ao_store()
-  withr::defer(arpillar::engine_close(fx$con))
-
-  recs1 <- .recommendations(fx$store)
-  key <- paste0("rec::", shiny::isolate(fx$store$rv$catalog_nonce))
-  expect_true(exists(key, envir = fx$store$cache, inherits = FALSE))
-  # A second call under the same nonce returns the identical cached list
-  # (not merely an equal one) -- proves the cache hit path, not a re-derive.
-  recs2 <- .recommendations(fx$store)
-  expect_identical(recs1, recs2)
-})
+# Recommended section was removed in commit 3d85dd2 (2026-07-03); the
+# associated `.rec_preset_ids()` / `.recommendations()` unit tests went
+# with it. Preset library + dataset-picker + missing-vars coverage
+# survives below.
 
 # ---- preset library ---------------------------------------------------
 
@@ -303,7 +170,6 @@ test_that("the overlay renders the dialog once rv$adding is TRUE", {
       session$flushReact()
       html <- output$overlay$html
       expect_match(html, "ADD OUTPUT", fixed = TRUE)
-      expect_match(html, "Recommended for your data", fixed = TRUE)
       expect_match(html, "Preset library", fixed = TRUE)
       expect_match(html, "Start from a generator", fixed = TRUE)
     }
@@ -338,104 +204,6 @@ test_that("a backdrop click (input$dismiss) sets rv$adding FALSE", {
       session$flushReact()
       session$setInputs(dismiss = 1)
       expect_false(fx$store$rv$adding)
-    }
-  )
-})
-
-# ---- server: recommendations -------------------------------------------
-
-test_that("recommendations include only fully-covered pairs; Demographics-from-ADTTE is never shown", {
-  fx <- .ao_store()
-  withr::defer(arpillar::engine_close(fx$con))
-
-  shiny::testServer(
-    mod_add_output_server,
-    args = list(store = fx$store),
-    {
-      fx$store$rv$adding <- TRUE
-      session$flushReact()
-      html <- output$overlay$html
-      expect_match(
-        html,
-        "Overall Summary of Adverse Events \u2014 from ADAE",
-        fixed = TRUE
-      )
-      expect_match(
-        html,
-        "Adverse Events by System Organ Class and Preferred Term \u2014 from ADAE",
-        fixed = TRUE
-      )
-      expect_match(
-        html,
-        "Kaplan-Meier: Overall Survival \u2014 from ADTTE",
-        fixed = TRUE
-      )
-      expect_match(
-        html,
-        "Distribution of Response by Visit \u2014 from ADVS",
-        fixed = TRUE
-      )
-
-      # The var-coverage invariant: nothing recommended is missing a role
-      # var on its recommended dataset. ADTTE has none of AGE/SEX/RACE, so
-      # demographics-from-ADTTE is dropped; the enriched ADSL/ADVS now fully
-      # cover demographics/mean_over_time, so those two are recommended.
-      expect_no_match(
-        html,
-        "Demographics and Baseline Characteristics \u2014 from ADTTE",
-        fixed = TRUE
-      )
-      expect_match(
-        html,
-        "Demographics and Baseline Characteristics \u2014 from ADSL",
-        fixed = TRUE
-      )
-      expect_match(
-        html,
-        "Mean Change from Baseline Over Time \u2014 from ADVS",
-        fixed = TRUE
-      )
-    }
-  )
-})
-
-test_that("clicking a recommendation adds the right preset bound to the right dataset and closes", {
-  fx <- .ao_store()
-  withr::defer(arpillar::engine_close(fx$con))
-
-  shiny::testServer(
-    mod_add_output_server,
-    args = list(store = fx$store),
-    {
-      fx$store$rv$adding <- TRUE
-      session$flushReact()
-      session$setInputs(
-        rec_add = list(preset_id = "ae_soc_pt", dataset = "ADAE", nonce = 1)
-      )
-      obj <- selected_object(fx$store)
-      expect_identical(obj@type, "occurrence")
-      expect_identical(obj@dataset, "ADAE")
-      expect_identical(obj@options$number, "14.3.2")
-      expect_false(fx$store$rv$adding)
-    }
-  )
-})
-
-test_that("a recommendation-added occurrence object has population set", {
-  fx <- .ao_store()
-  withr::defer(arpillar::engine_close(fx$con))
-
-  shiny::testServer(
-    mod_add_output_server,
-    args = list(store = fx$store),
-    {
-      fx$store$rv$adding <- TRUE
-      session$flushReact()
-      session$setInputs(
-        rec_add = list(preset_id = "ae_overall", dataset = "ADAE", nonce = 1)
-      )
-      obj <- selected_object(fx$store)
-      expect_identical(obj@options$population, "ADSL")
     }
   )
 })
@@ -714,7 +482,7 @@ test_that("closing the overlay clears rv$bridge_dataset even without an add", {
 
 # ---- end-to-end: the real arframe() launcher, a real browser ---------------
 
-test_that("arframe() Add-output overlay: opens, shows Recommended + domain-grouped library, screenshot", {
+test_that("arframe() Add-output overlay: opens, shows domain-grouped library, screenshot", {
   skip_on_cran()
   app <- shinytest2::AppDriver$new(
     app_dir = testthat::test_path("apps/add_output"),
@@ -734,7 +502,6 @@ test_that("arframe() Add-output overlay: opens, shows Recommended + domain-group
   html <- app$get_html("body", outer_html = TRUE)
   expect_match(html, "ar-add-card", fixed = TRUE)
   expect_match(html, "ADD OUTPUT", fixed = TRUE)
-  expect_match(html, "Recommended for your data", fixed = TRUE)
   expect_match(html, "Preset library", fixed = TRUE)
   expect_match(html, ">Safety<", fixed = TRUE)
   expect_match(html, ">Efficacy<", fixed = TRUE)

@@ -752,7 +752,7 @@
     shiny::tags$span(class = "ar-chip-lbl", "Population"),
     shiny::tags$span(
       class = "ar-chip-val ar-mono",
-      if (nzchar(pop)) pop else "—"
+      if (nzchar(pop)) pop else "\u2014"
     )
   )
   # Treatment chip: resolve_arm on the current object against the live
@@ -767,7 +767,7 @@
     shiny::tags$span(class = "ar-chip-lbl", "Treatment"),
     shiny::tags$span(
       class = "ar-chip-val ar-mono",
-      arm_col %||% "—"
+      arm_col %||% "\u2014"
     ),
     shiny::tags$span(
       class = "ar-chip-tag",
@@ -1085,15 +1085,9 @@ mod_card_roles_server <- function(id, store) {
     output$slots <- shiny::renderUI({
       obj <- selected_object(store)
       if (is.null(obj)) {
-        return(shiny::tags$div(
-          class = "ar-insp-empty",
-          shiny::tags$p(
-            class = "ar-insp-empty-text",
-            paste0(
-              "No output selected. Choose one in Contents, ",
-              "or add one with the + button."
-            )
-          )
+        return(shiny::tags$p(
+          class = "ar-insp-directive",
+          "No output selected \u2014 pick one from the report contents."
         ))
       }
       gen <- tryCatch(arpillar::generator(obj@type), error = function(e) NULL)

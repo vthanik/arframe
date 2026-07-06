@@ -37,10 +37,16 @@
 #' (used when the user unchecks the Reviewed toggle without editing anything).
 #'
 #' @noRd
-.stamp_meta <- function(object, action = c("create", "modify", "review", "unreview"), notes = NULL) {
+.stamp_meta <- function(
+  object,
+  action = c("create", "modify", "review", "unreview"),
+  notes = NULL
+) {
   action <- match.arg(action)
   meta <- object@meta
-  if (!is.list(meta)) meta <- list()
+  if (!is.list(meta)) {
+    meta <- list()
+  }
   now <- .now_iso()
   me <- .who_am_i()
 

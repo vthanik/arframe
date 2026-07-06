@@ -115,7 +115,9 @@
   # column the target dataset actually has, in preference order:
   # TRT01A -> TRT01P -> TRTA -> TRTP (see .ARM_VAR_ALTS). No match ->
   # keep the preset name (validate flags it downstream).
-  arm_pick <- if (is.null(items)) NULL else {
+  arm_pick <- if (is.null(items)) {
+    NULL
+  } else {
     Find(function(nm) nm %in% items$name, .ARM_VAR_ALTS)
   }
   lapply(names(preset_roles), function(slot) {

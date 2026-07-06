@@ -95,7 +95,16 @@ test_that("the pane depth controls are labelled and stateful (stage 13)", {
     expect_match(html, 'aria-pressed="true"', fixed = TRUE)
   })
 
-  # Options: stepper buttons + footnote rows + statistics rows.
+  # Options: stepper buttons + footnote rows + statistics rows. Add a
+  # footnote first -- `.object_from_preset()` intentionally starts empty
+  # (2026-07-06 redesign), so the Options pane's footnote-row aria-labels
+  # only render once the user has added one.
+  shiny::isolate(update_object(
+    store,
+    id,
+    function(o) S7::set_props(o, footnotes = "Safety Population."),
+    label = "seed footnote for a11y test"
+  ))
   shiny::testServer(mod_card_options_server, args = list(store = store), {
     session$flushReact()
     html <- output$pane$html

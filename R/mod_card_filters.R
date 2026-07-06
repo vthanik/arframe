@@ -453,14 +453,14 @@ mod_card_filters_server <- function(id, store) {
     output$pane <- shiny::renderUI({
       obj <- selected_object(store)
       if (is.null(obj)) {
-        return(shiny::div(class = "ar-flt-empty"))
+        return(NULL)
       }
       items <- tryCatch(
         arpillar::data_items(store$con, obj@dataset),
         error = function(e) NULL
       )
       if (is.null(items)) {
-        return(shiny::div(class = "ar-flt-empty"))
+        return(NULL)
       }
       draft <- store$rv$filter_draft
       open_i <- open_row()

@@ -130,11 +130,34 @@ arframe <- function(project = NULL, data = NULL, folders = NULL, daemons = 2L) {
     # project folder is bound.
     install_autosave(store)
 
-    # Tab-focus refresh: bridge.js posts `ar_refresh` on visibilitychange; we
-    # rescan the outputs folder for changes from other sessions.
-    shiny::observeEvent(input[["ar_refresh"]], {
-      scan_and_merge(store)
-    }, ignoreInit = TRUE)
+    # Tab-focus refresh: bridge.js posts `ar_refresh` on visibilitychange;
+    # `.refresh_all()` rescans the outputs folder AND garbage-collects
+    # stale presence files. Manual Refresh (mod_frame.R) routes here too.
+    shiny::observeEvent(
+      input[["ar_refresh"]],
+      {
+        .refresh_all(store)
+      },
+      ignoreInit = TRUE
+    )
+
+    # Team presence heartbeat: writes `.arframe/presence/<user>.json`
+    # every 30s so teammates opening the same folder see who's live.
+    # `.heartbeat()` is a no-op when there is no project OR the user is
+    # generic; the observer stays cheap either way.
+    presence_tick <- function() {
+      tryCatch(
+        .heartbeat(
+          store$rv$path,
+          .who_am_i(),
+          mode = store$rv$mode,
+          current_output = store$rv$selected
+        ),
+        error = function(e) NULL
+      )
+      later::later(presence_tick, delay = 30)
+    }
+    later::later(presence_tick, delay = 5)
   }
 
   shiny::onStop(function() {

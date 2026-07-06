@@ -69,7 +69,7 @@
 #' @noRd
 .INSP_TABS <- c(
   roles = "Roles",
-  options = "Overrides",
+  options = "Options",
   filters = "Filters",
   ranks = "Ranks"
 )
@@ -251,7 +251,7 @@ mod_card_server <- function(id, store) {
       # Headline (visible next to the icon) stays compact -- the fuller
       # detail (with filtered-out count) goes into the hover title.
       headline <- sprintf(
-        "%s · %s of %s records",
+        "%s \u00b7 %s of %s records",
         tolower(obj@dataset),
         format(counts$matched, big.mark = ","),
         format(counts$total, big.mark = ",")

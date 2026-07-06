@@ -32,14 +32,24 @@ mod_setup_ui <- function(id) {
         label = "Browse",
         title = "Select a folder of data files",
         icon = .icon("folder_plus", 13),
-        class = "ar-dx-tb ar-adam-pick"
+        class = "btn btn-outline-secondary ex-btn-sm ar-adam-pick"
       ),
       shinyFiles::shinyDirButton(
         ns("data_sdtm_pick"),
         label = "Browse",
         title = "Select a folder of data files",
         icon = .icon("folder_plus", 13),
-        class = "ar-dx-tb ar-sdtm-pick"
+        class = "btn btn-outline-secondary ex-btn-sm ar-sdtm-pick"
+      ),
+      # Sources section (Stage 3): a proxy button in the dynamic renderUI
+      # click-dispatches to this static one, so shinyFiles' UI-build-time
+      # binding still fires.
+      shinyFiles::shinyDirButton(
+        ns("sources_pick"),
+        label = "Add folder",
+        title = "Add a data folder to the project",
+        icon = .icon("folder_plus", 13),
+        class = "btn btn-outline-secondary ex-btn-sm ar-sources-pick"
       )
     ),
     shiny::uiOutput(ns("page"))
@@ -63,13 +73,19 @@ mod_setup_server <- function(id, store) {
         if (is.null(theme$default_population)) {
           theme$default_population <- "safety"
         }
-        commit(store, S7::set_props(r, theme = theme), label = "seed populations")
+        commit(
+          store,
+          S7::set_props(r, theme = theme),
+          label = "seed populations"
+        )
       }
     })
 
     output$page <- shiny::renderUI({
-      # React to whole-report edits so completion glyphs stay live.
+      # React to catalog + whole-report edits so completion glyphs and the
+      # Sources list stay live.
       store$rv$report
+      store$rv$catalog_nonce
       shiny::tagList(
         .setup_reviewed_banner(store),
         .setup_section(
@@ -78,6 +94,13 @@ mod_setup_server <- function(id, store) {
           "Study",
           .section_status_glyph(store, "study"),
           .setup_study(ns, store)
+        ),
+        .setup_section(
+          ns,
+          "sources",
+          "Sources",
+          .section_status_glyph(store, "sources"),
+          .setup_sources(ns, store)
         ),
         .setup_section(
           ns,
@@ -106,6 +129,20 @@ mod_setup_server <- function(id, store) {
           "Summaries",
           .section_status_glyph(store, "summaries"),
           .setup_summaries(ns, store)
+        ),
+        .setup_section(
+          ns,
+          "preferences",
+          "Preferences & Paths",
+          .section_status_glyph(store, "preferences"),
+          .setup_preferences(ns, store)
+        ),
+        .setup_section(
+          ns,
+          "team",
+          "Team",
+          .section_status_glyph(store, "team"),
+          .setup_team(ns, store)
         )
       )
     })
@@ -126,24 +163,64 @@ mod_setup_server <- function(id, store) {
     .bind_theme_field(input, store, "data", "subject_id")
     .bind_theme_field(input, store, "data", "pop_treatment_var")
 
-    # ADaM / SDTM folder pickers: shinyDirChoose delegates to a modal; on
-    # a picked path, update the text field AND fire mount_folder so the
-    # catalog populates immediately (bindings dropdowns light up).
+    # ADaM / SDTM / Sources folder pickers: shinyDirChoose delegates to a
+    # modal; on a picked path, update the text field AND fire mount_folder
+    # so the catalog populates immediately (bindings dropdowns light up).
     volumes <- c(home = path.expand("~"), root = "/")
     shinyFiles::shinyDirChoose(input, "data_adam_pick", roots = volumes)
     shinyFiles::shinyDirChoose(input, "data_sdtm_pick", roots = volumes)
+    shinyFiles::shinyDirChoose(input, "sources_pick", roots = volumes)
+
+    # Setup > Sources add-folder button: no visible field to update -- the
+    # newly-mounted folder shows up as a row in the Sources list surface
+    # via the catalog_nonce bump.
+    shiny::observeEvent(input$sources_pick, {
+      dir <- shinyFiles::parseDirPath(volumes, input$sources_pick)
+      if (length(dir) != 1L || !nzchar(dir)) {
+        return()
+      }
+      tryCatch(
+        .mount_folder(store, dir),
+        error = function(e) {
+          log_line(
+            store,
+            sprintf("mount sources failed: %s", conditionMessage(e))
+          )
+        }
+      )
+    })
+
+    # Preferences + Paths bindings (Stage 3).
+    .bind_theme_field(input, store, "preferences", "numbering_scheme")
+    .bind_theme_field(input, store, "preferences", "sponsor_style")
+    .bind_theme_field(input, store, "paths", "programs_dir")
+    .bind_theme_field(input, store, "paths", "output_rtf_dir")
+    .bind_theme_field(input, store, "paths", "datasets_dir")
+    .bind_theme_field(input, store, "paths", "logs_dir")
     lapply(c("adam", "sdtm"), function(kind) {
       shiny::observeEvent(input[[paste0("data_", kind, "_pick")]], {
-        dir <- shinyFiles::parseDirPath(volumes, input[[paste0("data_", kind, "_pick")]])
-        if (length(dir) != 1L || !nzchar(dir)) return()
+        dir <- shinyFiles::parseDirPath(
+          volumes,
+          input[[paste0("data_", kind, "_pick")]]
+        )
+        if (length(dir) != 1L || !nzchar(dir)) {
+          return()
+        }
         # Push path into the visible field.
-        shiny::updateTextInput(session, paste0("data_", kind, "_dir"), value = dir)
+        shiny::updateTextInput(
+          session,
+          paste0("data_", kind, "_dir"),
+          value = dir
+        )
         # Mount the folder into the catalog. `.mount_folder` is defined in
         # mod_data.R; call via ::: since we're a sibling module.
         tryCatch(
-          arframe:::.mount_folder(store, dir),
+          .mount_folder(store, dir),
           error = function(e) {
-            log_line(store, sprintf("mount %s failed: %s", kind, conditionMessage(e)))
+            log_line(
+              store,
+              sprintf("mount %s failed: %s", kind, conditionMessage(e))
+            )
           }
         )
       })
@@ -164,24 +241,36 @@ mod_setup_server <- function(id, store) {
     # arpillar's built-in default, not a user setting).
     .bind_theme_field(input, store, "arm", "header_n_format")
     # show_header_n is a seg control with yes/no -- coerce to boolean.
-    shiny::observeEvent(input$arm_show_header_n, {
-      val <- identical(input$arm_show_header_n, "yes")
-      r <- store$rv$report
-      theme <- r@theme
-      if (is.null(theme$arm)) theme$arm <- list()
-      if (identical(theme$arm$show_header_n, val)) return()
-      theme$arm$show_header_n <- val
-      commit(store, S7::set_props(r, theme = theme), label = "edit setup")
-    }, ignoreInit = TRUE)
+    shiny::observeEvent(
+      input$arm_show_header_n,
+      {
+        val <- identical(input$arm_show_header_n, "yes")
+        r <- store$rv$report
+        theme <- r@theme
+        if (is.null(theme$arm)) {
+          theme$arm <- list()
+        }
+        if (identical(theme$arm$show_header_n, val)) {
+          return()
+        }
+        theme$arm$show_header_n <- val
+        commit(store, S7::set_props(r, theme = theme), label = "edit setup")
+      },
+      ignoreInit = TRUE
+    )
 
     # Populations library observer: on any pop_* field edit, rebuild
     # `theme$populations` from the current inputs (ordered by row index).
     shiny::observe({
       pops <- .collect_pops(input)
-      if (length(pops) == 0L) return()
+      if (length(pops) == 0L) {
+        return()
+      }
       r <- store$rv$report
       theme <- r@theme
-      if (identical(theme$populations, pops)) return()
+      if (identical(theme$populations, pops)) {
+        return()
+      }
       theme$populations <- pops
       commit(store, S7::set_props(r, theme = theme), label = "edit populations")
     })
@@ -192,7 +281,11 @@ mod_setup_server <- function(id, store) {
       theme <- r@theme
       pops <- theme$populations %||% list()
       new_id <- paste0("pop", length(pops) + 1L)
-      pops[[new_id]] <- list(label = "New population", dataset = "ADSL", filter = "")
+      pops[[new_id]] <- list(
+        label = "New population",
+        dataset = "ADSL",
+        filter = ""
+      )
       theme$populations <- pops
       commit(store, S7::set_props(r, theme = theme), label = "add population")
     })
@@ -206,7 +299,11 @@ mod_setup_server <- function(id, store) {
       if (identical(theme$default_population, del)) {
         theme$default_population <- names(pops)[[1L]] %||% ""
       }
-      commit(store, S7::set_props(r, theme = theme), label = "delete population")
+      commit(
+        store,
+        S7::set_props(r, theme = theme),
+        label = "delete population"
+      )
     })
 
     # Running header/footer: each row is 3 inputs (left/center/right).
@@ -217,8 +314,12 @@ mod_setup_server <- function(id, store) {
         band <- .collect_band_rows(input, key)
         r <- store$rv$report
         theme <- r@theme
-        if (is.null(theme$page)) theme$page <- list()
-        if (identical(theme$page[[key]], band)) return()
+        if (is.null(theme$page)) {
+          theme$page <- list()
+        }
+        if (identical(theme$page[[key]], band)) {
+          return()
+        }
         theme$page[[key]] <- band
         commit(store, S7::set_props(r, theme = theme), label = "edit setup")
       })
@@ -229,8 +330,11 @@ mod_setup_server <- function(id, store) {
       shiny::observeEvent(input[[paste0("band_", key, "_add")]], {
         r <- store$rv$report
         theme <- r@theme
-        if (is.null(theme$page)) theme$page <- list()
-        band <- theme$page[[key]] %||% list(left = character(0), center = character(0), right = character(0))
+        if (is.null(theme$page)) {
+          theme$page <- list()
+        }
+        band <- theme$page[[key]] %||%
+          list(left = character(0), center = character(0), right = character(0))
         for (side in c("left", "center", "right")) {
           band[[side]] <- c(band[[side]] %||% character(0), "")
         }
@@ -242,14 +346,22 @@ mod_setup_server <- function(id, store) {
         r <- store$rv$report
         theme <- r@theme
         band <- theme$page[[key]] %||% NULL
-        if (is.null(band)) return()
+        if (is.null(band)) {
+          return()
+        }
         for (side in c("left", "center", "right")) {
           v <- band[[side]] %||% character(0)
-          if (i >= 1L && i <= length(v)) v <- v[-i]
+          if (i >= 1L && i <= length(v)) {
+            v <- v[-i]
+          }
           band[[side]] <- v
         }
         theme$page[[key]] <- band
-        commit(store, S7::set_props(r, theme = theme), label = "delete band row")
+        commit(
+          store,
+          S7::set_props(r, theme = theme),
+          label = "delete band row"
+        )
       })
     })
   })
@@ -262,17 +374,33 @@ mod_setup_server <- function(id, store) {
   side_ids <- lapply(c("left", "center", "right"), function(side) {
     pfx <- paste0("page_", key, "_", side, "_")
     ids <- grep(paste0("^", pfx), names(input), value = TRUE)
-    if (length(ids) == 0L) return(list(idx = integer(0), vals = character(0)))
+    if (length(ids) == 0L) {
+      return(list(idx = integer(0), vals = character(0)))
+    }
     idx <- as.integer(sub(pfx, "", ids))
     ord <- order(idx)
     list(
-      idx  = idx[ord],
-      vals = vapply(ids[ord], function(id) as.character(input[[id]] %||% ""), character(1))
+      idx = idx[ord],
+      vals = vapply(
+        ids[ord],
+        function(id) as.character(input[[id]] %||% ""),
+        character(1)
+      )
     )
   })
   names(side_ids) <- c("left", "center", "right")
-  n <- max(vapply(side_ids, function(s) if (length(s$idx) == 0L) 0L else max(s$idx), integer(1)))
-  if (n == 0L) return(list(left = character(0), center = character(0), right = character(0)))
+  n <- max(vapply(
+    side_ids,
+    function(s) if (length(s$idx) == 0L) 0L else max(s$idx),
+    integer(1)
+  ))
+  if (n == 0L) {
+    return(list(
+      left = character(0),
+      center = character(0),
+      right = character(0)
+    ))
+  }
   out <- list(left = character(n), center = character(n), right = character(n))
   for (side in c("left", "center", "right")) {
     s <- side_ids[[side]]
@@ -281,11 +409,21 @@ mod_setup_server <- function(id, store) {
     }
   }
   # Drop trailing all-empty rows.
-  keep <- vapply(seq_len(n), function(i) {
-    nzchar(out$left[[i]]) || nzchar(out$center[[i]]) || nzchar(out$right[[i]])
-  }, logical(1))
+  keep <- vapply(
+    seq_len(n),
+    function(i) {
+      nzchar(out$left[[i]]) || nzchar(out$center[[i]]) || nzchar(out$right[[i]])
+    },
+    logical(1)
+  )
   last <- if (any(keep)) max(which(keep)) else 0L
-  if (last == 0L) return(list(left = character(0), center = character(0), right = character(0)))
+  if (last == 0L) {
+    return(list(
+      left = character(0),
+      center = character(0),
+      right = character(0)
+    ))
+  }
   for (side in c("left", "center", "right")) {
     out[[side]] <- out[[side]][seq_len(last)]
   }
@@ -298,17 +436,21 @@ mod_setup_server <- function(id, store) {
 # a population up by id.
 .collect_pops <- function(input) {
   id_ids <- grep("^pop_id_[0-9]+$", names(input), value = TRUE)
-  if (length(id_ids) == 0L) return(list())
+  if (length(id_ids) == 0L) {
+    return(list())
+  }
   idx <- as.integer(sub("pop_id_", "", id_ids))
   ord <- order(idx)
   out <- list()
   for (i in idx[ord]) {
     id <- as.character(input[[paste0("pop_id_", i)]] %||% "")
-    if (!nzchar(id)) next
+    if (!nzchar(id)) {
+      next
+    }
     out[[id]] <- list(
-      label   = as.character(input[[paste0("pop_label_", i)]] %||% ""),
+      label = as.character(input[[paste0("pop_label_", i)]] %||% ""),
       dataset = as.character(input[[paste0("pop_dataset_", i)]] %||% ""),
-      filter  = as.character(input[[paste0("pop_filter_", i)]] %||% "")
+      filter = as.character(input[[paste0("pop_filter_", i)]] %||% "")
     )
   }
   out
@@ -339,9 +481,9 @@ mod_setup_server <- function(id, store) {
   )
   text <- switch(
     status$state,
-    ok = "✓",
+    ok = "\u2713",
     partial = as.character(status$missing),
-    "•"
+    "\u2022"
   )
   shiny::span(class = cls, text)
 }
@@ -350,10 +492,13 @@ mod_setup_server <- function(id, store) {
   need <- switch(
     section,
     study = c("sponsor", "protocol", "study", "data_date"),
-    data  = c("adam_dir", "pop_dataset", "subject_id", "pop_treatment_var"),
+    data = c("adam_dir", "pop_dataset", "subject_id", "pop_treatment_var"),
     populations = character(0),
+    sources = character(0),
     page = c("orientation", "paper"),
     summaries = character(0),
+    preferences = character(0),
+    team = character(0),
     character(0)
   )
   block <- theme[[section]] %||% list()
@@ -367,10 +512,14 @@ mod_setup_server <- function(id, store) {
   if (length(need) == 0L) {
     return(list(state = "none", missing = 0L))
   }
-  present <- vapply(need, function(k) {
-    v <- block[[k]]
-    !is.null(v) && length(v) >= 1L && any(nzchar(as.character(v)))
-  }, logical(1))
+  present <- vapply(
+    need,
+    function(k) {
+      v <- block[[k]]
+      !is.null(v) && length(v) >= 1L && any(nzchar(as.character(v)))
+    },
+    logical(1)
+  )
   n_missing <- sum(!present)
   if (n_missing == 0L) {
     list(state = "ok", missing = 0L)
@@ -386,12 +535,16 @@ mod_setup_server <- function(id, store) {
 .setup_reviewed_banner <- function(store) {
   meta <- store$rv$report@theme[["_meta"]] %||% list()
   reviewed <- isTRUE(meta$reviewed)
-  cls <- if (reviewed) "ar-review-banner ar-review-banner-on" else "ar-review-banner"
+  cls <- if (reviewed) {
+    "ar-review-banner ar-review-banner-on"
+  } else {
+    "ar-review-banner"
+  }
   label <- if (reviewed) {
     sprintf(
-      "Reviewed by %s · %s",
-      meta$reviewed_by %||% "—",
-      meta$reviewed_at %||% "—"
+      "Reviewed by %s \u00b7 %s",
+      meta$reviewed_by %||% "\u2014",
+      meta$reviewed_at %||% "\u2014"
     )
   } else {
     "Draft"
@@ -470,7 +623,13 @@ mod_setup_server <- function(id, store) {
   subject_id <- d$subject_id %||%
     (if ("USUBJID" %in% cols) "USUBJID" else "")
   pop_arm <- d$pop_treatment_var %||%
-    (if ("TRT01A" %in% cols) "TRT01A" else if ("TRT01P" %in% cols) "TRT01P" else "")
+    (if ("TRT01A" %in% cols) {
+      "TRT01A"
+    } else if ("TRT01P" %in% cols) {
+      "TRT01P"
+    } else {
+      ""
+    })
   bindings_ready <- length(ds_names) > 0L
   shiny::tagList(
     .setup_group(
@@ -512,16 +671,18 @@ mod_setup_server <- function(id, store) {
     .setup_group(
       "Bindings",
       if (!bindings_ready) {
-        shiny::div(
-          class = "ar-setup-empty",
-          shiny::p("Pick an ADaM folder above and press Import; the bindings dropdowns will populate from the mounted catalog.")
-        )
+        # No catalog yet -- render nothing here rather than an apologetic
+        # placeholder. Sources section above guides the user to add a folder.
+        NULL
       } else {
         shiny::div(
           class = "ar-setup-grid",
           .select_input(
-            ns, "data_pop_dataset", "Population dataset",
-            ds_names, pop_dataset
+            ns,
+            "data_pop_dataset",
+            "Population dataset",
+            ds_names,
+            pop_dataset
           ),
           shiny::div(
             class = "ar-setup-field",
@@ -539,7 +700,9 @@ mod_setup_server <- function(id, store) {
             )
           ),
           .select_input(
-            ns, "data_pop_treatment_var", "Population treatment variable",
+            ns,
+            "data_pop_treatment_var",
+            "Population treatment variable",
             if (length(cols) == 0L) c("TRT01A") else cols,
             pop_arm
           )
@@ -560,7 +723,7 @@ s_study <- function(store) {
 .picker_proxy <- function(target_id) {
   shiny::tags$button(
     type = "button",
-    class = "ar-dx-tb ar-picker-proxy",
+    class = "btn btn-outline-secondary ex-btn-sm ar-picker-proxy",
     onclick = sprintf(
       "var t=document.getElementById('%s'); if(t) t.click();",
       target_id
@@ -594,15 +757,25 @@ s_study <- function(store) {
 # theme's populations library is empty so users see the shape without
 # hand-writing setup.yml. Once a user edits or adds, the theme takes over.
 .POP_SEEDS <- list(
-  safety   = list(label = "Safety Analysis Set",     dataset = "ADSL", filter = 'SAFFL == "Y"'),
-  efficacy = list(label = "Full Analysis Set (FAS)", dataset = "ADSL", filter = 'FASFL == "Y"'),
-  pp       = list(label = "Per-Protocol Set",        dataset = "ADSL", filter = ""),
-  pk       = list(label = "PK Analysis Set",         dataset = "ADSL", filter = "")
+  safety = list(
+    label = "Safety Analysis Set",
+    dataset = "ADSL",
+    filter = 'SAFFL == "Y"'
+  ),
+  efficacy = list(
+    label = "Full Analysis Set (FAS)",
+    dataset = "ADSL",
+    filter = 'FASFL == "Y"'
+  ),
+  pp = list(label = "Per-Protocol Set", dataset = "ADSL", filter = ""),
+  pk = list(label = "PK Analysis Set", dataset = "ADSL", filter = "")
 )
 
 .setup_populations <- function(ns, store) {
   pops <- store$rv$report@theme$populations %||% list()
-  if (length(pops) == 0L) pops <- .POP_SEEDS
+  if (length(pops) == 0L) {
+    pops <- .POP_SEEDS
+  }
   default <- store$rv$report@theme$default_population %||% "safety"
   ids <- names(pops)
   header <- shiny::div(
@@ -626,8 +799,20 @@ s_study <- function(store) {
       `data-ar-pop-id` = id,
       .flat_input(ns, paste0("pop_id_", i), NULL, id, mono = TRUE),
       .flat_input(ns, paste0("pop_label_", i), NULL, p$label %||% ""),
-      .flat_input(ns, paste0("pop_dataset_", i), NULL, p$dataset %||% "ADSL", mono = TRUE),
-      .flat_input(ns, paste0("pop_filter_", i), NULL, p$filter %||% "", mono = TRUE),
+      .flat_input(
+        ns,
+        paste0("pop_dataset_", i),
+        NULL,
+        p$dataset %||% "ADSL",
+        mono = TRUE
+      ),
+      .flat_input(
+        ns,
+        paste0("pop_filter_", i),
+        NULL,
+        p$filter %||% "",
+        mono = TRUE
+      ),
       shiny::tags$button(
         type = "button",
         class = paste(
@@ -639,7 +824,7 @@ s_study <- function(store) {
           ns("top_default_population"),
           id
         ),
-        if (is_default) "★" else "☆"
+        if (is_default) "\u2605" else "\u2606"
       ),
       shiny::tags$button(
         type = "button",
@@ -650,7 +835,7 @@ s_study <- function(store) {
           id
         ),
         title = "Delete",
-        "×"
+        "\u00d7"
       )
     )
   })
@@ -667,7 +852,9 @@ s_study <- function(store) {
         ),
         shiny::p(
           class = "ar-muted ar-mono",
-          shiny::HTML("Refer to a population in a running header/footer as <code>{analysis-set}</code>, or bind it per output on the Roles tab.")
+          shiny::HTML(
+            "Refer to a population in a running header/footer as <code>{analysis-set}</code>, or bind it per output on the Roles tab."
+          )
         )
       )
     )
@@ -680,8 +867,12 @@ s_study <- function(store) {
   p <- store$rv$report@theme$page %||% list()
   pagehead <- p$pagehead %||% c("{sponsor} - {protocol}")
   pagefoot <- p$pagefoot %||% c("{data_date}", "Page {page} of {npages}")
-  if (is.list(pagehead)) pagehead <- unlist(pagehead)
-  if (is.list(pagefoot)) pagefoot <- unlist(pagefoot)
+  if (is.list(pagehead)) {
+    pagehead <- unlist(pagehead)
+  }
+  if (is.list(pagefoot)) {
+    pagefoot <- unlist(pagefoot)
+  }
   shiny::tagList(
     .setup_group(
       "Geometry",
@@ -734,9 +925,9 @@ s_study <- function(store) {
     list(left = "", center = "{sponsor} - {protocol}", right = "")
   } else {
     list(
-      left   = "{data_date}",
+      left = "{data_date}",
       center = "",
-      right  = "Page {page} of {npages}"
+      right = "Page {page} of {npages}"
     )
   }
   # Normalize band to list(left = <chr>, center = <chr>, right = <chr>).
@@ -748,16 +939,28 @@ s_study <- function(store) {
       shiny::div(
         class = "ar-band-row",
         .flat_input(
-          ns, paste0("page_", key, "_left_", i), NULL,
-          r$left %||% "", mono = TRUE, placeholder = "Left"
+          ns,
+          paste0("page_", key, "_left_", i),
+          NULL,
+          r$left %||% "",
+          mono = TRUE,
+          placeholder = "Left"
         ),
         .flat_input(
-          ns, paste0("page_", key, "_center_", i), NULL,
-          r$center %||% "", mono = TRUE, placeholder = "Center"
+          ns,
+          paste0("page_", key, "_center_", i),
+          NULL,
+          r$center %||% "",
+          mono = TRUE,
+          placeholder = "Center"
         ),
         .flat_input(
-          ns, paste0("page_", key, "_right_", i), NULL,
-          r$right %||% "", mono = TRUE, placeholder = "Right"
+          ns,
+          paste0("page_", key, "_right_", i),
+          NULL,
+          r$right %||% "",
+          mono = TRUE,
+          placeholder = "Right"
         ),
         shiny::tags$button(
           type = "button",
@@ -768,7 +971,7 @@ s_study <- function(store) {
             i
           ),
           title = "Delete row",
-          "×"
+          "\u00d7"
         )
       )
     }),
@@ -800,9 +1003,9 @@ s_study <- function(store) {
   )
   lapply(seq_len(n), function(i) {
     list(
-      left   = (band$left   %||% character(0))[i] %||% "",
+      left = (band$left %||% character(0))[i] %||% "",
       center = (band$center %||% character(0))[i] %||% "",
-      right  = (band$right  %||% character(0))[i] %||% ""
+      right = (band$right %||% character(0))[i] %||% ""
     )
   })
 }
@@ -827,17 +1030,22 @@ s_study <- function(store) {
   # With a base of 0 (integer raw data, typical for AGE / event counts):
   #   N=0, %=1, Mean=1, SD=2, Median=1, Min=0, Max=0.
   prec_defaults <- list(
-    n = 0L, pct = 1L, mean = 1L, sd = 2L,
-    median = 1L, min = 0L, max = 0L
+    n = 0L,
+    pct = 1L,
+    mean = 1L,
+    sd = 2L,
+    median = 1L,
+    min = 0L,
+    max = 0L
   )
   prec_labels <- list(
-    n       = "N",
-    pct     = "%",
-    mean    = "Mean",
-    sd      = "SD",
-    median  = "Median",
-    min     = "Min",
-    max     = "Max"
+    n = "N",
+    pct = "%",
+    mean = "Mean",
+    sd = "SD",
+    median = "Median",
+    min = "Min",
+    max = "Max"
   )
   shiny::tagList(
     .setup_group(
@@ -861,22 +1069,30 @@ s_study <- function(store) {
       shiny::div(
         class = "ar-setup-grid",
         .seg_control(
-          ns, "cat_header_stat", "Header stat",
+          ns,
+          "cat_header_stat",
+          "Header stat",
           c("n", "total_n", "none"),
           s$categorical$header_stat %||% "n"
         ),
         .seg_control(
-          ns, "cat_level_format", "Level format",
+          ns,
+          "cat_level_format",
+          "Level format",
           c("n", "pct", "n_pct", "pct_n"),
           s$categorical$level_format %||% "n_pct"
         ),
         .seg_control(
-          ns, "cat_show_missing", "Show missing",
+          ns,
+          "cat_show_missing",
+          "Show missing",
           c("auto", "always", "never"),
           s$categorical$show_missing %||% "auto"
         ),
         .flat_input(
-          ns, "cat_missing_label", "Missing label",
+          ns,
+          "cat_missing_label",
+          "Missing label",
           s$categorical$missing_label %||% "Missing"
         )
       )
@@ -886,12 +1102,16 @@ s_study <- function(store) {
       shiny::div(
         class = "ar-setup-grid",
         .seg_control(
-          ns, "arm_show_header_n", "Show N per arm",
+          ns,
+          "arm_show_header_n",
+          "Show N per arm",
           c("yes", "no"),
           if (isFALSE(store$rv$report@theme$arm$show_header_n)) "no" else "yes"
         ),
         .flat_input(
-          ns, "arm_header_n_format", "N format",
+          ns,
+          "arm_header_n_format",
+          "N format",
           store$rv$report@theme$arm$header_n_format %||% "(N={n})",
           mono = TRUE,
           placeholder = "(N={n})"
@@ -923,9 +1143,9 @@ s_study <- function(store) {
 # label, an ordered list of stat atoms, and a format string keyed by
 # positional letters (a, b, c, ...).
 .CONT_SEEDS <- list(
-  list(label = "n",        stats = "n",           format = "a"),
+  list(label = "n", stats = "n", format = "a"),
   list(label = "Mean (SD)", stats = c("mean", "sd"), format = "a (b)"),
-  list(label = "Median",   stats = "median",      format = "a"),
+  list(label = "Median", stats = "median", format = "a"),
   list(label = "Min - Max", stats = c("min", "max"), format = "a - b")
 )
 
@@ -933,24 +1153,39 @@ s_study <- function(store) {
   stats <- if (is.null(row$stats)) character(0) else row$stats
   shiny::div(
     class = "ar-cont-row",
-    shiny::span(class = "ar-cont-grip", title = "Drag to reorder", "⋮⋮"),
+    shiny::span(
+      class = "ar-cont-grip",
+      title = "Drag to reorder",
+      "\u22ee\u22ee"
+    ),
     .flat_input(
-      ns, paste0("cont_label_", i), NULL,
-      row$label %||% "", placeholder = "Row label"
+      ns,
+      paste0("cont_label_", i),
+      NULL,
+      row$label %||% "",
+      placeholder = "Row label"
     ),
     shiny::div(
       class = "ar-cont-atoms",
       lapply(stats, function(st) {
         shiny::tags$span(class = "ar-cont-atom ar-mono", st)
       }),
-      if (length(stats) < 2L) NULL else shiny::tags$span(
-        class = "ar-cont-fmt-badge ar-mono",
-        row$format %||% "a"
-      )
+      if (length(stats) < 2L) {
+        NULL
+      } else {
+        shiny::tags$span(
+          class = "ar-cont-fmt-badge ar-mono",
+          row$format %||% "a"
+        )
+      }
     ),
     .flat_input(
-      ns, paste0("cont_format_", i), NULL,
-      row$format %||% "a", mono = TRUE, placeholder = "a (b)"
+      ns,
+      paste0("cont_format_", i),
+      NULL,
+      row$format %||% "a",
+      mono = TRUE,
+      placeholder = "a (b)"
     ),
     shiny::tags$button(
       type = "button",
@@ -961,9 +1196,354 @@ s_study <- function(store) {
         i
       ),
       title = "Delete row",
-      "×"
+      "\u00d7"
     )
   )
+}
+
+# ---- Sources section (Stage 3) --------------------------------------------
+
+#' Setup > Sources: the team-shared source catalog. Mounts the shared
+#' `.catalog_list_surface()` primitive (mod_catalog_list.R) with an
+#' "Add folder" tool that dispatches to the static-UI shinyDirButton. The
+#' 8-column grid renders the current arpillar catalog; teammate edits show
+#' up on the next Refresh (`catalog_nonce` bump).
+#' @noRd
+.setup_sources <- function(ns, store) {
+  grid <- tryCatch(arpillar::catalog_grid(store$con), error = function(e) NULL)
+  if (!is.null(grid) && nrow(grid) > 0L) {
+    # Overlay arframe's source-tracking (folder + kind) onto the arpillar
+    # catalog so the shared list-surface columns render populated.
+    grid$folder <- vapply(
+      grid$name,
+      function(n) .source_folder(store, n),
+      character(1)
+    )
+    grid$kind <- vapply(
+      grid$name,
+      function(n) .source_kind(store, n),
+      character(1)
+    )
+  }
+  items <- if (is.null(grid) || nrow(grid) == 0L) {
+    list()
+  } else {
+    .catalog_items_from_grid(grid)
+  }
+  rows <- lapply(items, function(it) .catalog_grid_row(ns, it))
+  scope <- if (length(items) == 0L) "No sources yet" else "All sources"
+  shiny::div(
+    class = "ar-setup-secbody",
+    .catalog_list_surface(
+      ns,
+      tools = shiny::tagList(
+        # Proxy button click-dispatches to the static shinyDirButton so
+        # shinyFiles' UI-build-time binding still fires.
+        shiny::tags$button(
+          type = "button",
+          class = "btn btn-outline-secondary ex-btn-sm",
+          onclick = sprintf(
+            "var t=document.getElementById('%s'); if(t) t.click();",
+            ns("sources_pick")
+          ),
+          .icon("folder_plus", 13),
+          " Add folder"
+        )
+      )
+    ),
+    # Static count strip + grid rendered inline (rather than through the
+    # renderUI slots that Data mode uses) so the Sources section stays
+    # self-contained in the Setup page's single-renderUI reactive.
+    shiny::tags$script(sprintf(
+      "(function(){var c=document.getElementById('%s');if(c){c.innerHTML='';}})();",
+      ns("catalog_count")
+    )),
+    shiny::div(
+      class = "ex-manage-header ar-sources-count",
+      .catalog_count(scope, length(items))
+    ),
+    if (length(items) == 0L) {
+      shiny::div(
+        class = "ex-empty",
+        shiny::div(
+          class = "ex-empty-title",
+          "No sources yet"
+        ),
+        shiny::div(
+          class = "ex-empty-sub",
+          "Click Add folder to point arframe at your ADaM / SDTM directory. Teammates opening this project will see the same sources."
+        )
+      )
+    } else {
+      .catalog_grid_table(rows)
+    }
+  )
+}
+
+# ---- Preferences + Paths section (Stage 3) --------------------------------
+
+#' Setup > Preferences & Paths: numbering scheme and per-project directory
+#' overrides. Persisted to `setup.yml` under `preferences:` and `paths:`;
+#' a teammate opening the same folder inherits the same values.
+#' @noRd
+.setup_preferences <- function(ns, store) {
+  prefs <- store$rv$report@theme$preferences %||% list()
+  paths <- store$rv$report@theme$paths %||% list()
+  shiny::tagList(
+    .setup_group(
+      "Preferences",
+      shiny::div(
+        class = "ar-setup-grid",
+        .seg_control(
+          ns,
+          "preferences_numbering_scheme",
+          "Default numbering",
+          c("14.x.x", "T-01", "None"),
+          prefs$numbering_scheme %||% "14.x.x"
+        ),
+        .flat_input(
+          ns,
+          "preferences_sponsor_style",
+          "Sponsor style library",
+          prefs$sponsor_style %||% "",
+          placeholder = "(none)"
+        )
+      )
+    ),
+    .setup_group(
+      "Paths",
+      shiny::tagList(
+        shiny::div(
+          class = "ar-setup-grid",
+          .flat_input(
+            ns,
+            "paths_programs_dir",
+            "Programs folder",
+            paths$programs_dir %||% "",
+            mono = TRUE,
+            placeholder = "./programs/"
+          ),
+          .flat_input(
+            ns,
+            "paths_output_rtf_dir",
+            "RTF output folder",
+            paths$output_rtf_dir %||% "",
+            mono = TRUE,
+            placeholder = "./output/"
+          ),
+          .flat_input(
+            ns,
+            "paths_datasets_dir",
+            "Datasets folder",
+            paths$datasets_dir %||% "",
+            mono = TRUE,
+            placeholder = "./data/"
+          ),
+          .flat_input(
+            ns,
+            "paths_logs_dir",
+            "Logs folder",
+            paths$logs_dir %||% "",
+            mono = TRUE,
+            placeholder = "./.arframe/logs/"
+          )
+        ),
+        shiny::p(
+          class = "ar-muted ar-mono",
+          "Empty = fall back to the default shown in the placeholder. Absolute paths pass through; relative paths resolve against the project root."
+        )
+      )
+    )
+  )
+}
+
+# ---- Team section (Stage 3) -----------------------------------------------
+
+#' Setup > Team: current user, activity feed, and who's working now.
+#' Wired to `.arframe/team.json`, `.arframe/activity/*.jsonl`, and
+#' `.arframe/presence/*.json` -- open the same project folder from
+#' another machine and Refresh; teammates show up here.
+#' @noRd
+.setup_team <- function(ns, store) {
+  me <- tryCatch(.who_am_i(), error = function(e) "user")
+  path <- store$rv$path
+  if (.user_is_generic(me)) {
+    return(shiny::div(
+      class = "ar-team-you",
+      shiny::div(class = "ar-team-avatar", "?"),
+      shiny::div(
+        class = "ar-team-you-meta",
+        shiny::div(class = "ar-team-you-name", "Set your name"),
+        shiny::div(
+          class = "ar-team-you-badge",
+          "Run with ",
+          shiny::tags$code("ARFRAME_USER=your.name"),
+          " so activity + presence write under your identity."
+        )
+      )
+    ))
+  }
+  shiny::tagList(
+    .setup_group(
+      "You",
+      shiny::div(
+        class = "ar-team-you",
+        shiny::div(
+          class = "ar-team-avatar ar-team-avatar-you",
+          .team_initials(me)
+        ),
+        shiny::div(
+          class = "ar-team-you-meta",
+          shiny::div(class = "ar-team-you-name", me),
+          shiny::div(
+            class = "ar-team-you-badge",
+            shiny::span(class = "ex-conn-dot"),
+            if (is.null(path)) "Waiting for a project folder" else "Working now"
+          )
+        )
+      )
+    ),
+    .setup_group("Working now", .team_presence_rail(path, me)),
+    .setup_group("Recent activity", .team_activity_feed(path, me)),
+    .setup_group(
+      "How team sync works",
+      shiny::p(
+        class = "ar-muted",
+        "Every save appends to ",
+        shiny::tags$code(".arframe/activity/", .team_slug(me), ".jsonl"),
+        " and every 30s updates ",
+        shiny::tags$code(".arframe/presence/", .team_slug(me), ".json"),
+        ". Open the same folder from another machine and Refresh -- teammates' edits and presence show up here. `.arframe/` never ships in the Package export."
+      )
+    )
+  )
+}
+
+#' The presence rail: one avatar-pill row per teammate whose heartbeat is
+#' fresh (within the last 60 seconds). Falls back to a "just you" line
+#' when no other session is present.
+#' @noRd
+.team_presence_rail <- function(project_dir, me) {
+  events <- tryCatch(.presence_list(project_dir), error = function(e) list())
+  if (length(events) == 0L) {
+    return(shiny::div(
+      class = "ar-team-feed-row",
+      shiny::div(class = "ar-team-avatar", .team_initials(me)),
+      shiny::div(
+        class = "ar-team-feed-meta",
+        shiny::span(class = "ar-team-feed-who", me),
+        shiny::span(class = "ar-team-feed-what", "the only session here")
+      )
+    ))
+  }
+  shiny::div(
+    class = "ar-team-feed",
+    lapply(events, function(ev) {
+      who <- ev$user %||% "unknown"
+      loc <- ev$current_output %||% ""
+      mode <- ev$mode %||% ""
+      what <- if (nzchar(loc)) {
+        paste0("editing ", loc)
+      } else if (nzchar(mode)) {
+        paste0("in ", mode)
+      } else {
+        "here"
+      }
+      shiny::div(
+        class = "ar-team-feed-row",
+        shiny::div(
+          class = paste(
+            "ar-team-avatar",
+            if (identical(.team_slug(who), .team_slug(me))) {
+              "ar-team-avatar-you"
+            } else {
+              ""
+            }
+          ),
+          .team_initials(who)
+        ),
+        shiny::div(
+          class = "ar-team-feed-meta",
+          shiny::span(class = "ar-team-feed-who", who),
+          shiny::span(class = "ar-team-feed-what", what)
+        )
+      )
+    })
+  )
+}
+
+#' The activity feed: last 20 events across every teammate's per-user
+#' JSONL file, sorted newest first. Renders a first-run explainer when
+#' no lines exist yet.
+#' @noRd
+.team_activity_feed <- function(project_dir, me) {
+  events <- tryCatch(
+    .read_activity(project_dir, tail_n = 20L),
+    error = function(e) list()
+  )
+  if (length(events) == 0L) {
+    return(shiny::div(
+      class = "ex-empty",
+      shiny::div(class = "ex-empty-title", "No activity yet"),
+      shiny::div(
+        class = "ex-empty-sub",
+        "Every save writes one line here. Open a project, make an edit, and this feed will populate."
+      )
+    ))
+  }
+  shiny::div(
+    class = "ar-team-feed",
+    lapply(events, function(ev) {
+      who <- ev$user %||% "unknown"
+      action <- ev$action %||% "edited"
+      targets <- ev$targets %||% list()
+      what <- if (length(targets) == 0L) {
+        action
+      } else if (length(targets) == 1L) {
+        sprintf("%s %s", action, targets[[1]])
+      } else {
+        sprintf("%s %d output(s)", action, length(targets))
+      }
+      shiny::div(
+        class = "ar-team-feed-row",
+        shiny::div(class = "ar-team-avatar", .team_initials(who)),
+        shiny::div(
+          class = "ar-team-feed-meta",
+          shiny::span(class = "ar-team-feed-who", who),
+          shiny::span(class = "ar-team-feed-what", what),
+          shiny::span(class = "ar-team-feed-ts ar-mono", .team_pretty_ts(ev$ts))
+        )
+      )
+    })
+  )
+}
+
+#' `2026-07-06T18:45:12Z` -> `18:45` (UTC minute-grain, matches the feed
+#' bar's typographic scale). Empty stays empty.
+#' @noRd
+.team_pretty_ts <- function(ts) {
+  if (!is.character(ts) || length(ts) == 0L || !nzchar(ts)) {
+    return("")
+  }
+  sub(".*T([0-9]{2}:[0-9]{2}).*", "\\1", ts)
+}
+
+#' Initials from a name: first letter of the first two space-separated
+#' tokens, uppercased. `"alice smith"` -> `"AS"`, `"vignesh"` -> `"VI"`.
+#' @noRd
+.team_initials <- function(name) {
+  if (!nzchar(name)) {
+    return("?")
+  }
+  parts <- strsplit(name, "[[:space:]._-]+")[[1]]
+  parts <- parts[nzchar(parts)]
+  if (length(parts) == 0L) {
+    return("?")
+  }
+  if (length(parts) == 1L) {
+    return(toupper(substr(parts[[1]], 1L, 2L)))
+  }
+  toupper(paste0(substr(parts[[1]], 1L, 1L), substr(parts[[2]], 1L, 1L)))
 }
 
 # ---- shared atoms ---------------------------------------------------------
@@ -976,7 +1556,14 @@ s_study <- function(store) {
   )
 }
 
-.flat_input <- function(ns, id, label, value = "", placeholder = NULL, mono = FALSE) {
+.flat_input <- function(
+  ns,
+  id,
+  label,
+  value = "",
+  placeholder = NULL,
+  mono = FALSE
+) {
   cls <- if (mono) "ar-input-flat ar-mono" else "ar-input-flat"
   shiny::div(
     class = "ar-setup-field",
@@ -1043,8 +1630,12 @@ s_study <- function(store) {
       val <- input[[input_id]]
       r <- store$rv$report
       theme <- r@theme
-      if (is.null(theme[[block]])) theme[[block]] <- list()
-      if (identical(theme[[block]][[key]], val)) return()
+      if (is.null(theme[[block]])) {
+        theme[[block]] <- list()
+      }
+      if (identical(theme[[block]][[key]], val)) {
+        return()
+      }
       theme[[block]][[key]] <- val
       commit(store, S7::set_props(r, theme = theme), label = "edit setup")
     },
@@ -1060,7 +1651,9 @@ s_study <- function(store) {
       val <- input[[input_id]]
       r <- store$rv$report
       theme <- r@theme
-      if (identical(theme[[key]], val)) return()
+      if (identical(theme[[key]], val)) {
+        return()
+      }
       theme[[key]] <- val
       commit(store, S7::set_props(r, theme = theme), label = "edit setup")
     },
