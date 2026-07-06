@@ -63,6 +63,14 @@ ar_theme <- function() {
     htmltools::tags$link(rel = "stylesheet", href = "arwww/tokens.css"),
     htmltools::tags$link(rel = "stylesheet", href = "arwww/arframe.css"),
     htmltools::tags$script(src = "arwww/Sortable.min.js"),
-    htmltools::tags$script(src = "arwww/arframe.bundle.js")
+    htmltools::tags$script(src = "arwww/arframe.bundle.js"),
+    # shinyFiles' folder-tree chevrons + toolbar icons are Font Awesome
+    # <i class="fa fa-*"> HTML -- needs the FA webfont CSS to render, not
+    # our SVG helper. Attach via a `shiny::icon()` dummy so htmltools
+    # pulls its font-awesome dependency into <head>.
+    htmltools::attachDependencies(
+      htmltools::tags$span(style = "display:none;", shiny::icon("folder")),
+      htmltools::findDependencies(shiny::icon("folder"))
+    )
   )
 }

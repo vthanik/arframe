@@ -733,6 +733,54 @@
   get(key, envir = store$cache)
 }
 
+#' Inheritance chips: Population (bound / Setup default) and Treatment
+#' (resolved arm column from `resolve_arm()`), rendered above the slot
+#' fieldsets. The Treatment chip shows the ESTIMAND (actual | planned) as a
+#' compact tag so users can see -- at a glance -- which mode drove the
+#' resolved column. Click semantics land in the Preact rewrite; the chip
+#' is read-only for now.
+#' @noRd
+.roles_inherit_chips <- function(store, object) {
+  # Population chip: the bound population id (options$population),
+  # falling back to the study default (theme$default_population).
+  pop <- object@options$population
+  if (is.null(pop) || !nzchar(pop)) {
+    pop <- store$rv$report@theme$default_population %||% ""
+  }
+  pop_chip <- shiny::tags$span(
+    class = "ar-chip ar-chip-inherit",
+    shiny::tags$span(class = "ar-chip-lbl", "Population"),
+    shiny::tags$span(
+      class = "ar-chip-val ar-mono",
+      if (nzchar(pop)) pop else "—"
+    )
+  )
+  # Treatment chip: resolve_arm on the current object against the live
+  # catalog. Fall through silently when the catalog isn't ready.
+  arm_col <- tryCatch(
+    arpillar::resolve_arm(object, store$con),
+    error = function(e) NULL
+  )
+  arm_mode <- object@options$arm_mode %||% "planned"
+  trt_chip <- shiny::tags$span(
+    class = "ar-chip ar-chip-inherit",
+    shiny::tags$span(class = "ar-chip-lbl", "Treatment"),
+    shiny::tags$span(
+      class = "ar-chip-val ar-mono",
+      arm_col %||% "—"
+    ),
+    shiny::tags$span(
+      class = "ar-chip-tag",
+      arm_mode
+    )
+  )
+  shiny::tags$div(
+    class = "ar-role-inherit",
+    pop_chip,
+    trt_chip
+  )
+}
+
 #' The SOURCE row at the top of the Roles pane: the dataset this output
 #' reads, its detected ADaM structure, and its dimensions -- the provenance
 #' the roles below are editing against. Read-only here; the dataset is
@@ -1066,6 +1114,7 @@ mod_card_roles_server <- function(id, store) {
       items_meta <- .items_meta(store, obj@dataset)
       shiny::tagList(
         .roles_problem_strip(.orphan_problems(obj, slots)),
+        .roles_inherit_chips(store, obj),
         .roles_source_row(store, obj),
         lapply(slots, function(s) {
           .slot_fieldset(store, ns, obj, s, problems, items_meta)

@@ -58,6 +58,7 @@
   # Activity-bar glyphs (the far-left mode rail, mockup piece A).
   report = "file-lines",
   logs = "terminal",
+  gear = "gear",
   # Inspector tab glyphs (the far-right icon strip).
   roles = "table-list",
   options = "sliders",

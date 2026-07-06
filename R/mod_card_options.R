@@ -13,6 +13,45 @@
 # this one tab, and the full stack is small enough to show whole. A `title`
 # region click additionally focuses the Title input (`ar-focus`).
 
+# ---- overrides banner: study defaults header ----------------------------
+
+#' The Overrides pane header banner: reminds the user this pane holds
+#' PER-OUTPUT overrides on top of Setup defaults. When nothing is
+#' overridden yet (options is empty besides book-keeping keys), the banner
+#' invites `+ Add override` and lists the catalog (arm_mode | orientation
+#' | margins | decimals | ...). Stage 7 v1: message only; the typeahead
+#' picker lands in Stage 7c.
+#' @noRd
+.opt_overrides_banner <- function(obj, store) {
+  # Book-keeping keys (number, number_label, source, population) don't
+  # count as overrides -- they're required per-output metadata.
+  keeper <- c("number", "number_label", "source", "population")
+  actual_overrides <- setdiff(names(obj@options), keeper)
+  if (length(actual_overrides) == 0L) {
+    return(shiny::div(
+      class = "ar-review-banner",
+      shiny::span(class = "ar-review-dot"),
+      shiny::span(
+        class = "ar-review-lbl",
+        "Nothing overridden. Study defaults apply. Set title/footnotes/number below, or override any Setup default per-output."
+      )
+    ))
+  }
+  shiny::div(
+    class = "ar-review-banner",
+    shiny::span(class = "ar-review-dot"),
+    shiny::span(
+      class = "ar-review-lbl",
+      sprintf(
+        "%d override%s in effect (%s). Reset any to fall back to Setup.",
+        length(actual_overrides),
+        if (length(actual_overrides) == 1L) "" else "s",
+        paste(actual_overrides, collapse = ", ")
+      )
+    )
+  )
+}
+
 # ---- key -> paper-region grouping ----------------------------------------
 
 #' Which paper region an option key belongs to -- the plan's routing table
@@ -1171,6 +1210,7 @@ mod_card_options_server <- function(id, store) {
         error = function(e) NULL
       )
       shiny::tagList(
+        .opt_overrides_banner(obj, store),
         .opt_title_section(ns, obj),
         .opt_footnotes_section(ns, obj),
         .opt_schema_sections(store$con, ns, obj, schema),

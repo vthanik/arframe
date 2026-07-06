@@ -69,7 +69,7 @@
 #' @noRd
 .INSP_TABS <- c(
   roles = "Roles",
-  options = "Options",
+  options = "Overrides",
   filters = "Filters",
   ranks = "Ranks"
 )
