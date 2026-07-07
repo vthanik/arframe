@@ -1,133 +1,105 @@
-# handoff -- 2026-07-04 (end of session 2: Global-Requirements parity DONE)
+# Handoff — arframe dashboard redesign (2026-07-07)
 
 ## Goal
 
-Galley UI (arframe) on arpillar/tabular. Session 2 executed and FINISHED the
-8-stage "Global Requirements for TLGs + explorer parity" plan
-(`~/.claude/plans/users-vignesh-downloads-global-requirem-hashed-glade.md`),
-including the end-to-end Appendix-I verification. **The next session starts
-mockup piece C** (see "Next in queue").
+Rescope arframe from a single-user builder to a **team-level tool** and lift the
+visual language from the austere "Linear/GOV.UK" look to **dashboard-grade
+UX/UI** (light-first: elevated cards, left sidebar, status pills, stat tiles),
+modelled on the user's feel-good refs (Power BI, Sence.Point, Piduiteun, fitplan,
+mota). Bar: exceed Posit's own Shiny apps. Full roadmap + locked decisions:
+`~/.claude/plans/the-scope-now-is-curious-stroustrup.md` and **CLAUDE.md #12**.
 
-## Current state
+Locked forks (2026-07-07): Report = **LoC table → drill into paper** (reverses
+paper-first); **light-first** v1; **Foundation first**; **full CDISC ARS spine**;
+keep GOV.UK a11y, drop its austerity.
 
-- **arframe** @ `60dc93b` (master), clean, `check` **0/0/0**, 1014 tests green.
-- **arpillar** @ `4fb6225` (`feat/ui-prereqs`), clean, **0/0/0**, 824 green.
-- **tabular untouched** this session. Nothing pushed anywhere (publish HELD --
-  no GitHub repos exist yet for arpillar/artoo/datasetviewer/arframe).
-- **Final proof:** `.local/screens/t-14-1-1-full.rtf` -- kitchen-sink Table
-  14.1.1 (chrome bands, Total, arm reorder/recode, level recode + expected
-  ASIAN zero row, Xanomeline span, SEX page-by with RIGHT-aligned banners +
-  per-page Ns, stamped Program/datetime footer). 18/18 Appendix-I greps pass,
-  byte-deterministic. **User still owes the Word eyeball** (font
-  substitution / page fit) -- generator script: /tmp is gone, rebuild from
-  this file's "Verification recipe" below if needed.
-- Eyeball screenshots: `.local/screens/s1-blue-run-age-peek.png`, `s3-*`,
-  `s4-canvas-page.png`, `s5-levels-editor.png`, `s7-spans.png`, `s8-pageby.png`.
+## Current state — Foundation sub-project (#1) is DONE and verified
 
-## What landed (both repos, this session)
+All 5 modes render cleanly under the new shell (screenshotted on real CDISC data
++ demo fixture; Setup/Data/Report/Review/Logs all clean). `devtools::test()` =
+**FAIL 0 | PASS 1177**; the e2e mode-walk = **PASS 64**. `devtools::check()`: **Status: OK (0 errors / 0 warnings / 0 notes)**.
 
-arframe (newest first): `60dc93b` handoff; `9d142ec` SUBGROUP/PAGE BY section
-+ conditional page_by ARD key; `ebd734e` SPANNING HEADER section; `026b02d`
-Total toggle + conditional total key; `7fe9059` LEVELS editor
-(order/include/display-as/expected, cap 24); `ee8d01a` canvas flip (tabular's
-full page render, 1056/816px sheet); `90e4a2b` Options layout sections
-(titles/header N/page&output/running bands) + `.with_chrome()`; `14d580e`
-explorer blue `#0378CD` + peek failure-not-memoized fix.
+Sub-projects 2–5 (Setup→sectioned dashboard, Report→LoC table, full ARS spine,
+dark theme) are NOT started — each gets its own spec→plan→build.
 
-arpillar: `4fb6225` non-contiguous span drops forgivingly (live-repro);
-`7bc1461` page-by var drops its own row block (live-repro); `74c4aeb`
-page_by/page_n/banner/panels via tabular subgroup, banner RIGHT-aligned;
-`b612968` options$spans bands; `175266a` pooled Total arm + arm order/recode;
-`8f5bc19` data_item@levels; `ee51938` .LAYOUT_SCHEMA + Appendix-I chrome.
+## What changed this session
 
-## Binding decisions from this session (CLAUDE.md already updated)
+**Design tokens** (`inst/www/tokens.css`, `R/theme.R`): added IBM Plex Sans
+500/600/700 (`inst/www/fonts/`); retuned `--ar-*` to dashboard — elevation
+shadow scale (`--ar-shadow-card/-lift/-float`), cooler canvas (`--ar-desk
+#f5f7fa`), card radii (8/12/16/pill), spacing +40/48, 14px body + display scale
+(`--ar-fs-page/-section/-stat`) + weight tokens, 5-state status set
+(ready/draft/needs_data/broken/stale) with soft-fill pill bgs, categorical viz
+ramp. bslib radius 4→8px.
 
-- **Canvas = tabular's FULL page render** (decision #7 FLIPPED 2026-07-04).
-  A ready table gets NO arframe title/source markup (double-print);
-  ghost/stale/error paths + figures keep theirs. `.tabular-title` CSS
-  un-hidden (was display:none in the v5 dup-fix -- inverted).
-- **Export = .rtf ONLY.** Org updated their standard; **no .lst emitter,
-  ever** (user confirmed twice -- do not re-raise).
-- **Subgroup banner is RIGHT-aligned** (user correction to Appendix I's
-  centered-looking mock) -- engine-side via `cells_subgroup_labels()`.
-- **Primary color = explorer blue `#0378CD`** (from ~/projects/r/explorer,
-  theme.R:19 there).
+**Atoms** (`R/utils_atoms.R` + `arframe.css` §01): new `.card()` (class
+`.ar-panel` — `.ar-card` is taken by the inspector), `.stat_tile()`, `.avatar()`;
+evolved `.stamp()` into a soft-fill **status pill** (dot via `::before`, no HTML
+change → every caller inherits it). Added `review = "clipboard-check"` glyph.
+Tests in `test-utils_atoms.R` (all pass).
 
-## Key invariants (do NOT re-litigate)
+**Shell** (`R/mod_frame.R` + `arframe.css` §02): replaced the top 5-mode
+segmented switch with a **left `.ar-sidebar`** (brand + vertical `.ar-nav`) +
+`.ar-main` (a `.ar-topbar` title+actions bar). `.frame_bar`→`.frame_sidebar`+
+`.frame_topbar`; `.frame_section_switch`/`.seg`→`.frame_nav`/`.nav_item`. **No
+server or bridge.js change** — nav items keep `data-ar-mode`; the `.ar-mode-*`
+class-swap is unchanged. Responsive: sidebar folds to an icon rail <1024px.
+Rewrote `test-mod_frame.R` for the new structure + made its e2e walk **all 5
+modes** and screenshot each to `.local/screens/0N-<mode>.png` (get_screenshot
+does NOT overwrite — file.remove first).
 
-- **No layout options = byte-identical legacy render** (no preset attached);
-  pinned by tests. Goldens: `pagechrome.rtf`, `pageby.rtf` + originals
-  (which passed UNCHANGED -- zero regen this whole session).
-- **Determinism gate:** arpillar REJECTS `{datetime}`/`{program}` in
-  pagehead/pagefoot (classed `arpillar_error_input`); arframe stamps
-  literals via `.with_chrome()` (mod_paper.R) at canvas/.rtf/export legs;
-  `{page}`/`{npages}` pass as Word field codes.
-- **ARD key discipline:** `total`/`page_by` appended to `.ard_key()` ONLY
-  when set (legacy hashes stable, regression-pinned). Level edits, spans,
-  chrome = CHEAP (live re-render); total/page_by = HEAVY (auto Run-gated
-  via the existing key-diff in `update_object` -- no bespoke stale code).
-- **Levels model:** `data_item@levels` = list of
-  `list(value, display, include, expected)`, list order = display order,
-  empty = legacy bytes. Arms reuse it (Total pinned last; an unobserved arm
-  is NEVER synthesized; non-contiguous span bands DROP, the fix is arm
-  reorder). Percent denominators are population-N: exclusion never moves
-  other cells (test-pinned).
-- Serializer: `levels` is an additive field, NO schema bump (decoder `%||%`
-  defaults it; v1-JSON regression test pinned).
+**Root-cause fix — Setup top gap**: `.ar-setup > *` (there to fight Shiny's
+`display:contents` on the uiOutput) also un-hid the sibling
+`<datalist id="ar-stat-atoms">`, whose options rendered as a ~250px list. Scoped
+it to `.ar-setup > .shiny-html-output`. Verified via live DOM (`datalist
+display=none`, content flush to top).
 
-## Deliberate cuts (add only when asked)
+**Deletions**: dead `.ex-appbar`/`.ex-appbar-brand`/`.ex-section-switch`/
+`.ex-seg*`/`.ex-appbar-user` CSS; and the whole **`R/mod_catalog_list.R`** +
+its `.ex-manage-*`/`.ex-grid*`/`.ex-status*`/`.ex-viewer*`/`.ex-empty*` CSS — an
+unwired, premature "shared surface" primitive (never mounted anywhere; Data uses
+its own `.ar-dx-table`). The real shared table atom gets built in the Report/LoC
+sub-project (#3) with two real consumers.
 
-- page_n `"banner"` placement (modes now: off / headers).
-- Occurrence page_by (silently unsupported, noted in layout_schema docs).
-- Levels editor caps at 24 observed levels (flat cap, no paging).
-- Ranks-pane rebase onto a shared sortable atom (works as-is; skipped).
-- Auto-seeded `Protocol:` pagehead (protocol id is NOT modeled on report;
-  user types it in RUNNING HEADER, or add report metadata later).
+**Docs/memory**: CLAUDE.md #1/#8 rewritten + new #12 (redesign record + roadmap +
+build state); memories `govuk-design-principles` (amended: a11y kept, visuals now
+dashboard), `feedback-never-defer`, `feedback-screenshot-eyeball` added.
 
-## Next in queue (the reset session starts HERE)
+## Pre-existing issues fixed this session (were in HEAD, not new regressions)
 
-**Mockup piece C -- richer OUTLINE** (from the pre-font-detour steering,
-order C -> A -> B):
-- CONTENTS tree grouped into TABLES / FIGURES / LISTINGS sections.
-- Colored status as dot + WORD (not dot alone) per row.
-- Keep: ICH numbers mono, per-generator icons, chevron-collapse strip.
-- Files: `R/mod_contents.R`, `inst/www/arframe.css` (TOC block), tests in
-  `test-mod_contents.R`. Status colors already tokenized: `--ar-ready`,
-  `--ar-draft`, `--ar-error`.
+- **`test-mod_setup_wire.R`** read `../../R/mod_setup.R`, absent in the R CMD
+  check sandbox → guarded with `skip_if_not(file.exists(setup_src))` (fires on
+  the real condition; `skip_on_cran` would NOT, since `devtools::check()` sets
+  `NOT_CRAN=true`).
+- **Non-ASCII WARNING**: `mod_setup.R` had user-facing `—`/`×` in *string
+  literals* → escaped to `\uxxxx` (identical runtime output, ASCII source, per
+  the check's own guidance). Comment-only non-ASCII in `mod_paper.R`/`theme.R`/
+  `mod_card_filters.R` is check-excused ("except perhaps in comments"), left
+  as-is per ascii.md.
 
-Then **A** (left activity bar -- ASK the user which of the 5 mockup icons are
-real before building), then **B** (canvas per-output tabs -- CONFIRM scope
-first, biggest piece).
+## Next steps
 
-Also pending externally: the **IBM Plex tabular session** (prompt was handed
-over a session ago). arpillar/arframe deliberately kept `font_family`
-generic (mono/sans/serif); when tabular lands recognition, follow the OLD
-handoff's step 2/3 (preset font_family + figure base family + golden regen).
+1. **Sub-project #2 — Setup → sectioned dashboard**: brainstorm→spec. Split the
+   one scroll page into trackable section-cards (`.card()`) + a Setup overview
+   with `.stat_tile()`s (study completeness, subject/record counts).
+2. **#3 — Report → List of Contents**: LoC table (number/type/title/population/
+   status pills/actions, +Output/+Standard) → drill into paper+inspector
+   (mirror Data's list→grid). Build the shared dashboard **table atom** here
+   (reused by Data). Add Options/Prefs toolbar segment; Run→Review.
+3. **#4 — full CDISC ARS spine** (mostly arpillar): ReportingEvent / Analysis /
+   AnalysisMethod / Operation / GroupingFactor / AnalysisSet / DataSubset /
+   OutputDisplay / ListOfContents / ARD + import/export; arframe surfaces
+   ARM_OID/analysis columns. Couples to #3.
+4. **#5 — dark "Instrument" theme** via token overrides.
 
-## Verification recipe (kitchen-sink RTF, if it needs rebuilding)
+## Verify / re-check
 
-Object: summary on real ADSL (`~/projects/data/cdisc-adam-pilot`), options:
-number 14.1.1, titles "Randomized Subjects", header_n "(N={n})",
-total TRUE, spans list(label "Xanomeline", cols = the two Xanomeline arms),
-page_by SEX + page_n headers + banner "Sex: {SEX}", pagehead
-Protocol/Draft/Page {page} of {npages}, pagefoot "Program: {program}" /
-"{datetime}"; treatment levels reorder Placebo, Xano High (display "Xano
-High"), Xano Low (span needs contiguous arms!); RACE levels with recodes +
-expected ASIAN. Render via `arframe:::.with_chrome(arframe:::.with_source(obj))`
-then `arpillar::render_rtf` -- grep the 18 Appendix-I markers.
+```bash
+Rscript -e 'devtools::test()'                                   # FAIL 0
+NOT_CRAN=true Rscript -e 'devtools::test(filter="mod_frame")'   # e2e + screenshots
+Rscript -e 'devtools::check(args="--no-manual")'                # Status: OK (0/0/0)
 
-## Operating constraints (unchanged)
-
-- `\uXXXX` escapes for non-ASCII in R strings; em-dash `—` in UI text
-  (never `--`); tokens.css vars only.
-- Gate: `devtools::check` 0/0/0 BOTH repos before commit (use
-  `_R_CHECK_SYSTEM_CLOCK_=0` -- the NTP probe NOTE is environmental).
-- After arpillar changes: `R CMD INSTALL --no-docs .` or arframe tests run
-  against the stale installed copy.
-- Eyeball harness: `.local/screens/launcher.R` (:7788, real CDISC mounts) +
-  chromote driver; kill port 7788 between drives (store is per-process);
-  in driver JS, mind quote collision (use double quotes inside `click('...')`).
-- testServer suspend pins grep `deparse(body(<server>))`, not source files.
-- Never push without explicit per-session approval. No AI attribution.
-- `handoff.md` is TRACKED (committed, in `.Rbuildignore`) -- overwrite +
-  commit, matching prior handoff commits.
+# real-data eyeball (CLAUDE.md #9): boots on the CDISC ADaM pilot
+Rscript .local/screens/launch.R    # serves 127.0.0.1:7910; drive Chrome to shoot each mode
+# in-suite demo screenshots land in .local/screens/0N-<mode>.png
+```

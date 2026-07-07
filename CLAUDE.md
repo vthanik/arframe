@@ -18,9 +18,13 @@ page, proof-stamp statuses, and a summonable/pinnable galley card. The deliverab
 
 ## Binding user decisions (2026-07-02) — do NOT re-litigate
 
-1. **Design = Galley** (paper-first; NO dual rails, NO canvas tabs). Supersedes the
-   earlier SAS-Viya dual-rail frame and the datasetviewer SAS-blue skin as the
-   default. The dark "Instrument" skin is a later theme toggle, not v1.
+1. **Design = dashboard-grade** (SUPERSEDES the earlier "Galley paper-first, NO
+   dual rails" call — see #12 for the 2026-07-07 redesign). Report is a
+   **List-of-Contents table that drills into the paper + inspector** (mirrors
+   Data's list->grid), NOT paper-first. Light-first dashboard visual language
+   (elevated cards, left sidebar, status pills, stat tiles); tabular's paper
+   render survives as the READY detail view. The dark "Instrument" skin is a
+   later theme toggle, not v1.
 2. **Outputs = generators + presets, NOT template-per-table.** ~6 reusable engine
    *generators* (summary / crosstab / occurrence / km / line / box) are the primary
    unit; a shippable *preset* library (~20, domain-grouped) + **Save-as-preset**
@@ -60,13 +64,20 @@ page, proof-stamp statuses, and a summonable/pinnable galley card. The deliverab
    (`.with_chrome()`); `{page}`/`{npages}` stay as field codes.
 8. **v6 UI frame — LOCKED 2026-07-06** (supersedes v5 2026-07-02 after the
    Setup-as-team-hub redesign):
-   - Header: `arframe` wordmark · **5-mode segmented switch** (Setup · Data ·
-     Report · Review · Logs — all peers, `role="tablist"`) · click-to-edit
-     report name (natively centered via flex) · Open folder · save chip ·
-     Refresh · Undo/Redo · ⌘K palette hint · `Package`. Segments are pure
-     CSS-toggled via `.ar-mode-*` on `.ar-workspace`; no server round-trip on
-     switch. Presence avatars (heartbeat-lit ring) planned inline before
-     Package but land in a follow-up.
+   - Header — **top app bar** (LOCKED 2026-07-07, supersedes the 2026-07-07
+     left-sidebar nav from #12.1 after the top-nav revision): `arframe`
+     wordmark · **horizontal mode nav** (Setup · Data · Report · Review ·
+     Logs — all peers, `role="tablist"`, active = accent underline) · flex
+     gap · ⌘K palette hint · `Package`. **No left sidebar.** Mode tabs stay
+     pure CSS-toggled via `.ar-mode-*` on `.ar-workspace` (delegated
+     `[data-ar-mode]` click → `input$mode`; no server round-trip). The
+     click-to-edit **report name moved to a page-header row** (`.ar-pagehead`)
+     below the bar, present in every mode. **Refresh / Undo / Redo circle
+     buttons removed** (2026-07-07, "too many, ugly"): Refresh was redundant
+     (auto-fires on window-focus); Undo/Redo are now **⌘Z / ⌘⇧Z** keyboard
+     shortcuts (bridge.js keydown → the same `frame-undo_btn`/`frame-redo_btn`
+     inputs). Save chip kept. Presence avatars (heartbeat-lit ring) land in a
+     follow-up in the actions cluster.
    - Setup mode (the team hub, first stop on open — pre-Report): Study ·
      Sources (list-surface catalog with Add folder / Import file · shinyFiles
      wrapped in `.ar-picker` so Bootstrap variants own colour) · Populations ·
@@ -91,8 +102,9 @@ page, proof-stamp statuses, and a summonable/pinnable galley card. The deliverab
      KIND / COLS / ROWS / SIZE / STATUS=LAZY / MODIFIED), double-click OR
      View data → grid with breadcrumb + column picker (typed badges); Delete
      unmounts. Import file/folder INTENTIONALLY duplicated with Setup >
-     Sources — the two mounts share `.catalog_list_surface()`
-     (`R/mod_catalog_list.R`), so the on-ramps do not drift.
+     Sources — both on-ramps will share one dashboard table atom built in the Report/LoC
+     sub-project (#12); today Data uses `.ar-dx-table`. (The old unwired
+     `.catalog_list_surface()` primitive was deleted 2026-07-07.)
    - Export package tree: `outputs/` (spec .json) + `programs/` (emit_code
      per output + run-all.R) + `report.json` + `manifest.csv`. The team
      folder `.arframe/` is EXCLUDED from the tarball (`.zip_export()` unlinks
@@ -142,8 +154,35 @@ page, proof-stamp statuses, and a summonable/pinnable galley card. The deliverab
 11. **Setup is first-class, first stop** (2026-07-06): `arframe()` opens in
     Setup mode (`.ar-workspace` gets `ar-mode-setup`), NOT Report — study
     config is the first thing a fresh project needs. Setup's Sources section
-    is the "data on-ramp" that item 5 above called out; the `.list_surface`
-    primitive is shared with Data mode so the two read visually identical.
+    is the "data on-ramp" that item 5 above called out; Setup > Sources and
+    Data will share one dashboard table atom (built in the Report/LoC
+    sub-project, #12).
+
+12. **Dashboard redesign — team-level tool (2026-07-07)** — supersedes #1
+    (paper-first) and #8's top switch. Visual language moved from the austere
+    Linear/GOV.UK look to **dashboard-grade UX/UI**: light-first, elevated
+    rounded cards on a cool canvas, soft shadows, a **top app-bar** mode nav
+    (2026-07-07 revision, superseding the short-lived left sidebar — see #8),
+    status pills, stat tiles, IBM Plex Sans 400-700 + Plex Mono as the
+    "instrument" face (TLF numbers, counts, IDs). GOV.UK a11y patterns kept,
+    austerity dropped. Staged sub-projects:
+    1. **Foundation (DONE)** — tokens (`inst/www/tokens.css`), atoms
+       (`.card`/`.stat_tile`/status-pill/`.avatar`, `utils_atoms.R`), and the
+       app shell (`mod_frame.R`; the shell's nav was **re-housed left-sidebar
+       → top app bar** in the #2 pass — see #8). Plan:
+       `~/.claude/plans/the-scope-now-is-curious-stroustrup.md`.
+    2. **Setup → sectioned dashboard (spec+plan locked 2026-07-07, building)**
+       — top-nav frame refactor + Setup re-housed as a section tab strip, one
+       `.card()` per section, an overview stat strip, server-authoritative
+       active tab. Spec/plan:
+       `docs/superpowers/specs/2026-07-07-arframe-setup-dashboard-top-nav-design.md`,
+       `docs/superpowers/plans/2026-07-07-arframe-setup-dashboard-top-nav.md`.
+       3. Report -> **List-of-Contents table**
+       drilling into paper+inspector (mirrors Data); +Output/+Standard,
+       Options/Prefs segment, Run->Review.  4. **Full CDISC ARS spine** in
+       arpillar (ReportingEvent/Analysis/AnalysisMethod/Operation/
+       GroupingFactor/AnalysisSet/DataSubset/OutputDisplay/ListOfContents/ARD)
+       + arframe ARM_OID columns.  5. Dark "Instrument" theme.
 
 ## Working conventions (arframe-specific)
 
@@ -174,10 +213,8 @@ Modules for the team hub and the shared list surface:
 - `R/fct_team.R` — `.read_team(dir)`, `.write_team(dir, team)`,
   `.ensure_team_member(dir, user)`, `.team_slug(user)` (filesystem-safe),
   `.user_is_generic(user)`.
-- `R/mod_catalog_list.R` — `.catalog_list_surface(ns, tools)`,
-  `.catalog_grid_table(rows)`, `.catalog_grid_row(ns, item, selected)`,
-  `.catalog_type_chip()`, `.catalog_status_pill()`,
-  `.catalog_items_from_grid(grid)`. Shared by Setup > Sources and Data mode.
+- `R/mod_catalog_list.R` — DELETED 2026-07-07 (unwired premature shared-surface
+  primitive; the Report/LoC sub-project #12 builds the real shared table atom).
 - `R/mod_setup.R` (extended) — Sources, Team, Preferences + Paths sections
   on top of the original Study / Data / Populations / Page / Summaries.
 - `R/fct_project.R` — `save_touched()` now emits `programs/<id>.R` per
