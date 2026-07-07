@@ -1,16 +1,17 @@
-# The Galley frame: a left `.ar-sidebar` (brand + mode nav) beside `.ar-main`
-# (a `.ar-topbar` over five mounted mode bodies -- report/data/qc/logs/setup).
-# Layout only: every body is handed in by the caller as opaque tag content and
-# all five stay MOUNTED at once (draft state lives in the store, never the DOM
-# -- see the suspend-contract regression in test-fct_store.R). CSS shows only
-# the one matching `store$rv$mode` via the `ar-mode-*` class on `.ar-workspace`,
-# set by arframe.js's "ar-mode" handler; the sidebar nav items carry
-# `data-ar-mode` (the same delegated click as the old segmented switch).
+# The Galley frame: a top `.ar-topbar` (brand + horizontal mode nav + global
+# actions) over `.ar-pagehead` (the click-to-edit report title) over the five
+# mounted mode bodies -- report/data/qc/logs/setup. Layout only: every body is
+# handed in by the caller as opaque tag content and all five stay MOUNTED at
+# once (draft state lives in the store, never the DOM -- see the
+# suspend-contract regression in test-fct_store.R). CSS shows only the one
+# matching `store$rv$mode` via the `ar-mode-*` class on `.ar-workspace`, set by
+# arframe.js's "ar-mode" handler; the nav items carry `data-ar-mode` (the same
+# delegated click as the old sidebar nav).
 
-#' The Galley frame UI: a left sidebar (brand + mode nav) beside the main
-#' column (a top action bar over the five mounted mode bodies).
+#' The Galley frame UI: a top app bar (brand + mode nav + global actions) over
+#' a page-header title row over the five mounted mode bodies.
 #'
-#' Mode switching lives in the sidebar's `.ar-nav`: each `.ar-nav-item` carries
+#' Mode switching lives in the app bar's `.ar-nav`: each `.ar-nav-item` carries
 #' `data-ar-mode`, picked up by arframe.js's delegated click handler which
 #' fires `input$mode`; the ACTIVE item is a pure CSS rule keyed off the
 #' workspace `ar-mode-*` class. The `mod_frame_server()` observer still owns
@@ -31,10 +32,10 @@ mod_frame_ui <- function(
   shiny::div(
     # Opens in Setup mode -- study configuration is the first stop.
     class = "ar-workspace ar-mode-setup",
-    .frame_sidebar(ns),
     shiny::div(
       class = "ar-main",
       .frame_topbar(ns),
+      .frame_pagehead(ns),
       shiny::div(
         class = "ar-body",
         shiny::div(class = "ar-body-setup", setup_body),
@@ -47,35 +48,23 @@ mod_frame_ui <- function(
   )
 }
 
-#' The left sidebar: a brand mark + wordmark, the vertical mode nav, and a
-#' footer slot (presence avatars land here in a follow-up).
-#' @noRd
-.frame_sidebar <- function(ns) {
-  shiny::tags$nav(
-    class = "ar-sidebar",
-    `aria-label` = "Primary",
-    shiny::div(
-      class = "ar-sidebar-brand",
-      shiny::span(class = "ar-sidebar-mark", `aria-hidden` = "true"),
-      shiny::span(class = "ar-sidebar-word", "arframe")
-    ),
-    .frame_nav(),
-    shiny::div(class = "ar-sidebar-foot")
-  )
-}
-
-#' The per-mode top bar: the click-to-edit report title on the left, then the
-#' global actions cluster on the right (Open / save chip / Refresh / Undo /
-#' Redo / palette hint / Package). Mode-specific toolbars live inside each mode
-#' body, not here.
+#' The top app bar: brand, the horizontal mode tablist, and the global
+#' actions cluster (Open / save chip / palette hint / Package). Mode
+#' switching is the delegated `[data-ar-mode]` click (bridge.js) -> the
+#' pure-CSS `.ar-mode-*` class; unchanged from the sidebar era, only
+#' relocated and restyled as underline tabs.
 #' @noRd
 .frame_topbar <- function(ns) {
   shiny::div(
     class = "ar-topbar",
-    .frame_title(ns),
+    shiny::div(
+      class = "ar-appbar-brand",
+      shiny::span(class = "ar-appbar-mark", `aria-hidden` = "true"),
+      shiny::span(class = "ar-appbar-word", "arframe")
+    ),
+    .frame_nav(),
     shiny::div(
       class = "ex-appbar-actions",
-      # Open folder (project switcher). shinyDirButton returns a tagList.
       shiny::div(
         class = "ar-picker",
         shinyFiles::shinyDirButton(
@@ -85,45 +74,15 @@ mod_frame_ui <- function(
           class = "ex-btn-sm btn btn-outline-secondary"
         )
       ),
-      # Save-state chip -- updated via `ar-save-state` message.
       shiny::span(
         id = ns("save_chip"),
         class = "ar-save-chip",
         `data-state` = "idle",
         shiny::span(class = "ar-save-chip-lbl", "Saved")
       ),
-      shiny::span(class = "ex-tb-sep"),
-      shiny::tagAppendAttributes(
-        .action_btn(
-          ns("refresh_btn"),
-          .icon("redo", 14),
-          variant = "link",
-          class = "ex-icon-btn"
-        ),
-        `aria-label` = "Refresh"
-      ),
-      shiny::tagAppendAttributes(
-        .action_btn(
-          ns("undo_btn"),
-          .icon("undo", 14),
-          variant = "link",
-          class = "ex-icon-btn"
-        ),
-        `aria-label` = "Undo"
-      ),
-      shiny::tagAppendAttributes(
-        .action_btn(
-          ns("redo_btn"),
-          .icon("redo", 14),
-          variant = "link",
-          class = "ex-icon-btn"
-        ),
-        `aria-label` = "Redo"
-      ),
-      # Command palette hint (arframe.js fills the glyph per navigator.platform).
+      # Command palette hint (bridge.js fills the glyph per navigator.platform).
       shiny::span(class = "ar-bar-hint ar-mono"),
       shiny::span(class = "ex-tb-sep"),
-      # Package -- ships the report tree as a submission-ready zip.
       shiny::tags$button(
         id = ns("export_btn"),
         type = "button",
@@ -205,6 +164,15 @@ mod_frame_ui <- function(
       )
     )
   )
+}
+
+#' The page-header row below the app bar: the click-to-edit report title,
+#' left-aligned, present in every mode. Per-mode header content (e.g.
+#' Setup's overview strip) is rendered inside that mode's body, styled to
+#' sit contiguously beneath this row.
+#' @noRd
+.frame_pagehead <- function(ns) {
+  shiny::div(class = "ar-pagehead", .frame_title(ns))
 }
 
 #' The Galley frame server: mode switching, undo/redo, report-title edit.
@@ -299,19 +267,6 @@ mod_frame_server <- function(id, store) {
           }
         )
       }
-    })
-
-    # Refresh: rescan on-disk state (bring in other-session edits) via
-    # the consolidated `.refresh_all()` helper. Both the manual button
-    # and the tab-focus event route through the same call site so any
-    # additional refresh step lands in one place.
-    shiny::observeEvent(input$refresh_btn, {
-      tryCatch(
-        .refresh_all(store),
-        error = function(e) {
-          log_line(store, sprintf("refresh failed: %s", conditionMessage(e)))
-        }
-      )
     })
 
     # Save-state chip driver. States:
@@ -435,21 +390,6 @@ mod_frame_server <- function(id, store) {
     )
     # See mod_toolbar.R: hidden-link download outputs must stay unsuspended.
     shiny::outputOptions(output, "export_dl", suspendWhenHidden = FALSE)
-
-    # store$undo is a plain (non-reactive) environment; store$rv$report is
-    # the reactive proxy every commit()/undo()/redo() writes last, so reading
-    # it here is what gives this observer its invalidation trigger.
-    shiny::observe({
-      store$rv$report
-      session$sendCustomMessage(
-        "ar-disable",
-        list(id = session$ns("undo_btn"), disabled = !can_undo(store))
-      )
-      session$sendCustomMessage(
-        "ar-disable",
-        list(id = session$ns("redo_btn"), disabled = !can_redo(store))
-      )
-    })
 
     invisible(NULL)
   })

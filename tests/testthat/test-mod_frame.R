@@ -1,12 +1,13 @@
-# The Galley frame: a left `.ar-sidebar` (brand + vertical mode nav) beside
-# `.ar-main` (a `.ar-topbar` title+actions bar over five mounted mode bodies
-# -- setup/data/report/qc/logs), shown/hidden by a workspace mode class.
+# The Galley frame: a top `.ar-topbar` (brand + horizontal mode nav + global
+# actions) over `.ar-pagehead` (the report title) over five mounted mode
+# bodies -- setup/data/report/qc/logs, shown/hidden by a workspace mode class.
 # Server-side, the frame owns mode switching, undo/redo, and the report-title
 # edit -- all through the injected store, never local reactiveVal state.
-# Redesigned 2026-07-07 (dashboard shell): the top `.ex-appbar` segmented
-# switch became the sidebar nav; the nav items still carry `data-ar-mode`.
+# Redesigned 2026-07-07: the left sidebar nav moved back into the top app
+# bar; the Refresh/Undo/Redo circle buttons were dropped (undo/redo stay
+# keyboard-fed); the nav items still carry `data-ar-mode`.
 
-test_that("mod_frame_ui HTML contains the sidebar nav, top bar, and all five mode-body containers", {
+test_that("mod_frame_ui HTML is a top app bar (mode tabs), a pagehead title, and five mode bodies", {
   ui <- mod_frame_ui(
     "frame",
     report_body = shiny::div("report placeholder"),
@@ -17,31 +18,27 @@ test_that("mod_frame_ui HTML contains the sidebar nav, top bar, and all five mod
   )
   html <- as.character(ui)
 
-  # The dashboard shell: a left sidebar (brand + vertical mode nav) and the
-  # per-mode top bar (report title + actions cluster).
-  expect_match(html, "ar-sidebar", fixed = TRUE)
-  expect_match(html, "ar-sidebar-word", fixed = TRUE)
-  expect_match(html, "ar-nav-item", fixed = TRUE)
+  # Top app bar carries the brand, the mode tablist, and the actions cluster.
   expect_match(html, "ar-topbar", fixed = TRUE)
+  expect_match(html, "ar-appbar-brand", fixed = TRUE)
+  expect_match(html, "ar-nav-item", fixed = TRUE)
   expect_match(html, "ex-appbar-actions", fixed = TRUE)
-  # One nav item per mode, each carrying `data-ar-mode` for bridge.js's
-  # delegated click handler.
-  expect_match(html, 'data-ar-mode="setup"', fixed = TRUE)
-  expect_match(html, 'data-ar-mode="data"', fixed = TRUE)
-  expect_match(html, 'data-ar-mode="report"', fixed = TRUE)
-  expect_match(html, 'data-ar-mode="qc"', fixed = TRUE)
-  expect_match(html, 'data-ar-mode="logs"', fixed = TRUE)
-  # Five mounted mode bodies.
-  expect_match(html, "ar-body-setup", fixed = TRUE)
-  expect_match(html, "ar-body-report", fixed = TRUE)
-  expect_match(html, "ar-body-data", fixed = TRUE)
-  expect_match(html, "ar-body-qc", fixed = TRUE)
-  expect_match(html, "ar-body-logs", fixed = TRUE)
-  # Async export: plain action button + hidden download link the server
-  # clicks once the zip is ready.
+  # The left sidebar is gone.
+  expect_no_match(html, "ar-sidebar", fixed = TRUE)
+  # The report title now lives in a page-header row, not the bar.
+  expect_match(html, "ar-pagehead", fixed = TRUE)
+  # One nav item per mode, each carrying data-ar-mode for bridge.js.
+  for (m in c("setup", "data", "report", "qc", "logs")) {
+    expect_match(html, sprintf('data-ar-mode="%s"', m), fixed = TRUE)
+    expect_match(html, sprintf("ar-body-%s", m), fixed = TRUE)
+  }
+  # The three circle icons are gone.
+  expect_no_match(html, 'id="frame-refresh_btn"', fixed = TRUE)
+  expect_no_match(html, 'id="frame-undo_btn"', fixed = TRUE)
+  expect_no_match(html, 'id="frame-redo_btn"', fixed = TRUE)
+  # Async export button + hidden download link survive.
   expect_match(html, 'id="frame-export_btn"', fixed = TRUE)
   expect_match(html, 'id="frame-export_dl"', fixed = TRUE)
-  expect_match(html, "ar-hidden-dl", fixed = TRUE)
 })
 
 test_that("mod_frame_server: mode click switches; active-mode click toggles the rail", {
@@ -104,7 +101,7 @@ test_that("mod_frame_server: input$name commits the report name and undo restore
 
 # ---- end-to-end: the real arframe() launcher, a real browser ---------------
 
-test_that("arframe() launches: sidebar nav, all five bodies, per-mode switch + screenshots", {
+test_that("arframe() launches: top app bar nav, all five bodies, per-mode switch + screenshots", {
   skip_on_cran()
   app <- shinytest2::AppDriver$new(
     app_dir = testthat::test_path("apps/frame"),
@@ -115,7 +112,8 @@ test_that("arframe() launches: sidebar nav, all five bodies, per-mode switch + s
   withr::defer(app$stop())
 
   html <- app$get_html("body", outer_html = TRUE)
-  expect_match(html, "ar-sidebar", fixed = TRUE)
+  expect_match(html, "ar-topbar", fixed = TRUE)
+  expect_match(html, "ar-pagehead", fixed = TRUE)
   expect_match(html, "ar-nav-item", fixed = TRUE)
   expect_match(html, 'data-ar-mode="setup"', fixed = TRUE)
   expect_match(html, 'data-ar-mode="data"', fixed = TRUE)
@@ -145,7 +143,9 @@ test_that("arframe() launches: sidebar nav, all five bodies, per-mode switch + s
     if (have_screens) {
       shot <- file.path(screens_dir, sprintf("%s-%s.png", modes[[m]], m))
       # get_screenshot() will not overwrite, so clear a stale capture first.
-      if (file.exists(shot)) file.remove(shot)
+      if (file.exists(shot)) {
+        file.remove(shot)
+      }
       app$get_screenshot(shot)
     }
   }

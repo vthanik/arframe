@@ -11,7 +11,7 @@ test_that("every status stamp carries an aria-label sentence", {
   }
 })
 
-test_that("the app bar's icon-only undo/redo buttons are labelled", {
+test_that("the top app bar's icon-only mode tabs are labelled", {
   html <- as.character(mod_frame_ui(
     "frame",
     report_body = shiny::div(),
@@ -19,8 +19,11 @@ test_that("the app bar's icon-only undo/redo buttons are labelled", {
     qc_body = shiny::div(),
     logs_body = shiny::div()
   ))
-  expect_match(html, 'aria-label="Undo"', fixed = TRUE)
-  expect_match(html, 'aria-label="Redo"', fixed = TRUE)
+  # The Refresh/Undo/Redo circle buttons are gone (2026-07-07): undo/redo are
+  # keyboard-fed (Cmd-Z / Cmd-Shift-Z), so there is no icon-only button left
+  # to label for them.
+  expect_no_match(html, 'aria-label="Undo"', fixed = TRUE)
+  expect_no_match(html, 'aria-label="Redo"', fixed = TRUE)
   # The icon-only activity-bar buttons name their destination (piece A).
   for (label in c("Report", "Data", "Review", "Logs")) {
     expect_match(html, sprintf('aria-label="%s"', label), fixed = TRUE)
