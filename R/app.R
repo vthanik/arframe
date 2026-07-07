@@ -132,7 +132,8 @@ arframe <- function(project = NULL, data = NULL, folders = NULL, daemons = 2L) {
 
     # Tab-focus refresh: bridge.js posts `ar_refresh` on visibilitychange;
     # `.refresh_all()` rescans the outputs folder AND garbage-collects
-    # stale presence files. Manual Refresh (mod_frame.R) routes here too.
+    # stale presence files. (The manual Refresh button was removed 2026-07-07;
+    # visibilitychange is now the only trigger.)
     shiny::observeEvent(
       input[["ar_refresh"]],
       {

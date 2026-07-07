@@ -24,7 +24,7 @@ test_that("the top app bar's icon-only mode tabs are labelled", {
   # to label for them.
   expect_no_match(html, 'aria-label="Undo"', fixed = TRUE)
   expect_no_match(html, 'aria-label="Redo"', fixed = TRUE)
-  # The icon-only activity-bar buttons name their destination (piece A).
+  # The top-nav mode tabs name their destination (piece A).
   for (label in c("Report", "Data", "Review", "Logs")) {
     expect_match(html, sprintf('aria-label="%s"', label), fixed = TRUE)
   }
