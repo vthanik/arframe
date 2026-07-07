@@ -241,6 +241,7 @@ mod_setup_server <- function(id, store) {
       )
       shiny::div(
         class = paste0("ar-setup-dash ar-setup-tab-", active),
+        .setup_overview(store, sections),
         .setup_reviewed_banner(store),
         .setup_tabstrip(ns, store, sections, active),
         lapply(sections, function(s) {
@@ -704,6 +705,72 @@ mod_setup_server <- function(id, store) {
     .card(body, title = title, class = "ar-setup-section"),
     `data-ar-section` = id
   )
+}
+
+# The Setup dashboard header strip: a row of stat tiles carrying study-level
+# machine facts. Every figure is real or omitted -- a tile whose data is not
+# yet resolved does not render (never a fabricated 0). See the
+# no-fabricated-render-content rule.
+.setup_overview <- function(store, sections) {
+  theme <- store$rv$report@theme
+  # Sections done: count sections whose status is "ok".
+  n_done <- sum(vapply(
+    sections,
+    function(s) identical(.section_status(theme, s$id)$state, "ok"),
+    logical(1)
+  ))
+  tiles <- list(
+    .stat_tile(
+      value = sprintf("%d/%d", n_done, length(sections)),
+      label = "Sections ready",
+      icon = "check"
+    )
+  )
+
+  cat <- tryCatch(arpillar::catalog_grid(store$con), error = function(e) NULL)
+  if (!is.null(cat) && nrow(cat) > 0L) {
+    tiles <- c(
+      tiles,
+      list(.stat_tile(
+        value = format(nrow(cat), big.mark = ","),
+        label = "Datasets",
+        icon = "database"
+      ))
+    )
+    # Population dataset (same resolution as .setup_paths: prefer ADSL).
+    d <- theme$data %||% list()
+    pop <- d$pop_dataset %||%
+      (if ("ADSL" %in% cat$name) "ADSL" else cat$name[[1L]])
+    pop_row <- cat[cat$name == pop, , drop = FALSE]
+    if (nrow(pop_row) == 1L) {
+      tiles <- c(
+        tiles,
+        list(.stat_tile(
+          value = format(pop_row$rows[[1L]], big.mark = ","),
+          label = sprintf("Records (%s)", tolower(pop)),
+          icon = "table"
+        ))
+      )
+    }
+    # Subjects: distinct subject-id in the pop dataset. Only when resolved.
+    subj_col <- d$subject_id %||% "USUBJID"
+    subj_col <- trimws(strsplit(subj_col, ",", fixed = TRUE)[[1L]][[1L]])
+    n_subj <- tryCatch(
+      length(arpillar::distinct_values(store$con, pop, subj_col)),
+      error = function(e) NA_integer_
+    )
+    if (!is.na(n_subj) && n_subj > 0L) {
+      tiles <- c(
+        tiles,
+        list(.stat_tile(
+          value = format(n_subj, big.mark = ","),
+          label = "Subjects",
+          icon = "database"
+        ))
+      )
+    }
+  }
+  shiny::div(class = "ar-setup-overview", tiles)
 }
 
 # Horizontal section tab strip. Each tab shows the section title + a status

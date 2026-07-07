@@ -278,3 +278,44 @@ test_that("bad precision input is dropped silently (coerce -> NULL)", {
     expect_identical(st$rv$report@theme$decimals$n, 0L)
   })
 })
+
+test_that(".setup_overview renders sections-done and a real subjects count", {
+  # Verified directly against .demo_catalog(): 4 datasets (ADSL/ADVS/ADTTE/
+  # ADAE), ADSL has 12 rows and 12 distinct USUBJID -- so a default store on
+  # the demo catalog resolves ALL FOUR tiles, subjects included, with real
+  # (not fabricated) numbers.
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  sections <- list(list(id = "study"), list(id = "team"))
+  html <- shiny::isolate(as.character(.setup_overview(store, sections)))
+  expect_match(html, "ar-setup-overview", fixed = TRUE)
+  expect_match(html, "Sections ready", fixed = TRUE)
+  expect_match(html, "0/2", fixed = TRUE) # neither seed section is "ok"
+  expect_match(html, "Datasets", fixed = TRUE)
+  expect_match(html, ">4<", fixed = TRUE) # 4 datasets in the demo catalog
+  expect_match(html, "Records (adsl)", fixed = TRUE)
+  expect_match(html, "Subjects", fixed = TRUE)
+  expect_match(html, ">12<", fixed = TRUE) # real distinct USUBJID count
+})
+
+test_that(".setup_overview omits the subjects tile when the subject-id column does not resolve", {
+  # Same demo catalog (so Datasets + Records still resolve), but the
+  # subject-id column is seeded to a name absent from ADSL --
+  # arpillar::distinct_values() errors, the tryCatch yields NA, and the
+  # no-fabrication contract means the tile is OMITTED, never shown as 0.
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  shiny::isolate({
+    theme <- store$rv$report@theme
+    theme$data$subject_id <- "NOPE_COL"
+    commit(store, S7::set_props(store$rv$report, theme = theme))
+  })
+  sections <- list(list(id = "study"), list(id = "team"))
+  html <- shiny::isolate(as.character(.setup_overview(store, sections)))
+  expect_match(html, "ar-setup-overview", fixed = TRUE)
+  expect_match(html, "Sections ready", fixed = TRUE)
+  expect_match(html, "Datasets", fixed = TRUE)
+  expect_no_match(html, "Subjects", fixed = TRUE)
+})
