@@ -25,6 +25,26 @@ body {
   border-color: var(--ar-accent);
   box-shadow: 0 0 0 3px var(--ar-accent-weak);
 }
+/* Highlighted dropdown option (every selectize, rich or plain): a subtle
+   accent wash + a 2px accent left-stripe, never the default heavy blue.
+   Matched by `[data-selectable]` (present on EVERY option) so it also covers
+   the rich pickers, whose custom render emits a `.ar-picker-option` with no
+   `.option` class. `!important` because the dropdown is appended to <body>
+   (no ancestor scope reaches it) and selectize's own rule loads later at
+   equal specificity. The Explorer convention -- elegant + readable. */
+.selectize-dropdown [data-selectable].active,
+.selectize-dropdown [data-selectable].selected,
+.selectize-dropdown [data-selectable]:hover,
+.selectize-dropdown [data-selectable][aria-selected="true"] {
+  background: var(--ar-accent-weak) !important;
+  color: var(--ar-ink) !important;
+  box-shadow: inset 2px 0 0 var(--ar-accent);
+}
+.selectize-dropdown [data-selectable].active .ar-picker-option-name,
+.selectize-dropdown [data-selectable].selected .ar-picker-option-name,
+.selectize-dropdown [data-selectable]:hover .ar-picker-option-name {
+  color: var(--ar-ink) !important;
+}
 input[type="checkbox"],
 input[type="radio"] {
   accent-color: var(--ar-accent);
@@ -558,10 +578,17 @@ input[type="radio"] {
 .ar-setup-tab-team          .ar-setup-section[data-ar-section="team"] {
   display: block;
 }
+/* Stacked groups in a setup section need breathing space between them --
+   the panel body only carries padding, so give it a flex gap. */
+.ar-setup-section > .ar-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
 .ar-setup-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 .ar-setup-group-lbl {
   font-size: 10.5px;
@@ -729,7 +756,7 @@ input[type="radio"] {
 }
 .ar-cont-row {
   display: grid;
-  grid-template-columns: 24px 1.4fr 2fr 100px 32px;
+  grid-template-columns: 24px 1.4fr 2.4fr 32px;
   gap: 8px;
   align-items: center;
   padding: 6px 12px;
@@ -744,27 +771,52 @@ input[type="radio"] {
   line-height: 1;
   user-select: none;
 }
-.ar-cont-atoms {
+/* Stats cell: chosen atoms as chips + the "+ add statistic" select. */
+.ar-cont-stats {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
   align-items: center;
 }
-.ar-cont-atom {
-  padding: 2px 8px;
+.ar-cont-chips {
+  display: contents;
+}
+.ar-cont-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 8px;
   background: var(--ar-paper);
   border: 1px solid var(--ar-rule);
   border-radius: 999px;
   font-size: 11.5px;
   color: var(--ar-ink);
 }
-.ar-cont-fmt-badge {
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: var(--ar-accent-weak, #eef2ff);
-  color: var(--ar-accent, #3b56b3);
-  font-size: 11px;
-  font-weight: 600;
+.ar-cont-chip-name {
+  line-height: 1;
+}
+.ar-cont-chip-x {
+  border: none;
+  background: transparent;
+  color: var(--ar-ink-3);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0 2px;
+  border-radius: 999px;
+}
+.ar-cont-chip-x:hover {
+  color: var(--ar-ink);
+  background: var(--ar-rule);
+}
+/* The rich add-picker box as it sits inline after the chips (continuous
+   stats + decimals-by names): a compact "+ Add ..." control that flex-wraps
+   under the chips. The selectize itself is styled globally; here we just size
+   its footprint so it doesn't stretch the whole row. */
+.ar-add-picker {
+  flex: 1 1 200px;
+  min-width: 180px;
+  max-width: 320px;
 }
 
 /* ---- Topbar Package button shortcut chip ---- */
@@ -2363,23 +2415,81 @@ select.ar-input-flat {
    own `render.option` markup, targeted here since it renders OUTSIDE the
    selectize-input's own DOM subtree (appended to `body` by default) and
    so needs a page-level selector. */
-.ar-picker-option {
-  display: flex;
-  flex-direction: column;
-  padding: 2px 0;
-}
-.ar-picker-option-line1 {
+/* One-line elegant option (Explorer style): chip avatar + NAME, then the
+   muted description on the SAME line, baseline-aligned. Slightly larger than
+   the row chips so the dropdown reads cleanly. */
+/* selectize merges this render div WITH the option's `[data-selectable]`
+   wrapper, so scope to `.selectize-dropdown` (specificity 0,2,0) to win over
+   selectize's own default option padding. Roomier rows (vertical breathing
+   space) + a left inset so the type chip is not glued to the box left edge. */
+.selectize-dropdown .ar-picker-option {
   display: flex;
   align-items: center;
+  padding: 9px 12px 9px 13px;
+  min-width: 0;
+}
+.ar-picker-option .ar-chip {
+  width: 20px;
+  height: 20px;
+  font-size: 10.5px;
+  margin-right: 10px;
+}
+.ar-picker-option-text {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  line-height: 1.3;
 }
 .ar-picker-option-name {
-  font-size: 12px;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--ar-ink);
+  flex: 0 0 auto;
 }
-.ar-picker-option-type {
-  font-size: 10px;
+.ar-picker-option-lab {
+  font-size: 12.5px;
   color: var(--ar-ink-4);
-  margin-left: 24px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- Selectize skin (the ONE variable/param picker) ----
+   Every arframe variable selector is a `.ar-picker` wrapper around a Shiny
+   `selectizeInput`; the shared bundle render (`window.arframePickerOption`)
+   draws each option as a type-chip + NAME + muted CDISC label. Shiny wraps the
+   input in `.form-group.shiny-input-container`, whose Bootstrap
+   `margin-bottom: 1rem` we ZERO here -- the #35 fix, without which the inline
+   add-pickers sit ~16px too low against their chips. The dropdown is appended
+   to <body>, so its option markup + highlight are styled by the global
+   `.selectize-dropdown` rules further up. */
+.ar-picker {
+  width: 100%;
+}
+.ar-picker .form-group,
+.ar-picker .shiny-input-container {
+  margin-bottom: 0;
+  width: 100%;
+}
+.ar-picker .selectize-control {
+  margin-bottom: 0;
+}
+.ar-picker .selectize-input {
+  min-height: 0;
+  padding: 5px 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+/* The dropdown takes the control's natural width; a long CDISC label simply
+   truncates with an ellipsis (the PARAMCD / column name is what identifies
+   the row, and the muted label is supplementary). Deliberately NOT widened --
+   a wider control reads awkwardly, and a body-appended dropdown detaches on
+   scroll. */
+/* Monochrome SVG glyph (calendar / clock) sits flush in the type chip. */
+.ar-picker-option .ar-chip svg {
+  display: block;
 }
 
 /* ============ 08 data ============ */

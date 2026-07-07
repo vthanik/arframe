@@ -319,6 +319,57 @@
   )
 }
 
+#' The shared variable/param picker: a `selectizeInput` whose per-option
+#' render (type-chip + NAME + muted CDISC label) is defined ONCE in the JS
+#' bundle (srcjs/bridge.js `window.arframePickerOption` / `arframePickerItem`)
+#' and referenced here by name -- no render markup lives in the R modules.
+#' Each choice's LABEL is the packed `"name\x1ftype\x1flabel"` string the
+#' render splits; the VALUE is whatever the server consumes.
+#'
+#' @param choices *Named-vector choices.* `<character>`, names = packed labels,
+#'   values = what the server reads (packed, clean id, or bare column name).
+#' @param selected *Pre-selected value(s).* `<character>`. When empty, the
+#'   picker force-clears on init (no selectize auto-pick of the first option).
+#' @param onchange *A selectize `onChange` JS statement* (add-row pickers post
+#'   `{i, value, nonce}` to a shared observer). `<character(1)> | NULL`.
+#' @param class *Extra wrapper class* beside the base `ar-picker`.
+#' @noRd
+.PICKER_RENDER <-
+  "{ option: window.arframePickerOption, item: window.arframePickerItem }"
+
+.ar_picker_select <- function(
+  ns,
+  input_id,
+  choices,
+  selected = character(0),
+  placeholder = "",
+  onchange = NULL,
+  class = NULL
+) {
+  opts <- list(
+    placeholder = placeholder,
+    render = I(.PICKER_RENDER),
+    searchField = list("label")
+  )
+  if (!is.null(onchange)) {
+    opts$onChange <- I(onchange)
+  }
+  if (length(selected) == 0L) {
+    # selectize otherwise auto-selects the first option; force empty.
+    opts$onInitialize <- I("function() { this.setValue(''); }")
+  }
+  shiny::div(
+    class = paste(c("ar-picker", class), collapse = " "),
+    shiny::selectizeInput(
+      ns(input_id),
+      label = NULL,
+      choices = choices,
+      selected = selected,
+      options = opts
+    )
+  )
+}
+
 #' A filesystem-safe slug for an output's download filename:
 #' `t-14-1-1-demographics.rtf` -- kind letter + number + title, lowercased,
 #' non-alnum runs collapsed to `-`. Shared by the canvas toolbar's .rtf

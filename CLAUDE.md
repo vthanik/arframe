@@ -200,6 +200,52 @@ page, proof-stamp statuses, and a summonable/pinnable galley card. The deliverab
   `--`. `--` reads as a typo in the rendered UI. (In `#` / `#'` comments and
   roxygen prose, em-dash `—` is preferred; ASCII `--` there is still
   tolerated.)
+- **Variable / column / parameter pickers — ONE shared picker everywhere
+    (2026-07-07). Every variable/param selector uses it; never a bare
+    unlabeled `<select>` of column names, and never inline a selectize
+    `render` blob in an R module.**
+  - **The engine is `selectize` (Shiny's bundled one), NOT a new library.**
+    The one option render — type-chip avatar + NAME + muted CDISC label on
+    one line — is defined ONCE in the JS bundle as `window.arframePickerOption`
+    / `window.arframePickerItem` (`srcjs/bridge.js`). R references it by name:
+    `render = I("{ option: window.arframePickerOption, item:
+    window.arframePickerItem }")` — zero render markup in the modules. Chip
+    vocab (mirrors datasetviewer's `typeIcon` + arpillar's coarser taxonomy):
+    `#` measure/number, calendar SVG date/datetime, clock SVG time, `A`
+    category/string/bool, `P` param. (Tom Select was trialed and rejected
+    2026-07-07 — do NOT re-suggest it.)
+  - **`.ar_picker_select()` (`utils_atoms.R`) is the shared builder** — a
+    `selectizeInput` wrapped in `.ar-picker`, choices a named vector whose
+    NAMES are the packed `"name\x1ftype\x1flabel"` label the render splits and
+    whose VALUES are what the server consumes. Two thin wrappers:
+    - `.eligible_picker()` (`mod_card_roles.R`) — single/bind pick: Roles
+      slot, Filters column, Populations subject-id, **Treatment variable**.
+      Value = packed (server unpacks via `.unpack_item_name`) OR the bare
+      column name (`bare_value = TRUE`, Treatment). Empty `selected` force-
+      clears on init and just ADDS; a non-empty `selected` re-seeds a
+      committed control (Filters, Treatment).
+    - `.rich_picker()` (`mod_setup.R`) — per-row add: Continuous stats,
+      Decimals-by. `onChange` posts `{i, value, nonce}` to a SHARED observer
+      (row index baked in) then clears — no per-row Shiny observer to leak in
+      the dynamic renderUI.
+  - **Domain filters on the choices:** decimals-by offers **numeric columns
+    only** (`type == "measure"`) + BDS params, with each param's PARAM value
+    (from `SELECT DISTINCT PARAMCD, PARAM`) as the muted description;
+    continuous stats enforce **global uniqueness** — a statistic is used once
+    across ALL rows, so each row's picker excludes every atom used in any row.
+  - **Long labels truncate with an ellipsis** — do NOT widen the dropdown to
+    fit them: a wider control reads awkwardly, and a body-appended dropdown
+    (`dropdownParent`) detaches from the control on scroll. The dropdown takes
+    the control's natural width.
+  - **Persistence rule:** inside a dynamic `renderUI`, never rely on selectize
+    `selected` alone for a value that must survive re-render — either re-seed a
+    single value with the exact packed choice (Filters / Treatment) or render
+    the chosen state as server chips fed by an always-empty add-control
+    (subject-id / decimals-by / continuous-stats).
+  - Non-variable choices — segmented toggles (yes/no, orientation), short
+    fixed enums, and the **dataset list** (`.select_input`, a native
+    `<select>`) — stay as segmented controls or a native `<select>` and get
+    no picker.
 
 ## Team-state file inventory (2026-07-06)
 

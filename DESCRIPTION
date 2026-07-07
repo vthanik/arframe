@@ -18,6 +18,7 @@ Imports:
     bslib,
     cli,
     datasetviewer,
+    DBI,
     fontawesome,
     htmltools,
     jsonlite,

@@ -114,15 +114,6 @@ mod_setup_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::div(
     class = "ar-setup",
-    # `<datalist>` for continuous-stats-row atom autocomplete. Lives
-    # in the static UI so a renderUI re-fire never orphans it. The id
-    # is not namespaced -- HTML `<input list="...">` looks up by the
-    # id in the same document, and datalists have no server-side
-    # state.
-    shiny::tags$datalist(
-      id = "ar-stat-atoms",
-      lapply(.CONT_ATOMS, function(a) shiny::tags$option(value = a))
-    ),
     # shinyFiles binds its client-side handler at UI-build time to buttons
     # that already exist in the DOM -- a button rendered later inside a
     # renderUI never gets the binding. Instantiate the two pickers here in
@@ -577,10 +568,12 @@ mod_setup_server <- function(id, store) {
       bump_sections()
     })
 
-    # Decimals-by rules: per-field `dec_row_change` edits (dataset / name /
-    # dp), plus add / delete. A dataset change re-renders so the NAME dropdown
-    # re-lists the new dataset's columns + PARAMCD levels; name/dp edits do
-    # not (no focus loss). Name values are `V|<col>` / `P|<param>`.
+    # Decimals-by rules: `dec_row_change` edits the dataset + dp scalars; the
+    # variable/param NAMES are a multi-select mutated by add / remove chip
+    # events (`dec_name_add` / `dec_name_remove`). A dataset change re-renders
+    # (new column/param options) and resets that row's names; dp does not.
+    # Names are encoded `V|<col>` / `P|<param>`; a row shares one dp across
+    # all its names.
     dec_ds_names <- function() {
       cat <- tryCatch(arpillar::catalog_grid(store$con), error = function(e) {
         NULL
@@ -601,11 +594,13 @@ mod_setup_server <- function(id, store) {
           return()
         }
         do_bump <- FALSE
-        if (identical(field, "name")) {
-          rules[[i]]$by <- if (startsWith(val, "P|")) "param" else "variable"
-          rules[[i]]$name <- sub("^[VP]\\|", "", val)
-        } else if (identical(field, "dataset")) {
+        if (identical(field, "dataset")) {
+          if (identical(rules[[i]]$dataset %||% "", val)) {
+            return()
+          }
           rules[[i]]$dataset <- val
+          # New dataset -> the old names no longer belong; clear them.
+          rules[[i]]$names <- character(0)
           do_bump <- TRUE
         } else if (identical(field, "dp")) {
           dp <- suppressWarnings(as.integer(val))
@@ -621,6 +616,67 @@ mod_setup_server <- function(id, store) {
       },
       ignoreInit = TRUE
     )
+    # Add an encoded `V|<col>` / `P|<param>` to rule i's names.
+    shiny::observeEvent(
+      input$dec_name_add,
+      {
+        e <- input$dec_name_add
+        i <- suppressWarnings(as.integer(e$i))
+        val <- as.character(e$value %||% "")
+        if (is.na(i) || !nzchar(val)) {
+          return()
+        }
+        r <- store$rv$report
+        theme <- r@theme
+        rules <- theme$decimals_by %||% list()
+        if (i < 1L || i > length(rules)) {
+          return()
+        }
+        cur <- .dec_rule_names(rules[[i]])
+        if (val %in% cur) {
+          return()
+        }
+        rules[[i]]$names <- c(cur, val)
+        rules[[i]]$name <- NULL # drop the migrated single-name key
+        rules[[i]]$by <- NULL
+        theme$decimals_by <- rules
+        commit(
+          store,
+          S7::set_props(r, theme = theme),
+          label = "add decimals name"
+        )
+        bump_sections()
+      },
+      ignoreInit = TRUE
+    )
+    shiny::observeEvent(
+      input$dec_name_remove,
+      {
+        e <- input$dec_name_remove
+        i <- suppressWarnings(as.integer(e$i))
+        val <- as.character(e$value %||% "")
+        if (is.na(i) || !nzchar(val)) {
+          return()
+        }
+        r <- store$rv$report
+        theme <- r@theme
+        rules <- theme$decimals_by %||% list()
+        if (i < 1L || i > length(rules)) {
+          return()
+        }
+        rules[[i]]$names <- setdiff(.dec_rule_names(rules[[i]]), val)
+        rules[[i]]$name <- NULL
+        rules[[i]]$by <- NULL
+        theme$decimals_by <- rules
+        commit(
+          store,
+          S7::set_props(r, theme = theme),
+          label = "remove decimals name"
+        )
+        bump_sections()
+      },
+      ignoreInit = TRUE
+    )
     shiny::observeEvent(input$dec_add, {
       r <- store$rv$report
       theme <- r@theme
@@ -629,9 +685,8 @@ mod_setup_server <- function(id, store) {
       rules <- c(
         rules,
         list(list(
-          by = "variable",
           dataset = if (length(ds) > 0L) ds[[1L]] else "",
-          name = "",
+          names = character(0),
           dp = 0L
         ))
       )
@@ -710,41 +765,127 @@ mod_setup_server <- function(id, store) {
       bump_sections()
     })
 
-    # Continuous statistic rows: same shape as populations. Rebuild from
-    # cont_label_* + cont_format_* + the row-level atoms; add + delete
-    # events for structural mutations. The atoms per row are display-
-    # only (they render as chips derived from stats), so the observer
-    # only tracks label + format.
+    # Continuous statistic rows. Only the LABEL is a free-text input now
+    # (`cont_label_*`); the stats vector is mutated by add / remove chip
+    # events, and row order by drag. This observer tracks label edits only
+    # and preserves each row's stats. Format is gone -- the engine infers
+    # the join from the atoms.
     shiny::observe({
-      collected <- .collect_conts(input)
-      if (length(collected) == 0L) {
+      label_ids <- grep("^cont_label_[0-9]+$", names(input), value = TRUE)
+      if (length(label_ids) == 0L) {
         return()
       }
+      idx <- as.integer(sub("cont_label_", "", label_ids))
       r <- store$rv$report
       theme <- r@theme
-      if (is.null(theme$summaries)) {
-        theme$summaries <- list()
-      }
-      prior <- theme$summaries$continuous %||% .CONT_SEEDS
+      rows <- .cont_rows_or_seed(theme)
       # Skip mid-flush: the input map lags the theme by one flush cycle
-      # right after a structural change (add / delete row). Rewriting
-      # here would clobber the just-appended or -removed row.
-      if (length(collected) != length(prior)) {
+      # right after a structural change (add / delete / reorder row).
+      if (length(idx) != length(rows)) {
         return()
       }
-      # All three of label / stats / format now come from user input --
-      # `.collect_conts` parses the comma-separated stats field into a
-      # character vector.
-      rows <- collected
-      if (identical(theme$summaries$continuous, rows)) {
+      changed <- FALSE
+      for (i in idx) {
+        if (i < 1L || i > length(rows)) {
+          next
+        }
+        lab <- as.character(input[[paste0("cont_label_", i)]] %||% "")
+        if (!identical(rows[[i]]$label %||% "", lab)) {
+          rows[[i]]$label <- lab
+          changed <- TRUE
+        }
+      }
+      if (!changed) {
         return()
       }
       theme$summaries$continuous <- rows
       commit(
         store,
         S7::set_props(r, theme = theme),
-        label = "edit continuous rows"
+        label = "edit continuous labels"
       )
+    })
+    # Append an atom to row i's stats (native add-select).
+    shiny::observeEvent(
+      input$cont_stat_add,
+      {
+        e <- input$cont_stat_add
+        i <- suppressWarnings(as.integer(e$i))
+        stat <- as.character(e$value %||% "")
+        if (is.na(i) || !nzchar(stat)) {
+          return()
+        }
+        r <- store$rv$report
+        theme <- r@theme
+        rows <- .cont_rows_or_seed(theme)
+        if (i < 1L || i > length(rows)) {
+          return()
+        }
+        # A statistic is used once across the WHOLE table: reject it if any
+        # row already carries it (backstop for the picker's global exclusion).
+        used <- unique(unlist(
+          lapply(rows, function(r) r$stats %||% character(0)),
+          use.names = FALSE
+        ))
+        if (stat %in% used) {
+          return()
+        }
+        cur <- rows[[i]]$stats %||% character(0)
+        rows[[i]]$stats <- c(cur, stat)
+        theme$summaries$continuous <- rows
+        commit(store, S7::set_props(r, theme = theme), label = "add statistic")
+        bump_sections()
+      },
+      ignoreInit = TRUE
+    )
+    # Remove an atom from row i's stats (chip x).
+    shiny::observeEvent(
+      input$cont_stat_remove,
+      {
+        e <- input$cont_stat_remove
+        i <- suppressWarnings(as.integer(e$i))
+        stat <- as.character(e$stat %||% "")
+        if (is.na(i) || !nzchar(stat)) {
+          return()
+        }
+        r <- store$rv$report
+        theme <- r@theme
+        rows <- .cont_rows_or_seed(theme)
+        if (i < 1L || i > length(rows)) {
+          return()
+        }
+        rows[[i]]$stats <- setdiff(rows[[i]]$stats %||% character(0), stat)
+        theme$summaries$continuous <- rows
+        commit(
+          store,
+          S7::set_props(r, theme = theme),
+          label = "remove statistic"
+        )
+        bump_sections()
+      },
+      ignoreInit = TRUE
+    )
+    # Drag-reorder continuous rows (SortableJS -> `cont_reorder$order`).
+    shiny::observeEvent(input$cont_reorder, {
+      ord <- suppressWarnings(as.integer(vapply(
+        input$cont_reorder$order,
+        as.character,
+        character(1)
+      )))
+      r <- store$rv$report
+      theme <- r@theme
+      rows <- .cont_rows_or_seed(theme)
+      ord <- ord[!is.na(ord) & ord >= 1L & ord <= length(rows)]
+      if (length(ord) != length(rows) || anyDuplicated(ord)) {
+        return()
+      }
+      theme$summaries$continuous <- rows[ord]
+      commit(
+        store,
+        S7::set_props(r, theme = theme),
+        label = "reorder continuous rows"
+      )
+      bump_sections()
     })
     shiny::observeEvent(input$cont_add, {
       r <- store$rv$report
@@ -752,11 +893,11 @@ mod_setup_server <- function(id, store) {
       if (is.null(theme$summaries)) {
         theme$summaries <- list()
       }
-      rows <- theme$summaries$continuous %||% .CONT_SEEDS
-      # Append a blank row using the same shape .CONT_SEEDS uses.
+      rows <- .cont_rows_or_seed(theme)
+      # Append a blank row (label + empty stats -- no format).
       rows <- c(
         rows,
-        list(list(label = "", stats = character(0), format = "a"))
+        list(list(label = "", stats = character(0)))
       )
       theme$summaries$continuous <- rows
       commit(
@@ -770,7 +911,7 @@ mod_setup_server <- function(id, store) {
       i <- as.integer(input$cont_delete)
       r <- store$rv$report
       theme <- r@theme
-      rows <- theme$summaries$continuous %||% .CONT_SEEDS
+      rows <- .cont_rows_or_seed(theme)
       if (i >= 1L && i <= length(rows)) {
         rows <- rows[-i]
       }
@@ -1383,7 +1524,6 @@ s_study <- function(store) {
     } else {
       ""
     })
-  choices <- if (length(pb$cols) == 0L) trtvar else pb$cols
   arms <- t$arms %||% .ARM_SEEDS
   if (length(arms) == 0L) {
     arms <- .ARM_SEEDS
@@ -1431,15 +1571,39 @@ s_study <- function(store) {
       )
     )
   })
+  # The treatment variable is a variable picker, so it wears the shared
+  # chip + name + label selectize like Roles / Populations (not a bare native
+  # `<select>`). `bare_value = TRUE`: the value is the plain column name, which
+  # `input$treatment_trtvar` (wired via `.wire_all`) and the arm auto-fill
+  # observer read directly. A synthetic row keeps a saved trtvar visible even
+  # before its dataset's columns load.
+  trt_items <- .items_meta(store, pb$pop_dataset)
+  if (nzchar(trtvar) && !(trtvar %in% trt_items$name)) {
+    trt_items <- rbind(
+      trt_items,
+      data.frame(
+        name = trtvar,
+        type = "category",
+        sql_type = "",
+        label = "",
+        stringsAsFactors = FALSE
+      )
+    )
+  }
   shiny::tagList(
     shiny::div(
       class = "ar-setup-grid",
-      .select_input(
-        ns,
-        "treatment_trtvar",
-        "Treatment variable",
-        choices,
-        trtvar
+      shiny::div(
+        class = "ar-setup-field",
+        shiny::tags$label(class = "ar-label", "Treatment variable"),
+        .eligible_picker(
+          ns,
+          "treatment_trtvar",
+          trt_items,
+          selected = trtvar,
+          placeholder = "Treatment variable",
+          bare_value = TRUE
+        )
       )
     ),
     .setup_group(
@@ -1786,33 +1950,6 @@ s_study <- function(store) {
   )
 }
 
-# Rebuild `theme$summaries$continuous` from the current cont_label_* +
-# cont_format_* inputs. Row indices come from the input names; atoms
-# (the stats vector) survive across the round-trip because the
-# renderer reads them from theme and the observer preserves whatever
-# atoms the row had -- only the label + format are user-edited scalars.
-.collect_conts <- function(input) {
-  label_ids <- grep("^cont_label_[0-9]+$", names(input), value = TRUE)
-  if (length(label_ids) == 0L) {
-    return(list())
-  }
-  idx <- as.integer(sub("cont_label_", "", label_ids))
-  ord <- order(idx)
-  out <- lapply(idx[ord], function(i) {
-    stats_raw <- as.character(input[[paste0("cont_stats_", i)]] %||% "")
-    # Comma-separated -> character vector; drop empty tokens so a
-    # trailing comma doesn't leave a "".
-    stats <- trimws(strsplit(stats_raw, ",", fixed = TRUE)[[1L]])
-    stats <- stats[nzchar(stats)]
-    list(
-      label = as.character(input[[paste0("cont_label_", i)]] %||% ""),
-      stats = stats,
-      format = as.character(input[[paste0("cont_format_", i)]] %||% "a")
-    )
-  })
-  out
-}
-
 # Rebuild `theme$footnotes` from the current foot_key_* + foot_text_*
 # inputs. Empty keys are skipped so a half-typed entry does not clobber
 # the register.
@@ -1937,6 +2074,14 @@ s_study <- function(store) {
   if (is.null(rows) || length(rows) == 0L) {
     rows <- .CONT_SEEDS
   }
+  # A statistic is displayed once across the whole table, so every row's
+  # add-picker offers only atoms not already used in ANY row (global, not
+  # per-row, uniqueness).
+  cont_used <- unique(unlist(
+    lapply(rows, function(r) r$stats %||% character(0)),
+    use.names = FALSE
+  ))
+  cont_eligible <- setdiff(.CONT_ATOMS, cont_used)
   # Precision defaults per Global TFL Requirements (T-103):
   #   * Min / Max          = raw data precision (integer default = 0)
   #   * Mean / Median      = base + 1
@@ -1963,56 +2108,11 @@ s_study <- function(store) {
     min = "Min",
     max = "Max"
   )
+  # Section order (2026-07-07): the two settings blocks that shape every
+  # table -- Arm column headers, then Categorical rules -- sit on top; the
+  # Continuous "summarise" table and its Precision follow; the Decimals-by
+  # table is last because it grows with the dataset.
   shiny::tagList(
-    .setup_group(
-      "Continuous rows",
-      shiny::div(
-        class = "ar-cont-rows",
-        lapply(seq_along(rows), function(i) {
-          row <- rows[[i]]
-          .cont_row(ns, i, row)
-        }),
-        shiny::tags$button(
-          id = ns("cont_add"),
-          type = "button",
-          class = "ar-pop-add action-button",
-          "+ Add statistic row"
-        )
-      )
-    ),
-    .setup_group(
-      "Categorical rules",
-      shiny::div(
-        class = "ar-setup-grid",
-        .seg_control(
-          ns,
-          "cat_header_stat",
-          "Header stat",
-          c("n", "total_n", "none"),
-          s$categorical$header_stat %||% "n"
-        ),
-        .seg_control(
-          ns,
-          "cat_level_format",
-          "Level format",
-          c("n", "pct", "n_pct", "pct_n"),
-          s$categorical$level_format %||% "n_pct"
-        ),
-        .seg_control(
-          ns,
-          "cat_show_missing",
-          "Show missing",
-          c("auto", "always", "never"),
-          s$categorical$show_missing %||% "auto"
-        ),
-        .flat_input(
-          ns,
-          "cat_missing_label",
-          "Missing label",
-          s$categorical$missing_label %||% "Missing"
-        )
-      )
-    ),
     .setup_group(
       "Arm column headers",
       shiny::div(
@@ -2031,6 +2131,63 @@ s_study <- function(store) {
           store$rv$report@theme$arm$header_n_format %||% "(N={n})",
           mono = TRUE,
           placeholder = "(N={n})"
+        )
+      )
+    ),
+    .setup_group(
+      "Categorical rules",
+      shiny::div(
+        class = "ar-setup-grid",
+        .seg_control(
+          ns,
+          "cat_header_stat",
+          "Header stat",
+          c("n", "total_n", "none"),
+          s$categorical$header_stat %||% "n"
+        ),
+        # Display labels distinct from stored values so the choices read
+        # clearly ("n (%)" not "n_pct"); `pct_n` dropped per user request.
+        .seg_control(
+          ns,
+          "cat_level_format",
+          "Level format",
+          c("n" = "n", "%" = "pct", "n (%)" = "n_pct"),
+          s$categorical$level_format %||% "n_pct"
+        ),
+        .seg_control(
+          ns,
+          "cat_show_missing",
+          "Show missing",
+          c("auto", "always", "never"),
+          s$categorical$show_missing %||% "auto"
+        ),
+        .flat_input(
+          ns,
+          "cat_missing_label",
+          "Missing label",
+          s$categorical$missing_label %||% "Missing"
+        )
+      )
+    ),
+    .setup_group(
+      "Continuous rows",
+      shiny::tagList(
+        shiny::div(
+          class = "ar-cont-rows",
+          `data-ar-sortable` = "true",
+          `data-ar-sortable-handle` = ".ar-cont-grip",
+          `data-ar-sortable-item` = ".ar-cont-row",
+          `data-ar-sortable-attr` = "data-ar-item",
+          `data-ar-sortable-input` = ns("cont_reorder"),
+          lapply(seq_along(rows), function(i) {
+            .cont_row(ns, i, rows[[i]], cont_eligible)
+          })
+        ),
+        shiny::tags$button(
+          id = ns("cont_add"),
+          type = "button",
+          class = "ar-pop-add action-button",
+          "+ Add statistic row"
         )
       )
     ),
@@ -2067,29 +2224,227 @@ s_study <- function(store) {
   paste0(if (identical(by, "param")) "P" else "V", "|", name %||% "")
 }
 
-# NAME dropdown choices for one dataset: its columns (as variables) plus its
-# PARAMCD levels (as params), as a named vector `encoded-value -> label`.
-.dec_name_choices <- function(store, dataset) {
-  if (is.null(dataset) || !nzchar(dataset)) {
-    return(character(0))
+# A rich, searchable "add" per-row picker: the shared chip + name + muted-label
+# options (rendered once by the JS bridge, srcjs/bridge.js), always empty (it
+# only ADDS). Emits a raw `<select data-ar-picker>` in the bridge's `add-row`
+# mode -- on pick the bridge posts `{value, nonce, i}` to the SHARED observer
+# named `target_input` (the row index `i` travels in `data-ar-picker-extra`),
+# then clears. No per-row Shiny observer, so nothing leaks inside the dynamic
+# renderUI. `items` is a data.frame(value, name, sub, type) with type
+# measure/date/category/param; the visible text packs `name\x1ftype\x1flabel`.
+.rich_picker <- function(ns, target_input, items, placeholder, i) {
+  n <- nrow(items)
+  choices <- if (n == 0L) {
+    character(0)
+  } else {
+    packed <- vapply(
+      seq_len(n),
+      function(k) {
+        paste0(items$name[[k]], "\x1f", items$type[[k]], "\x1f", items$sub[[k]])
+      },
+      character(1)
+    )
+    stats::setNames(items$value, packed)
   }
-  cols <- .items_meta(store, dataset)$name
-  var_choices <- stats::setNames(paste0("V|", cols), cols)
-  params <- character(0)
-  if ("PARAMCD" %in% cols) {
+  # onChange posts `{i, value, nonce}` to the SHARED observer `target_input`
+  # (the row index is baked in here), then clears -- so there is no per-row
+  # Shiny observer to leak inside the dynamic renderUI. The one-line hook
+  # carries per-row wiring, not presentation; the render lives in the bundle.
+  onchange <- sprintf(
+    paste0(
+      "function(value) { if (value) { ",
+      "Shiny.setInputValue('%s', {i: %d, value: value, nonce: Date.now()}, ",
+      "{priority: 'event'}); this.setValue(''); } }"
+    ),
+    ns(target_input),
+    as.integer(i)
+  )
+  .ar_picker_select(
+    ns = ns,
+    input_id = paste0(target_input, "_pick_", i),
+    choices = choices,
+    placeholder = placeholder,
+    onchange = onchange,
+    class = "ar-add-picker"
+  )
+}
+
+# Picker items for a dataset's columns (variables) + PARAMCD levels (params),
+# each row a data.frame line for `.rich_picker`; `chosen` (encoded ids) are
+# excluded. Variable type comes from the catalog; params render with a 'P'.
+.dec_pick_items <- function(store, dataset, chosen) {
+  items <- .items_meta(store, dataset)
+  empty <- data.frame(
+    value = character(0),
+    name = character(0),
+    sub = character(0),
+    type = character(0),
+    stringsAsFactors = FALSE
+  )
+  # Decimals apply only to numeric fields, so offer measure columns only --
+  # flags / dates / other categoricals are never rounded. PARAMCD detection
+  # below still reads the FULL `items` (PARAMCD is itself a category column).
+  num_items <- items[items$type == "measure", , drop = FALSE]
+  df_v <- if (nrow(num_items) > 0L) {
+    sub <- ifelse(
+      is.na(num_items$label) | !nzchar(num_items$label),
+      num_items$type,
+      num_items$label
+    )
+    data.frame(
+      value = paste0("V|", num_items$name),
+      name = num_items$name,
+      sub = sub,
+      type = num_items$type,
+      stringsAsFactors = FALSE
+    )
+  } else {
+    empty
+  }
+  # BDS parameters: the NAME is PARAMCD (drives the `P|` value); the muted
+  # description is the decoded PARAM value from the same row, via a
+  # `SELECT DISTINCT PARAMCD, PARAM` on the dataset. Falls back to the bare
+  # "parameter" word when PARAM is absent or the pair query fails.
+  df_p <- empty
+  if (all(c("PARAMCD", "PARAM") %in% items$name)) {
+    pairs <- .paramcd_pairs(store, dataset)
+    if (!is.null(pairs) && nrow(pairs) > 0L) {
+      df_p <- data.frame(
+        value = paste0("P|", pairs$PARAMCD),
+        name = pairs$PARAMCD,
+        sub = ifelse(
+          is.na(pairs$PARAM) | !nzchar(pairs$PARAM),
+          "parameter",
+          pairs$PARAM
+        ),
+        type = "param",
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  if (nrow(df_p) == 0L && "PARAMCD" %in% items$name) {
     params <- tryCatch(
       as.character(
         arpillar::distinct_values(store$con, dataset, "PARAMCD", limit = 200L)
       ),
       error = function(e) character(0)
     )
+    if (length(params) > 0L) {
+      df_p <- data.frame(
+        value = paste0("P|", params),
+        name = params,
+        sub = "parameter",
+        type = "param",
+        stringsAsFactors = FALSE
+      )
+    }
   }
-  param_choices <- if (length(params) > 0L) {
-    stats::setNames(paste0("P|", params), paste0(params, " (param)"))
-  } else {
-    character(0)
+  out <- rbind(df_v, df_p)
+  out[!out$value %in% chosen, , drop = FALSE]
+}
+
+# Distinct (PARAMCD, PARAM) rows for a BDS dataset -- the decimals-by param
+# picker shows PARAMCD as the name and PARAM as the muted description. Reads
+# the dataset's DuckDB view name from arpillar's catalog registry (a public S7
+# slot, keyed `"<library>::<name>"`) and runs a direct query on the shared
+# connection (`store$con@con`). Returns a data.frame(PARAMCD, PARAM) or NULL.
+.paramcd_pairs <- function(store, dataset) {
+  view_name <- tryCatch(
+    {
+      reg <- store$con@registry
+      key <- paste0("WORK::", dataset)
+      if (exists(key, envir = reg, inherits = FALSE)) {
+        get(key, envir = reg)$view_name
+      } else {
+        NULL
+      }
+    },
+    error = function(e) NULL
+  )
+  if (is.null(view_name) || !nzchar(view_name)) {
+    return(NULL)
   }
-  c(var_choices, param_choices)
+  db <- store$con@con
+  qview <- DBI::dbQuoteIdentifier(db, view_name)
+  sql <- paste0(
+    "SELECT DISTINCT PARAMCD, PARAM FROM ",
+    qview,
+    " WHERE PARAMCD IS NOT NULL ORDER BY PARAMCD NULLS LAST LIMIT 200"
+  )
+  tryCatch(DBI::dbGetQuery(db, sql), error = function(e) NULL)
+}
+
+# Picker items for the continuous-statistic vocabulary: each eligible atom
+# with its description; numeric so all render with the measure chip.
+.stat_pick_items <- function(eligible) {
+  data.frame(
+    value = eligible,
+    name = eligible,
+    sub = unname(.CONT_ATOM_DESC[eligible]),
+    type = "measure",
+    stringsAsFactors = FALSE
+  )
+}
+
+# Migrate a decimals-by rule to the multi-name shape: `names` is a vector
+# of encoded `V|<col>` / `P|<param>` ids sharing one `dp`. An old single
+# `by` + `name` rule folds into a one-element `names`.
+.dec_rule_names <- function(rl) {
+  if (!is.null(rl$names)) {
+    return(as.character(rl$names))
+  }
+  if (!is.null(rl$name) && nzchar(rl$name)) {
+    return(.dec_encode(rl$by %||% "variable", rl$name))
+  }
+  character(0)
+}
+
+# One chosen variable/param chip in a decimals-by row: the bare name, an x
+# posting `{i, value, nonce}` to the shared `dec_name_remove` observer.
+.dec_name_chip <- function(ns, i, enc) {
+  nm <- sub("^[VP]\\|", "", enc)
+  shiny::span(
+    class = "ar-cont-chip",
+    title = if (startsWith(enc, "P|")) "parameter" else "variable",
+    shiny::span(class = "ar-cont-chip-name ar-mono", nm),
+    shiny::tags$button(
+      type = "button",
+      class = "ar-cont-chip-x",
+      onclick = sprintf(
+        "Shiny.setInputValue('%s', {i: %d, value: '%s', nonce: Date.now()}, {priority: 'event'})",
+        ns("dec_name_remove"),
+        i,
+        enc
+      ),
+      title = "Remove",
+      "\u00d7"
+    )
+  )
+}
+
+# The VARIABLE / PARAM cell: the chosen names as chips + the rich searchable
+# add-picker. Multiple variables/params share one row's `dp` -- e.g. WEIGHTBL
+# + HEIGHTBL at 1 dp in one row, BMIBL at 2 in another. The picker posts the
+# encoded value `{i, value}` to the shared `dec_name_add` observer (add-one-
+# at-a-time, no shift-multiselect; leak-free -- no per-row Shiny observer).
+.dec_names_cell <- function(ns, i, store, dataset, names_enc) {
+  shiny::div(
+    class = "ar-setup-field",
+    shiny::div(
+      class = "ar-cont-stats",
+      shiny::div(
+        class = "ar-cont-chips",
+        lapply(names_enc, function(e) .dec_name_chip(ns, i, e))
+      ),
+      .rich_picker(
+        ns,
+        "dec_name_add",
+        .dec_pick_items(store, dataset, names_enc),
+        "+ Add variable / param",
+        i
+      )
+    )
+  )
 }
 
 # A decimals-by row cell: a native `<select>` posting `{i, field, value}` to
@@ -2140,13 +2495,7 @@ s_study <- function(store) {
       class = "ar-setup-pop-row ar-setup-dec-row",
       `data-ar-dec` = i,
       .dec_select(ns, i, "dataset", stats::setNames(ds_names, ds_names), ds),
-      .dec_select(
-        ns,
-        i,
-        "name",
-        .dec_name_choices(store, ds),
-        .dec_encode(rl$by %||% "variable", rl$name %||% "")
-      ),
+      .dec_names_cell(ns, i, store, ds, .dec_rule_names(rl)),
       shiny::div(
         class = "ar-setup-field",
         shiny::tags$input(
@@ -2199,19 +2548,32 @@ s_study <- function(store) {
 }
 
 # Canonical continuous stat-row seeds. Each row IS the rendered line: a
-# label, an ordered list of stat atoms, and a format string keyed by
-# positional letters (a, b, c, ...).
+# label plus an ordered list of stat atoms. The engine infers the join
+# from the atoms (1 -> bare, mean+sd -> "a (b)", other pairs -> "a, b"),
+# so there is no format template.
 .CONT_SEEDS <- list(
-  list(label = "n", stats = "n", format = "a"),
-  list(label = "Mean (SD)", stats = c("mean", "sd"), format = "a (b)"),
-  list(label = "Median", stats = "median", format = "a"),
-  list(label = "Min - Max", stats = c("min", "max"), format = "a - b")
+  list(label = "n", stats = "n"),
+  list(label = "Mean (SD)", stats = c("mean", "sd")),
+  list(label = "Median", stats = "median"),
+  list(label = "Min - Max", stats = c("min", "max"))
 )
 
-.cont_row <- function(ns, i, row) {
+# The continuous rows in play: the theme's list, or the canonical seeds when
+# the theme carries none. The arpillar default theme seeds an EMPTY list (not
+# NULL), so `%||%` alone would miss it -- and then the renderer (which shows
+# seeds for an empty list) would be out of sync with observers (which mutate
+# the theme). Both go through this helper so a first edit materializes the
+# seeds into the theme.
+.cont_rows_or_seed <- function(theme) {
+  rows <- theme$summaries$continuous
+  if (is.null(rows) || length(rows) == 0L) .CONT_SEEDS else rows
+}
+
+.cont_row <- function(ns, i, row, eligible) {
   stats <- if (is.null(row$stats)) character(0) else row$stats
   shiny::div(
     class = "ar-cont-row",
+    `data-ar-item` = i,
     shiny::span(
       class = "ar-cont-grip",
       title = "Drag to reorder",
@@ -2224,28 +2586,18 @@ s_study <- function(store) {
       row$label %||% "",
       placeholder = "Row label"
     ),
-    # Editable stats field: comma-separated atoms (`n, mean, sd`).
-    # Chips render underneath as a live-echo of what parsed. Position
-    # letters in the format field (`a`, `b`, ...) map to atoms by
-    # index. Datalist gives autocomplete on the well-known atoms
-    # without restricting -- users can type any name the engine
-    # accepts.
-    .flat_input(
-      ns,
-      paste0("cont_stats_", i),
-      NULL,
-      paste(stats, collapse = ", "),
-      mono = TRUE,
-      placeholder = "n, mean, sd",
-      list_id = "ar-stat-atoms"
-    ),
-    .flat_input(
-      ns,
-      paste0("cont_format_", i),
-      NULL,
-      row$format %||% "a",
-      mono = TRUE,
-      placeholder = "a (b)"
+    # Stats cell: the chosen atoms as removable chips (in render order --
+    # the order the engine joins them), plus a native descriptive select
+    # that appends one atom at a time (no shift-multiselect). The engine
+    # infers the join from the atoms (1 -> bare, mean+sd -> "a (b)", other
+    # pairs -> "a, b"), so there is no format template to edit.
+    shiny::div(
+      class = "ar-cont-stats",
+      shiny::div(
+        class = "ar-cont-chips",
+        lapply(stats, function(s) .cont_stat_chip(ns, i, s))
+      ),
+      .cont_stat_add(ns, i, eligible)
     ),
     shiny::tags$button(
       type = "button",
@@ -2261,6 +2613,43 @@ s_study <- function(store) {
   )
 }
 
+# One chosen-statistic chip: the atom code with its description as a
+# tooltip, and an x that posts `{i, stat, nonce}` to the shared
+# `cont_stat_remove` observer (the subject-chip idiom).
+.cont_stat_chip <- function(ns, i, stat) {
+  shiny::span(
+    class = "ar-cont-chip",
+    title = .CONT_ATOM_DESC[[stat]] %||% stat,
+    shiny::span(class = "ar-cont-chip-name ar-mono", stat),
+    shiny::tags$button(
+      type = "button",
+      class = "ar-cont-chip-x",
+      onclick = sprintf(
+        "Shiny.setInputValue('%s', {i: %d, stat: '%s', nonce: Date.now()}, {priority: 'event'})",
+        ns("cont_stat_remove"),
+        i,
+        stat
+      ),
+      title = "Remove",
+      "\u00d7"
+    )
+  )
+}
+
+# The "+ add statistic" control: the rich searchable add-picker over the
+# eligible atoms (name + description, measure chip). Picking one posts
+# `{i, stat, nonce}` to the shared `cont_stat_add` observer and clears --
+# leak-free (no per-row Shiny observer inside the dynamic renderUI).
+.cont_stat_add <- function(ns, i, eligible) {
+  .rich_picker(
+    ns,
+    "cont_stat_add",
+    .stat_pick_items(eligible),
+    "+ Add statistic",
+    i
+  )
+}
+
 # Well-known continuous stat atoms; user can type any string but this
 # datalist gives autocomplete for the common ones. Rendered once
 # per module UI mount as a hidden `<datalist>`.
@@ -2269,41 +2658,42 @@ s_study <- function(store) {
 # / geometric family for PK). Rendered as the `<datalist>` typeahead; the
 # per-statistic decimal offset for each is the Global TFL default until
 # overridden. `iqr` and `qrange` are aliases for the Q3-Q1 spread.
-.CONT_ATOMS <- c(
+.CONT_ATOM_DESC <- c(
   # count + central tendency
-  "n",
-  "mean",
-  "median",
-  "sum",
+  n = "Count (non-missing)",
+  mean = "Mean",
+  median = "Median",
+  sum = "Sum",
   # spread
-  "sd",
-  "se",
-  "cv",
-  "var",
-  "iqr",
-  "qrange",
+  sd = "Standard Deviation",
+  se = "Standard Error",
+  cv = "Coefficient of Variation (%)",
+  var = "Variance",
+  iqr = "Interquartile Range",
+  qrange = "Quartile Range",
   # range + quantiles
-  "min",
-  "max",
-  "q1",
-  "q3",
-  "p1",
-  "p5",
-  "p10",
-  "p90",
-  "p95",
-  "p99",
+  min = "Minimum",
+  max = "Maximum",
+  q1 = "1st Quartile (P25)",
+  q3 = "3rd Quartile (P75)",
+  p1 = "1st Percentile",
+  p5 = "5th Percentile",
+  p10 = "10th Percentile",
+  p90 = "90th Percentile",
+  p95 = "95th Percentile",
+  p99 = "99th Percentile",
   # confidence limits of the mean
-  "lclm",
-  "uclm",
+  lclm = "Lower Confidence Limit",
+  uclm = "Upper Confidence Limit",
   # geometric family (PK)
-  "geomean",
-  "geosd",
-  "geose",
-  "geocv",
-  "geolclm",
-  "geouclm"
+  geomean = "Geometric Mean",
+  geosd = "Geometric Standard Deviation",
+  geose = "Geometric Standard Error",
+  geocv = "Geometric CV (%)",
+  geolclm = "Geometric Lower Confidence Limit",
+  geouclm = "Geometric Upper Confidence Limit"
 )
+.CONT_ATOMS <- names(.CONT_ATOM_DESC)
 
 # ---- Team section ---------------------------------------------------------
 
@@ -2539,17 +2929,25 @@ s_study <- function(store) {
     shiny::tags$label(class = "ar-label", label),
     shiny::div(
       class = "ar-seg",
-      lapply(choices, function(ch) {
-        shiny::tags$button(
-          type = "button",
-          class = paste(
-            "ar-seg-opt",
-            if (identical(ch, selected)) "ar-seg-opt-active" else ""
-          ),
-          `data-ar-seg-value` = ch,
-          onclick = click_js,
-          ch
-        )
+      # `choices` may be a named vector: the name is the display label, the
+      # value is the stored/posted value (e.g. c("n (%)" = "n_pct")). Unnamed
+      # -> label == value, the original behaviour.
+      local({
+        labs <- names(choices)
+        lapply(seq_along(choices), function(k) {
+          ch <- as.character(choices[[k]])
+          lab <- if (!is.null(labs) && nzchar(labs[[k]])) labs[[k]] else ch
+          shiny::tags$button(
+            type = "button",
+            class = paste(
+              "ar-seg-opt",
+              if (identical(ch, selected)) "ar-seg-opt-active" else ""
+            ),
+            `data-ar-seg-value` = ch,
+            onclick = click_js,
+            lab
+          )
+        })
       })
     ),
     # Initial value carrier so the server observer sees the current

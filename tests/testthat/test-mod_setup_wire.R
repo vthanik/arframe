@@ -46,8 +46,9 @@ test_that("every scalar input in mod_setup renders under a spec id", {
   structural <- c(
     # Populations rows (id / label / dataset / filter) per row index.
     grep("^pop_(id|label|dataset|filter)_[0-9]+$", ids, value = TRUE),
-    # Continuous stat rows (label + format) per row index.
-    grep("^cont_(label|format)_[0-9]+$", ids, value = TRUE),
+    # Continuous stat rows: only the label is a wired input (stats are
+    # mutated by add/remove chip events, not scalar inputs).
+    grep("^cont_label_[0-9]+$", ids, value = TRUE),
     # Band rows (left/center/right) per row index x head/foot.
     grep(
       "^page_page(head|foot)_(left|center|right)_[0-9]+$",
@@ -86,7 +87,7 @@ test_that("wire_all round-trips every scalar entry into the theme", {
     page_font_size = "12",
     arm_show_header_n = "no",
     cat_show_missing = "always",
-    cat_level_format = "pct_n",
+    cat_level_format = "n_pct",
     cat_header_stat = "total_n"
   )
   shiny::testServer(
@@ -214,10 +215,11 @@ test_that("cont_add appends a blank continuous row (fixes dead-button)", {
     session$setInputs(cont_add = 1)
     after <- shiny::isolate(st$rv$report@theme$summaries$continuous)
     expect_gt(length(after), length(seed))
-    # Last row is blank / format = "a".
+    # Last row is blank: empty label, empty stats, no format field.
     tail_row <- after[[length(after)]]
     expect_identical(tail_row$label, "")
-    expect_identical(tail_row$format, "a")
+    expect_identical(tail_row$stats, character(0))
+    expect_null(tail_row$format)
   })
 })
 
@@ -231,6 +233,63 @@ test_that("cont_delete removes the row at the given index", {
     after <- shiny::isolate(st$rv$report@theme$summaries$continuous)
     expect_length(after, n_before - 1L)
   })
+})
+
+test_that("cont_stat_add / cont_stat_remove mutate a row's stats vector", {
+  st <- .mk_store()
+  shiny::testServer(mod_setup_server, args = list(store = st), {
+    # These observers use ignoreInit = TRUE (skip the widget's init value);
+    # testServer swallows the first event as that init, so prime each event
+    # input with a guarded no-op before the real events.
+    session$setInputs(cont_stat_add = list(i = 1, value = "", nonce = 0))
+    # Row 1 seed is n -> stats = "n". Add "se" and "cv" (not used elsewhere).
+    session$setInputs(cont_stat_add = list(i = 1, value = "se", nonce = 1))
+    session$setInputs(cont_stat_add = list(i = 1, value = "cv", nonce = 2))
+    row <- shiny::isolate(st$rv$report@theme$summaries$continuous)[[1]]
+    expect_identical(row$stats, c("n", "se", "cv"))
+    # A statistic already used in ANOTHER row is rejected -- "mean" lives in
+    # the seed "Mean (SD)" row, so it cannot also join row 1 (global unique).
+    session$setInputs(cont_stat_add = list(i = 1, value = "mean", nonce = 3))
+    row <- shiny::isolate(st$rv$report@theme$summaries$continuous)[[1]]
+    expect_identical(row$stats, c("n", "se", "cv"))
+    # Remove the middle atom (prime the remove input first).
+    session$setInputs(cont_stat_remove = list(i = 1, stat = "", nonce = 0))
+    session$setInputs(cont_stat_remove = list(i = 1, stat = "se", nonce = 1))
+    row <- shiny::isolate(st$rv$report@theme$summaries$continuous)[[1]]
+    expect_identical(row$stats, c("n", "cv"))
+  })
+})
+
+test_that("cont_reorder permutes the continuous rows by the posted order", {
+  st <- .mk_store()
+  shiny::testServer(mod_setup_server, args = list(store = st), {
+    # Materialize the seed rows into the theme first (append a blank row).
+    session$setInputs(cont_add = 1)
+    before <- shiny::isolate(st$rv$report@theme$summaries$continuous)
+    n <- length(before)
+    # Reverse the row order (SortableJS posts order as a list of strings).
+    ord <- as.list(as.character(rev(seq_len(n))))
+    session$setInputs(cont_reorder = list(order = ord, nonce = 1))
+    after <- shiny::isolate(st$rv$report@theme$summaries$continuous)
+    expect_identical(after, rev(before))
+  })
+})
+
+test_that("Summaries drops pct_n and shows the clear level-format labels", {
+  ns <- shiny::NS("s")
+  st <- .mk_store()
+  html <- shiny::isolate(as.character(arframe:::.setup_summaries(ns, st)))
+  # pct_n is gone; the three remaining level formats keep their stored values.
+  expect_false(grepl('data-ar-seg-value="pct_n"', html, fixed = TRUE))
+  expect_true(grepl('data-ar-seg-value="n_pct"', html, fixed = TRUE))
+  # Display label reads "n (%)", not the raw "n_pct".
+  expect_true(grepl(">n (%)<", html, fixed = TRUE))
+  # Continuous rows are a sortable list.
+  expect_true(grepl(
+    'data-ar-sortable-input="s-cont_reorder"',
+    html,
+    fixed = TRUE
+  ))
 })
 
 test_that("Treatment section arm add / delete mutates theme$treatment$arms", {
@@ -330,31 +389,43 @@ test_that(".CONT_ATOMS carries the full standard statistic vocabulary", {
   expect_identical(anyDuplicated(atoms), 0L)
 })
 
-test_that("decimals-by rules add / edit / delete through dec_* inputs", {
+test_that("decimals-by rules: multiple names per row share one dp", {
   st <- .mk_store()
   shiny::testServer(mod_setup_server, args = list(store = st), {
     session$setInputs(dec_add = 1)
     expect_length(shiny::isolate(st$rv$report@theme$decimals_by), 1L)
 
-    # A `P|<param>` name value flips scope to "param" and strips the prefix.
+    # dec_name_add / dec_name_remove use ignoreInit = TRUE; prime each.
+    session$setInputs(dec_name_add = list(i = 1, value = "", nonce = 0))
+    # Two params share the one row (e.g. WEIGHTBL + HEIGHTBL at 1 dp).
     session$setInputs(
-      dec_row_change = list(i = 1, field = "name", value = "P|SYSBP", nonce = 1)
+      dec_name_add = list(i = 1, value = "P|WEIGHTBL", nonce = 1)
     )
     session$setInputs(
-      dec_row_change = list(i = 1, field = "dp", value = "2", nonce = 2)
+      dec_name_add = list(i = 1, value = "P|HEIGHTBL", nonce = 2)
+    )
+    session$setInputs(
+      dec_row_change = list(i = 1, field = "dp", value = "1", nonce = 3)
     )
     r1 <- shiny::isolate(st$rv$report@theme$decimals_by[[1]])
-    expect_identical(r1$by, "param")
-    expect_identical(r1$name, "SYSBP")
-    expect_identical(r1$dp, 2L)
-
-    # A `V|<col>` value is a variable.
+    expect_identical(r1$names, c("P|WEIGHTBL", "P|HEIGHTBL"))
+    expect_identical(r1$dp, 1L)
+    # Adding a duplicate is a no-op.
     session$setInputs(
-      dec_row_change = list(i = 1, field = "name", value = "V|AGE", nonce = 3)
+      dec_name_add = list(i = 1, value = "P|WEIGHTBL", nonce = 4)
     )
     expect_identical(
-      shiny::isolate(st$rv$report@theme$decimals_by[[1]]$by),
-      "variable"
+      shiny::isolate(st$rv$report@theme$decimals_by[[1]]$names),
+      c("P|WEIGHTBL", "P|HEIGHTBL")
+    )
+    # Remove one name (prime the remove input first).
+    session$setInputs(dec_name_remove = list(i = 1, value = "", nonce = 0))
+    session$setInputs(
+      dec_name_remove = list(i = 1, value = "P|WEIGHTBL", nonce = 1)
+    )
+    expect_identical(
+      shiny::isolate(st$rv$report@theme$decimals_by[[1]]$names),
+      "P|HEIGHTBL"
     )
 
     session$setInputs(dec_delete = 1)
@@ -362,8 +433,77 @@ test_that("decimals-by rules add / edit / delete through dec_* inputs", {
   })
 })
 
+test_that(".dec_rule_names migrates an old single by/name rule", {
+  expect_identical(
+    arframe:::.dec_rule_names(list(by = "param", name = "SYSBP", dp = 0L)),
+    "P|SYSBP"
+  )
+  expect_identical(
+    arframe:::.dec_rule_names(list(names = c("V|AGE", "P|PULSE"))),
+    c("V|AGE", "P|PULSE")
+  )
+  expect_identical(arframe:::.dec_rule_names(list(dp = 0L)), character(0))
+})
+
 test_that("Setup renderUI has no overview strip (removed 2026-07-07)", {
   # The overview stat strip was dropped from Setup per user request; the
   # dashboard is now just the section tab strip + the active section card.
   expect_false(exists(".setup_overview", where = asNamespace("arframe")))
+})
+
+test_that(".dec_pick_items lists only numeric vars + params labelled 'parameter'", {
+  st <- .mk_store()
+  withr::defer(arpillar::engine_close(st$con))
+  df <- data.frame(
+    AGE = c(1, 2, 3),
+    SEX = c("M", "F", "M"),
+    ADT = as.Date(c("2020-01-01", "2020-01-02", "2020-01-03")),
+    PARAMCD = c("BMI", "BMI", "WEIGHT"),
+    AVAL = c(10, 20, 30),
+    stringsAsFactors = FALSE
+  )
+  pq <- withr::local_tempfile(fileext = ".parquet")
+  artoo::write_parquet(df, pq)
+  arpillar::register_dataset(st$con, "ADTEST", pq)
+
+  out <- shiny::isolate(arframe:::.dec_pick_items(st, "ADTEST", character(0)))
+
+  # Variable rows are numeric-only: AGE + AVAL, never SEX / ADT / PARAMCD.
+  vrows <- out[startsWith(out$value, "V|"), , drop = FALSE]
+  expect_setequal(sub("^V\\|", "", vrows$value), c("AGE", "AVAL"))
+  expect_true(all(vrows$type == "measure"))
+
+  # No PARAM column -> param rows carry the bare word "parameter".
+  prows <- out[startsWith(out$value, "P|"), , drop = FALSE]
+  expect_setequal(sub("^P\\|", "", prows$value), c("BMI", "WEIGHT"))
+  expect_true(all(prows$sub == "parameter"))
+})
+
+test_that(".dec_pick_items uses PARAM as the param description when present", {
+  st <- .mk_store()
+  withr::defer(arpillar::engine_close(st$con))
+  df <- data.frame(
+    PARAMCD = c("ALB", "ALB", "ALT"),
+    PARAM = c(
+      "Albumin (g/L)",
+      "Albumin (g/L)",
+      "Alanine Aminotransferase (U/L)"
+    ),
+    AVAL = c(1, 2, 3),
+    stringsAsFactors = FALSE
+  )
+  pq <- withr::local_tempfile(fileext = ".parquet")
+  artoo::write_parquet(df, pq)
+  arpillar::register_dataset(st$con, "ADLB", pq)
+
+  out <- shiny::isolate(arframe:::.dec_pick_items(st, "ADLB", character(0)))
+  prows <- out[startsWith(out$value, "P|"), , drop = FALSE]
+
+  # Distinct PARAMCD -> name; the decoded PARAM value -> muted description.
+  expect_setequal(sub("^P\\|", "", prows$value), c("ALB", "ALT"))
+  expect_identical(prows$sub[prows$name == "ALB"], "Albumin (g/L)")
+  expect_identical(
+    prows$sub[prows$name == "ALT"],
+    "Alanine Aminotransferase (U/L)"
+  )
 })

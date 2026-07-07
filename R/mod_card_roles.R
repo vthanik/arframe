@@ -155,25 +155,32 @@
   strsplit(choice, "\x1f", fixed = TRUE)[[1]][[1]]
 }
 
-#' A two-line rich-picker `selectizeInput`: each option shows the type
-#' chip + name on line 1, the raw `sql_type` (muted, mono) on line 2 --
-#' built via `options$render` (a JS template string), the same technique
-#' `selectize.js` itself recommends for custom option markup. Choices are
-#' packed `"NAME\x1fTYPE"` (`.pack_item_choice()`) so free-text search
-#' matches the type string too (e.g. typing "double" surfaces every
-#' measure). Empty by default (no auto-selected first option, per the
-#' app's selection-input rule already followed in `mod_add_output.R`'s
-#' dataset picker); the Filters pane passes `selected` to re-seed a
-#' committed row's column.
+#' The single-pick variable picker: a raw `<select data-ar-picker>` the JS
+#' bridge upgrades to a Tom Select showing the shared type-chip + name +
+#' muted-label line. Choices are packed `"NAME\x1fTYPE\x1fLABEL"`
+#' (`.pack_item_choice()`) so free-text search matches the type and label too;
+#' the value stays packed so the server recovers the name via
+#' `.unpack_item_name()`. `mode = "add"` (Roles slot, subject-id) fires the
+#' pick and clears; `mode = "bind"` (Filters) posts on change and re-seeds a
+#' committed row via `selected`. The render lives once in srcjs/bridge.js.
 #' @noRd
 .eligible_picker <- function(
   ns,
   input_id,
   items,
   selected = character(0),
-  placeholder = "Add a variable"
+  placeholder = "Add a variable",
+  bare_value = FALSE
 ) {
-  choices <- vapply(
+  # Each choice's LABEL is the packed `name\x1ftype\x1flabel` string the shared
+  # bundle render splits into chip + name + muted label. The VALUE is the same
+  # packed string by default (so the server recovers the name via
+  # `.unpack_item_name`), or the bare column name when `bare_value = TRUE`
+  # (Treatment reads `input$treatment_trtvar` as a plain column name). Empty
+  # `selected` => the picker force-clears on init and simply ADDS (Roles slot,
+  # subject-id, re-rendered empty after each pick); a non-empty `selected`
+  # re-seeds a committed control (Filters, Treatment).
+  packed <- vapply(
     seq_len(nrow(items)),
     function(i) {
       .pack_item_choice(
@@ -184,54 +191,13 @@
     },
     character(1)
   )
-  # One JS template per row: `item.value.split(...)` recovers
-  # name/type/label client-side from the packed choice string --
-  # selectize's `render` callback only ever sees the (value, label) pair
-  # it was given, so the chip/label-line markup is regenerated in JS, not
-  # pre-rendered per row server-side (which would need one `option`
-  # template per possible item, an unbounded set). Line 2 prefers the
-  # CDISC label (the sidecar metadata); a label-less column falls back to
-  # its type word.
-  render_js <- I(paste0(
-    "{ option: function(item, escape) {",
-    "  var parts = item.value.split('\\u001f');",
-    "  var nm = escape(parts[0]);",
-    "  var sub = escape(parts[2] || parts[1] || '');",
-    "  var cls = { measure: 'ar-chip ar-chip-meas', ",
-    "              date: 'ar-chip ar-chip-date', ",
-    "              category: 'ar-chip ar-chip-cat' };",
-    "  var glyph = { measure: '#', date: '\\uD83D\\uDCC5', category: 'A' };",
-    "  var t = (parts[1] === 'measure' || parts[1] === 'date') ? parts[1] : 'category';",
-    "  return '<div class=\"ar-picker-option\">' +",
-    "    '<div class=\"ar-picker-option-line1\">' +",
-    "    '<span class=\"' + cls[t] + '\">' + glyph[t] + '</span>' +",
-    "    '<span class=\"ar-picker-option-name\">' + nm + '</span>' +",
-    "    '</div>' +",
-    "    '<div class=\"ar-picker-option-type\">' + sub + '</div>' +",
-    "    '</div>';",
-    "}, item: function(item, escape) {",
-    # The SELECTED display (closed control) shows the bare name -- the
-    # two-line option template overflows a closed, card-width control.
-    "  var nm = escape(item.value.split('\\u001f')[0]);",
-    "  return '<div class=\"ar-picker-item\">' + nm + '</div>';",
-    "} }"
-  ))
-  opts <- list(
-    placeholder = placeholder,
-    render = render_js,
-    searchField = list("value")
-  )
-  if (length(selected) == 0L) {
-    # Force-empty on bind -- selectize otherwise auto-picks the first
-    # option; only wanted when nothing is meant to be selected.
-    opts$onInitialize <- I("function() { this.setValue(''); }")
-  }
-  shiny::selectizeInput(
-    ns(input_id),
-    label = NULL,
-    choices = stats::setNames(choices, choices),
+  values <- if (isTRUE(bare_value)) items$name else packed
+  .ar_picker_select(
+    ns = ns,
+    input_id = input_id,
+    choices = stats::setNames(values, packed),
     selected = selected,
-    options = opts
+    placeholder = placeholder
   )
 }
 

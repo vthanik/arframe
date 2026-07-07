@@ -142,6 +142,72 @@ $(document).on("shiny:value shiny:idle", function () {
 });
 document.addEventListener("DOMContentLoaded", arInitSortables);
 
+// The ONE variable-picker render, shared by every arframe variable/param
+// selectize (Roles, Filters, Populations subject-id, Treatment, Continuous
+// stats, Decimals). Defined here ONCE and exposed as globals; R passes only
+// `render = I("{ option: window.arframePickerOption, item:
+// window.arframePickerItem }")` -- no render markup lives in the R modules.
+// Each selectize choice's LABEL is packed `name\x1ftype\x1flabel` (\x1f = unit
+// separator, absent from any name/type/label); the render splits it back into
+// a type-chip avatar + NAME + muted CDISC label on one line.
+//
+// Chip per column kind. Two vocabularies flow in and both are honoured: the
+// arpillar `data_items` taxonomy (measure | category | date -- it collapses
+// time/datetime into date) and datasetviewer's finer Arrow kinds (number |
+// string | bool | date | datetime | time). Glyphs mirror datasetviewer's
+// typeIcon: # for number, a monochrome calendar for date/datetime, a clock
+// for time-of-day, A for char -- all currentColor, flat, no emoji. `param`
+// is arframe's own BDS-parameter chip. Unknown -> category.
+var AR_CAL =
+  '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">' +
+  '<rect x="2" y="3" width="12" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/>' +
+  '<path d="M2 6 H14" stroke="currentColor" stroke-width="1.3"/>' +
+  '<path d="M5 1.5 V4 M11 1.5 V4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+var AR_CLOCK =
+  '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">' +
+  '<circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.3"/>' +
+  '<path d="M8 4.5 V8 L10.5 9.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var AR_PICKER_TYPE = {
+  measure: { cls: "ar-chip ar-chip-meas", gl: "#" },
+  number: { cls: "ar-chip ar-chip-meas", gl: "#" },
+  date: { cls: "ar-chip ar-chip-date", gl: AR_CAL },
+  datetime: { cls: "ar-chip ar-chip-date", gl: AR_CAL },
+  time: { cls: "ar-chip ar-chip-date", gl: AR_CLOCK },
+  category: { cls: "ar-chip ar-chip-cat", gl: "A" },
+  string: { cls: "ar-chip ar-chip-cat", gl: "A" },
+  bool: { cls: "ar-chip ar-chip-cat", gl: "A" },
+  param: { cls: "ar-chip ar-chip-cat", gl: "P" },
+};
+function arPickerParts(item) {
+  return String(item.label || item.text || item.value || "").split("\u001f");
+}
+window.arframePickerOption = function (item, escape) {
+  var p = arPickerParts(item);
+  var t = AR_PICKER_TYPE[p[1]] || AR_PICKER_TYPE.category;
+  var lab = p[2] || "";
+  return (
+    '<div class="ar-picker-option">' +
+    '<span class="' +
+    t.cls +
+    '">' +
+    t.gl +
+    "</span>" +
+    '<div class="ar-picker-option-text">' +
+    '<span class="ar-picker-option-name">' +
+    escape(p[0]) +
+    "</span>" +
+    (lab
+      ? '<span class="ar-picker-option-lab">' + escape(lab) + "</span>"
+      : "") +
+    "</div></div>"
+  );
+};
+window.arframePickerItem = function (item, escape) {
+  return (
+    '<div class="ar-picker-item">' + escape(arPickerParts(item)[0]) + "</div>"
+  );
+};
+
 // The kebab popover portal: `.ar-toc` scrolls (`overflow-y: auto`), which
 // clips an absolutely-positioned popover opened on a row near the bottom of
 // a scrolled list regardless of z-index. The three popovers
