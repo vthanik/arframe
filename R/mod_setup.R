@@ -756,7 +756,12 @@ mod_setup_server <- function(id, store) {
     subj_col <- d$subject_id %||% "USUBJID"
     subj_col <- trimws(strsplit(subj_col, ",", fixed = TRUE)[[1L]][[1L]])
     n_subj <- tryCatch(
-      length(arpillar::distinct_values(store$con, pop, subj_col)),
+      length(arpillar::distinct_values(
+        store$con,
+        pop,
+        subj_col,
+        limit = .Machine$integer.max
+      )),
       error = function(e) NA_integer_
     )
     if (!is.na(n_subj) && n_subj > 0L) {

@@ -319,3 +319,26 @@ test_that(".setup_overview omits the subjects tile when the subject-id column do
   expect_match(html, "Datasets", fixed = TRUE)
   expect_no_match(html, "Subjects", fixed = TRUE)
 })
+
+test_that(".setup_overview reports the real subject count past distinct_values()'s 100-row picker cap (#task6-review)", {
+  # distinct_values() defaults to limit = 100L (a value-picker cap, not a
+  # counting API). A >100-distinct-subject fixture -- the 12-subject demo
+  # catalog cannot exercise this -- proves the tile shows the true 150, not
+  # the capped 100.
+  con <- arpillar::engine_open()
+  withr::defer(arpillar::engine_close(con))
+  big <- data.frame(
+    USUBJID = sprintf("S-%04d", 1:150),
+    SAFFL = "Y",
+    stringsAsFactors = FALSE
+  )
+  path <- withr::local_tempfile(fileext = ".parquet")
+  artoo::write_parquet(big, path)
+  arpillar::register_dataset(con, "ADSL", path)
+  store <- shiny::isolate(new_store(con))
+  sections <- list(list(id = "study"), list(id = "team"))
+  html <- shiny::isolate(as.character(.setup_overview(store, sections)))
+  expect_match(html, "Subjects", fixed = TRUE)
+  expect_match(html, ">150<", fixed = TRUE)
+  expect_no_match(html, ">100<", fixed = TRUE)
+})
