@@ -239,6 +239,30 @@ test_that("Treatment section arm add / delete mutates theme$treatment$arms", {
   })
 })
 
+test_that("active Setup tab survives a re-render triggered by a commit", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+
+  shiny::testServer(mod_setup_server, args = list(store = store), {
+    # User switches to a non-default tab.
+    session$setInputs(setup_tab = "summaries")
+    expect_identical(active_tab(), "summaries")
+
+    # An unrelated edit commits -> output$page re-renders.
+    session$setInputs(study_sponsor = "Acme Pharma")
+
+    # The active tab must still be "summaries" (not reset to "study"),
+    # and the rendered page must stamp it on the wrapper.
+    expect_identical(active_tab(), "summaries")
+    expect_match(
+      as.character(htmltools::renderTags(output$page)$html),
+      "ar-setup-tab-summaries",
+      fixed = TRUE
+    )
+  })
+})
+
 test_that("bad precision input is dropped silently (coerce -> NULL)", {
   st <- .mk_store()
   shiny::testServer(mod_setup_server, args = list(store = st), {

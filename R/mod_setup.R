@@ -171,6 +171,17 @@ mod_setup_server <- function(id, store) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
+    # The visible section. Server-authoritative so a commit-driven
+    # re-render of `output$page` never bounces the user back to the first
+    # tab: the client swaps the class instantly for feel, and posts here so
+    # the next render restamps the same tab.
+    active_tab <- shiny::reactiveVal("study")
+    shiny::observeEvent(input$setup_tab, {
+      if (is.character(input$setup_tab) && nzchar(input$setup_tab)) {
+        active_tab(input$setup_tab)
+      }
+    })
+
     # Seed the theme's populations library on FIRST render so outputs and
     # the {analysis-set} token see them. One-shot; subsequent renders read
     # what the user has since edited.
@@ -193,39 +204,48 @@ mod_setup_server <- function(id, store) {
 
     output$page <- shiny::renderUI({
       # React to catalog + whole-report edits so completion glyphs stay
-      # live. Six pharma-aligned sections; Sources / Data / Preferences
+      # live. Seven pharma-aligned sections; Sources / Data / Preferences
       # folded into Paths.
       store$rv$report
       store$rv$catalog_nonce
-      shiny::tagList(
+      # `isolate()` -- a tab click posts `input$setup_tab` and must NOT
+      # itself trigger this render (the client already swapped the
+      # visible section instantly). Only the commit-driven dependencies
+      # above re-fire this block; when they do, the wrapper is restamped
+      # with whatever tab is current at that moment.
+      active <- shiny::isolate(active_tab())
+      sections <- list(
+        list(id = "study", title = "Study", body = .setup_study(ns, store)),
+        list(id = "paths", title = "Paths", body = .setup_paths(ns, store)),
+        list(
+          id = "treatment",
+          title = "Treatment",
+          body = .setup_treatment(ns, store)
+        ),
+        list(
+          id = "populations",
+          title = "Populations",
+          body = .setup_populations(ns, store)
+        ),
+        list(
+          id = "page",
+          title = "Page & Style",
+          body = .setup_page_body(ns, store)
+        ),
+        list(
+          id = "summaries",
+          title = "Summaries",
+          body = .setup_summaries(ns, store)
+        ),
+        list(id = "team", title = "Team", body = .setup_team(ns, store))
+      )
+      shiny::div(
+        class = paste0("ar-setup-dash ar-setup-tab-", active),
         .setup_reviewed_banner(store),
-        .setup_section(ns, "study", "Study", .setup_study(ns, store)),
-        .setup_section(ns, "paths", "Paths", .setup_paths(ns, store)),
-        .setup_section(
-          ns,
-          "treatment",
-          "Treatment",
-          .setup_treatment(ns, store)
-        ),
-        .setup_section(
-          ns,
-          "populations",
-          "Populations",
-          .setup_populations(ns, store)
-        ),
-        .setup_section(
-          ns,
-          "page",
-          "Page & Style",
-          .setup_page_body(ns, store)
-        ),
-        .setup_section(
-          ns,
-          "summaries",
-          "Summaries",
-          .setup_summaries(ns, store)
-        ),
-        .setup_section(ns, "team", "Team", .setup_team(ns, store))
+        .setup_tabstrip(ns, store, sections, active),
+        lapply(sections, function(s) {
+          .setup_section(ns, s$id, s$title, s$body)
+        })
       )
     })
     shiny::outputOptions(output, "page", suspendWhenHidden = FALSE)
@@ -683,6 +703,50 @@ mod_setup_server <- function(id, store) {
   shiny::tagAppendAttributes(
     .card(body, title = title, class = "ar-setup-section"),
     `data-ar-section` = id
+  )
+}
+
+# Horizontal section tab strip. Each tab shows the section title + a status
+# glyph from `.section_status` (check when complete, missing-count when
+# partial). The inline click handler swaps the active class on the strip and
+# on the `.ar-setup-dash` wrapper (instant), then posts `setup_tab` so the
+# server keeps authoritative state across re-renders.
+.setup_tabstrip <- function(ns, store, sections, active) {
+  theme <- store$rv$report@theme
+  input_id <- ns("setup_tab")
+  shiny::div(
+    class = "ar-setup-tabs",
+    role = "tablist",
+    lapply(sections, function(s) {
+      st <- .section_status(theme, s$id)
+      badge <- switch(
+        st$state,
+        ok = shiny::span(class = "ar-setup-tab-badge ar-setup-tab-ok", "✓"),
+        partial = shiny::span(
+          class = "ar-setup-tab-badge ar-setup-tab-partial",
+          as.character(st$missing)
+        ),
+        NULL
+      )
+      click_js <- sprintf(
+        "(function(btn){var dash=btn.closest('.ar-setup-dash');if(dash){dash.className=dash.className.replace(/\\bar-setup-tab-[a-z]+\\b/,'ar-setup-tab-%s');}var sibs=btn.parentElement.querySelectorAll('.ar-setup-tab');for(var i=0;i<sibs.length;i++)sibs[i].classList.remove('ar-setup-tab-active');btn.classList.add('ar-setup-tab-active');Shiny.setInputValue('%s','%s',{priority:'event'});})(this)",
+        s$id,
+        input_id,
+        s$id
+      )
+      shiny::tags$button(
+        type = "button",
+        class = paste(
+          "ar-setup-tab",
+          if (identical(s$id, active)) "ar-setup-tab-active" else ""
+        ),
+        role = "tab",
+        `data-ar-setup-tab` = s$id,
+        onclick = click_js,
+        shiny::span(class = "ar-setup-tab-lbl", s$title),
+        badge
+      )
+    })
   )
 }
 
