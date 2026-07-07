@@ -492,56 +492,81 @@ input[type="radio"] {
    datalist natively hidden and the pickers off-screen. */
 .ar-setup > .shiny-html-output {
   display: block !important; /* shiny-html-output defaults to display:contents */
-  padding: 32px 40px 120px;
+  padding: 0; /* the dash owns its own padding */
   width: 100%;
+}
+.ar-setup-dash {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--ar-space-5) var(--ar-space-7) 120px;
   container-type: inline-size;
 }
-.ar-setup > .shiny-html-output > .ar-setup-section {
-  display: block;
-}
-.ar-setup-section {
-  padding: 28px 0 16px;
-  border-top: 1px solid var(--ar-rule);
-}
-.ar-setup-section:first-of-type {
-  border-top: none;
-  padding-top: 8px;
-}
-.ar-setup-sechead {
+.ar-setup-overview {
   display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: var(--ar-space-5);
+  padding: var(--ar-space-4) var(--ar-space-5);
+  margin-bottom: var(--ar-space-5);
+  background: var(--ar-paper);
+  border: 1px solid var(--ar-paper-edge);
+  border-radius: var(--ar-radius-xl);
+  box-shadow: var(--ar-shadow-card);
 }
-.ar-setup-sechead-title {
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+/* ---- Setup: section tab strip ---- */
+.ar-setup-tabs {
+  display: flex;
+  gap: var(--ar-space-4);
+  margin-bottom: var(--ar-space-5);
+  border-bottom: 1px solid var(--ar-rule);
+  overflow-x: auto;
+}
+.ar-setup-tabs .ar-setup-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ar-space-2);
+  padding: var(--ar-space-3) 2px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ar-ink-3);
+  font-size: var(--ex-fs-body);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ar-setup-tabs .ar-setup-tab:hover {
   color: var(--ar-ink);
 }
-.ar-setup-glyph {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  line-height: 1.4;
-  font-weight: 500;
+.ar-setup-tabs .ar-setup-tab-active {
+  color: var(--ar-ink);
+  border-bottom-color: var(--ar-accent);
+  font-weight: var(--ar-fw-medium);
 }
-.ar-setup-glyph-ok {
-  background: var(--ar-ok, #d1f5d3);
-  color: #1a5c1f;
+.ar-setup-tab-badge {
+  font-size: var(--ex-fs-micro);
+  padding: 1px 6px;
+  border-radius: var(--ar-radius-pill);
+  font-family: "IBM Plex Mono", monospace;
 }
-.ar-setup-glyph-partial {
-  background: var(--ar-warn, #fdf1d1);
-  color: #7a5c04;
+.ar-setup-tab-ok {
+  background: var(--ar-ready-bg);
+  color: var(--ar-ready);
 }
-.ar-setup-glyph-none {
-  background: var(--ar-chrome-2);
-  color: var(--ar-ink-3);
+.ar-setup-tab-partial {
+  background: var(--ar-draft-bg);
+  color: var(--ar-draft);
 }
-.ar-setup-secbody {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+/* ---- Setup: one section visible at a time, driven by the wrapper class ---- */
+.ar-setup-dash .ar-setup-section {
+  display: none;
+}
+.ar-setup-tab-study       .ar-setup-section[data-ar-section="study"],
+.ar-setup-tab-paths       .ar-setup-section[data-ar-section="paths"],
+.ar-setup-tab-treatment   .ar-setup-section[data-ar-section="treatment"],
+.ar-setup-tab-populations .ar-setup-section[data-ar-section="populations"],
+.ar-setup-tab-page        .ar-setup-section[data-ar-section="page"],
+.ar-setup-tab-summaries   .ar-setup-section[data-ar-section="summaries"],
+.ar-setup-tab-team        .ar-setup-section[data-ar-section="team"] {
+  display: block;
 }
 .ar-setup-group {
   display: flex;
