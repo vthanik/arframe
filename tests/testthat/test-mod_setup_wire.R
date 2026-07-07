@@ -315,6 +315,38 @@ test_that("bad precision input is dropped silently (coerce -> NULL)", {
   })
 })
 
+test_that("decimals-by rules add / edit / delete through dec_* inputs", {
+  st <- .mk_store()
+  shiny::testServer(mod_setup_server, args = list(store = st), {
+    session$setInputs(dec_add = 1)
+    expect_length(shiny::isolate(st$rv$report@theme$decimals_by), 1L)
+
+    # A `P|<param>` name value flips scope to "param" and strips the prefix.
+    session$setInputs(
+      dec_row_change = list(i = 1, field = "name", value = "P|SYSBP", nonce = 1)
+    )
+    session$setInputs(
+      dec_row_change = list(i = 1, field = "dp", value = "2", nonce = 2)
+    )
+    r1 <- shiny::isolate(st$rv$report@theme$decimals_by[[1]])
+    expect_identical(r1$by, "param")
+    expect_identical(r1$name, "SYSBP")
+    expect_identical(r1$dp, 2L)
+
+    # A `V|<col>` value is a variable.
+    session$setInputs(
+      dec_row_change = list(i = 1, field = "name", value = "V|AGE", nonce = 3)
+    )
+    expect_identical(
+      shiny::isolate(st$rv$report@theme$decimals_by[[1]]$by),
+      "variable"
+    )
+
+    session$setInputs(dec_delete = 1)
+    expect_length(shiny::isolate(st$rv$report@theme$decimals_by), 0L)
+  })
+})
+
 test_that("Setup renderUI has no overview strip (removed 2026-07-07)", {
   # The overview stat strip was dropped from Setup per user request; the
   # dashboard is now just the section tab strip + the active section card.

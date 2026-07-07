@@ -577,6 +577,89 @@ mod_setup_server <- function(id, store) {
       bump_sections()
     })
 
+    # Decimals-by rules: per-field `dec_row_change` edits (dataset / name /
+    # dp), plus add / delete. A dataset change re-renders so the NAME dropdown
+    # re-lists the new dataset's columns + PARAMCD levels; name/dp edits do
+    # not (no focus loss). Name values are `V|<col>` / `P|<param>`.
+    dec_ds_names <- function() {
+      cat <- tryCatch(arpillar::catalog_grid(store$con), error = function(e) {
+        NULL
+      })
+      if (is.null(cat) || nrow(cat) == 0L) character(0) else cat$name
+    }
+    shiny::observeEvent(
+      input$dec_row_change,
+      {
+        e <- input$dec_row_change
+        i <- suppressWarnings(as.integer(e$i))
+        field <- as.character(e$field %||% "")
+        val <- as.character(e$value %||% "")
+        r <- store$rv$report
+        theme <- r@theme
+        rules <- theme$decimals_by %||% list()
+        if (is.na(i) || i < 1L || i > length(rules)) {
+          return()
+        }
+        do_bump <- FALSE
+        if (identical(field, "name")) {
+          rules[[i]]$by <- if (startsWith(val, "P|")) "param" else "variable"
+          rules[[i]]$name <- sub("^[VP]\\|", "", val)
+        } else if (identical(field, "dataset")) {
+          rules[[i]]$dataset <- val
+          do_bump <- TRUE
+        } else if (identical(field, "dp")) {
+          dp <- suppressWarnings(as.integer(val))
+          rules[[i]]$dp <- if (is.na(dp) || dp < 0L) 0L else dp
+        } else {
+          return()
+        }
+        theme$decimals_by <- rules
+        commit(store, S7::set_props(r, theme = theme), label = "edit decimals")
+        if (do_bump) {
+          bump_sections()
+        }
+      },
+      ignoreInit = TRUE
+    )
+    shiny::observeEvent(input$dec_add, {
+      r <- store$rv$report
+      theme <- r@theme
+      rules <- theme$decimals_by %||% list()
+      ds <- dec_ds_names()
+      rules <- c(
+        rules,
+        list(list(
+          by = "variable",
+          dataset = if (length(ds) > 0L) ds[[1L]] else "",
+          name = "",
+          dp = 0L
+        ))
+      )
+      theme$decimals_by <- rules
+      commit(
+        store,
+        S7::set_props(r, theme = theme),
+        label = "add decimals rule"
+      )
+      bump_sections()
+    })
+    shiny::observeEvent(input$dec_delete, {
+      i <- as.integer(input$dec_delete)
+      r <- store$rv$report
+      theme <- r@theme
+      rules <- theme$decimals_by %||% list()
+      if (i >= 1L && i <= length(rules)) {
+        rules <- rules[-i]
+      }
+      theme$decimals_by <- rules
+      commit(
+        store,
+        S7::set_props(r, theme = theme),
+        label = "delete decimals rule"
+      )
+      bump_sections()
+    })
+
     # Footnote register: same shape as populations / arms. Rebuild
     # `theme$footnotes` from foot_key_* + foot_text_* inputs; add + delete
     # events for structural mutations.
@@ -1968,7 +2051,150 @@ s_study <- function(store) {
           }
         )
       )
+    ),
+    .setup_group(
+      "Decimals by variable / parameter",
+      .decimals_by_table(ns, store)
     )
+  )
+}
+
+# Encode / decode a decimals-by NAME choice. A native `<option>` value can't
+# carry the unit-separator the roles picker uses, so a printable `|` (which
+# never appears in a column name or a CDISC PARAMCD value) splits scope from
+# name: "V|AGE" (variable) / "P|SYSBP" (BDS param).
+.dec_encode <- function(by, name) {
+  paste0(if (identical(by, "param")) "P" else "V", "|", name %||% "")
+}
+
+# NAME dropdown choices for one dataset: its columns (as variables) plus its
+# PARAMCD levels (as params), as a named vector `encoded-value -> label`.
+.dec_name_choices <- function(store, dataset) {
+  if (is.null(dataset) || !nzchar(dataset)) {
+    return(character(0))
+  }
+  cols <- .items_meta(store, dataset)$name
+  var_choices <- stats::setNames(paste0("V|", cols), cols)
+  params <- character(0)
+  if ("PARAMCD" %in% cols) {
+    params <- tryCatch(
+      as.character(
+        arpillar::distinct_values(store$con, dataset, "PARAMCD", limit = 200L)
+      ),
+      error = function(e) character(0)
+    )
+  }
+  param_choices <- if (length(params) > 0L) {
+    stats::setNames(paste0("P|", params), paste0(params, " (param)"))
+  } else {
+    character(0)
+  }
+  c(var_choices, param_choices)
+}
+
+# A decimals-by row cell: a native `<select>` posting `{i, field, value}` to
+# the shared `dec_row_change` observer (the roles / arm-edit idiom).
+.dec_select <- function(ns, i, field, choices, selected) {
+  shiny::div(
+    class = "ar-setup-field",
+    shiny::tags$select(
+      class = "ar-input-flat ar-mono",
+      onchange = sprintf(
+        "Shiny.setInputValue('%s', {i: %d, field: '%s', value: this.value, nonce: Date.now()}, {priority: 'event'})",
+        ns("dec_row_change"),
+        i,
+        field
+      ),
+      lapply(seq_along(choices), function(k) {
+        # choices is `label -> value` (names are the display labels).
+        v <- choices[[k]]
+        shiny::tags$option(
+          value = v,
+          selected = if (identical(v, selected)) "selected" else NULL,
+          names(choices)[[k]]
+        )
+      })
+    )
+  )
+}
+
+# Setup > Summaries > Decimals by variable / parameter: one raw-precision
+# rule per row (DecimBy sheet). Each row picks a dataset, then a variable OR a
+# BDS PARAMCD level, and the raw decimal places; the per-statistic offsets in
+# Precision above add to this at render time.
+.decimals_by_table <- function(ns, store) {
+  cat <- tryCatch(arpillar::catalog_grid(store$con), error = function(e) NULL)
+  ds_names <- if (is.null(cat) || nrow(cat) == 0L) character(0) else cat$name
+  rules <- store$rv$report@theme$decimals_by %||% list()
+  header <- shiny::div(
+    class = "ar-setup-pop-header ar-setup-dec-header",
+    shiny::span("DATASET"),
+    shiny::span("VARIABLE / PARAM"),
+    shiny::span(class = "ar-mono", "RAW DP"),
+    shiny::span("")
+  )
+  rows <- lapply(seq_along(rules), function(i) {
+    rl <- rules[[i]]
+    ds <- rl$dataset %||% (if (length(ds_names) > 0L) ds_names[[1L]] else "")
+    shiny::div(
+      class = "ar-setup-pop-row ar-setup-dec-row",
+      `data-ar-dec` = i,
+      .dec_select(ns, i, "dataset", stats::setNames(ds_names, ds_names), ds),
+      .dec_select(
+        ns,
+        i,
+        "name",
+        .dec_name_choices(store, ds),
+        .dec_encode(rl$by %||% "variable", rl$name %||% "")
+      ),
+      shiny::div(
+        class = "ar-setup-field",
+        shiny::tags$input(
+          class = "ar-input-flat ar-mono",
+          type = "number",
+          min = "0",
+          value = as.character(rl$dp %||% 0L),
+          onchange = sprintf(
+            "Shiny.setInputValue('%s', {i: %d, field: 'dp', value: this.value, nonce: Date.now()}, {priority: 'event'})",
+            ns("dec_row_change"),
+            i
+          )
+        )
+      ),
+      shiny::tags$button(
+        type = "button",
+        class = "ar-pop-delete",
+        onclick = sprintf(
+          "Shiny.setInputValue('%s', %d, {priority: 'event'})",
+          ns("dec_delete"),
+          i
+        ),
+        title = "Delete rule",
+        "\u00d7"
+      )
+    )
+  })
+  shiny::tagList(
+    if (length(ds_names) == 0L) {
+      shiny::p(
+        class = "ar-muted",
+        "Mount a dataset to set per-variable or per-parameter precision."
+      )
+    } else {
+      shiny::tagList(
+        shiny::div(class = "ar-setup-pops ar-setup-decs", header, rows),
+        shiny::tags$button(
+          id = ns("dec_add"),
+          type = "button",
+          class = "ar-pop-add action-button",
+          "+ Add rule"
+        ),
+        shiny::p(
+          class = "ar-muted ar-mono",
+          "Raw data precision per variable (e.g. AGE) or per BDS parameter (e.g. SYSBP). The per-statistic offsets above add to this."
+        )
+      )
+    }
   )
 }
 

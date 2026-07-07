@@ -636,6 +636,11 @@ input[type="radio"] {
   gap: 10px;
   margin-top: 4px;
 }
+/* Decimals-by rows: dataset | variable/param | raw dp | delete. */
+.ar-setup-dec-header,
+.ar-setup-dec-row {
+  grid-template-columns: 1fr 1.5fr 80px 32px;
+}
 .ar-setup-arms .ar-setup-arm-row {
   padding: 10px 12px;
 }
