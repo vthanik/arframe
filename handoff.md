@@ -1,105 +1,144 @@
-# Handoff — arframe dashboard redesign (2026-07-07)
+# handoff -- 2026-07-07
 
 ## Goal
 
-Rescope arframe from a single-user builder to a **team-level tool** and lift the
-visual language from the austere "Linear/GOV.UK" look to **dashboard-grade
-UX/UI** (light-first: elevated cards, left sidebar, status pills, stat tiles),
-modelled on the user's feel-good refs (Power BI, Sence.Point, Piduiteun, fitplan,
-mota). Bar: exceed Posit's own Shiny apps. Full roadmap + locked decisions:
-`~/.claude/plans/the-scope-now-is-curious-stroustrup.md` and **CLAUDE.md #12**.
+Two-repo epic: make **every Setup setting actually drive the rendered outputs**
+(Setup = study defaults, per-output = the standing override) AND build the
+flagship **Report -> List-of-Contents table** (drill into paper+inspector,
+mirroring Data's list->grid). Source-of-truth plan (5 phases):
+`~/.claude/plans/quiet-gliding-lerdorf.md`. Live task list: 5 tasks
+(`TaskList`), Phase 1 in-progress.
 
-Locked forks (2026-07-07): Report = **LoC table → drill into paper** (reverses
-paper-first); **light-first** v1; **Foundation first**; **full CDISC ARS spine**;
-keep GOV.UK a11y, drop its austerity.
+Spans `~/projects/r/arframe` (UI) + `~/projects/r/arpillar` (engine). arframe
+consumes arpillar as an installed `Remotes` dep.
 
-## Current state — Foundation sub-project (#1) is DONE and verified
+## Current state
 
-All 5 modes render cleanly under the new shell (screenshotted on real CDISC data
-+ demo fixture; Setup/Data/Report/Review/Logs all clean). `devtools::test()` =
-**FAIL 0 | PASS 1177**; the e2e mode-walk = **PASS 64**. `devtools::check()`: **Status: OK (0 errors / 0 warnings / 0 notes)**.
+- **arframe** HEAD `b690259` (prior session). Working tree DIRTY (in-flight,
+  nothing committed this session): `R/fct_async.R`, `R/fct_export.R`,
+  `R/mod_toolbar.R`.
+- **arpillar** HEAD `6db85f5`. Working tree DIRTY: `R/fct_render_table.R` (mod),
+  `tests/testthat/test-resolve_theme.R` (NEW).
+- Gates: **full arpillar test suite GREEN**; golden gate byte-identical
+  (run with `NOT_CRAN=true`, else the byte-goldens skip_on_cran). arframe
+  render-parity tests (`test-mod_toolbar`/`fct_export`/`fct_async`) GREEN.
+- NOT yet run: `devtools::document()` (not needed -- all changes are `@noRd`
+  internal, no `@export`/NAMESPACE change), `air format`, full arframe
+  `devtools::check()`. Do before committing.
 
-Sub-projects 2–5 (Setup→sectioned dashboard, Report→LoC table, full ARS spine,
-dark theme) are NOT started — each gets its own spec→plan→build.
+| Phase | State |
+|---|---|
+| 1 Resolver + thread theme | CORE DONE + verified; 2 sub-pieces remain (below) |
+| 2 Population filter engine | NOT started (next) |
+| 3 Dedup Options pane | blocked by Ph1 |
+| 4 LoC table + drill (flagship) | NOT started |
+| 5 Cleanup + gates + live verify | NOT started |
 
-## What changed this session
+## What landed this session (all IN-FLIGHT, uncommitted)
 
-**Design tokens** (`inst/www/tokens.css`, `R/theme.R`): added IBM Plex Sans
-500/600/700 (`inst/www/fonts/`); retuned `--ar-*` to dashboard — elevation
-shadow scale (`--ar-shadow-card/-lift/-float`), cooler canvas (`--ar-desk
-#f5f7fa`), card radii (8/12/16/pill), spacing +40/48, 14px body + display scale
-(`--ar-fs-page/-section/-stat`) + weight tokens, 5-state status set
-(ready/draft/needs_data/broken/stale) with soft-fill pill bgs, categorical viz
-ramp. bslib radius 4→8px.
+- **arframe threading** -- `report@theme` now passed to every render seam, not
+  just the screen: `fct_async.R` (daemon export), `mod_toolbar.R` (per-output
+  `.rtf`), `fct_export.R` (`.export_render_one`). Fixes a silent screen<->export
+  divergence on any theme-set option.
+- **arpillar resolver extensions** (`R/fct_render_table.R`):
+  - Header-N + `show_header_n` resolve from `theme$arm` (`.header_n_labels`).
+  - Stats-selection resolves from `theme$summaries$continuous` (`.stats_opt` +
+    `.rows_to_measure` + `.ATOM_TO_STAT` map n->N/q1->p25/q3->p75).
+  - Granular decimals -- per-stat absolute + per-variable base (new `.stat_dp`
+    replacing `.stat_decimals`; `.decimals_opt` now returns
+    `list(base, per, by_var)`; `.derive_dp`, `.STAT_TO_DEC`; threaded through
+    `.fmt_measure_cell`/`.fmt_count_cell`/`.category_block`/`.display_block`).
+  - 12 new functional tests: `tests/testthat/test-resolve_theme.R`.
 
-**Atoms** (`R/utils_atoms.R` + `arframe.css` §01): new `.card()` (class
-`.ar-panel` — `.ar-card` is taken by the inspector), `.stat_tile()`, `.avatar()`;
-evolved `.stamp()` into a soft-fill **status pill** (dot via `::before`, no HTML
-change → every caller inherits it). Added `review = "clipboard-check"` glyph.
-Tests in `test-utils_atoms.R` (all pass).
+## Locked design decisions
 
-**Shell** (`R/mod_frame.R` + `arframe.css` §02): replaced the top 5-mode
-segmented switch with a **left `.ar-sidebar`** (brand + vertical `.ar-nav`) +
-`.ar-main` (a `.ar-topbar` title+actions bar). `.frame_bar`→`.frame_sidebar`+
-`.frame_topbar`; `.frame_section_switch`/`.seg`→`.frame_nav`/`.nav_item`. **No
-server or bridge.js change** — nav items keep `data-ar-mode`; the `.ar-mode-*`
-class-swap is unchanged. Responsive: sidebar folds to an icon rail <1024px.
-Rewrote `test-mod_frame.R` for the new structure + made its e2e walk **all 5
-modes** and screenshot each to `.local/screens/0N-<mode>.png` (get_screenshot
-does NOT overwrite — file.remove first).
+- **Resolver is the single precedence mechanism.** arpillar's
+  `resolve_option(object, theme, key, theme_path, engine_default)` already
+  implements per-output-wins -> theme-default -> engine-default. Do NOT add
+  ad-hoc theme->options merges. `theme` IS `report@theme` (what Setup writes).
+- **Golden-safe rule (non-negotiable):** an unset value must fall through to the
+  UNCHANGED engine default, so empty theme + empty options stays byte-identical
+  (`test-golden_strip.R`). Every extension keeps the old derivation as the
+  fallback -- that's why goldens held.
+- **Decimals precedence: per-variable base > per-stat absolute > base
+  derivation** (`.stat_dp`). This is a JUDGMENT CALL in ambiguous clinical
+  territory -- CONFIRM with the user at the visual-verification pass (a
+  per-variable `V|AGE` dp should win over a study-wide `decimals$sd`).
+- **Population = one binding** (Population = Analysis Set), and it will be made
+  **functional** (bind -> subset data) in Phase 2 -- user chose this explicitly.
+- Free to **delete/rewrite old empty-state paths + their tests**; the ONLY
+  preserved invariant is the golden gate.
 
-**Root-cause fix — Setup top gap**: `.ar-setup > *` (there to fight Shiny's
-`display:contents` on the uiOutput) also un-hid the sibling
-`<datalist id="ar-stat-atoms">`, whose options rendered as a ~250px list. Scoped
-it to `.ar-setup > .shiny-html-output`. Verified via live DOM (`datalist
-display=none`, content flush to top).
+## Files in scope
 
-**Deletions**: dead `.ex-appbar`/`.ex-appbar-brand`/`.ex-section-switch`/
-`.ex-seg*`/`.ex-appbar-user` CSS; and the whole **`R/mod_catalog_list.R`** +
-its `.ex-manage-*`/`.ex-grid*`/`.ex-status*`/`.ex-viewer*`/`.ex-empty*` CSS — an
-unwired, premature "shared surface" primitive (never mounted anywhere; Data uses
-its own `.ar-dx-table`). The real shared table atom gets built in the Report/LoC
-sub-project (#3) with two real consumers.
+- arframe (mod): `R/fct_async.R`, `R/fct_export.R`, `R/mod_toolbar.R`.
+- arpillar (mod): `R/fct_render_table.R`. (new test) `tests/testthat/test-resolve_theme.R`.
+- Reference: `R/theme.R` (arpillar `.SPEC_THEME` -- the shared theme contract);
+  `R/resolve.R` (`resolve_option`, `.theme_at`); `R/fct_render_ard.R`
+  (`.summary_call` = where the ARD-vocab extension lands).
+- arframe Setup shapes: `R/mod_setup.R` (`.CONT_SEEDS`/`.CONT_ATOM_DESC`
+  vocabulary ~line 2554/2696; `.dec_encode` `V|`/`P|` ~2223).
 
-**Docs/memory**: CLAUDE.md #1/#8 rewritten + new #12 (redesign record + roadmap +
-build state); memories `govuk-design-principles` (amended: a11y kept, visuals now
-dashboard), `feedback-never-defer`, `feedback-screenshot-eyeball` added.
+## What was tried / learned (do not redo)
 
-## Pre-existing issues fixed this session (were in HEAD, not new regressions)
+- **build_ard does NOT need a theme for Phase 1.** `.summary_call` computes the
+  FULL default continuous set always; stats-selection/header-N/decimals are all
+  DISPLAY-stage (`render_display`/`render_spec`, which already take `theme`). So
+  Phase 1 never touched `build_ard` -- lower golden risk. `build_ard` gets a
+  theme only in Phase 2 (population).
+- **ARD-vocab gap (real, not deferred-by-choice):** arframe's continuous
+  vocabulary (~26 atoms: se/cv/var/iqr/geomean/geosd/geose/percentiles/lclm/uclm)
+  EXCEEDS cards' default 8 (N/mean/sd/median/p25/p75/min/max). Richer atoms
+  render `NA` until `.summary_call` computes them via cards custom fns. Common
+  set works today.
+- Tom Select was rejected earlier (2026-07-07) -- selectize is the picker engine
+  (unrelated to this work, but do not re-suggest).
 
-- **`test-mod_setup_wire.R`** read `../../R/mod_setup.R`, absent in the R CMD
-  check sandbox → guarded with `skip_if_not(file.exists(setup_src))` (fires on
-  the real condition; `skip_on_cran` would NOT, since `devtools::check()` sets
-  `NOT_CRAN=true`).
-- **Non-ASCII WARNING**: `mod_setup.R` had user-facing `—`/`×` in *string
-  literals* → escaped to `\uxxxx` (identical runtime output, ASCII source, per
-  the check's own guidance). Comment-only non-ASCII in `mod_paper.R`/`theme.R`/
-  `mod_card_filters.R` is check-excused ("except perhaps in comments"), left
-  as-is per ascii.md.
+## What to do next (in order)
 
-## Next steps
+1. **Install the updated arpillar** so arframe's runtime + any visual check use
+   the new resolution: `R CMD INSTALL ~/projects/r/arpillar` (or
+   `devtools::install("~/projects/r/arpillar")`). arframe threading works with
+   the OLD installed arpillar, but the RESOLUTION changes need this reinstall.
+2. **ARD vocabulary extension** (finish Phase 1 stats): extend
+   `arpillar::.summary_call` (`R/fct_render_ard.R:317`) to compute arframe's full
+   continuous vocabulary via cards custom fns; add the missing atom->stat_name
+   entries to `.ATOM_TO_STAT`. KEEP the existing 8 stats byte-identical (goldens
+   select only those) -- verify with `NOT_CRAN=true` golden run.
+3. **Phase 2 -- population filter engine** (arpillar, ARD-mutating, golden-risk):
+   string->predicate compiler (`'SAFFL=="Y"'` -> `list(col,op,val)` for
+   `.filter_one`, `R/fct_dataitems.R:602`, classed error on unsupported op);
+   `build_ard(con, object, theme)` resolves `options$population` ->
+   `theme$populations[[id]]` -> `{label,dataset,filter}`, ANDs the filter into
+   `.collect_filtered` main pull (`fct_render_ard.R:128/185`) + occurrence
+   denominator (`:189`); derive occ denominator DATASET from the set's `dataset`
+   (untangle the `"ADSL"`-vs-id overload); backward-compat legacy
+   `population=<dataset-name>`. Migrate ~20 arframe presets `population="ADSL"`
+   -> analysis-set id; add `options$population` to arframe `.ard_key`
+   (`fct_store.R:337`) so it invalidates the memo.
+4. **Consolidated visual verification** (user's chosen cadence): install
+   arpillar -> launch arframe on the CDISC ADaM pilot -> change a Setup value
+   (header-N / continuous rows / decimals / population) -> screenshot the Report
+   paper honoring it. Then Phases 3-5.
 
-1. **Sub-project #2 — Setup → sectioned dashboard**: brainstorm→spec. Split the
-   one scroll page into trackable section-cards (`.card()`) + a Setup overview
-   with `.stat_tile()`s (study completeness, subject/record counts).
-2. **#3 — Report → List of Contents**: LoC table (number/type/title/population/
-   status pills/actions, +Output/+Standard) → drill into paper+inspector
-   (mirror Data's list→grid). Build the shared dashboard **table atom** here
-   (reused by Data). Add Options/Prefs toolbar segment; Run→Review.
-3. **#4 — full CDISC ARS spine** (mostly arpillar): ReportingEvent / Analysis /
-   AnalysisMethod / Operation / GroupingFactor / AnalysisSet / DataSubset /
-   OutputDisplay / ListOfContents / ARD + import/export; arframe surfaces
-   ARM_OID/analysis columns. Couples to #3.
-4. **#5 — dark "Instrument" theme** via token overrides.
+## Operating constraints
 
-## Verify / re-check
+- **No `Co-Authored-By: Claude`** anywhere (commits/PRs). Author = Vignesh
+  Thanikachalam `<about.vignesh@gmail.com>`.
+- **ASCII inside cli/stop/warning/message strings**; typography free in comments/
+  roxygen. `air format` after edits (PostToolUse hook enforces).
+- **Golden gate is sacred** -- re-run after every engine change with
+  `NOT_CRAN=true`; if bytes drift, FIX the resolver, never adjust the golden.
+- **No `--` in arframe user-facing text** (em-dash instead).
+- Commit/push only when the user asks; branch off `main` per task near release.
+- Real-data-only for visual claims: `/Users/vignesh/projects/data/cdisc-adam-pilot`.
 
-```bash
-Rscript -e 'devtools::test()'                                   # FAIL 0
-NOT_CRAN=true Rscript -e 'devtools::test(filter="mod_frame")'   # e2e + screenshots
-Rscript -e 'devtools::check(args="--no-manual")'                # Status: OK (0/0/0)
+## Quick orient (paste to confirm state in <60s)
 
-# real-data eyeball (CLAUDE.md #9): boots on the CDISC ADaM pilot
-Rscript .local/screens/launch.R    # serves 127.0.0.1:7910; drive Chrome to shoot each mode
-# in-suite demo screenshots land in .local/screens/0N-<mode>.png
+```
+cd ~/projects/r/arframe && git status --short
+cd ~/projects/r/arpillar && git status --short
+# golden gate + resolver tests (byte-goldens need NOT_CRAN):
+cd ~/projects/r/arpillar && NOT_CRAN=true Rscript -e 'Sys.setenv(NOT_CRAN="true"); devtools::load_all(".",quiet=TRUE); testthat::test_file("tests/testthat/test-resolve_theme.R"); testthat::test_file("tests/testthat/test-golden_strip.R")'
+cat ~/.claude/plans/quiet-gliding-lerdorf.md   # the 5-phase plan
 ```

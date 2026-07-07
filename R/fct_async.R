@@ -81,12 +81,22 @@ export_mirai <- function(report_json, paths, out_dir, names = list()) {
           fname <- paste0(obj@id, ".rtf")
         }
         path <- file.path(out_dir, fname)
+        # Thread the study theme (Setup) into the export render so a
+        # study-level default resolves identically to the live screen
+        # (mod_paper passes report@theme too) -- without it, export and
+        # screen silently diverge on any theme-set display option.
+        theme <- report@theme
         ok <- tryCatch(
           {
             if (is_fig) {
-              arpillar::render_figure_rtf(con, obj, path)
+              arpillar::render_figure_rtf(con, obj, path, theme = theme)
             } else {
-              arpillar::render_rtf(arpillar::build_ard(con, obj), obj, path)
+              arpillar::render_rtf(
+                arpillar::build_ard(con, obj),
+                obj,
+                path,
+                theme = theme
+              )
             }
             TRUE
           },

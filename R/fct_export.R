@@ -28,13 +28,16 @@
 #' @noRd
 .export_render_one <- function(store, object, out_dir) {
   path <- file.path(out_dir, paste0(.output_slug(object), ".rtf"))
+  # Thread the study theme so the sync export resolves study-level defaults
+  # identically to the screen and the async daemon (fct_async.R).
+  theme <- store$rv$report@theme
   tryCatch(
     {
       if (.is_figure_type(object@type)) {
-        arpillar::render_figure_rtf(store$con, object, path)
+        arpillar::render_figure_rtf(store$con, object, path, theme = theme)
       } else {
         ard <- cached_ard(store, object)
-        arpillar::render_rtf(ard, object, path)
+        arpillar::render_rtf(ard, object, path, theme = theme)
       }
       TRUE
     },

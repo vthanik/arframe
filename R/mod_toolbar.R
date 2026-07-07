@@ -93,10 +93,10 @@ mod_toolbar_server <- function(id, store) {
           theme = theme
         )
         if (.is_figure_type(obj@type)) {
-          arpillar::render_figure_rtf(store$con, obj, file)
+          arpillar::render_figure_rtf(store$con, obj, file, theme = theme)
         } else {
           ard <- cached_ard(store, obj)
-          arpillar::render_rtf(ard, obj, file)
+          arpillar::render_rtf(ard, obj, file, theme = theme)
         }
       }
     )
