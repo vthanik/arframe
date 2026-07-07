@@ -315,6 +315,21 @@ test_that("bad precision input is dropped silently (coerce -> NULL)", {
   })
 })
 
+test_that(".CONT_ATOMS carries the full standard statistic vocabulary", {
+  atoms <- arframe:::.CONT_ATOMS
+  # The common set survives, and the master-file additions are present:
+  # CI of the mean, percentiles, and the PK geometric family.
+  expect_true(all(
+    c("n", "mean", "sd", "median", "min", "max") %in% atoms
+  ))
+  expect_true(all(c("cv", "var", "sum", "qrange", "lclm", "uclm") %in% atoms))
+  expect_true(all(c("p1", "p5", "p10", "p90", "p95", "p99") %in% atoms))
+  expect_true(all(
+    c("geomean", "geosd", "geose", "geocv", "geolclm", "geouclm") %in% atoms
+  ))
+  expect_identical(anyDuplicated(atoms), 0L)
+})
+
 test_that("decimals-by rules add / edit / delete through dec_* inputs", {
   st <- .mk_store()
   shiny::testServer(mod_setup_server, args = list(store = st), {

@@ -2264,18 +2264,45 @@ s_study <- function(store) {
 # Well-known continuous stat atoms; user can type any string but this
 # datalist gives autocomplete for the common ones. Rendered once
 # per module UI mount as a hidden `<datalist>`.
+# The continuous-statistic vocabulary a stat row can draw on -- the full
+# standard set (count / central / spread / range / quantiles / CI of the mean
+# / geometric family for PK). Rendered as the `<datalist>` typeahead; the
+# per-statistic decimal offset for each is the Global TFL default until
+# overridden. `iqr` and `qrange` are aliases for the Q3-Q1 spread.
 .CONT_ATOMS <- c(
+  # count + central tendency
   "n",
   "mean",
+  "median",
+  "sum",
+  # spread
   "sd",
   "se",
-  "median",
-  "q1",
-  "q3",
+  "cv",
+  "var",
   "iqr",
+  "qrange",
+  # range + quantiles
   "min",
   "max",
-  "geomean"
+  "q1",
+  "q3",
+  "p1",
+  "p5",
+  "p10",
+  "p90",
+  "p95",
+  "p99",
+  # confidence limits of the mean
+  "lclm",
+  "uclm",
+  # geometric family (PK)
+  "geomean",
+  "geosd",
+  "geose",
+  "geocv",
+  "geolclm",
+  "geouclm"
 )
 
 # ---- Team section ---------------------------------------------------------
