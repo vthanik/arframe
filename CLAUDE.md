@@ -171,7 +171,7 @@ page, proof-stamp statuses, and a summonable/pinnable galley card. The deliverab
        app shell (`mod_frame.R`; the shell's nav was **re-housed left-sidebar
        → top app bar** in the #2 pass — see #8). Plan:
        `~/.claude/plans/the-scope-now-is-curious-stroustrup.md`.
-    2. **Setup → sectioned dashboard (spec+plan locked 2026-07-07, building)**
+    2. **Setup → sectioned dashboard (DONE 2026-07-07)**
        — top-nav frame refactor + Setup re-housed as a section tab strip, one
        `.card()` per section, an overview stat strip, server-authoritative
        active tab. Spec/plan:

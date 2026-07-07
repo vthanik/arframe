@@ -107,11 +107,11 @@ mod_frame_ui <- function(
   )
 }
 
-#' The vertical mode nav inside the sidebar. Setup / Data / Report / Review /
-#' Logs are peers; the ACTIVE item is a pure CSS rule keyed off the workspace
-#' `ar-mode-*` class (no server round-trip on switch). Each item carries
-#' `data-ar-mode` for arframe.js's delegated click handler, which posts
-#' `input$mode`.
+#' The horizontal mode nav inside the top app bar. Setup / Data / Report /
+#' Review / Logs are peers; the ACTIVE item is a pure CSS rule keyed off the
+#' workspace `ar-mode-*` class (no server round-trip on switch). Each item
+#' carries `data-ar-mode` for arframe.js's delegated click handler, which
+#' posts `input$mode`.
 #' @noRd
 .frame_nav <- function() {
   shiny::div(
@@ -125,7 +125,7 @@ mod_frame_ui <- function(
   )
 }
 
-#' One sidebar nav item: a plain <button> (icon + label) the delegated click
+#' One app-bar nav item: a plain <button> (icon + label) the delegated click
 #' handler reads via `data-ar-mode`. No Shiny action-button wrapper -- the
 #' input is posted from JS, so a bare <button> keeps the DOM minimal.
 #' @noRd
