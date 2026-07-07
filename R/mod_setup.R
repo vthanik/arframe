@@ -793,7 +793,10 @@ mod_setup_server <- function(id, store) {
       st <- .section_status(theme, s$id)
       badge <- switch(
         st$state,
-        ok = shiny::span(class = "ar-setup-tab-badge ar-setup-tab-ok", "✓"),
+        ok = shiny::span(
+          class = "ar-setup-tab-badge ar-setup-tab-ok",
+          "\u2713"
+        ),
         partial = shiny::span(
           class = "ar-setup-tab-badge ar-setup-tab-partial",
           as.character(st$missing)
