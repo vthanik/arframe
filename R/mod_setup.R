@@ -199,55 +199,33 @@ mod_setup_server <- function(id, store) {
       store$rv$catalog_nonce
       shiny::tagList(
         .setup_reviewed_banner(store),
-        .setup_section(
-          ns,
-          "study",
-          "Study",
-          .section_status_glyph(store, "study"),
-          .setup_study(ns, store)
-        ),
-        .setup_section(
-          ns,
-          "paths",
-          "Paths",
-          .section_status_glyph(store, "paths"),
-          .setup_paths(ns, store)
-        ),
+        .setup_section(ns, "study", "Study", .setup_study(ns, store)),
+        .setup_section(ns, "paths", "Paths", .setup_paths(ns, store)),
         .setup_section(
           ns,
           "treatment",
           "Treatment",
-          .section_status_glyph(store, "treatment"),
           .setup_treatment(ns, store)
         ),
         .setup_section(
           ns,
           "populations",
           "Populations",
-          .section_status_glyph(store, "populations"),
           .setup_populations(ns, store)
         ),
         .setup_section(
           ns,
           "page",
           "Page & Style",
-          .section_status_glyph(store, "page"),
           .setup_page_body(ns, store)
         ),
         .setup_section(
           ns,
           "summaries",
           "Summaries",
-          .section_status_glyph(store, "summaries"),
           .setup_summaries(ns, store)
         ),
-        .setup_section(
-          ns,
-          "team",
-          "Team",
-          .section_status_glyph(store, "team"),
-          .setup_team(ns, store)
-        )
+        .setup_section(ns, "team", "Team", .setup_team(ns, store))
       )
     })
     shiny::outputOptions(output, "page", suspendWhenHidden = FALSE)
@@ -701,40 +679,11 @@ mod_setup_server <- function(id, store) {
 
 # ---- section shell --------------------------------------------------------
 
-.setup_section <- function(ns, id, title, glyph, body) {
-  shiny::div(
-    class = "ar-setup-section",
-    `data-ar-section` = id,
-    shiny::div(
-      class = "ar-setup-sechead",
-      shiny::span(class = "ar-setup-sechead-title", title),
-      glyph
-    ),
-    shiny::div(class = "ar-setup-secbody", body)
+.setup_section <- function(ns, id, title, body) {
+  shiny::tagAppendAttributes(
+    .card(body, title = title, class = "ar-setup-section"),
+    `data-ar-section` = id
   )
-}
-
-.section_status_glyph <- function(store, section) {
-  status <- .section_status(store$rv$report@theme, section)
-  # Only render a status pill for `ok` (green check) or `partial` (missing-
-  # field count). Empty sections stay dot-less -- a bullet next to every
-  # unfilled title was visual noise (2026-07-06 user feedback).
-  if (identical(status$state, "none")) {
-    return(NULL)
-  }
-  cls <- switch(
-    status$state,
-    ok = "ar-setup-glyph ar-setup-glyph-ok",
-    partial = "ar-setup-glyph ar-setup-glyph-partial",
-    "ar-setup-glyph ar-setup-glyph-none"
-  )
-  text <- switch(
-    status$state,
-    ok = "\u2713",
-    partial = as.character(status$missing),
-    ""
-  )
-  shiny::span(class = cls, text)
 }
 
 .section_status <- function(theme, section) {

@@ -189,6 +189,14 @@ test_that("Setup renderUI has 7 pharma sections in the expected order", {
   expect_false(any(c("sources", "data", "preferences") %in% ids))
 })
 
+test_that(".setup_section renders an elevated card carrying its section id", {
+  sec <- .setup_section(shiny::NS("s"), "study", "Study", shiny::div("body"))
+  html <- as.character(sec)
+  expect_match(html, "ar-panel", fixed = TRUE)
+  expect_match(html, 'data-ar-section="study"', fixed = TRUE)
+  expect_match(html, "Study", fixed = TRUE)
+})
+
 test_that("cont_add appends a blank continuous row (fixes dead-button)", {
   st <- .mk_store()
   shiny::testServer(mod_setup_server, args = list(store = st), {
