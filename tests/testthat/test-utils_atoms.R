@@ -1,4 +1,4 @@
-test_that(".stamp maps the four oracle states to letterpress stamps", {
+test_that(".stamp maps the oracle + app states to status pills", {
   s <- as.character(.stamp("ready"))
   expect_match(s, "READY", fixed = TRUE)
   expect_match(s, "ar-stamp-ready", fixed = TRUE)
@@ -64,4 +64,36 @@ test_that(".output_slug: kind letter + number + title, filesystem-safe", {
     options = list(number = "14.2.1", number_label = "Figure")
   )
   expect_identical(.output_slug(obj), "f-14-2-1-kaplan-meier-os")
+})
+
+test_that(".card wraps a body, and adds a header only when titled", {
+  plain <- as.character(.card(shiny::span("hi")))
+  expect_match(plain, "ar-panel", fixed = TRUE)
+  expect_match(plain, "ar-panel-body", fixed = TRUE)
+  expect_no_match(plain, "ar-panel-head")
+  titled <- as.character(.card("body", title = "Study"))
+  expect_match(titled, "ar-panel-head", fixed = TRUE)
+  expect_match(titled, "ar-panel-title", fixed = TRUE)
+  expect_match(titled, "Study", fixed = TRUE)
+})
+
+test_that(".stat_tile shows value + label; a delta carries its trend class", {
+  base <- as.character(.stat_tile("254", "subjects"))
+  expect_match(base, "ar-stat-tile-value", fixed = TRUE)
+  expect_match(base, "254", fixed = TRUE)
+  expect_match(base, "subjects", fixed = TRUE)
+  expect_no_match(base, "ar-stat-tile-delta")
+  up <- as.character(.stat_tile("18", "outputs", delta = "+3", trend = "up"))
+  expect_match(up, "ar-trend-up", fixed = TRUE)
+  expect_match(up, "+3", fixed = TRUE)
+})
+
+test_that(".avatar rings when live and labels with the full name", {
+  a <- as.character(.avatar("VT", colour = "#0378cd", name = "Vignesh T"))
+  expect_match(a, "ar-avatar", fixed = TRUE)
+  expect_match(a, "--ar-avatar-bg:#0378cd", fixed = TRUE)
+  expect_match(a, "Vignesh T", fixed = TRUE)
+  expect_no_match(a, "ar-avatar-live")
+  live <- as.character(.avatar("VT", live = TRUE))
+  expect_match(live, "ar-avatar-live", fixed = TRUE)
 })

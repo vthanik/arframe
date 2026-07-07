@@ -23,12 +23,17 @@ test_that(".SETUP_SPEC is non-empty and well-formed", {
 })
 
 test_that("every scalar input in mod_setup renders under a spec id", {
+  # Reads the R/ source tree, absent in the R CMD check sandbox -- skip on the
+  # actual condition (source availability), not the CRAN flag (devtools::check()
+  # sets NOT_CRAN=true, so skip_on_cran would not fire here).
+  setup_src <- "../../R/mod_setup.R"
+  skip_if_not(file.exists(setup_src), "R/ source tree unavailable")
   # Grep the mod_setup source for `.flat_input(ns, "<id>"`, `.seg_control(
   # ns, "<id>"`, and `.select_input(ns, "<id>"` calls -- the three atoms
   # that produce a scalar Shiny input on the Setup page. Every id found
   # must appear in `.SETUP_SPEC` (or match a structural pattern we
   # explicitly excuse below).
-  src <- readLines("../../R/mod_setup.R")
+  src <- readLines(setup_src)
   rx <- "(\\.flat_input|\\.seg_control|\\.select_input)\\(\\s*ns,\\s*\"([a-z_][a-z0-9_]*)\""
   m <- regmatches(src, regexec(rx, src))
   ids <- vapply(

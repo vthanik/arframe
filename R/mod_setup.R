@@ -551,7 +551,11 @@ mod_setup_server <- function(id, store) {
         # is `list(left = <chr>, center = <chr>, right = <chr>)`, so the
         # row count is the length of any side vector.
         prior <- theme$page[[key]]
-        prior_n <- if (is.list(prior)) length(prior$left %||% character(0)) else 0L
+        prior_n <- if (is.list(prior)) {
+          length(prior$left %||% character(0))
+        } else {
+          0L
+        }
         band_n <- length(band$left %||% character(0))
         if (prior_n > 0L && band_n != prior_n) {
           return()
@@ -959,7 +963,7 @@ mod_setup_server <- function(id, store) {
           .picker_proxy(ns("sources_pick")),
           shiny::span(
             class = "ar-muted ar-mono",
-            " Add another folder — the full catalog lives in Data mode."
+            " Add another folder \u2014 the full catalog lives in Data mode."
           )
         )
       )
@@ -1168,7 +1172,7 @@ s_study <- function(store) {
           i
         ),
         title = "Delete arm",
-        "×"
+        "\u00d7"
       )
     )
   })
@@ -1448,7 +1452,7 @@ s_study <- function(store) {
           i
         ),
         title = "Delete entry",
-        "×"
+        "\u00d7"
       )
     )
   })
@@ -1805,8 +1809,17 @@ s_study <- function(store) {
 # datalist gives autocomplete for the common ones. Rendered once
 # per module UI mount as a hidden `<datalist>`.
 .CONT_ATOMS <- c(
-  "n", "mean", "sd", "se", "median",
-  "q1", "q3", "iqr", "min", "max", "geomean"
+  "n",
+  "mean",
+  "sd",
+  "se",
+  "median",
+  "q1",
+  "q3",
+  "iqr",
+  "min",
+  "max",
+  "geomean"
 )
 
 # ---- Team section ---------------------------------------------------------

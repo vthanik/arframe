@@ -1,6 +1,7 @@
 # The Galley chrome atoms: the workspace icon set (Font Awesome 6 via
-# fontawesome::fa), the uppercase micro-label, the letterpress status stamp,
-# the variable type chip, and the btn-default-free Shiny action button. See
+# fontawesome::fa), the uppercase micro-label, the status pill, the variable
+# type chip, the btn-default-free Shiny action button, and the dashboard
+# surfaces (card / stat tile / presence avatar). See
 # docs/superpowers/specs/2026-07-02-arframe-galley-design-system.md #2, #5.
 
 #' Abort with the app's single input-error class.
@@ -55,10 +56,11 @@
   chevrons_right = "angles-right",
   play = "play",
   info = "circle-info",
-  # Activity-bar glyphs (the far-left mode rail, mockup piece A).
+  # Mode-nav glyphs (the left sidebar).
   report = "file-lines",
   logs = "terminal",
   gear = "gear",
+  review = "clipboard-check",
   # Inspector tab glyphs (the far-right icon strip).
   roles = "table-list",
   options = "sliders",
@@ -151,9 +153,10 @@
   stale = c("STALE", "stale", "Proof is stale: run to re-typeset.")
 )
 
-#' A letterpress status stamp: mono caps, colored 1px border, transparent fill.
+#' A status pill: a mono-caps word with a leading status dot on a soft-fill
+#' capsule (the dot + fill are CSS -- `.ar-stamp::before` / `.ar-stamp-*`).
 #'
-#' Maps the oracle's status vocabulary to the five Galley stamps. Colour never
+#' Maps the oracle's status vocabulary to the five Galley states. Colour never
 #' carries the signal alone -- the word is always present, and `aria-label`
 #' repeats it as a full sentence for screen readers.
 #' @param status *One of `"ready"`, `"draft"`, `"needs_data"`, `"broken"`,
@@ -233,6 +236,87 @@
     btn <- shiny::tagAppendAttributes(btn, disabled = "disabled")
   }
   btn
+}
+
+#' A dashboard surface card: white, elevated, rounded, padded. Optional
+#' header row (a title plus a right-aligned action slot) above the body.
+#'
+#' The generic container of the dashboard redesign. NB the inspector root
+#' already owns `.ar-card`, so this uses `.ar-panel`.
+#' @param ... *Body content* (tags).
+#' @param title *Card heading.* `<character(1)> | NULL`. `NULL` -> no header.
+#' @param action *Right-aligned header slot (a button/link tag) `| NULL`.*
+#' @param class *Extra classes on the panel root.* `<character> | NULL`.
+#' @noRd
+.card <- function(..., title = NULL, action = NULL, class = NULL) {
+  header <- if (!is.null(title) || !is.null(action)) {
+    shiny::div(
+      class = "ar-panel-head",
+      shiny::div(class = "ar-panel-title", title),
+      action
+    )
+  }
+  shiny::div(
+    class = paste("ar-panel", class),
+    header,
+    shiny::div(class = "ar-panel-body", ...)
+  )
+}
+
+#' A stat tile: a big mono value with a small label, an optional signed
+#' delta, and an optional leading icon.
+#'
+#' The value renders in the mono "instrument" face -- stat tiles carry
+#' machine facts (subject/record counts, dataset dims), never prose.
+#' @param value *The headline figure.* `<character(1)>`.
+#' @param label *What it measures.* `<character(1)>`.
+#' @param delta *Signed-change chip (e.g. `"+3 today"`), `| NULL`.*
+#' @param trend *One of `"up"`/`"down"`/`"flat"`; colours the delta.*
+#'   `<character(1)> default "flat"`.
+#' @param icon *Leading icon name (see `.fa_names`), `| NULL`.*
+#' @noRd
+.stat_tile <- function(
+  value,
+  label,
+  delta = NULL,
+  trend = "flat",
+  icon = NULL
+) {
+  shiny::div(
+    class = "ar-stat-tile",
+    if (!is.null(icon)) {
+      shiny::span(class = "ar-stat-tile-icon", .icon(icon, 18))
+    },
+    shiny::div(
+      class = "ar-stat-tile-main",
+      shiny::div(class = "ar-stat-tile-value", value),
+      shiny::div(class = "ar-stat-tile-label", label)
+    ),
+    if (!is.null(delta)) {
+      shiny::span(class = paste0("ar-stat-tile-delta ar-trend-", trend), delta)
+    }
+  )
+}
+
+#' A team presence avatar: initials on a coloured disc, ringed when the
+#' member is live (within the heartbeat window).
+#'
+#' Initials-only (no image dependency); colour + initials come from the
+#' roster (`fct_team.R`). Colour is passed to CSS via the `--ar-avatar-bg`
+#' custom property so the class carries all other styling.
+#' @param initials *One or two characters.* `<character(1)>`.
+#' @param colour *Disc background colour.* `<character(1)> | NULL`.
+#' @param name *Full name for tooltip / aria-label.* `<character(1)> | NULL`.
+#' @param live *Ring it (member active).* `<logical(1)> default FALSE`.
+#' @noRd
+.avatar <- function(initials, colour = NULL, name = NULL, live = FALSE) {
+  shiny::span(
+    class = paste("ar-avatar", if (isTRUE(live)) "ar-avatar-live"),
+    style = if (!is.null(colour)) paste0("--ar-avatar-bg:", colour, ";"),
+    title = name,
+    `aria-label` = name %||% initials,
+    initials
+  )
 }
 
 #' A filesystem-safe slug for an output's download filename:

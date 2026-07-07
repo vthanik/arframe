@@ -1,13 +1,12 @@
-# The Galley frame: the `.ex-appbar` header (brand + segmented mode
-# switch + centered title + actions cluster) atop five mounted mode
-# bodies (setup/data/report/qc/logs), shown/hidden by a workspace mode
-# class. Server-side, the frame owns mode switching, undo/redo, and the
-# report-title edit -- all through the injected store, never local
-# reactiveVal state. Redesigned in the Stage 2 rebuild: the old
-# `.ar-actbar` rail folded into the header, and the empty
-# `.ar-statusbar` shell was deleted (dead chrome).
+# The Galley frame: a left `.ar-sidebar` (brand + vertical mode nav) beside
+# `.ar-main` (a `.ar-topbar` title+actions bar over five mounted mode bodies
+# -- setup/data/report/qc/logs), shown/hidden by a workspace mode class.
+# Server-side, the frame owns mode switching, undo/redo, and the report-title
+# edit -- all through the injected store, never local reactiveVal state.
+# Redesigned 2026-07-07 (dashboard shell): the top `.ex-appbar` segmented
+# switch became the sidebar nav; the nav items still carry `data-ar-mode`.
 
-test_that("mod_frame_ui HTML contains the appbar, segmented mode switch, and all five mode-body containers", {
+test_that("mod_frame_ui HTML contains the sidebar nav, top bar, and all five mode-body containers", {
   ui <- mod_frame_ui(
     "frame",
     report_body = shiny::div("report placeholder"),
@@ -18,13 +17,14 @@ test_that("mod_frame_ui HTML contains the appbar, segmented mode switch, and all
   )
   html <- as.character(ui)
 
-  # The explorer-parity appbar skeleton (Stage 2).
-  expect_match(html, "ex-appbar", fixed = TRUE)
-  expect_match(html, "ex-appbar-brand", fixed = TRUE)
-  expect_match(html, "ex-section-switch", fixed = TRUE)
-  expect_match(html, "ex-appbar-title", fixed = TRUE)
+  # The dashboard shell: a left sidebar (brand + vertical mode nav) and the
+  # per-mode top bar (report title + actions cluster).
+  expect_match(html, "ar-sidebar", fixed = TRUE)
+  expect_match(html, "ar-sidebar-word", fixed = TRUE)
+  expect_match(html, "ar-nav-item", fixed = TRUE)
+  expect_match(html, "ar-topbar", fixed = TRUE)
   expect_match(html, "ex-appbar-actions", fixed = TRUE)
-  # One segment per mode, each carrying `data-ar-mode` for bridge.js's
+  # One nav item per mode, each carrying `data-ar-mode` for bridge.js's
   # delegated click handler.
   expect_match(html, 'data-ar-mode="setup"', fixed = TRUE)
   expect_match(html, 'data-ar-mode="data"', fixed = TRUE)
@@ -104,7 +104,7 @@ test_that("mod_frame_server: input$name commits the report name and undo restore
 
 # ---- end-to-end: the real arframe() launcher, a real browser ---------------
 
-test_that("arframe() launches: bar, mode buttons, all three bodies, mode switch, screenshot", {
+test_that("arframe() launches: sidebar nav, all five bodies, per-mode switch + screenshots", {
   skip_on_cran()
   app <- shinytest2::AppDriver$new(
     app_dir = testthat::test_path("apps/frame"),
@@ -115,8 +115,8 @@ test_that("arframe() launches: bar, mode buttons, all three bodies, mode switch,
   withr::defer(app$stop())
 
   html <- app$get_html("body", outer_html = TRUE)
-  expect_match(html, "ex-appbar", fixed = TRUE)
-  expect_match(html, "ex-section-switch", fixed = TRUE)
+  expect_match(html, "ar-sidebar", fixed = TRUE)
+  expect_match(html, "ar-nav-item", fixed = TRUE)
   expect_match(html, 'data-ar-mode="setup"', fixed = TRUE)
   expect_match(html, 'data-ar-mode="data"', fixed = TRUE)
   expect_match(html, 'data-ar-mode="report"', fixed = TRUE)
@@ -130,20 +130,23 @@ test_that("arframe() launches: bar, mode buttons, all three bodies, mode switch,
   # Opens in Setup mode (user decision 2026-07-06).
   expect_match(html, "ar-mode-setup", fixed = TRUE)
 
-  app$click(selector = '[data-ar-mode="qc"]')
-  app$wait_for_idle()
-  ws_class <- app$get_js("document.querySelector('.ar-workspace').className;")
-  expect_match(ws_class, "ar-mode-qc", fixed = TRUE)
-
-  # Dev-only screenshot artifact: .local/ is .Rbuildignore'd, so it does not
-  # exist in R CMD check's isolated sandbox copy -- write it only when
-  # running from the real source tree, never as a hard requirement.
+  # Walk every mode: assert the workspace class flips, and (dev-only) capture a
+  # screenshot of each for eyeballing. `.local/screens/` is .Rbuildignore'd, so
+  # it is absent in the R CMD check sandbox -- screenshots are written only from
+  # the real source tree, never a hard requirement of the assertions.
   screens_dir <- testthat::test_path("../../.local/screens")
-  if (dir.exists(screens_dir)) {
-    screenshot_path <- file.path(screens_dir, "06-frame.png")
-    if (file.exists(screenshot_path)) {
-      file.remove(screenshot_path)
+  have_screens <- dir.exists(screens_dir)
+  modes <- c(setup = "01", data = "02", report = "03", qc = "04", logs = "05")
+  for (m in names(modes)) {
+    app$click(selector = sprintf('[data-ar-mode="%s"]', m))
+    app$wait_for_idle()
+    ws_class <- app$get_js("document.querySelector('.ar-workspace').className;")
+    expect_match(ws_class, paste0("ar-mode-", m), fixed = TRUE)
+    if (have_screens) {
+      shot <- file.path(screens_dir, sprintf("%s-%s.png", modes[[m]], m))
+      # get_screenshot() will not overwrite, so clear a stale capture first.
+      if (file.exists(shot)) file.remove(shot)
+      app$get_screenshot(shot)
     }
-    app$get_screenshot(screenshot_path)
   }
 })

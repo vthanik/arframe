@@ -5,8 +5,8 @@
 # can be referenced by hand-rolled chrome that bslib does not own. See
 # docs/superpowers/specs/2026-07-02-arframe-galley-design-system.md #1-2.
 
-#' The Galley bslib theme — Linear-family aesthetic (indigo accent,
-#' near-monochrome ink, 4px radius, IBM Plex Sans Regular).
+#' The Galley bslib theme — dashboard aesthetic (explorer-blue accent,
+#' elevated cards, 8px radius, IBM Plex Sans 400-700).
 #'
 #' Sets only the Bootstrap-level brand variables. The desk/paper/chrome
 #' surfaces, ink scale, stamps, chips, spacing, and motion tokens live in
@@ -43,9 +43,9 @@ ar_theme <- function() {
       "Menlo",
       "monospace"
     ),
-    "border-radius" = "4px",
-    "btn-border-radius" = "4px",
-    "input-border-radius" = "4px"
+    "border-radius" = "8px",
+    "btn-border-radius" = "8px",
+    "input-border-radius" = "8px"
   )
 }
 

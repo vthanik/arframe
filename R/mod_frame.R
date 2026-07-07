@@ -1,18 +1,20 @@
-# The Galley frame: a 46px .ex-appbar on top of five mounted mode bodies
-# (report/data/qc/logs/setup). Layout only: every body is handed in by the
-# caller as opaque tag content and all five stay MOUNTED at once (draft
-# state lives in the store, never the DOM -- see the suspend-contract
-# regression in test-fct_store.R). CSS shows only the one matching
-# `store$rv$mode` via the `ar-mode-*` class on `.ar-workspace`, set by
-# arframe.js's "ar-mode" custom message handler.
+# The Galley frame: a left `.ar-sidebar` (brand + mode nav) beside `.ar-main`
+# (a `.ar-topbar` over five mounted mode bodies -- report/data/qc/logs/setup).
+# Layout only: every body is handed in by the caller as opaque tag content and
+# all five stay MOUNTED at once (draft state lives in the store, never the DOM
+# -- see the suspend-contract regression in test-fct_store.R). CSS shows only
+# the one matching `store$rv$mode` via the `ar-mode-*` class on `.ar-workspace`,
+# set by arframe.js's "ar-mode" handler; the sidebar nav items carry
+# `data-ar-mode` (the same delegated click as the old segmented switch).
 
-#' The Galley frame UI: a single-row appbar over the five mounted mode bodies.
+#' The Galley frame UI: a left sidebar (brand + mode nav) beside the main
+#' column (a top action bar over the five mounted mode bodies).
 #'
-#' Mode switching lives in the header's `.ex-section-switch` segmented control
-#' (Stage 2 rebuild); the earlier far-left `.ar-actbar` rail is gone. Each
-#' segment carries `data-ar-mode`, picked up by arframe.js's delegated click
-#' handler which fires `input$mode` -- the observer at `mod_frame_server()`
-#' still owns the mode-toggle semantics.
+#' Mode switching lives in the sidebar's `.ar-nav`: each `.ar-nav-item` carries
+#' `data-ar-mode`, picked up by arframe.js's delegated click handler which
+#' fires `input$mode`; the ACTIVE item is a pure CSS rule keyed off the
+#' workspace `ar-mode-*` class. The `mod_frame_server()` observer still owns
+#' the mode-toggle semantics.
 #' @param id *The module namespace.* `<character(1)>: required`.
 #' @param report_body,data_body,qc_body,logs_body,setup_body *Per-mode body
 #'   content.* `<tag/tagList>: required`. Opaque to this module.
@@ -29,28 +31,47 @@ mod_frame_ui <- function(
   shiny::div(
     # Opens in Setup mode -- study configuration is the first stop.
     class = "ar-workspace ar-mode-setup",
-    .frame_bar(ns),
+    .frame_sidebar(ns),
     shiny::div(
-      class = "ar-body",
-      shiny::div(class = "ar-body-setup", setup_body),
-      shiny::div(class = "ar-body-data", data_body),
-      shiny::div(class = "ar-body-report", report_body),
-      shiny::div(class = "ar-body-qc", qc_body),
-      shiny::div(class = "ar-body-logs", logs_body)
+      class = "ar-main",
+      .frame_topbar(ns),
+      shiny::div(
+        class = "ar-body",
+        shiny::div(class = "ar-body-setup", setup_body),
+        shiny::div(class = "ar-body-data", data_body),
+        shiny::div(class = "ar-body-report", report_body),
+        shiny::div(class = "ar-body-qc", qc_body),
+        shiny::div(class = "ar-body-logs", logs_body)
+      )
     )
   )
 }
 
-#' The 46px `.ex-appbar`: wordmark, segmented mode switch, click-to-edit
-#' title (natively centered in the title slot via flex), then the actions
-#' cluster (Open \u00b7 save chip \u00b7 Refresh \u00b7 Undo/Redo \u00b7 palette hint \u00b7
-#' Package). Presence avatars are wired in Stage 3.
+#' The left sidebar: a brand mark + wordmark, the vertical mode nav, and a
+#' footer slot (presence avatars land here in a follow-up).
 #' @noRd
-.frame_bar <- function(ns) {
+.frame_sidebar <- function(ns) {
+  shiny::tags$nav(
+    class = "ar-sidebar",
+    `aria-label` = "Primary",
+    shiny::div(
+      class = "ar-sidebar-brand",
+      shiny::span(class = "ar-sidebar-mark", `aria-hidden` = "true"),
+      shiny::span(class = "ar-sidebar-word", "arframe")
+    ),
+    .frame_nav(),
+    shiny::div(class = "ar-sidebar-foot")
+  )
+}
+
+#' The per-mode top bar: the click-to-edit report title on the left, then the
+#' global actions cluster on the right (Open / save chip / Refresh / Undo /
+#' Redo / palette hint / Package). Mode-specific toolbars live inside each mode
+#' body, not here.
+#' @noRd
+.frame_topbar <- function(ns) {
   shiny::div(
-    class = "ex-appbar",
-    shiny::span(class = "ex-appbar-brand ar-mono", "arframe"),
-    .frame_section_switch(),
+    class = "ar-topbar",
     .frame_title(ns),
     shiny::div(
       class = "ex-appbar-actions",
@@ -127,36 +148,37 @@ mod_frame_ui <- function(
   )
 }
 
-#' The segmented mode switch inside the appbar. Setup / Data / Report /
-#' Review / Logs are peers; the ACTIVE segment is a pure CSS rule keyed
-#' off the workspace `ar-mode-*` class (no server round-trip on switch).
-#' Each segment carries `data-ar-mode` for arframe.js's delegated click
-#' handler, which posts `input$mode`.
+#' The vertical mode nav inside the sidebar. Setup / Data / Report / Review /
+#' Logs are peers; the ACTIVE item is a pure CSS rule keyed off the workspace
+#' `ar-mode-*` class (no server round-trip on switch). Each item carries
+#' `data-ar-mode` for arframe.js's delegated click handler, which posts
+#' `input$mode`.
 #' @noRd
-.frame_section_switch <- function() {
+.frame_nav <- function() {
   shiny::div(
-    class = "ex-section-switch",
+    class = "ar-nav",
     role = "tablist",
-    .seg("setup", "Setup"),
-    .seg("data", "Data"),
-    .seg("report", "Report"),
-    .seg("qc", "Review"),
-    .seg("logs", "Logs")
+    .nav_item("setup", "Setup", "gear"),
+    .nav_item("data", "Data", "database"),
+    .nav_item("report", "Report", "report"),
+    .nav_item("qc", "Review", "review"),
+    .nav_item("logs", "Logs", "logs")
   )
 }
 
-#' One appbar segment: a plain <button> that the delegated click handler
-#' reads via `data-ar-mode`. No Shiny action-button wrapper -- the input
-#' is posted from JS, so a bare <button> keeps the DOM minimal.
+#' One sidebar nav item: a plain <button> (icon + label) the delegated click
+#' handler reads via `data-ar-mode`. No Shiny action-button wrapper -- the
+#' input is posted from JS, so a bare <button> keeps the DOM minimal.
 #' @noRd
-.seg <- function(mode, label) {
+.nav_item <- function(mode, label, icon) {
   shiny::tags$button(
     type = "button",
-    class = "ex-seg",
+    class = "ar-nav-item",
     role = "tab",
     `data-ar-mode` = mode,
     `aria-label` = label,
-    label
+    shiny::span(class = "ar-nav-item-icon", .icon(icon, 18)),
+    shiny::span(class = "ar-nav-item-label", label)
   )
 }
 

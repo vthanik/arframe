@@ -67,34 +67,51 @@ input[type="radio"] {
   font-family: "IBM Plex Mono", ui-monospace, monospace;
   margin: 2px 0 6px;
 }
+/* status pill: soft-fill capsule, a solid status dot (::before) + the
+   status word. Colour never carries the signal alone -- the word is
+   always present and `.stamp()` sets an aria-label sentence. */
 .ar-stamp {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-family: "IBM Plex Mono", monospace;
   font-size: 11px;
-  letter-spacing: 0.08em;
-  line-height: 1.4;
-  padding: 0 4px;
-  border: 1px solid currentColor;
-  border-radius: var(--ar-radius-sm);
-  background: transparent;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  line-height: 1.5;
+  padding: 2px 9px 2px 8px;
+  border-radius: var(--ar-radius-pill);
+  white-space: nowrap;
+}
+.ar-stamp::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
 }
 .ar-stamp-ready {
   color: var(--ar-ready);
+  background: var(--ar-ready-bg);
 }
 .ar-stamp-draft {
   color: var(--ar-draft);
-  border-color: #c9a227;
+  background: var(--ar-draft-bg);
 }
 .ar-stamp-needs_data {
-  color: var(--ar-ink-4);
+  color: var(--ar-needs-data);
+  background: var(--ar-needs-data-bg);
 }
 .ar-stamp-broken {
   color: var(--ar-error);
+  background: var(--ar-error-bg);
 }
 .ar-stamp-stale {
-  /* Run semantics (decision #8): a heavy edit awaiting Run. The draft
-     amber family -- attention, not failure. */
-  color: var(--ar-draft);
+  /* Run semantics (decision #8): a heavy edit awaiting Run. Blue =
+     actionable "re-typeset", distinct from draft amber. */
+  color: var(--ar-stale);
+  background: var(--ar-stale-bg);
 }
 .ar-chip {
   display: inline-flex;
@@ -146,6 +163,101 @@ input[type="radio"] {
   flex: 0 0 auto;
 }
 
+/* -- dashboard card (generic elevated surface). NB `.ar-card` is the
+   inspector root; the generic panel is `.ar-panel`. -- */
+.ar-panel {
+  background: var(--ar-card);
+  border: 1px solid var(--ar-paper-edge);
+  border-radius: var(--ar-radius-xl);
+  box-shadow: var(--ar-shadow-card);
+}
+.ar-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ar-space-3);
+  padding: var(--ar-space-4) var(--ar-space-5) 0;
+}
+.ar-panel-title {
+  font-size: var(--ar-fs-section);
+  font-weight: var(--ar-fw-semibold);
+  color: var(--ar-ink);
+  letter-spacing: -0.01em;
+}
+.ar-panel-body {
+  padding: var(--ar-space-4) var(--ar-space-5) var(--ar-space-5);
+}
+
+/* -- stat tile: a big mono value + label (+ optional delta / icon) -- */
+.ar-stat-tile {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ar-space-3);
+}
+.ar-stat-tile-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--ar-radius-lg);
+  color: var(--ar-accent);
+  background: var(--ar-accent-weak);
+  flex: 0 0 auto;
+}
+.ar-stat-tile-main {
+  min-width: 0;
+}
+.ar-stat-tile-value {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: var(--ar-fs-stat);
+  font-weight: var(--ar-fw-medium);
+  line-height: 1.1;
+  color: var(--ar-ink);
+  letter-spacing: -0.02em;
+}
+.ar-stat-tile-label {
+  margin-top: 2px;
+  font-size: var(--ex-fs-body);
+  color: var(--ar-ink-3);
+}
+.ar-stat-tile-delta {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--ex-fs-micro);
+  font-weight: var(--ar-fw-semibold);
+}
+.ar-trend-up {
+  color: var(--ar-ready);
+}
+.ar-trend-down {
+  color: var(--ar-error);
+}
+.ar-trend-flat {
+  color: var(--ar-ink-4);
+}
+
+/* -- team presence avatar: initials on a coloured disc, ringed live -- */
+.ar-avatar {
+  --ar-avatar-bg: var(--ar-ink-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--ar-avatar-bg);
+  color: #fff;
+  font-size: 11px;
+  font-weight: var(--ar-fw-semibold);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 2px var(--ar-card);
+}
+.ar-avatar-live {
+  box-shadow: 0 0 0 2px var(--ar-card), 0 0 0 4px var(--ar-ready);
+}
+
 /* ============ 02 frame ============ */
 /* One 100vh frame: 42px app bar, then a row of [44px activity bar | body
    mounting all four mode furniture sets at once], 26px status bar. The
@@ -155,16 +267,139 @@ input[type="radio"] {
    docs/superpowers/specs/2026-07-02-arframe-galley-design-system.md #3. */
 .ar-workspace {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   height: 100vh;
 }
 
-/* App bar chrome moved to the `.ex-appbar` skeleton (section 15 below).
-   The old .ar-bar / .ar-bar-* / .ar-main / .ar-actbar / .ar-act-btn CSS
-   was deleted in Stage 2 when mode switching folded into the header's
-   segmented control (`.ex-section-switch` / `.ex-seg`). Active-mode
-   coloring is driven from the workspace's `ar-mode-*` class via a rule
-   in section 15. */
+/* -- left sidebar: brand + vertical mode nav (2026-07-07 dashboard shell,
+   supersedes the top `.ex-appbar` segmented switch) -- */
+.ar-sidebar {
+  flex: 0 0 220px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ar-space-2);
+  padding: var(--ar-space-4) var(--ar-space-3);
+  background: var(--ar-chrome);
+  border-right: 1px solid var(--ar-rule);
+}
+.ar-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-2);
+  padding: var(--ar-space-2) var(--ar-space-2) var(--ar-space-4);
+}
+.ar-sidebar-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--ar-accent);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+  flex: 0 0 auto;
+}
+.ar-sidebar-word {
+  font-size: 15px;
+  font-weight: var(--ar-fw-semibold);
+  letter-spacing: -0.01em;
+  color: var(--ar-ink);
+}
+.ar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-3);
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  background: transparent;
+  border-radius: var(--ar-radius);
+  color: var(--ar-ink-3);
+  font-size: var(--ex-fs-body);
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--ar-motion-fast) var(--ar-motion-ease),
+              color var(--ar-motion-fast) var(--ar-motion-ease);
+}
+.ar-nav-item-icon {
+  display: inline-flex;
+  color: var(--ar-ink-4);
+  flex: 0 0 auto;
+}
+.ar-nav-item:hover {
+  background: var(--ar-paper-2);
+  color: var(--ar-ink);
+}
+.ar-nav-item:hover .ar-nav-item-icon {
+  color: var(--ar-ink-2);
+}
+.ar-nav-item:focus-visible {
+  outline: 2px solid var(--ar-focus);
+  outline-offset: -2px;
+}
+/* active mode: accent-tinted pill + accent icon, keyed off the workspace class */
+.ar-mode-setup .ar-nav-item[data-ar-mode="setup"],
+.ar-mode-data .ar-nav-item[data-ar-mode="data"],
+.ar-mode-report .ar-nav-item[data-ar-mode="report"],
+.ar-mode-qc .ar-nav-item[data-ar-mode="qc"],
+.ar-mode-logs .ar-nav-item[data-ar-mode="logs"] {
+  background: var(--ar-accent-weak);
+  color: var(--ar-accent);
+  font-weight: var(--ar-fw-semibold);
+}
+.ar-mode-setup .ar-nav-item[data-ar-mode="setup"] .ar-nav-item-icon,
+.ar-mode-data .ar-nav-item[data-ar-mode="data"] .ar-nav-item-icon,
+.ar-mode-report .ar-nav-item[data-ar-mode="report"] .ar-nav-item-icon,
+.ar-mode-qc .ar-nav-item[data-ar-mode="qc"] .ar-nav-item-icon,
+.ar-mode-logs .ar-nav-item[data-ar-mode="logs"] .ar-nav-item-icon {
+  color: var(--ar-accent);
+}
+.ar-sidebar-foot {
+  margin-top: auto;
+}
+
+/* -- main column: the per-mode top bar over the mounted mode bodies -- */
+.ar-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ar-topbar {
+  flex: 0 0 56px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 var(--ar-space-5);
+  background: var(--ar-chrome);
+  border-bottom: 1px solid var(--ar-rule);
+}
+.ar-topbar .ex-appbar-title {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+}
+.ar-topbar .ex-appbar-title .ar-title {
+  font-size: var(--ar-fs-section);
+  font-weight: var(--ar-fw-semibold);
+}
+
+/* responsive: below 1024px the sidebar folds to an icon rail (labels hidden) */
+@media (max-width: 1024px) {
+  .ar-sidebar {
+    flex-basis: 60px;
+    padding: var(--ar-space-4) var(--ar-space-2);
+  }
+  .ar-sidebar-word,
+  .ar-nav-item-label {
+    display: none;
+  }
+  .ar-nav-item {
+    justify-content: center;
+  }
+}
 /* The primary action pill (Package export). Linear-style filled accent
    button — indigo bg, white text, tight radius, subtle press feedback. */
 .ar-btn-ink {
@@ -269,13 +504,17 @@ input[type="radio"] {
   overflow-y: auto;
   background: var(--ar-paper);
 }
-.ar-setup > * {
-  display: block !important; /* shiny-html-output uses display:contents */
+/* Scope to the content column only. The `> *` form also un-hid the sibling
+   `<datalist id="ar-stat-atoms">` (its options rendered as a tall list) and
+   padded the off-screen pickers; targeting `.shiny-html-output` leaves the
+   datalist natively hidden and the pickers off-screen. */
+.ar-setup > .shiny-html-output {
+  display: block !important; /* shiny-html-output defaults to display:contents */
   padding: 32px 40px 120px;
   width: 100%;
   container-type: inline-size;
 }
-.ar-setup > * > .ar-setup-section {
+.ar-setup > .shiny-html-output > .ar-setup-section {
   display: block;
 }
 .ar-setup-section {
@@ -3109,24 +3348,8 @@ select.ar-input-flat {
   flex-shrink: 0;
 }
 
-/* -- appbar (Linear-family: 48px, flat white, hairline bottom, brand
-      slightly bolder + wordmark tracked tight) -- */
-.ex-appbar {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex: 0 0 48px;
-  padding: 0 14px;
-  background: var(--ar-chrome);
-  border-bottom: 1px solid var(--ar-rule);
-}
-.ex-appbar-brand {
-  font-weight: 600;
-  font-size: 14.5px;
-  letter-spacing: -0.02em;
-  color: var(--ar-ink);
-  padding-right: 4px;
-}
+/* -- top-bar title + actions (reused by `.ar-topbar`; the old `.ex-appbar`
+      container, brand, and segmented switch retired for the sidebar shell) -- */
 .ex-appbar-title {
   flex: 1 1 auto;
   display: flex;
@@ -3149,55 +3372,6 @@ select.ar-input-flat {
   gap: 6px;
   margin-left: auto;
 }
-.ex-appbar-user {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  margin-left: 4px;
-  color: var(--ar-ink-3);
-}
-
-/* -- section switch: Linear-style tab group. Ghost pill on hover, a
-      soft indigo fill + accent text on active. All 5 modes are peers. */
-.ex-section-switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  margin-left: 8px;
-  padding: 3px;
-  background: transparent;
-  border-radius: var(--ar-radius);
-}
-.ex-seg {
-  padding: 5px 12px;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--ar-ink-3);
-  border-radius: var(--ar-radius-sm);
-  text-decoration: none;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  transition: background var(--ar-motion-fast) var(--ar-motion-ease),
-              color var(--ar-motion-fast) var(--ar-motion-ease);
-}
-.ex-seg:hover {
-  background: var(--ar-paper-2);
-  color: var(--ar-ink);
-}
-.ex-seg.active,
-.ar-mode-setup  .ex-seg[data-ar-mode="setup"],
-.ar-mode-data   .ex-seg[data-ar-mode="data"],
-.ar-mode-report .ex-seg[data-ar-mode="report"],
-.ar-mode-qc     .ex-seg[data-ar-mode="qc"],
-.ar-mode-logs   .ex-seg[data-ar-mode="logs"] {
-  color: var(--ar-accent);
-  background: var(--ar-accent-weak);
-  font-weight: 600;
-}
-
 /* -- presence dot (Stage 2 wires this into the header) -- */
 .ex-conn-dot {
   width: 7px;
@@ -3205,263 +3379,6 @@ select.ar-input-flat {
   border-radius: 50%;
   background: #16a34a;
   box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.18);
-}
-
-/* -- list surface (Stage 2b: mounted by Setup > Sources AND Data mode) -- */
-.ex-manage-list {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-.ex-manage-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 16px;
-  background: var(--dv-paper);
-  border-bottom: 1px solid var(--dv-rule-2);
-}
-.ex-manage-tools {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.ex-search {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  width: 240px;
-}
-.ex-search > svg {
-  position: absolute !important;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--dv-ink-3);
-  pointer-events: none;
-}
-.ex-search .form-group,
-.ex-search .shiny-input-container {
-  margin: 0;
-  width: 100%;
-}
-.ex-search .form-control {
-  height: 30px;
-  padding: 4px 10px 4px 30px;
-  font-size: 12.5px;
-}
-.ex-import {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.ex-import .btn {
-  margin: 0;
-}
-.ex-manage-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 7px 16px;
-  border-bottom: 1px solid var(--dv-rule-2);
-}
-.ex-manage-count {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 9px;
-}
-.ex-scope {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--dv-ink);
-}
-.ex-scope-n {
-  font-size: var(--ex-fs-micro);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  font-weight: 600;
-  color: var(--dv-ink-3);
-  font-variant-numeric: tabular-nums;
-}
-
-/* -- the dataset grid (Stage 2b) -- */
-.ex-grid {
-  flex: 1 1 auto;
-  overflow: auto;
-}
-.ex-grid-head,
-.ex-grid-row {
-  display: grid;
-  /* Name | Folder | Type | Columns | Rows | Size | Status | Date */
-  grid-template-columns:
-    minmax(200px, 2fr) 1.1fr 86px 84px 84px 94px 124px 1.2fr;
-  align-items: center;
-  padding: 0 16px;
-}
-.ex-grid-head {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--dv-paper);
-  border-bottom: 1px solid var(--dv-rule);
-}
-.ex-grid-head .ex-gcell {
-  height: 34px;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 600;
-  color: var(--dv-ink-3);
-}
-.ex-grid-row {
-  border-bottom: 1px solid var(--dv-rule-2);
-  border-left: 2px solid transparent;
-  cursor: pointer;
-  transition: background var(--ex-dur-fast) var(--ex-ease);
-}
-.ex-grid-row:hover {
-  background: var(--dv-paper-2);
-}
-.ex-grid-row.selected {
-  border-left-color: var(--dv-signal);
-  background: var(--dv-signal-weak);
-}
-.ex-gcell {
-  height: 29px;
-  display: flex;
-  align-items: center;
-  font-size: 13px;
-  color: var(--dv-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding-right: 12px;
-}
-.ex-gcell-num {
-  justify-content: flex-end;
-  font-variant-numeric: tabular-nums;
-  padding-right: 20px;
-}
-.ex-gcell-name {
-  gap: 7px;
-}
-.ex-gcell-folder {
-  color: var(--dv-ink-2);
-}
-.ex-ftype {
-  color: var(--dv-ink-3);
-  display: inline-flex;
-}
-.ex-type-chip {
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  color: var(--dv-ink-3);
-  background: var(--dv-paper-2);
-  border-radius: var(--dv-radius-sm);
-  padding: 2px 6px;
-}
-.ex-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11.5px;
-  font-weight: 600;
-  line-height: 1;
-  padding: 3px 8px 3px 6px;
-  border-radius: 999px;
-}
-.ex-status-lazy {
-  color: var(--dv-ink-3);
-  background: var(--dv-paper-2);
-}
-.ex-status-mem {
-  color: var(--dv-signal);
-  background: var(--dv-signal-weak);
-}
-.ex-status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  border: 1.4px solid var(--dv-ink-3);
-  box-sizing: border-box;
-}
-.ex-status-ico {
-  font-size: 11px;
-}
-
-/* -- viewer canvas takeover (Stage 4 wires this into Data mode) -- */
-.ex-manage-viewer {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-.ex-viewer-head {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 8px 16px;
-  background: var(--dv-paper);
-  border-bottom: 1px solid var(--dv-rule);
-}
-.ex-viewer-crumb {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-.ex-crumb-folder {
-  font-size: 12px;
-  color: var(--dv-ink-3);
-}
-.ex-crumb-sep {
-  color: var(--dv-ink-3);
-}
-.ex-crumb-name {
-  font-size: 15px;
-  font-weight: 300;
-  color: var(--dv-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ex-viewer-close {
-  margin-left: auto;
-}
-.ex-viewer-stage {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-}
-.ex-viewer-stage > div {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-}
-
-/* -- first-run empty state for Setup > Sources (used sparingly per the
-      design-quality proof: only where the section has genuine first-run
-      guidance, never as apologetic placeholder) -- */
-.ex-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 6px;
-  color: var(--dv-ink-3);
-  text-align: center;
-}
-.ex-empty-title {
-  font-size: var(--ex-fs-title);
-  font-weight: 600;
-  color: var(--dv-ink-2);
-}
-.ex-empty-sub {
-  font-size: 12px;
-  max-width: 360px;
 }
 
 /* -- palette hint span: bridge.js fills it with the platform-appropriate
