@@ -368,18 +368,11 @@ input[type="radio"] {
 
 /* -- page-header row: click-to-edit report title, left-aligned, present in
    every mode -- */
-.ar-pagehead {
-  display: flex;
-  align-items: center;
-  gap: var(--ar-space-4);
-  padding: var(--ar-space-4) var(--ar-space-5) 0;
-}
-.ar-pagehead .ex-appbar-title {
-  flex: 1 1 auto;
-  justify-content: flex-start;
-}
-.ar-pagehead .ar-title {
-  font-size: var(--ar-fs-page);
+/* Report title lives centered in the top app bar itself (the base
+   `.ex-appbar-title { flex:1; justify-content:center }` centers it between
+   the mode nav and the actions cluster) -- no separate page-header row. */
+.ar-topbar .ar-title {
+  font-size: 1rem;
   font-weight: var(--ar-fw-semibold);
 }
 /* The primary action pill (Package export). Linear-style filled accent
@@ -495,22 +488,17 @@ input[type="radio"] {
   padding: 0; /* the dash owns its own padding */
   width: 100%;
 }
+/* The setup shell is the grid item; the dash lives inside so its
+   `container-type: inline-size` context is not collapsed by being a direct
+   grid item under a `minmax(0, 1120px)` track. */
+.ar-setup > .ar-setup-shell {
+  width: 100%;
+}
 .ar-setup-dash {
   max-width: 1120px;
   margin: 0 auto;
   padding: var(--ar-space-5) var(--ar-space-7) 120px;
   container-type: inline-size;
-}
-.ar-setup-overview {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ar-space-5);
-  padding: var(--ar-space-4) var(--ar-space-5);
-  margin-bottom: var(--ar-space-5);
-  background: var(--ar-paper);
-  border: 1px solid var(--ar-paper-edge);
-  border-radius: var(--ar-radius-xl);
-  box-shadow: var(--ar-shadow-card);
 }
 /* ---- Setup: section tab strip ---- */
 .ar-setup-tabs {
@@ -559,13 +547,14 @@ input[type="radio"] {
 .ar-setup-dash .ar-setup-section {
   display: none;
 }
-.ar-setup-tab-study       .ar-setup-section[data-ar-section="study"],
-.ar-setup-tab-paths       .ar-setup-section[data-ar-section="paths"],
-.ar-setup-tab-treatment   .ar-setup-section[data-ar-section="treatment"],
-.ar-setup-tab-populations .ar-setup-section[data-ar-section="populations"],
-.ar-setup-tab-page        .ar-setup-section[data-ar-section="page"],
-.ar-setup-tab-summaries   .ar-setup-section[data-ar-section="summaries"],
-.ar-setup-tab-team        .ar-setup-section[data-ar-section="team"] {
+.ar-setup-tab-study         .ar-setup-section[data-ar-section="study"],
+.ar-setup-tab-paths         .ar-setup-section[data-ar-section="paths"],
+.ar-setup-tab-populations   .ar-setup-section[data-ar-section="populations"],
+.ar-setup-tab-analysis_sets .ar-setup-section[data-ar-section="analysis_sets"],
+.ar-setup-tab-treatment     .ar-setup-section[data-ar-section="treatment"],
+.ar-setup-tab-page          .ar-setup-section[data-ar-section="page"],
+.ar-setup-tab-summaries     .ar-setup-section[data-ar-section="summaries"],
+.ar-setup-tab-team          .ar-setup-section[data-ar-section="team"] {
   display: block;
 }
 .ar-setup-group {
@@ -582,7 +571,7 @@ input[type="radio"] {
 .ar-setup-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 16px 24px;
+  gap: 22px 28px;
 }
 @container (min-width: 720px) {
   .ar-setup-grid {
@@ -610,7 +599,7 @@ input[type="radio"] {
 .ar-setup-pops {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 10px;
 }
 .ar-setup-pop-header {
   display: grid;
@@ -634,6 +623,29 @@ input[type="radio"] {
 }
 .ar-setup-pop-row .ar-setup-field {
   gap: 0;
+}
+/* Arm decode rows: grip | value | label | delete (own grid, overrides the
+   6-col populations grid). */
+.ar-setup-arm-header,
+.ar-setup-arm-row {
+  grid-template-columns: 20px 1fr 1.5fr 32px;
+}
+/* Breathing space between arm rows + a touch more row padding. */
+.ar-setup-arms {
+  gap: 10px;
+  margin-top: 4px;
+}
+.ar-setup-arms .ar-setup-arm-row {
+  padding: 10px 12px;
+}
+.ar-setup-arms .ar-level-grip {
+  align-self: center;
+}
+.ar-sortable-ghost {
+  opacity: 0.4;
+}
+.ar-sortable-chosen {
+  background: var(--ar-chrome);
 }
 .ar-setup-pop-default {
   border-color: var(--ar-accent);
@@ -683,7 +695,7 @@ input[type="radio"] {
 .ar-band-lines {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
 }
 .ar-band-row {
   display: grid;
@@ -901,6 +913,43 @@ input[type="radio"] {
 select.ar-input-flat {
   padding: 6px 8px;
   background-color: var(--ar-paper);
+}
+/* Subject-id selected columns: removable "A NAME x" chips above the
+   Add-a-variable picker. */
+.ar-subject-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.ar-subject-chips:empty {
+  display: none;
+}
+.ar-subject-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 3px 5px;
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius);
+  background: var(--ar-paper);
+}
+.ar-subject-chip-name {
+  font-family: var(--ar-font-mono, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: 12.5px;
+  color: var(--ar-ink);
+}
+.ar-subject-chip-x {
+  border: none;
+  background: transparent;
+  color: var(--ar-ink-3);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 3px;
+  cursor: pointer;
+}
+.ar-subject-chip-x:hover {
+  color: var(--ar-ink);
 }
 
 /* ---- Save-state chip (topbar) ---- */
@@ -3355,9 +3404,9 @@ select.ar-input-flat {
   flex-shrink: 0;
 }
 
-/* -- title + actions (`.ex-appbar-title` reused by `.ar-pagehead`,
-      `.ex-appbar-actions` by `.ar-topbar`; the old `.ex-appbar` container,
-      brand, and segmented switch retired for the app-bar shell) -- */
+/* -- title + actions (`.ex-appbar-title` + `.ex-appbar-actions` both live
+      in `.ar-topbar`; the old `.ex-appbar` container, brand, and segmented
+      switch retired for the app-bar shell) -- */
 .ex-appbar-title {
   flex: 1 1 auto;
   display: flex;

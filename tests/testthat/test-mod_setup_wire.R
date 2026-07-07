@@ -55,7 +55,7 @@ test_that("every scalar input in mod_setup renders under a spec id", {
       value = TRUE
     ),
     # Treatment arm rows.
-    grep("^arm_row_(level|label)_[0-9]+$", ids, value = TRUE),
+    grep("^arm_row_(value|label)_[0-9]+$", ids, value = TRUE),
     # Footnote register rows.
     grep("^foot_(key|text)_[0-9]+$", ids, value = TRUE)
   )
@@ -165,7 +165,7 @@ test_that("wire_all round-trip: individual bindings write to theme", {
   })
 })
 
-test_that("Setup renderUI has 7 pharma sections in the expected order", {
+test_that("Setup renderUI has 8 pharma sections in the expected order", {
   # Render the module UI once (with a fake NS) and grep the resulting
   # HTML for `data-ar-section` attributes -- the ordered ids the
   # `.setup_section` shell stamps on each section container. Sources
@@ -175,7 +175,7 @@ test_that("Setup renderUI has 7 pharma sections in the expected order", {
   shiny::testServer(mod_setup_server, args = list(store = st), {
     # Trigger the seed observer first so populations render.
     session$flushReact()
-    html <- as.character(htmltools::renderTags(output$page)$html)
+    html <- as.character(htmltools::renderTags(output$sections)$html)
     m <- regmatches(
       html,
       gregexpr("data-ar-section=\"([a-z_]+)\"", html)
@@ -184,7 +184,16 @@ test_that("Setup renderUI has 7 pharma sections in the expected order", {
   })
   expect_identical(
     ids,
-    c("study", "paths", "treatment", "populations", "page", "summaries", "team")
+    c(
+      "study",
+      "paths",
+      "populations",
+      "analysis_sets",
+      "treatment",
+      "page",
+      "summaries",
+      "team"
+    )
   )
   expect_false(any(c("sources", "data", "preferences") %in% ids))
 })
@@ -249,17 +258,43 @@ test_that("active Setup tab survives a re-render triggered by a commit", {
     session$setInputs(setup_tab = "summaries")
     expect_identical(active_tab(), "summaries")
 
-    # An unrelated edit commits -> output$page re-renders.
+    # An unrelated edit commits -> the report bumps, re-rendering the live
+    # tab strip. The active tab is server-authoritative (`active_tab()`) and
+    # the visible-section class rides the static, client-owned wrapper, so
+    # neither the commit nor the strip re-render can bounce it back to study.
     session$setInputs(study_sponsor = "Acme Pharma")
-
-    # The active tab must still be "summaries" (not reset to "study"),
-    # and the rendered page must stamp it on the wrapper.
     expect_identical(active_tab(), "summaries")
+
+    # The re-rendered strip restamps an active tab from `active_tab()`.
     expect_match(
-      as.character(htmltools::renderTags(output$page)$html),
-      "ar-setup-tab-summaries",
+      as.character(htmltools::renderTags(output$tabstrip)$html),
+      "ar-setup-tab-active",
       fixed = TRUE
     )
+  })
+})
+
+test_that("Study date input posts to the server (native date needs onchange)", {
+  # A native <input type="date"> is NOT matched by Shiny's text-input
+  # binding (text/search/url/email only), so without an inline onchange ->
+  # setInputValue it never posts and theme$study$data_date stays empty --
+  # the Study completion badge then counts it missing forever.
+  st <- .mk_store()
+  withr::defer(arpillar::engine_close(st$con))
+  html <- shiny::isolate(as.character(.setup_study(shiny::NS("frame"), st)))
+  expect_match(html, 'type="date"', fixed = TRUE)
+  # Quotes render as HTML entities (&#39;), so match on the stable parts:
+  # the date input carries an onchange that posts this.value via setInputValue.
+  expect_match(html, "onchange=", fixed = TRUE)
+  expect_match(html, "Shiny.setInputValue(", fixed = TRUE)
+  expect_match(html, "this.value", fixed = TRUE)
+})
+
+test_that("study_data_date round-trips into theme$study$data_date", {
+  st <- .mk_store()
+  shiny::testServer(mod_setup_server, args = list(store = st), {
+    session$setInputs(study_data_date = "2006-06-27")
+    expect_identical(st$rv$report@theme$study$data_date, "2006-06-27")
   })
 })
 
@@ -279,66 +314,8 @@ test_that("bad precision input is dropped silently (coerce -> NULL)", {
   })
 })
 
-test_that(".setup_overview renders sections-done and a real subjects count", {
-  # Verified directly against .demo_catalog(): 4 datasets (ADSL/ADVS/ADTTE/
-  # ADAE), ADSL has 12 rows and 12 distinct USUBJID -- so a default store on
-  # the demo catalog resolves ALL FOUR tiles, subjects included, with real
-  # (not fabricated) numbers.
-  con <- .demo_catalog()
-  withr::defer(arpillar::engine_close(con))
-  store <- shiny::isolate(new_store(con))
-  sections <- list(list(id = "study"), list(id = "team"))
-  html <- shiny::isolate(as.character(.setup_overview(store, sections)))
-  expect_match(html, "ar-setup-overview", fixed = TRUE)
-  expect_match(html, "Sections ready", fixed = TRUE)
-  expect_match(html, "0/2", fixed = TRUE) # neither seed section is "ok"
-  expect_match(html, "Datasets", fixed = TRUE)
-  expect_match(html, ">4<", fixed = TRUE) # 4 datasets in the demo catalog
-  expect_match(html, "Records (adsl)", fixed = TRUE)
-  expect_match(html, "Subjects", fixed = TRUE)
-  expect_match(html, ">12<", fixed = TRUE) # real distinct USUBJID count
-})
-
-test_that(".setup_overview omits the subjects tile when the subject-id column does not resolve", {
-  # Same demo catalog (so Datasets + Records still resolve), but the
-  # subject-id column is seeded to a name absent from ADSL --
-  # arpillar::distinct_values() errors, the tryCatch yields NA, and the
-  # no-fabrication contract means the tile is OMITTED, never shown as 0.
-  con <- .demo_catalog()
-  withr::defer(arpillar::engine_close(con))
-  store <- shiny::isolate(new_store(con))
-  shiny::isolate({
-    theme <- store$rv$report@theme
-    theme$data$subject_id <- "NOPE_COL"
-    commit(store, S7::set_props(store$rv$report, theme = theme))
-  })
-  sections <- list(list(id = "study"), list(id = "team"))
-  html <- shiny::isolate(as.character(.setup_overview(store, sections)))
-  expect_match(html, "ar-setup-overview", fixed = TRUE)
-  expect_match(html, "Sections ready", fixed = TRUE)
-  expect_match(html, "Datasets", fixed = TRUE)
-  expect_no_match(html, "Subjects", fixed = TRUE)
-})
-
-test_that(".setup_overview reports the real subject count past distinct_values()'s 100-row picker cap (#task6-review)", {
-  # distinct_values() defaults to limit = 100L (a value-picker cap, not a
-  # counting API). A >100-distinct-subject fixture -- the 12-subject demo
-  # catalog cannot exercise this -- proves the tile shows the true 150, not
-  # the capped 100.
-  con <- arpillar::engine_open()
-  withr::defer(arpillar::engine_close(con))
-  big <- data.frame(
-    USUBJID = sprintf("S-%04d", 1:150),
-    SAFFL = "Y",
-    stringsAsFactors = FALSE
-  )
-  path <- withr::local_tempfile(fileext = ".parquet")
-  artoo::write_parquet(big, path)
-  arpillar::register_dataset(con, "ADSL", path)
-  store <- shiny::isolate(new_store(con))
-  sections <- list(list(id = "study"), list(id = "team"))
-  html <- shiny::isolate(as.character(.setup_overview(store, sections)))
-  expect_match(html, "Subjects", fixed = TRUE)
-  expect_match(html, ">150<", fixed = TRUE)
-  expect_no_match(html, ">100<", fixed = TRUE)
+test_that("Setup renderUI has no overview strip (removed 2026-07-07)", {
+  # The overview stat strip was dropped from Setup per user request; the
+  # dashboard is now just the section tab strip + the active section card.
+  expect_false(exists(".setup_overview", where = asNamespace("arframe")))
 })

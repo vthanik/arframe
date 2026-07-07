@@ -1,5 +1,5 @@
 # The Galley frame: a top `.ar-topbar` (brand + horizontal mode nav + global
-# actions) over `.ar-pagehead` (the report title) over five mounted mode
+# actions, incl. the centered click-to-edit report title) over five mounted mode
 # bodies -- setup/data/report/qc/logs, shown/hidden by a workspace mode class.
 # Server-side, the frame owns mode switching, undo/redo, and the report-title
 # edit -- all through the injected store, never local reactiveVal state.
@@ -25,8 +25,9 @@ test_that("mod_frame_ui HTML is a top app bar (mode tabs), a pagehead title, and
   expect_match(html, "ex-appbar-actions", fixed = TRUE)
   # The left sidebar is gone.
   expect_no_match(html, "ar-sidebar", fixed = TRUE)
-  # The report title now lives in a page-header row, not the bar.
-  expect_match(html, "ar-pagehead", fixed = TRUE)
+  # The report title now lives INSIDE the top bar (centered), no separate row.
+  expect_match(html, "ar-title-wrap", fixed = TRUE)
+  expect_no_match(html, "ar-pagehead", fixed = TRUE)
   # One nav item per mode, each carrying data-ar-mode for bridge.js.
   for (m in c("setup", "data", "report", "qc", "logs")) {
     expect_match(html, sprintf('data-ar-mode="%s"', m), fixed = TRUE)
@@ -113,7 +114,7 @@ test_that("arframe() launches: top app bar nav, all five bodies, per-mode switch
 
   html <- app$get_html("body", outer_html = TRUE)
   expect_match(html, "ar-topbar", fixed = TRUE)
-  expect_match(html, "ar-pagehead", fixed = TRUE)
+  expect_match(html, "ar-title-wrap", fixed = TRUE)
   expect_match(html, "ar-nav-item", fixed = TRUE)
   expect_match(html, 'data-ar-mode="setup"', fixed = TRUE)
   expect_match(html, 'data-ar-mode="data"', fixed = TRUE)

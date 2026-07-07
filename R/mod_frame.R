@@ -1,5 +1,5 @@
-# The Galley frame: a top `.ar-topbar` (brand + horizontal mode nav + global
-# actions) over `.ar-pagehead` (the click-to-edit report title) over the five
+# The Galley frame: a top `.ar-topbar` (brand + horizontal mode nav + the
+# centered click-to-edit report title + global actions) over the five
 # mounted mode bodies -- report/data/qc/logs/setup. Layout only: every body is
 # handed in by the caller as opaque tag content and all five stay MOUNTED at
 # once (draft state lives in the store, never the DOM -- see the
@@ -35,7 +35,6 @@ mod_frame_ui <- function(
     shiny::div(
       class = "ar-main",
       .frame_topbar(ns),
-      .frame_pagehead(ns),
       shiny::div(
         class = "ar-body",
         shiny::div(class = "ar-body-setup", setup_body),
@@ -63,6 +62,7 @@ mod_frame_ui <- function(
       shiny::span(class = "ar-appbar-word", "arframe")
     ),
     .frame_nav(),
+    .frame_title(ns),
     shiny::div(
       class = "ex-appbar-actions",
       shiny::div(
@@ -164,15 +164,6 @@ mod_frame_ui <- function(
       )
     )
   )
-}
-
-#' The page-header row below the app bar: the click-to-edit report title,
-#' left-aligned, present in every mode. Per-mode header content (e.g.
-#' Setup's overview strip) is rendered inside that mode's body, styled to
-#' sit contiguously beneath this row.
-#' @noRd
-.frame_pagehead <- function(ns) {
-  shiny::div(class = "ar-pagehead", .frame_title(ns))
 }
 
 #' The Galley frame server: mode switching, undo/redo, report-title edit.
