@@ -14,11 +14,9 @@ consumes arpillar as an installed `Remotes` dep.
 
 ## Current state
 
-- **arframe** HEAD `b690259` (prior session). Working tree DIRTY (in-flight,
-  nothing committed this session): `R/fct_async.R`, `R/fct_export.R`,
-  `R/mod_toolbar.R`.
-- **arpillar** HEAD `6db85f5`. Working tree DIRTY: `R/fct_render_table.R` (mod),
-  `tests/testthat/test-resolve_theme.R` (NEW).
+- **arframe** HEAD `dde1d33` (committed this session). Working tree CLEAN.
+- **arpillar** HEAD `a2d4666` (committed this session) AND installed from source
+  -- arframe's runtime now resolves theme. Working tree CLEAN.
 - Gates: **full arpillar test suite GREEN**; golden gate byte-identical
   (run with `NOT_CRAN=true`, else the byte-goldens skip_on_cran). arframe
   render-parity tests (`test-mod_toolbar`/`fct_export`/`fct_async`) GREEN.
@@ -34,7 +32,7 @@ consumes arpillar as an installed `Remotes` dep.
 | 4 LoC table + drill (flagship) | NOT started |
 | 5 Cleanup + gates + live verify | NOT started |
 
-## What landed this session (all IN-FLIGHT, uncommitted)
+## What landed this session (committed: arpillar a2d4666, arframe dde1d33)
 
 - **arframe threading** -- `report@theme` now passed to every render seam, not
   just the screen: `fct_async.R` (daemon export), `mod_toolbar.R` (per-output
@@ -96,10 +94,10 @@ consumes arpillar as an installed `Remotes` dep.
 
 ## What to do next (in order)
 
-1. **Install the updated arpillar** so arframe's runtime + any visual check use
-   the new resolution: `R CMD INSTALL ~/projects/r/arpillar` (or
-   `devtools::install("~/projects/r/arpillar")`). arframe threading works with
-   the OLD installed arpillar, but the RESOLUTION changes need this reinstall.
+1. **DONE this session** -- arpillar committed (`a2d4666`) + installed from
+   source; arframe committed (`dde1d33`); both trees clean. NOTE: reinstall
+   arpillar (`R CMD INSTALL ~/projects/r/arpillar`) after ANY future engine edit
+   before arframe/the visual check will see it.
 2. **ARD vocabulary extension** (finish Phase 1 stats): extend
    `arpillar::.summary_call` (`R/fct_render_ard.R:317`) to compute arframe's full
    continuous vocabulary via cards custom fns; add the missing atom->stat_name
