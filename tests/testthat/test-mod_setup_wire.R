@@ -165,7 +165,7 @@ test_that("wire_all round-trip: individual bindings write to theme", {
   })
 })
 
-test_that("Setup renderUI has 8 pharma sections in the expected order", {
+test_that("Setup renderUI has 9 pharma sections in the expected order", {
   # Render the module UI once (with a fake NS) and grep the resulting
   # HTML for `data-ar-section` attributes -- the ordered ids the
   # `.setup_section` shell stamps on each section container. Sources
@@ -192,6 +192,7 @@ test_that("Setup renderUI has 8 pharma sections in the expected order", {
       "treatment",
       "page",
       "summaries",
+      "footnotes",
       "team"
     )
   )

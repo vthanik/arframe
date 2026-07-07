@@ -5,7 +5,7 @@
 #                    Data + Preferences+Paths + Sources.
 #   3. Treatment     (one treatment variable + auto-filled draggable arms)
 #   4. Populations   (ADaM-flag library)
-#   5. Page & Style  (Geometry + Header/footer bands + Footnote register)
+#   5. Page & Style  (Geometry + Header/footer bands)
 #   6. Summaries     (Continuous rows + Categorical rules + Precision)
 #   7. Team          (roster + activity + presence)
 #
@@ -240,6 +240,7 @@ mod_setup_server <- function(id, store) {
         list(id = "treatment", title = "Treatment"),
         list(id = "page", title = "Page & Style"),
         list(id = "summaries", title = "Summaries"),
+        list(id = "footnotes", title = "Footnotes"),
         list(id = "team", title = "Team")
       )
       .setup_tabstrip(ns, store, meta, active)
@@ -280,6 +281,11 @@ mod_setup_server <- function(id, store) {
             id = "summaries",
             title = "Summaries",
             body = .setup_summaries(ns, store)
+          ),
+          list(
+            id = "footnotes",
+            title = "Footnotes",
+            body = .setup_footnotes(ns, store)
           ),
           list(id = "team", title = "Team", body = .setup_team(ns, store))
         )
@@ -924,9 +930,17 @@ mod_setup_server <- function(id, store) {
     populations = character(0),
     page = c("orientation", "paper"),
     summaries = character(0),
+    footnotes = character(0),
     team = character(0),
     character(0)
   )
+  if (section == "footnotes") {
+    reg <- theme$footnotes %||% list()
+    if (length(reg) == 0L) {
+      return(list(state = "none", missing = 0L))
+    }
+    return(list(state = "ok", missing = 0L))
+  }
   if (section == "paths") {
     # ADaM directory is the minimum path a study needs; the rest are
     # nice-to-haves. Green when it's set, muted when not.
@@ -1608,12 +1622,19 @@ s_study <- function(store) {
     .setup_group(
       "Footer rows",
       .band_rows(ns, "pagefoot", p$pagefoot)
-    ),
-    .setup_group(
-      "Footnote register",
-      .footnote_register(ns, store)
     )
   )
+}
+
+# ---- Footnotes section ----------------------------------------------------
+
+#' Setup > Footnotes: the study-level footnote register -- the single source
+#' of truth for footnotes reused across the whole report. Moved out of Page &
+#' Style into its own section (2026-07-07); an output references an entry by
+#' its `@KEY` (a per-output key picker lands in Report mode).
+#' @noRd
+.setup_footnotes <- function(ns, store) {
+  .footnote_register(ns, store)
 }
 
 # Editable keyword -> text list, written to `theme$footnotes`. Rows

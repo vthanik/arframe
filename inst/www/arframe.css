@@ -554,6 +554,7 @@ input[type="radio"] {
 .ar-setup-tab-treatment     .ar-setup-section[data-ar-section="treatment"],
 .ar-setup-tab-page          .ar-setup-section[data-ar-section="page"],
 .ar-setup-tab-summaries     .ar-setup-section[data-ar-section="summaries"],
+.ar-setup-tab-footnotes     .ar-setup-section[data-ar-section="footnotes"],
 .ar-setup-tab-team          .ar-setup-section[data-ar-section="team"] {
   display: block;
 }
