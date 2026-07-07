@@ -658,6 +658,12 @@ input[type="radio"] {
 .ar-setup-arm-row {
   grid-template-columns: 20px 1fr 1.5fr 32px;
 }
+/* Footnote register rows: key | text (fills the outer box) | delete (own
+   3-col grid, overrides the 6-col populations grid). */
+.ar-setup-foot-header,
+.ar-setup-foot-row {
+  grid-template-columns: 100px 1fr 32px;
+}
 /* Breathing space between arm rows + a touch more row padding. */
 .ar-setup-arms {
   gap: 10px;
