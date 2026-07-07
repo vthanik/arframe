@@ -530,3 +530,31 @@ $(document).on("keydown", function (e) {
     if (e.key === "Escape") hideCtxMenu();
   });
 })();
+
+// Undo / redo via keyboard (the app-bar circle buttons were removed 2026-07-07).
+// Cmd/Ctrl+Z -> frame-undo_btn ; Cmd/Ctrl+Shift+Z -> frame-redo_btn. Skipped
+// while focus is in a text field so native input undo still works there.
+$(document).on("keydown", function (e) {
+  var key = (e.key || "").toLowerCase();
+  if (key !== "z" || !(e.metaKey || e.ctrlKey)) return;
+  if (
+    e.target &&
+    typeof e.target.closest === "function" &&
+    e.target.closest("input, textarea, select, [contenteditable]")
+  ) {
+    return;
+  }
+  e.preventDefault();
+  var id = e.shiftKey ? "frame-redo_btn" : "frame-undo_btn";
+  Shiny.setInputValue(id, Date.now(), { priority: "event" });
+});
+
+// Tab-focus refresh: when the tab regains visibility, post `ar_refresh` so
+// the server's top-level observer (R/app.R) rescans the project folder for
+// other-session edits. Not namespaced -- `ar_refresh` is a top-level server
+// input, not a module input.
+document.addEventListener("visibilitychange", function () {
+  if (document.visibilityState === "visible") {
+    Shiny.setInputValue("ar_refresh", Date.now(), { priority: "event" });
+  }
+});

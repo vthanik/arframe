@@ -357,6 +357,21 @@
       if (e3.key === "Escape") hideCtxMenu();
     });
   })();
+  $(document).on("keydown", function(e3) {
+    var key = (e3.key || "").toLowerCase();
+    if (key !== "z" || !(e3.metaKey || e3.ctrlKey)) return;
+    if (e3.target && typeof e3.target.closest === "function" && e3.target.closest("input, textarea, select, [contenteditable]")) {
+      return;
+    }
+    e3.preventDefault();
+    var id = e3.shiftKey ? "frame-redo_btn" : "frame-undo_btn";
+    Shiny.setInputValue(id, Date.now(), { priority: "event" });
+  });
+  document.addEventListener("visibilitychange", function() {
+    if (document.visibilityState === "visible") {
+      Shiny.setInputValue("ar_refresh", Date.now(), { priority: "event" });
+    }
+  });
 
   // srcjs/node_modules/preact/dist/preact.module.js
   var n;
