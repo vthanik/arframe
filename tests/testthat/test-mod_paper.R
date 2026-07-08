@@ -149,7 +149,9 @@ test_that("a READY table renders tabular-doc markup with arm names and the title
         fixed = TRUE
       )
       expect_match(html, "Safety Population.", fixed = TRUE)
-      expect_match(html, "Source:", fixed = TRUE)
+      # The auto "Source: ... arframe ..." provenance line was removed
+      # 2026-07-09 (user call) -- no default footnote on a deliverable.
+      expect_no_match(html, "Source:", fixed = TRUE)
       expect_identical(fx$store$rv$broken, character(0))
     }
   )
@@ -590,7 +592,9 @@ test_that("the stale notice keeps the full page shell: title block + source line
       html <- output$sheet_html_slot$html
       expect_match(html, "ar-paper-title-block", fixed = TRUE)
       expect_match(html, "ar-paper-stale", fixed = TRUE)
-      expect_match(html, "ar-paper-source", fixed = TRUE)
+      # Source line removed everywhere 2026-07-09 (user call), incl. the
+      # stale path.
+      expect_no_match(html, "ar-paper-source", fixed = TRUE)
     }
   )
 })
@@ -824,26 +828,6 @@ test_that(".filters_tag_label names the safety preset, else counts filters", {
   )
 })
 
-test_that(".source_text/.with_source compose the one provenance string", {
-  obj <- arpillar::object(
-    id = "o1",
-    type = "summary",
-    dataset = "ADSL",
-    title = "T"
-  )
-  txt <- .source_text(obj)
-  expect_match(
-    txt,
-    "^Source: ADSL - arframe [0-9.]+ - \\d{4}-\\d{2}-\\d{2}$"
-  )
-
-  # .with_source bakes exactly that string into options$source and keeps
-  # every other option; the original object is untouched (S7 immutability).
-  with_src <- .with_source(obj)
-  expect_identical(with_src@options$source, txt)
-  expect_null(obj@options$source)
-})
-
 test_that("a malformed region payload is dropped, never a session error", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
@@ -966,7 +950,7 @@ test_that(".chrome_stamp is locale-independent ddMMMyyyy:hh:mm:ss", {
 })
 
 test_that("the export report leg stamps every output's chrome tokens", {
-  # .report_with_source() composes .with_source() + .with_chrome() with ONE
+  # .report_for_export() composes .with_footnotes() + .with_chrome() with ONE
   # clock for the package, so no raw token ever reaches arpillar's emit.
   obj <- arpillar::object(
     id = "t9",
@@ -979,19 +963,19 @@ test_that("the export report leg stamps every output's chrome tokens", {
     name = "R",
     pages = list(arpillar::page(id = "p1", name = "P", objects = list(obj)))
   )
-  out <- .report_with_source(rep)
+  out <- .report_for_export(rep)
   o <- out@pages[[1]]@objects[[1]]
   expect_no_match(o@options$pagefoot$right, "{datetime}", fixed = TRUE)
   expect_match(o@options$pagefoot$right, "^[0-9]{2}[A-Z]{3}[0-9]{4}:")
-  # The source line still lands (the composition kept both stamps).
-  expect_match(o@options$source, "^Source: ADSL")
+  # No auto source line is stamped anymore (removed 2026-07-09).
+  expect_null(o@options$source)
 })
 
 test_that("the export report leg stamps the STUDY running bands too (#7)", {
   # The .rtf/export legs read the STUDY bands (theme$page), not just per-output
   # overrides. A live {datetime} there aborts arpillar's byte-deterministic
-  # emit -> render_rtf throws -> Shiny serves the error as HTML. .report_with_
-  # source() must stamp theme$page, not only object@options bands.
+  # emit -> render_rtf throws -> Shiny serves the error as HTML. .report_for_
+  # export() must stamp theme$page, not only object@options bands.
   obj <- arpillar::object(id = "t7", type = "summary", dataset = "ADSL")
   rep <- arpillar::report(
     id = "r7",
@@ -1007,7 +991,7 @@ test_that("the export report leg stamps the STUDY running bands too (#7)", {
       )
     )
   )
-  out <- .report_with_source(rep)
+  out <- .report_for_export(rep)
   pf <- out@theme$page$pagefoot
   # {datetime} stamped to a literal; the study token resolved.
   expect_no_match(pf$right, "{datetime}", fixed = TRUE)

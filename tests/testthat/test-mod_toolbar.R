@@ -97,9 +97,9 @@ test_that("mod_toolbar_server: the .rtf download names and writes a non-empty RT
     first <- readLines(path, n = 1L, warn = FALSE)
     expect_match(first, "\\{\\\\rtf", perl = TRUE)
 
-    # Paper parity: the emitted RTF carries the TLF number line, the
+    # Paper parity: the emitted RTF carries the TLF number line and the
     # footnote EXACTLY once (as a footnote -- the old title promotion was
-    # removed 2026-07-04), and the injected source line.
+    # removed 2026-07-04). The auto source line was removed 2026-07-09.
     txt <- paste(readLines(path, warn = FALSE), collapse = "\n")
     expect_match(txt, "Table 14.1.1", fixed = TRUE)
     expect_identical(
@@ -109,8 +109,8 @@ test_that("mod_toolbar_server: the .rtf download names and writes a non-empty RT
       )),
       1L
     )
-    expect_match(txt, "Source: ADSL - arframe", fixed = TRUE)
-    # The injection never leaks back into the live store object.
+    expect_no_match(txt, "Source:", fixed = TRUE)
+    # No source is set on the live store object either.
     expect_null(shiny::isolate(selected_object(store))@options$source)
   })
 })

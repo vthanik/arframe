@@ -142,16 +142,16 @@ test_that(".zip_export produces a readable archive containing the tree", {
 # covered in test-fct_async.R (daemon byte-identical + `.build_export_package(
 # rendered=)`), and the button/hidden-link affordances in test-mod_frame.R.
 
-test_that("the export click's injected report carries the source line end to end", {
+test_that("the export click's report renders a self-consistent package, no source line", {
   fx <- .ex_store()
   withr::defer(arpillar::engine_close(fx$con))
   dir <- withr::local_tempdir()
 
-  # The export button hands .build_export_package the SAME source-injected
-  # copy the daemon serialized (mod_frame); the sync leg here proves the
-  # injected options$source lands in the emitted RTFs, the programs, and
-  # report.json -- a self-consistent package.
-  injected <- shiny::isolate(.report_with_source(fx$store$rv$report))
+  # The export button hands .build_export_package the SAME render-prepared
+  # copy the daemon serialized (mod_frame); the sync leg here proves it
+  # assembles emitted RTFs, programs, and report.json. The auto source line
+  # was removed 2026-07-09 (user call) -- NONE of the artifacts carry one.
+  injected <- shiny::isolate(.report_for_export(fx$store$rv$report))
   res <- shiny::isolate(
     .build_export_package(
       fx$store,
@@ -166,18 +166,18 @@ test_that("the export click's injected report carries the source line end to end
   expect_gt(length(rtfs), 0L)
   for (f in rtfs) {
     txt <- paste(readLines(f, warn = FALSE), collapse = "\n")
-    # Each output stamps its OWN dataset (ADSL, ADAE, ...).
-    expect_match(txt, "Source: [A-Z0-9]+ - arframe")
+    expect_gt(nchar(txt), 0L)
+    expect_no_match(txt, "Source:", fixed = TRUE)
   }
 
-  # The archival spec records the provenance the RTFs were emitted with.
+  # The archival spec carries no source line either.
   spec <- paste(
     readLines(file.path(dir, "report.json"), warn = FALSE),
     collapse = "\n"
   )
-  expect_match(spec, "Source: [A-Z0-9]+ - arframe")
+  expect_no_match(spec, "Source:", fixed = TRUE)
 
-  # The live store report stays uninjected -- no stamped date at rest.
+  # The live store report stays clean -- no source at rest.
   live <- shiny::isolate(fx$store$rv$report)
   for (obj in .all_objects(live)) {
     expect_null(obj@options$source)

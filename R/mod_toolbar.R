@@ -95,7 +95,7 @@ mod_toolbar_server <- function(id, store) {
         # Shiny serves the error as an HTML page.
         theme <- .with_band_chrome(theme, obj)
         obj <- .with_chrome(
-          .with_footnotes(.with_source(obj), theme = theme),
+          .with_footnotes(obj, theme = theme),
           theme = theme
         )
         if (.is_figure_type(obj@type)) {

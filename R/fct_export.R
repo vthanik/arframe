@@ -77,8 +77,8 @@
 #' manifest). Either way the outputs/ filenames are the `.output_slug()`
 #' slugs, so the manifest linkage is identical.
 #'
-#' `report` lets the export click hand in its source-injected copy
-#' (`.report_with_source()`) so outputs/, programs/ (emit_code embeds
+#' `report` lets the export click hand in its render-prepared copy
+#' (`.report_for_export()`) so outputs/, programs/ (emit_code embeds
 #' options) and report.json stay self-consistent with what the daemon
 #' rendered; `NULL` falls back to the store's live report.
 #' @noRd

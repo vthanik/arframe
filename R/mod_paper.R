@@ -51,56 +51,16 @@
   )
 }
 
-# ---- source line ---------------------------------------------------------
-
 # Canvas flip (2026-07-04, supersedes decision #7): the canvas shows
 # tabular's FULL page render -- running header/footer bands included
 # (`chrome_onscreen = "auto"`, tabular's default). A ready table needs no
-# arframe-side title/source markup; `.title_block()`/`.source_line()`
-# remain for the ghost/stale/error paths and the figure leg, where no
-# tabular spec exists to carry them.
-
-#' The provenance TEXT: `Source: <dataset> - arframe <version> - <date>`.
-#' The one composition of the source line, shared by the screen leg (below)
-#' and the export legs (mod_card's .rtf download, fct_export's package
-#' build), which bake it into `options$source` so arpillar renders the SAME
-#' string on paper -- the date is stamped here, arframe-side, keeping the
-#' engine's emit byte-deterministic.
-#' @noRd
-.source_text <- function(object) {
-  ver <- as.character(utils::packageVersion("arframe"))
-  paste0(
-    "Source: ",
-    object@dataset,
-    " - arframe ",
-    ver,
-    " - ",
-    format(Sys.Date(), "%Y-%m-%d")
-  )
-}
-
-#' The faint provenance line at the foot of the sheet, from
-#' `.source_text()`. Wrapped in the `source` region so clicking it opens
-#' the card's read-only provenance / "View code" panel (design spec #4's
-#' `source` row).
-#' @noRd
-.source_line <- function(object) {
-  shiny::tags$div(
-    class = "ar-paper-source ar-mono",
-    .source_text(object)
-  )
-}
-
-#' A copy of `object` with the screen's source line baked into
-#' `options$source`, so an RTF render carries the same provenance string
-#' the canvas paints. Applied at EXPORT time only -- the live report in the
-#' store never carries a stamped date.
-#' @noRd
-.with_source <- function(object) {
-  opts <- object@options
-  opts$source <- .source_text(object)
-  S7::set_props(object, options = opts)
-}
+# arframe-side markup; `.title_block()` remains for the ghost/stale/error
+# paths and the figure leg, where no tabular spec exists to carry it.
+#
+# The auto "Source: <dataset> - arframe <version> - <date>" provenance line
+# was removed 2026-07-09 (user call): a submission deliverable never carries
+# an arframe-branded default footnote. No source line is stamped anywhere;
+# a user-controlled source can return as a Setup field if wanted.
 
 #' The Appendix-I footer datetime stamp, `ddMMMyyyy:hh:mm:ss`. Built from
 #' `month.abb` so the month abbreviation never follows the session locale.
@@ -155,10 +115,9 @@
 #' A copy of `object` with the render-time chrome tokens substituted as
 #' LITERALS into the pagehead/pagefoot band strings. arpillar REJECTS
 #' those tokens (they would break its byte-deterministic emit), so the
-#' app stamps them at render/export time -- the same seam as
-#' `.with_source()`. The backend-resolved `{page}`/`{npages}` field
-#' codes pass through untouched, as do unknown `{tokens}` -- never
-#' silently drop what a user typed.
+#' app stamps them at render/export time. The backend-resolved
+#' `{page}`/`{npages}` field codes pass through untouched, as do unknown
+#' `{tokens}` -- never silently drop what a user typed.
 #'
 #' Recognised tokens:
 #'   * Chrome (independent of theme): `{datetime}`, `{program}`,
@@ -193,7 +152,7 @@
       v
     })
   }
-  opts$pagehead <- sub_band(opts$pagehead)
+  opts$pagehead <- .rev_band(sub_band(opts$pagehead))
   opts$pagefoot <- sub_band(opts$pagefoot)
   S7::set_props(object, options = opts)
 }
@@ -236,7 +195,7 @@
     return(theme)
   }
   toks <- .study_tokens(object, theme, now)
-  page$pagehead <- .resolve_band(page$pagehead, toks)
+  page$pagehead <- .rev_band(.resolve_band(page$pagehead, toks))
   page$pagefoot <- .resolve_band(page$pagefoot, toks)
   theme$page <- page
   theme
@@ -247,19 +206,23 @@
 #' required study token, (2) substitute every known token to a literal, (3)
 #' leave the `{page}`/`{npages}` field codes for tabular's backend to resolve.
 #' A non-list band (or empty) passes through untouched.
+#'
+#' Each side (`left`/`center`/`right`) is a CHARACTER VECTOR -- one entry per
+#' band row (Setup > Page & Style writes multiple rows). The resolve runs
+#' per-cell across the vector, so a 2-row band resolves both rows; the earlier
+#' single-cell assumption silently passed multi-row bands through raw.
 #' @noRd
 .resolve_band <- function(band, toks) {
   if (!is.list(band) || length(band) == 0L) {
     return(band)
   }
-  lapply(band, function(v) {
-    v <- as.character(v)
-    if (length(v) != 1L || is.na(v)) {
-      return(v)
+  resolve_cell <- function(cell) {
+    if (is.na(cell)) {
+      return(cell)
     }
     for (tok in .REQUIRED_STUDY_TOKENS) {
       lit <- paste0("{", tok, "}")
-      if (grepl(lit, v, fixed = TRUE) && !nzchar(toks[[tok]] %||% "")) {
+      if (grepl(lit, cell, fixed = TRUE) && !nzchar(toks[[tok]] %||% "")) {
         cli::cli_abort(
           c(
             "The running header/footer references {.val {lit}}, but it is empty.",
@@ -270,13 +233,35 @@
       }
     }
     for (nm in names(toks)) {
-      v <- gsub(paste0("{", nm, "}"), toks[[nm]], v, fixed = TRUE)
+      cell <- gsub(paste0("{", nm, "}"), toks[[nm]], cell, fixed = TRUE)
     }
     # {page}/{npages} are tabular's own backend field codes -- leave them for
     # tabular to resolve; the canvas is continuous, so real page numbers are the
     # `.rtf`'s (decision #7 still holds for pagination, not for the bands).
-    v
+    cell
+  }
+  lapply(band, function(v) {
+    v <- as.character(v)
+    if (length(v) == 0L) {
+      return(v)
+    }
+    vapply(v, resolve_cell, character(1), USE.NAMES = FALSE)
   })
+}
+
+#' Reverse a band's row order (each side vector), mapping arframe's
+#' top-to-bottom editor rows onto tabular's pagehead "grows toward the table"
+#' convention: the engine draws index 1 nearest the table (bottom of the header
+#' band) and stacks upward, so without this the editor's top row renders last.
+#' Applied to `pagehead` ONLY -- `pagefoot` draws index 1 nearest the table
+#' (its TOP row), which already matches the editor. `rev()` is a no-op on
+#' length-0/1 sides, so single-row bands are untouched.
+#' @noRd
+.rev_band <- function(band) {
+  if (!is.list(band)) {
+    return(band)
+  }
+  lapply(band, rev)
 }
 
 #' `{analysis_set}` resolver: the population attached to `object` (via
@@ -361,14 +346,14 @@
   paste0(as.character(hit), rest)
 }
 
-#' `.with_source()` + `.with_chrome()` mapped over every output of a
+#' `.with_footnotes()` + `.with_chrome()` mapped over every output of a
 #' report, plus the study running bands (`theme$page`) stamped -- the export
 #' package's whole-report leg (both the async JSON handoff and the sync fallback
 #' build from the same injected copy). One `now` for the whole package so every
 #' output carries the same stamp; the report's own `theme` supplies study-meta
 #' tokens.
 #' @noRd
-.report_with_source <- function(report) {
+.report_for_export <- function(report) {
   now <- Sys.time()
   theme <- report@theme
   pages <- lapply(report@pages, function(pg) {
@@ -376,7 +361,7 @@
       pg,
       objects = lapply(pg@objects, function(o) {
         .with_chrome(
-          .with_footnotes(.with_source(o), theme = theme),
+          .with_footnotes(o, theme = theme),
           now = now,
           theme = theme
         )
@@ -855,8 +840,7 @@ mod_paper_server <- function(id, store) {
   status <- arpillar::output_status(obj)
   if (!identical(status, "ready")) {
     return(shiny::tagList(
-      ghost_shell(obj),
-      .source_line(obj)
+      ghost_shell(obj)
     ))
   }
 
@@ -865,8 +849,7 @@ mod_paper_server <- function(id, store) {
   if (obj@id %in% store$rv$stale) {
     return(shiny::tagList(
       .title_block(obj),
-      .stale_panel(),
-      .source_line(obj)
+      .stale_panel()
     ))
   }
 
@@ -883,8 +866,7 @@ mod_paper_server <- function(id, store) {
     session$sendCustomMessage("ar-focus", list(id = err_id))
     return(shiny::tagList(
       .error_summary(ns, err_id, obj, result$message),
-      .title_block(obj),
-      .source_line(obj)
+      .title_block(obj)
     ))
   }
 
@@ -892,8 +874,7 @@ mod_paper_server <- function(id, store) {
   if (.is_figure_type(obj@type)) {
     return(shiny::tagList(
       .title_block(obj),
-      result$content,
-      .source_line(obj)
+      result$content
     ))
   }
   # Canvas flip (2026-07-04, supersedes decision #7's chrome-free galley):
@@ -923,7 +904,7 @@ mod_paper_server <- function(id, store) {
       spec <- arpillar::render_spec(
         ard,
         .with_chrome(
-          .with_footnotes(.with_source(object), theme = store$rv$report@theme),
+          .with_footnotes(object, theme = store$rv$report@theme),
           theme = store$rv$report@theme
         ),
         theme = .with_band_chrome(store$rv$report@theme, object)

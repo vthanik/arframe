@@ -313,7 +313,7 @@ mod_frame_server <- function(id, store) {
       # Export-time source injection: the daemon sees only this JSON, and
       # the success handler assembles the package from the SAME copy -- the
       # store's live report never carries a stamped date.
-      report <- .report_with_source(store$rv$report)
+      report <- .report_for_export(store$rv$report)
       ex$report <- report
       ex$dir <- file.path(tempdir(), .report_slug(report))
       unlink(ex$dir, recursive = TRUE)

@@ -135,3 +135,63 @@ test_that("all tokens across both bands compose without collision", {
   expect_match(out@options$pagefoot$right, "^programs/", perl = TRUE)
   expect_match(out@options$pagefoot$right, "@ [0-9]{2}[A-Z]{3}[0-9]{4}:")
 })
+
+test_that("resolve_band substitutes EVERY row of a multi-row band", {
+  # Multi-row: each side is a length-2 character vector (Setup writes rows
+  # this way). The pre-fix single-cell guard returned these UNCHANGED.
+  toks <- c(
+    protocol = "PA-101",
+    data_date = "2026-05-01",
+    analysis_set = "Safety Analysis Set"
+  )
+  band <- list(
+    left = c("{protocol}", "{analysis_set}"),
+    right = c("Page {page} of {npages}", "Date as of {data_date}")
+  )
+  out <- .resolve_band(band, toks)
+  expect_identical(out$left, c("PA-101", "Safety Analysis Set"))
+  # {page}/{npages} pass through; {data_date} resolves in the second row.
+  expect_identical(
+    out$right,
+    c("Page {page} of {npages}", "Date as of 2026-05-01")
+  )
+})
+
+test_that("resolve_band errors on an empty required token in ANY row", {
+  toks <- c(sponsor = "Acme", protocol = "", data_date = "2026-05-01")
+  # Row 2 references {protocol}, which Setup left empty -> fail loud.
+  band <- list(left = c("{sponsor}", "{protocol}"))
+  expect_error(.resolve_band(band, toks), class = "arframe_error_input")
+})
+
+test_that("with_band_chrome reverses pagehead rows, leaves pagefoot order", {
+  # tabular draws pagehead index 1 nearest the table (bottom), so arframe's
+  # top editor row must be passed LAST. pagefoot index 1 is already its top
+  # (nearest the table), so it stays in editor order -- reversing it too would
+  # flip the footer wrong. Both bands resolve EVERY row (the #1 multi-row fix).
+  obj <- .mk_object()
+  theme <- list(
+    page = list(
+      pagehead = list(left = c("{protocol}", "{data_date}")),
+      pagefoot = list(
+        left = c("Data as of {data_date}", "{protocol} confidential")
+      )
+    ),
+    study = list(protocol = "PA-101", data_date = "2026-05-01")
+  )
+  out <- .with_band_chrome(theme, obj)
+  # Header: reversed so editor row 1 ({protocol}) renders on top.
+  expect_identical(out$page$pagehead$left, c("2026-05-01", "PA-101"))
+  # Footer: NOT reversed; both rows resolved, editor row 1 stays first.
+  expect_identical(
+    out$page$pagefoot$left,
+    c("Data as of 2026-05-01", "PA-101 confidential")
+  )
+})
+
+test_that("with_chrome reverses a multi-row object pagehead", {
+  obj <- .mk_object(pagehead = list(left = c("{sponsor}", "{status}")))
+  theme <- list(study = list(sponsor = "Acme", status = "DRAFT"))
+  out <- .with_chrome(obj, theme = theme)
+  expect_identical(out@options$pagehead$left, c("DRAFT", "Acme"))
+})
