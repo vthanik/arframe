@@ -292,7 +292,9 @@ test_that("add_from_preset sets population for an occurrence preset", {
   obj <- shiny::isolate(selected_object(store))
 
   expect_identical(obj@type, "occurrence")
-  expect_identical(obj@options$population, "ADSL")
+  # The occurrence presets bind the "safety" analysis set (migrated from the
+  # legacy literal "ADSL"); its dataset resolves to ADSL via theme$populations.
+  expect_identical(obj@options$population, "safety")
   slots <- vapply(obj@roles, function(r) r@slot, character(1))
   hier_role <- obj@roles[[which(slots == "hierarchy")]]
   expect_identical(hier_role@items[[1]]@name, "AEDECOD")
@@ -516,6 +518,46 @@ test_that("cached_ard HITs on an options-only change, MISSes on a role change", 
   )
   shiny::isolate(cached_ard(store, obj_role))
   expect_identical(sum(startsWith(ls(store$cache), "ard::")), 2L)
+})
+
+test_that(".ard_key folds the resolved population so a Setup filter edit invalidates", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  obj <- arpillar::object(
+    id = "o",
+    type = "summary",
+    dataset = "ADSL",
+    options = list(population = "safety"),
+    roles = list(arpillar::role(
+      slot = "treatment",
+      items = list(arpillar::data_item(name = "TRT01P"))
+    ))
+  )
+  t1 <- list(
+    populations = list(
+      safety = list(dataset = "ADSL", filter = 'SAFFL == "Y"')
+    )
+  )
+  t2 <- list(
+    populations = list(
+      safety = list(dataset = "ADSL", filter = 'SAFFL == "N"')
+    )
+  )
+  # A Setup edit to the bound set's filter moves the ARD key -> memo invalidates.
+  expect_false(identical(.ard_key(obj, t1), .ard_key(obj, t2)))
+
+  # An UNbound output keeps its legacy hash regardless of theme populations, so
+  # existing outputs never spuriously miss the cache on upgrade.
+  bare <- arpillar::object(
+    id = "o2",
+    type = "summary",
+    dataset = "ADSL",
+    roles = list(arpillar::role(
+      slot = "treatment",
+      items = list(arpillar::data_item(name = "TRT01P"))
+    ))
+  )
+  expect_identical(.ard_key(bare, t1), .ard_key(bare, list()))
 })
 
 test_that("cached_ard MISSes on a filter change", {

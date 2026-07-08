@@ -92,7 +92,7 @@ export_mirai <- function(report_json, paths, out_dir, names = list()) {
               arpillar::render_figure_rtf(con, obj, path, theme = theme)
             } else {
               arpillar::render_rtf(
-                arpillar::build_ard(con, obj),
+                arpillar::build_ard(con, obj, theme = theme),
                 obj,
                 path,
                 theme = theme

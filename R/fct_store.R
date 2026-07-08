@@ -221,8 +221,9 @@ update_object <- function(store, id, fn, label = "") {
   # A BROKEN output is exempt: its render failed, so no proof exists to go
   # stale -- the fix-it edit must re-render live (the error-summary ->
   # fixed-table loop), never demand a Run first.
+  theme <- store$rv$report@theme
   if (
-    !identical(.ard_key(obj), .ard_key(new_obj)) &&
+    !identical(.ard_key(obj, theme), .ard_key(new_obj, theme)) &&
       identical(arpillar::output_status(obj), "ready") &&
       !(id %in% store$rv$broken)
   ) {
@@ -322,11 +323,14 @@ rename_output <- function(store, id, title) {
 
 # ---- ARD cache: the two-stage seam ---------------------------------------
 
-#' The ARD memo key for an output: `dataset + type + roles + filters` --
-#' deliberately EXCLUDING `options`, so a display-only edit (decimals,
-#' cutoffs, ...) reuses the already-built ARD instead of recollecting from
-#' DuckDB. The same key doubles as `update_object()`'s cheap/heavy oracle:
-#' an edit is HEAVY exactly when it moves this key.
+#' The ARD memo key for an output: `dataset + type + roles + filters` (+ the
+#' resolved population) -- deliberately EXCLUDING the DISPLAY `options`, so a
+#' display-only edit (decimals, cutoffs, ...) reuses the already-built ARD
+#' instead of recollecting from DuckDB. `options$population` is the one option
+#' folded in: it resolves (against `theme`) to a row filter + denominator
+#' dataset that genuinely mutate the ARD. The same key doubles as
+#' `update_object()`'s cheap/heavy oracle: an edit is HEAVY exactly when it
+#' moves this key.
 #'
 #' Item `label`s are display-only too: `build_ard()` never reads them (the
 #' row headers consume them at the render_display stage), so a relabel
@@ -334,7 +338,7 @@ rename_output <- function(store, id, title) {
 #' `role_type` stays in the key -- it genuinely changes the ARD (measure
 #' stats vs category counts).
 #' @noRd
-.ard_key <- function(object) {
+.ard_key <- function(object, theme = list()) {
   roles <- lapply(object@roles, function(r) {
     list(
       slot = r@slot,
@@ -360,6 +364,15 @@ rename_output <- function(store, id, title) {
   if (length(pb) == 1L && !is.na(pb) && nzchar(pb)) {
     parts$page_by <- as.character(pb)
   }
+  # The bound analysis set changes the ARD -- it ANDs a row filter and (for
+  # occurrence) picks the denominator dataset -- and it resolves against the
+  # THEME, so a Setup edit to the set's filter must invalidate the memo. Fold
+  # the RESOLVED set in, but only when a population is bound, so an unbound
+  # output keeps its legacy hash.
+  pop <- arpillar::resolve_population(object, theme)
+  if (!is.null(pop$dataset) || length(pop$filter) > 0L) {
+    parts$population <- list(dataset = pop$dataset, filter = pop$filter)
+  }
   paste0("ard::", rlang::hash(parts))
 }
 
@@ -371,12 +384,13 @@ rename_output <- function(store, id, title) {
 #' entries must filter on the prefix, never take a bare `ls()` length.
 #' @noRd
 cached_ard <- function(store, object) {
-  key <- .ard_key(object)
+  theme <- store$rv$report@theme
+  key <- .ard_key(object, theme)
   hit <- store$cache[[key]]
   if (!is.null(hit)) {
     return(hit)
   }
-  ard <- arpillar::build_ard(store$con, object)
+  ard <- arpillar::build_ard(store$con, object, theme)
   store$cache[[key]] <- ard
   ard
 }

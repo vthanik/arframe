@@ -120,11 +120,14 @@ save_touched <- function(store) {
     prog_dir <- file.path(store$rv$path, sub("^\\./", "", prog_dir))
   }
   dir.create(prog_dir, recursive = TRUE, showWarnings = FALSE)
+  # Thread the study theme so the emitted programs reproduce the population
+  # filter, summaries, decimals, and chrome -- not just the roles/dataset.
+  theme <- store$rv$report@theme
   objs <- .all_objects(store$rv$report)
   for (obj in objs) {
     out <- file.path(prog_dir, paste0(obj@id, ".R"))
     tryCatch(
-      arpillar::emit_code(store$con, obj, path = out),
+      arpillar::emit_code(store$con, obj, path = out, theme = theme),
       error = function(e) NULL
     )
   }
@@ -132,7 +135,8 @@ save_touched <- function(store) {
     arpillar::emit_report_code(
       store$con,
       store$rv$report,
-      path = file.path(prog_dir, "run-all.R")
+      path = file.path(prog_dir, "run-all.R"),
+      theme = theme
     ),
     error = function(e) NULL
   )

@@ -198,7 +198,8 @@ test_that(".object_from_preset carries population for an occurrence preset", {
   obj <- .object_from_preset(con, pr, "ADSL", "out001")
 
   expect_identical(obj@type, "occurrence")
-  expect_identical(obj@options$population, "ADSL")
+  # Occurrence presets bind the "safety" analysis set (was the literal "ADSL").
+  expect_identical(obj@options$population, "safety")
   slots <- vapply(obj@roles, function(r) r@slot, character(1))
   expect_true("hierarchy" %in% slots)
   hier_role <- obj@roles[[which(slots == "hierarchy")]]
