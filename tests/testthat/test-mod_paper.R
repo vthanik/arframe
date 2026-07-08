@@ -189,6 +189,64 @@ test_that("a READY table is tabular's page alone -- ONE title block, no arframe 
   )
 })
 
+test_that("the screen render seam applies report@theme, matching the .rtf export", {
+  # Screen/export parity: a Setup Summaries change (add a "Geometric Mean" stat
+  # row) must move BOTH the on-screen paper (`render_spec`) AND the exported
+  # .rtf (`render_rtf`). Both renderers accept `theme=`; if the screen seam
+  # forgets it, a study edit lands in the deliverable but not on the paper the
+  # user proofs against -- a silent divergence (decimals, the Summaries
+  # vocabulary, header-N all route through the same theme). "Geometric Mean" is
+  # never a default stat label nor page markup, so it uniquely signals that
+  # report@theme reached the renderer. Two rows so the labels render as leaves
+  # (a single-stat group collapses its label into the item header).
+  fx <- .pp_ready_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  th <- list(
+    summaries = list(
+      continuous = list(
+        list(label = "Mean", stats = "mean"),
+        list(label = "Geometric Mean", stats = "geomean")
+      )
+    )
+  )
+  rep0 <- shiny::isolate(fx$store$rv$report)
+  shiny::isolate(commit(fx$store, S7::set_props(rep0, theme = th)))
+  obj <- shiny::isolate(selected_object(fx$store))
+
+  # Export seam -- report@theme threaded (fct_export.R).
+  out_dir <- withr::local_tempdir()
+  shiny::isolate(.export_render_one(fx$store, obj, out_dir))
+  export_txt <- paste(
+    readLines(
+      list.files(out_dir, "\\.rtf$", full.names = TRUE)[[1L]],
+      warn = FALSE
+    ),
+    collapse = "\n"
+  )
+  expect_match(export_txt, "Geometric Mean", fixed = TRUE)
+
+  # Screen seam -- the server render the user proofs against MUST match.
+  shiny::testServer(mod_paper_server, args = list(store = fx$store), {
+    expect_match(output$sheet_html_slot$html, "Geometric Mean", fixed = TRUE)
+  })
+
+  # Control: the default (empty-theme) render carries no "Geometric Mean" row,
+  # so the matches above uniquely attribute it to report@theme.
+  out0 <- withr::local_tempdir()
+  shiny::isolate(commit(fx$store, S7::set_props(rep0, theme = list())))
+  obj0 <- shiny::isolate(selected_object(fx$store))
+  shiny::isolate(.export_render_one(fx$store, obj0, out0))
+  export0 <- paste(
+    readLines(
+      list.files(out0, "\\.rtf$", full.names = TRUE)[[1L]],
+      warn = FALSE
+    ),
+    collapse = "\n"
+  )
+  expect_no_match(export0, "Geometric Mean", fixed = TRUE)
+})
+
 # ---- ready + occurrence (ae_overall on ADAE) -------------------------------
 
 test_that("a READY occurrence object (ae_overall on ADAE) renders its incidence rows", {

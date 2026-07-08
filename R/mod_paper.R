@@ -184,6 +184,29 @@
   S7::set_props(object, options = opts)
 }
 
+#' The report theme as the CANVAS should see it: every study-level DISPLAY
+#' default (decimals + `decimals_by`, the Summaries vocabulary, arm / header-N)
+#' resolves through `render_spec()`, but the running header/footer BANDS are
+#' dropped. The canvas is a vertically continuous sheet, never a paginated page
+#' (decision #7), so "Page {page} of {npages}" and the running-head band belong
+#' to the `.rtf` alone -- the export seam renders with the FULL theme. Bands are
+#' a `theme$page` concern (Setup writes them there; arframe sets none per-object,
+#' and `.with_chrome()` only stamps object-level bands), so nulling them here is
+#' the complete on-screen suppression.
+#' @noRd
+.onscreen_theme <- function(theme) {
+  if (!is.list(theme)) {
+    return(theme)
+  }
+  page <- theme$page
+  if (is.list(page)) {
+    page$pagehead <- NULL
+    page$pagefoot <- NULL
+    theme$page <- page
+  }
+  theme
+}
+
 #' `{analysis-set}` resolver: the population attached to `object` (via
 #' `object@options$population`) wins; else `theme$default_population`;
 #' looked up in `theme$populations` for the display label. Returns NULL
@@ -815,7 +838,8 @@ mod_paper_server <- function(id, store) {
         .with_chrome(
           .with_footnotes(.with_source(object), theme = store$rv$report@theme),
           theme = store$rv$report@theme
-        )
+        ),
+        theme = .onscreen_theme(store$rv$report@theme)
       )
       orient <- object@options$orientation %||% "landscape"
       list(
@@ -854,7 +878,7 @@ mod_paper_server <- function(id, store) {
 .try_render_figure <- function(store, object) {
   tryCatch(
     {
-      arpillar::render_ggplot(store$con, object)
+      arpillar::render_ggplot(store$con, object, theme = store$rv$report@theme)
       list(ok = TRUE, content = shiny::tagList(), message = NULL)
     },
     arpillar_error_input = function(e) {

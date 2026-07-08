@@ -1264,13 +1264,6 @@ mod_setup_server <- function(id, store) {
 
 # ---- Paths section (merges Data + Preferences + Sources, Stage 2) --------
 
-#' Setup > Paths: every filesystem pointer in one section. Groups:
-#' Data sources (ADaM + SDTM + Add-folder proxy), Population defaults
-#' (pop dataset + subject id + pop treatment var, once a catalog is
-#' mounted), Output directories, and Report conventions. Persists to
-#' `setup.yml` across the `data`, `paths`, and `preferences` theme
-#' blocks (unchanged shapes; only the UI is folded).
-#' @noRd
 #' Setup > Paths: every filesystem directory in one flat grid -- the two
 #' data-source directories (ADaM + SDTM) and the four output directories.
 #' Population / treatment BINDINGS (dataset, subject id, treatment var) moved
