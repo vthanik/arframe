@@ -5,6 +5,11 @@ Design decisions, LOCKED user calls, and working conventions for
 UI on the **arpillar** engine). Records only what is arframe-specific and
 user-decided.
 
+**Always check `CLAUDE.local.md` too** (gitignored, local). Its **Backlog &
+requirements** section carries live progress and not-yet-specced work
+(e.g. the #12.4 CDISC ARS spine); its **Session handoff** section governs
+`handoff.md`. Read it at session start and keep it in sync as work lands.
+
 ## What this is
 
 Galley design: a paper-first "proof room" — a table of contents beside a typeset
