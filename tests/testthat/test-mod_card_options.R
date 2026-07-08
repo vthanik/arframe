@@ -482,22 +482,42 @@ test_that("ordering keys (hier_sort, x_order) no longer render in Options", {
 
 # ---- layout sections (global-requirements parity) ---------------------------
 
-test_that("a table pane renders the layout sections; a figure never does", {
+test_that("a table pane renders the surviving layout sections; a figure never does", {
   fx <- .mco_demo_store()
   withr::defer(arpillar::engine_close(fx$con))
 
   shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
     session$flushReact()
     html <- output$pane$html
+    # Per-analysis layout knobs survive the Phase 3 dedup.
     for (lbl in c(
-      "Header N",
       "PAGE &amp; OUTPUT",
-      "Orientation",
       "Margins (in)",
-      "RUNNING HEADER &amp; FOOTER",
+      "Blank row between blocks",
+      "Total column",
       "Add title line"
     )) {
       expect_match(html, lbl, fixed = TRUE)
+    }
+    # Study-default chrome / geometry / header-N moved to Setup > Page &
+    # Style: their per-output controls (and inputs) are gone.
+    for (lbl in c(
+      "Header N",
+      "Orientation",
+      "Font size",
+      "RUNNING HEADER &amp; FOOTER"
+    )) {
+      expect_no_match(html, lbl, fixed = TRUE)
+    }
+    for (tok in c(
+      "opt_orientation",
+      "opt_paper",
+      "opt_font_family",
+      "opt_font_size",
+      "opt_header_n",
+      "band_edit"
+    )) {
+      expect_no_match(html, tok, fixed = TRUE)
     }
   })
 
@@ -507,12 +527,31 @@ test_that("a table pane renders the layout sections; a figure never does", {
     session$flushReact()
     html <- output$pane$html
     expect_no_match(html, "PAGE &amp; OUTPUT", fixed = TRUE)
-    expect_no_match(html, "Header N", fixed = TRUE)
     expect_no_match(html, "Add title line", fixed = TRUE)
   })
 })
 
-test_that("layout choice/text commits round-trip with default-elision", {
+test_that("a surviving layout choice commits round-trip with default-elision", {
+  fx <- .mco_demo_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
+    obj <- function() shiny::isolate(selected_object(store))
+
+    # width_mode stays a per-output knob (no Setup twin, like margins).
+    session$setInputs(opt_width_mode = "window")
+    expect_identical(obj()@options$width_mode, "window")
+    # Back to the engine default -- the key is ELIDED, never stored.
+    session$setInputs(opt_width_mode = "content")
+    expect_null(obj()@options$width_mode)
+  })
+})
+
+test_that("removed geometry/header-N/band inputs no longer commit (Setup owns them)", {
+  # Phase 3 dedup: orientation / paper / font / header_n / running bands are
+  # study defaults edited in Setup > Page & Style. Their per-output observers
+  # are gone, so a stale client post is inert -- Setup's theme is the only
+  # path to these at render.
   fx <- .mco_demo_store()
   withr::defer(arpillar::engine_close(fx$con))
 
@@ -520,21 +559,31 @@ test_that("layout choice/text commits round-trip with default-elision", {
     obj <- function() shiny::isolate(selected_object(store))
 
     session$setInputs(opt_orientation = "portrait")
-    expect_identical(obj()@options$orientation, "portrait")
-    # Back to the engine default -- the key is ELIDED, never stored.
-    session$setInputs(opt_orientation = "landscape")
-    expect_null(obj()@options$orientation)
-
     session$setInputs(opt_paper = "a4")
-    expect_identical(obj()@options$paper, "a4")
-
     session$setInputs(opt_font_family = "sans")
-    expect_identical(obj()@options$font_family, "sans")
-
+    session$setInputs(opt_font_size = "8")
     session$setInputs(opt_header_n = "(N={n})")
-    expect_identical(obj()@options$header_n, "(N={n})")
-    session$setInputs(opt_header_n = "")
-    expect_null(obj()@options$header_n)
+    session$setInputs(band_add = list(band = "pagehead", nonce = 1))
+    session$setInputs(
+      band_edit = list(
+        band = "pagehead",
+        slot = "left",
+        i = 1,
+        value = "Protocol XY",
+        nonce = 2
+      )
+    )
+
+    for (k in c(
+      "orientation",
+      "paper",
+      "font_family",
+      "font_size",
+      "header_n",
+      "pagehead"
+    )) {
+      expect_null(obj()@options[[k]])
+    }
   })
 })
 
@@ -589,85 +638,6 @@ test_that("title lines add/edit/remove commit options$titles", {
     # Removing the last line elides the key entirely.
     session$setInputs(tl_remove = list(i = 1, nonce = 6))
     expect_null(obj()@options$titles)
-  })
-})
-
-test_that("band rows keep the list(left, center, right) storage shape", {
-  fx <- .mco_demo_store()
-  withr::defer(arpillar::engine_close(fx$con))
-
-  shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
-    obj <- function() shiny::isolate(selected_object(store))
-
-    session$setInputs(band_add = list(band = "pagehead", nonce = 1))
-    b <- obj()@options$pagehead
-    expect_named(b, c("left", "center", "right"))
-    expect_identical(lengths(b), c(left = 1L, center = 1L, right = 1L))
-
-    session$setInputs(
-      band_edit = list(
-        band = "pagehead",
-        slot = "left",
-        i = 1,
-        value = "Protocol: XY123-4567",
-        nonce = 2
-      )
-    )
-    session$setInputs(
-      band_edit = list(
-        band = "pagehead",
-        slot = "right",
-        i = 1,
-        value = "Page {page} of {npages}",
-        nonce = 3
-      )
-    )
-    b <- obj()@options$pagehead
-    expect_identical(b$left, "Protocol: XY123-4567")
-    expect_identical(b$right, "Page {page} of {npages}")
-    expect_identical(b$center, "")
-
-    # A second row keeps every slot aligned to the same length.
-    session$setInputs(band_add = list(band = "pagehead", nonce = 4))
-    expect_identical(
-      lengths(obj()@options$pagehead),
-      c(left = 2L, center = 2L, right = 2L)
-    )
-
-    # Removing both rows elides the band.
-    session$setInputs(band_rm = list(band = "pagehead", i = 2, nonce = 5))
-    session$setInputs(band_rm = list(band = "pagehead", i = 1, nonce = 6))
-    expect_null(obj()@options$pagehead)
-  })
-})
-
-test_that("blanking every band cell elides the band (no empty chrome)", {
-  fx <- .mco_demo_store()
-  withr::defer(arpillar::engine_close(fx$con))
-
-  shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
-    obj <- function() shiny::isolate(selected_object(store))
-    session$setInputs(band_add = list(band = "pagefoot", nonce = 1))
-    session$setInputs(
-      band_edit = list(
-        band = "pagefoot",
-        slot = "center",
-        i = 1,
-        value = "x",
-        nonce = 2
-      )
-    )
-    expect_identical(obj()@options$pagefoot$center, "x")
-    session$setInputs(
-      band_edit = list(
-        band = "pagefoot",
-        slot = "center",
-        i = 1,
-        value = "",
-        nonce = 3
-      )
-    )
-    expect_null(obj()@options$pagefoot)
   })
 })
 

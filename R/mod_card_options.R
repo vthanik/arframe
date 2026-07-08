@@ -623,34 +623,26 @@
 # ---- layout sections (global-requirements parity) -------------------------
 
 # Display-name maps for the layout choice knobs: the stored value is the
-# engine generic ("mono"), the label the term a statistician expects
-# ("Courier New" -- the face Word actually substitutes for the generic).
+# engine token, the label the term a user expects. Geometry (orientation /
+# paper / font) is a study default owned by Setup > Page & Style and no
+# longer edited per-output (plan Phase 3 dedup); what remains here is
+# per-analysis.
 .LAYOUT_CHOICES <- list(
-  orientation = c(Landscape = "landscape", Portrait = "portrait"),
-  paper = c("US Letter" = "letter", A4 = "a4"),
   page_n = c("Off" = "off", "In arm headers" = "headers"),
   width_mode = c(
     "Auto-fit contents" = "content",
     "Window (fill page)" = "window",
     "Fixed" = "fixed"
-  ),
-  font_family = c(
-    "Courier New" = "mono",
-    "Arial" = "sans",
-    "Times New Roman" = "serif"
   )
 )
 
 # The layout keys whose commits ride the generic `.commit_opt()` path
-# (text / int / choice kinds); lines, band, and margins have dedicated
-# observers.
+# (text / int / choice kinds); margins has a dedicated observer. Geometry
+# (orientation / paper / font_family / font_size), header_n, and the
+# running bands moved to Setup study defaults (plan Phase 3) -- the render
+# leg still resolves any per-output value from presets/import.
 .LAYOUT_GENERIC_KEYS <- c(
-  "header_n",
   "total",
-  "orientation",
-  "paper",
-  "font_family",
-  "font_size",
   "width_mode",
   "page_by",
   "page_n",
@@ -666,80 +658,6 @@
 .layout_row <- function(key) {
   sch <- arpillar::layout_schema()
   sch[sch$key == key, , drop = FALSE]
-}
-
-#' One running-band editor row: Left / Center / Right text inputs plus the
-#' remove button, posting the shared `band_edit` / `band_rm` inputs keyed
-#' by band + slot + row index.
-#' @noRd
-.band_row <- function(ns, band_key, i, values) {
-  slot_input <- function(slot, ph) {
-    edit_js <- sprintf(
-      "Shiny.setInputValue('%s', {band: '%s', slot: '%s', i: %d, value: this.value, nonce: Date.now()}, {priority: 'event'})",
-      ns("band_edit"),
-      band_key,
-      slot,
-      i
-    )
-    shiny::tags$input(
-      type = "text",
-      class = "ar-band-input",
-      value = values[[slot]] %||% "",
-      placeholder = ph,
-      onchange = edit_js,
-      `aria-label` = paste0(band_key, " row ", i, " ", slot)
-    )
-  }
-  remove_js <- sprintf(
-    "Shiny.setInputValue('%s', {band: '%s', i: %d, nonce: Date.now()}, {priority: 'event'})",
-    ns("band_rm"),
-    band_key,
-    i
-  )
-  shiny::tags$div(
-    class = "ar-band-row",
-    slot_input("left", "Left"),
-    slot_input("center", "Center"),
-    slot_input("right", "Right"),
-    shiny::tags$button(
-      type = "button",
-      class = "ar-icon-btn ar-fn-remove",
-      `aria-label` = paste0("Remove ", band_key, " row ", i),
-      onclick = remove_js,
-      .icon("close", 11)
-    )
-  )
-}
-
-#' One band editor (HEADER ROWS / FOOTER ROWS): the existing rows + add.
-#' @noRd
-.band_editor <- function(ns, object, band_key, label) {
-  b <- object@options[[band_key]]
-  n <- if (is.list(b)) max(lengths(b), 0L) else 0L
-  add_js <- sprintf(
-    "Shiny.setInputValue('%s', {band: '%s', nonce: Date.now()}, {priority: 'event'})",
-    ns("band_add"),
-    band_key
-  )
-  shiny::tags$div(
-    class = "ar-band",
-    shiny::tags$span(class = "ar-label ar-band-label", label),
-    # Display rows in the same top-to-bottom order the canvas prints them
-    # -- arpillar renders row [[N]] at the top of the header band and row
-    # [[1]] at the bottom, so a top-to-bottom Options list must iterate
-    # `rev(seq_len(n))`. The stored index passed to `.band_row()` stays
-    # the raw i so band_edit / band_rm still address the right row.
-    lapply(rev(seq_len(n)), function(i) {
-      vals <- lapply(b, function(v) if (i <= length(v)) v[[i]] else "")
-      .band_row(ns, band_key, i, vals)
-    }),
-    shiny::tags$button(
-      type = "button",
-      class = "btn btn-link ar-fn-add",
-      onclick = add_js,
-      "+ Add row"
-    )
-  )
 }
 
 #' The dataset's column metadata straight off the engine (no store cache
@@ -898,9 +816,10 @@
 }
 
 #' The layout sections (COLUMNS / PAGE & OUTPUT / SPANNING HEADER /
-#' RUNNING HEADER & FOOTER), rendered off `arpillar::layout_schema()` for
+#' SUBGROUP / PAGE BY), rendered off `arpillar::layout_schema()` for
 #' TABLE outputs only -- the figure legs ignore every layout key, so a
-#' figure never shows dead knobs.
+#' figure never shows dead knobs. Geometry, header_n, and the running
+#' bands moved to Setup study defaults (plan Phase 3 dedup).
 #' @noRd
 .opt_layout_sections <- function(con, ns, object) {
   if (.is_figure_type(object@type)) {
@@ -928,21 +847,6 @@
     .opt_section(
       "COLUMNS",
       list(
-        shiny::tags$div(
-          class = "ar-opt-row ar-opt-row-wide",
-          shiny::tags$span(class = "ar-opt-label", "Header N"),
-          .opt_change_input(
-            ns,
-            "opt_header_n",
-            cur("header_n") %||% "",
-            placeholder = "(N={n})",
-            width = "140px"
-          )
-        ),
-        shiny::tags$p(
-          class = "ar-opt-hint ar-mono",
-          "{n} = the arm's population N; blank = no N line."
-        ),
         shiny::tags$div(
           class = "ar-opt-row ar-opt-row-wide",
           shiny::tags$span(class = "ar-opt-label", "Stub column header"),
@@ -988,29 +892,7 @@
     .opt_section(
       "PAGE & OUTPUT",
       list(
-        shiny::tags$div(
-          class = "ar-opt-row",
-          shiny::tags$span(class = "ar-opt-label", "Orientation"),
-          shiny::radioButtons(
-            ns("opt_orientation"),
-            label = NULL,
-            choices = .LAYOUT_CHOICES$orientation,
-            selected = cur("orientation"),
-            inline = TRUE
-          )
-        ),
-        choice_row("paper"),
         choice_row("width_mode"),
-        choice_row("font_family"),
-        shiny::tags$div(
-          class = "ar-opt-row",
-          shiny::tags$span(class = "ar-opt-label", "Font size"),
-          .opt_int_control(
-            ns,
-            "font_size",
-            as.character(cur("font_size") %||% "")
-          )
-        ),
         shiny::tags$div(
           class = "ar-opt-row ar-opt-row-wide",
           shiny::tags$span(class = "ar-opt-label", "Margins (in)"),
@@ -1083,17 +965,6 @@
             "panels",
             as.character(cur("panels") %||% "")
           )
-        )
-      )
-    ),
-    .opt_section(
-      "RUNNING HEADER & FOOTER",
-      list(
-        .band_editor(ns, object, "pagehead", "HEADER ROWS"),
-        .band_editor(ns, object, "pagefoot", "FOOTER ROWS"),
-        shiny::tags$p(
-          class = "ar-opt-hint ar-mono",
-          "Tokens: {page}, {npages}, {program}, {datetime}."
         )
       )
     )
@@ -1481,98 +1352,6 @@ mod_card_options_server <- function(id, store) {
         label = "set margins"
       )
       rv_err(NULL)
-    })
-
-    # ---- running header / footer bands ----
-    # Normalize a band to three equal-length slot vectors so row indexes
-    # stay aligned across left/center/right.
-    .band_norm <- function(b, n = NULL) {
-      slots <- c("left", "center", "right")
-      b <- if (is.list(b)) b else list()
-      n <- n %||% max(c(lengths(b[intersect(names(b), slots)]), 0L))
-      out <- lapply(slots, function(s) {
-        v <- as.character(b[[s]] %||% character(0))
-        length(v) <- n
-        v[is.na(v)] <- ""
-        v
-      })
-      stats::setNames(out, slots)
-    }
-
-    .commit_band <- function(obj, band_key, value, label) {
-      if (identical(value, obj@options[[band_key]])) {
-        return()
-      }
-      update_object(
-        store,
-        obj@id,
-        function(o) {
-          opts <- o@options
-          opts[[band_key]] <- value
-          S7::set_props(o, options = opts)
-        },
-        label = label
-      )
-    }
-
-    shiny::observeEvent(input$band_add, {
-      obj <- selected_object(store)
-      band_key <- as.character(input$band_add$band)
-      if (is.null(obj) || !band_key %in% c("pagehead", "pagefoot")) {
-        return()
-      }
-      b <- .band_norm(obj@options[[band_key]])
-      b <- lapply(b, function(v) c(v, ""))
-      .commit_band(obj, band_key, b, paste0("add ", band_key, " row"))
-      pane_redraw(pane_redraw() + 1L)
-    })
-
-    shiny::observeEvent(input$band_rm, {
-      obj <- selected_object(store)
-      band_key <- as.character(input$band_rm$band)
-      i <- as.integer(input$band_rm$i)
-      if (is.null(obj) || !band_key %in% c("pagehead", "pagefoot")) {
-        return()
-      }
-      b <- .band_norm(obj@options[[band_key]])
-      n <- length(b$left)
-      if (is.na(i) || i < 1L || i > n) {
-        return()
-      }
-      b <- lapply(b, function(v) v[-i])
-      if (length(b$left) == 0L) {
-        b <- NULL # the last row went -- elide the whole band
-      }
-      .commit_band(obj, band_key, b, paste0("remove ", band_key, " row"))
-      pane_redraw(pane_redraw() + 1L)
-    })
-
-    shiny::observeEvent(input$band_edit, {
-      obj <- selected_object(store)
-      band_key <- as.character(input$band_edit$band)
-      slot <- as.character(input$band_edit$slot)
-      i <- as.integer(input$band_edit$i)
-      if (
-        is.null(obj) ||
-          !band_key %in% c("pagehead", "pagefoot") ||
-          !slot %in% c("left", "center", "right")
-      ) {
-        return()
-      }
-      if (is.na(i) || i < 1L) {
-        return()
-      }
-      b <- .band_norm(obj@options[[band_key]])
-      if (i > length(b$left)) {
-        # A row index beyond the stored band (stale DOM after an undo):
-        # pad rather than truncate.
-        b <- .band_norm(b, n = i)
-      }
-      b[[slot]][[i]] <- as.character(input$band_edit$value)
-      if (all(vapply(b, function(v) all(!nzchar(v)), logical(1)))) {
-        b <- NULL # every cell blank -- elide
-      }
-      .commit_band(obj, band_key, b, paste0("edit ", band_key))
     })
 
     # ---- spanning header bands ----
