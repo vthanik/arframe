@@ -178,17 +178,6 @@ test_that("mod_data_server: focus, View data opens the grid, back closes it", {
   })
 })
 
-test_that("mod_data_server: the tree 'Add folder' CTA relays a click to the chooser", {
-  fx <- .md_store()
-  withr::defer(arpillar::engine_close(fx$con))
-
-  shiny::testServer(mod_data_server, args = list(store = fx$store), {
-    # The relay posts an ar-click message targeting the toolbar chooser --
-    # no store mutation, just a no-error passthrough.
-    expect_no_error(session$setInputs(import_folder_tree = 1))
-  })
-})
-
 test_that("mod_data_server: double-click opens the grid directly", {
   fx <- .md_store()
   withr::defer(arpillar::engine_close(fx$con))
@@ -199,19 +188,53 @@ test_that("mod_data_server: double-click opens the grid directly", {
   })
 })
 
-test_that("mod_data_server: Delete unmounts the focused dataset", {
+test_that("mod_data_server: Delete confirms first, then unmounts the selected dataset", {
   fx <- .md_store()
   withr::defer(arpillar::engine_close(fx$con))
 
   shiny::testServer(mod_data_server, args = list(store = fx$store), {
     session$setInputs(focus = "DM")
+    expect_identical(store$rv$data_selected, "DM")
     before <- store$rv$catalog_nonce
-    session$setInputs(delete = 1)
 
+    # Delete shows the confirm modal -- nothing is removed yet.
+    session$setInputs(delete = 1)
+    expect_true("DM" %in% arpillar::catalog_grid(store$con)$name)
+
+    # Confirming removes it.
+    session$setInputs(confirm_delete = 1)
     expect_equal(nrow(arpillar::catalog_grid(store$con)), 2L)
     expect_false("DM" %in% arpillar::catalog_grid(store$con)$name)
-    expect_null(store$rv$data_focus)
+    expect_equal(store$rv$data_selected, character(0))
     expect_gt(store$rv$catalog_nonce, before)
+  })
+})
+
+test_that("mod_data_server: Cmd-click multi-selects; a confirmed Delete unmounts all", {
+  fx <- .md_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_data_server, args = list(store = fx$store), {
+    session$setInputs(focus = list(name = "ADSL", nonce = 1))
+    session$setInputs(focus = list(name = "ADAE", meta = TRUE, nonce = 2))
+    expect_setequal(store$rv$data_selected, c("ADSL", "ADAE"))
+
+    session$setInputs(delete = 1)
+    session$setInputs(confirm_delete = 1)
+    left <- arpillar::catalog_grid(store$con)$name
+    expect_false(any(c("ADSL", "ADAE") %in% left))
+    expect_true("DM" %in% left) # the un-selected dataset survives
+  })
+})
+
+test_that("mod_data_server: Delete with nothing selected is a no-op (no modal removal)", {
+  fx <- .md_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_data_server, args = list(store = fx$store), {
+    n_before <- nrow(arpillar::catalog_grid(store$con))
+    session$setInputs(delete = 1)
+    expect_equal(nrow(arpillar::catalog_grid(store$con)), n_before)
   })
 })
 

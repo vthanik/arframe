@@ -21,12 +21,22 @@
     var ws = document.querySelector(".ar-workspace");
     if (!ws) return;
     ws.classList.toggle("ar-rail-collapsed", !!m3.rail);
+    ws.classList.toggle("ar-loc-rail-collapsed", !!m3.loc_rail);
     ws.classList.toggle("ar-insp-collapsed", !!m3.insp);
   });
   Shiny.addCustomMessageHandler("ar-report-open", function(m3) {
     var ws = document.querySelector(".ar-workspace");
     if (!ws) return;
     ws.classList.toggle("ar-report-open", !!m3.on);
+  });
+  Shiny.addCustomMessageHandler("ar-loc-select", function(m3) {
+    var ids = m3 && m3.ids || [];
+    document.querySelectorAll(".ar-loc-row").forEach(function(r3) {
+      r3.classList.toggle(
+        "ar-dx-row-sel",
+        ids.indexOf(r3.getAttribute("data-ar-id")) !== -1
+      );
+    });
   });
   Shiny.addCustomMessageHandler("ar-focus", function(m3) {
     var el = document.getElementById(m3.id);
@@ -172,12 +182,47 @@
   });
   $(document).on("click", ".ar-loc-row", function(e3) {
     if (e3.target.closest("input, select, button, a")) return;
-    Shiny.setInputValue("contents-row_click", this.getAttribute("data-ar-id"), {
-      priority: "event"
-    });
+    var shift = e3.shiftKey;
+    var meta = e3.metaKey || e3.ctrlKey;
+    if (!shift && !meta) {
+      document.querySelectorAll(".ar-loc-row.ar-dx-row-sel").forEach(function(r3) {
+        r3.classList.remove("ar-dx-row-sel");
+      });
+      this.classList.add("ar-dx-row-sel");
+    }
+    Shiny.setInputValue(
+      "contents-row_click",
+      {
+        id: this.getAttribute("data-ar-id"),
+        shift,
+        meta,
+        nonce: Date.now()
+      },
+      { priority: "event" }
+    );
   });
   $(document).on("dblclick", ".ar-loc-row", function(e3) {
     if (e3.target.closest("input, select, button, a")) return;
+    Shiny.setInputValue("contents-open", this.getAttribute("data-ar-id"), {
+      priority: "event"
+    });
+  });
+  $(document).on("click", "[data-ar-loc-group]", function() {
+    Shiny.setInputValue(
+      "contents-group",
+      this.getAttribute("data-ar-loc-group"),
+      { priority: "event" }
+    );
+  });
+  $(document).on("click", "[data-ar-loc-toggle]", function(e3) {
+    e3.stopPropagation();
+    Shiny.setInputValue(
+      "contents-loc_toggle",
+      this.getAttribute("data-ar-loc-toggle"),
+      { priority: "event" }
+    );
+  });
+  $(document).on("click", ".ar-loc-nav", function() {
     Shiny.setInputValue("contents-open", this.getAttribute("data-ar-id"), {
       priority: "event"
     });
@@ -246,10 +291,17 @@
       priority: "event"
     });
   });
-  $(document).on("click", ".ar-dx-row", function() {
-    Shiny.setInputValue("data-focus", this.getAttribute("data-ar-name"), {
-      priority: "event"
-    });
+  $(document).on("click", ".ar-dx-row:not(.ar-loc-row)", function(e3) {
+    Shiny.setInputValue(
+      "data-focus",
+      {
+        name: this.getAttribute("data-ar-name"),
+        shift: e3.shiftKey,
+        meta: e3.metaKey || e3.ctrlKey,
+        nonce: Date.now()
+      },
+      { priority: "event" }
+    );
   });
   $(document).on("dblclick", ".ar-dx-row", function() {
     Shiny.setInputValue("data-open", this.getAttribute("data-ar-name"), {
@@ -271,9 +323,13 @@
   });
   $(document).on("input", ".ar-dx-filter", function() {
     var q2 = this.value.toLowerCase();
-    document.querySelectorAll(".ar-dx-row").forEach(function(tr) {
-      var hay = (tr.getAttribute("data-ar-name") + " " + tr.getAttribute("data-ar-lib")).toLowerCase();
-      tr.style.display = hay.indexOf(q2) === -1 ? "none" : "";
+    var scope = this.closest(".ar-data-main") || document;
+    scope.querySelectorAll(".ar-dx-row").forEach(function(tr) {
+      var hay = tr.getAttribute("data-ar-hay");
+      if (hay === null) {
+        hay = (tr.getAttribute("data-ar-name") || "") + " " + (tr.getAttribute("data-ar-lib") || "");
+      }
+      tr.style.display = hay.toLowerCase().indexOf(q2) === -1 ? "none" : "";
     });
   });
   $(document).on("click", "[data-ar-copy]", function() {

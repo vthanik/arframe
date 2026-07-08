@@ -118,6 +118,40 @@
   )
 }
 
+#' The render-time token catalogue for a running header/footer band: chrome
+#' stamps (`{datetime}`/`{program}`/`{program_path}`) + study meta from
+#' `theme$study` (`{sponsor}`/`{protocol}`/`{study}`/`{study_id}`/
+#' `{indication}`/`{data_date}`/`{status}`) + the resolved `{analysis-set}` /
+#' `{arm-label}` labels. Shared by `.with_chrome()` (object bands, export) and
+#' `.onscreen_theme()` (study bands, canvas) so the two never drift. `now` is
+#' injectable for tests. `{page}`/`{npages}` are NOT here: they are backend
+#' field codes tabular resolves (the canvas previews them, `.onscreen_theme`).
+#' @noRd
+.study_tokens <- function(object, theme = list(), now = NULL) {
+  study <- theme$study %||% list()
+  tokens <- c(
+    datetime = .chrome_stamp(now %||% Sys.time()),
+    program = paste0("programs/", .output_slug(object), ".R"),
+    program_path = "programs",
+    sponsor = as.character(study$sponsor %||% ""),
+    protocol = as.character(study$protocol %||% ""),
+    study = as.character(study$study %||% ""),
+    study_id = as.character(study$study_id %||% ""),
+    indication = as.character(study$indication %||% ""),
+    data_date = as.character(study$data_date %||% ""),
+    status = as.character(study$status %||% "")
+  )
+  as_lbl <- .resolve_analysis_set(object, theme)
+  if (!is.null(as_lbl)) {
+    tokens[["analysis-set"]] <- as_lbl
+  }
+  arm_lbl <- .resolve_arm_label(object, theme)
+  if (!is.null(arm_lbl)) {
+    tokens[["arm-label"]] <- arm_lbl
+  }
+  tokens
+}
+
 #' A copy of `object` with the render-time chrome tokens substituted as
 #' LITERALS into the pagehead/pagefoot band strings. arpillar REJECTS
 #' those tokens (they would break its byte-deterministic emit), so the
@@ -146,27 +180,7 @@
   if (is.null(opts$pagehead) && is.null(opts$pagefoot)) {
     return(object)
   }
-  study <- theme$study %||% list()
-  tokens <- c(
-    datetime = .chrome_stamp(now %||% Sys.time()),
-    program = paste0("programs/", .output_slug(object), ".R"),
-    program_path = "programs",
-    sponsor = as.character(study$sponsor %||% ""),
-    protocol = as.character(study$protocol %||% ""),
-    study = as.character(study$study %||% ""),
-    study_id = as.character(study$study_id %||% ""),
-    indication = as.character(study$indication %||% ""),
-    data_date = as.character(study$data_date %||% ""),
-    status = as.character(study$status %||% "")
-  )
-  as_lbl <- .resolve_analysis_set(object, theme)
-  if (!is.null(as_lbl)) {
-    tokens[["analysis-set"]] <- as_lbl
-  }
-  arm_lbl <- .resolve_arm_label(object, theme)
-  if (!is.null(arm_lbl)) {
-    tokens[["arm-label"]] <- arm_lbl
-  }
+  tokens <- .study_tokens(object, theme, now)
   sub_band <- function(b) {
     if (!is.list(b)) {
       return(b)
@@ -184,27 +198,83 @@
   S7::set_props(object, options = opts)
 }
 
-#' The report theme as the CANVAS should see it: every study-level DISPLAY
-#' default (decimals + `decimals_by`, the Summaries vocabulary, arm / header-N)
-#' resolves through `render_spec()`, but the running header/footer BANDS are
-#' dropped. The canvas is a vertically continuous sheet, never a paginated page
-#' (decision #7), so "Page {page} of {npages}" and the running-head band belong
-#' to the `.rtf` alone -- the export seam renders with the FULL theme. Bands are
-#' a `theme$page` concern (Setup writes them there; arframe sets none per-object,
-#' and `.with_chrome()` only stamps object-level bands), so nulling them here is
-#' the complete on-screen suppression.
+# Study-identity tokens a running header/footer REQUIRES: a band referencing
+# one but leaving it empty in Setup > Study errors the output -- fail loud,
+# never a blank in a submission header (2026-07-08, user call). `{indication}`
+# (Setup marks it optional) and `{status}` resolve to blank without erroring.
+.REQUIRED_STUDY_TOKENS <- c(
+  "sponsor",
+  "protocol",
+  "study",
+  "study_id",
+  "data_date"
+)
+
+#' The report theme as the CANVAS renders it (2026-07-08, supersedes the
+#' decision-#7 suppression): the running header/footer BANDS are KEPT and their
+#' tokens resolved to literals -- study meta from Setup > Study, chrome stamps,
+#' and `{page}`/`{npages}` previewed as `"1"` (the canvas is one continuous
+#' sheet, so real page numbers belong to the paginated `.rtf`, which renders
+#' with the FULL theme and tabular's own field codes). Every study-level
+#' DISPLAY default (decimals, Summaries vocabulary, arm / header-N) still
+#' resolves through `render_spec()` as before.
+#'
+#' @details
+#' **Fail loud on a missing required token.** A band that references a
+#' `.REQUIRED_STUDY_TOKENS` entry Setup left empty raises
+#' `arframe_error_input`, which `.try_render_table()`'s tryCatch turns into the
+#' output's render error -- so the reader sees "the header needs a protocol",
+#' not a silent blank.
 #' @noRd
-.onscreen_theme <- function(theme) {
+.onscreen_theme <- function(theme, object) {
   if (!is.list(theme)) {
     return(theme)
   }
   page <- theme$page
-  if (is.list(page)) {
-    page$pagehead <- NULL
-    page$pagefoot <- NULL
-    theme$page <- page
+  if (!is.list(page)) {
+    return(theme)
   }
+  toks <- .study_tokens(object, theme)
+  page$pagehead <- .resolve_band_onscreen(page$pagehead, toks)
+  page$pagefoot <- .resolve_band_onscreen(page$pagefoot, toks)
+  theme$page <- page
   theme
+}
+
+#' Resolve one band's cells for the canvas: (1) error on a referenced-but-empty
+#' required study token, (2) substitute every known token, (3) preview the
+#' `{page}`/`{npages}` field codes as `"1"`. A non-list band (or empty) passes
+#' through untouched.
+#' @noRd
+.resolve_band_onscreen <- function(band, toks) {
+  if (!is.list(band) || length(band) == 0L) {
+    return(band)
+  }
+  lapply(band, function(v) {
+    v <- as.character(v)
+    if (length(v) != 1L || is.na(v)) {
+      return(v)
+    }
+    for (tok in .REQUIRED_STUDY_TOKENS) {
+      lit <- paste0("{", tok, "}")
+      if (grepl(lit, v, fixed = TRUE) && !nzchar(toks[[tok]] %||% "")) {
+        cli::cli_abort(
+          c(
+            "The running header/footer references {.val {lit}}, but it is empty.",
+            "i" = "Set it in Setup > Study, or remove the token from the band."
+          ),
+          class = "arframe_error_input"
+        )
+      }
+    }
+    for (nm in names(toks)) {
+      v <- gsub(paste0("{", nm, "}"), toks[[nm]], v, fixed = TRUE)
+    }
+    # {page}/{npages} are tabular's own backend field codes -- leave them for
+    # tabular to resolve; the canvas is continuous, so real page numbers are the
+    # `.rtf`'s (decision #7 still holds for pagination, not for the bands).
+    v
+  })
 }
 
 #' `{analysis-set}` resolver: the population attached to `object` (via
@@ -839,7 +909,7 @@ mod_paper_server <- function(id, store) {
           .with_footnotes(.with_source(object), theme = store$rv$report@theme),
           theme = store$rv$report@theme
         ),
-        theme = .onscreen_theme(store$rv$report@theme)
+        theme = .onscreen_theme(store$rv$report@theme, object)
       )
       orient <- object@options$orientation %||% "landscape"
       list(

@@ -133,6 +133,16 @@ test_that("wire_all round-trip: individual bindings write to theme", {
     session$setInputs(page_font_size = "12")
     expect_identical(st$rv$report@theme$page$font_size, 12L)
 
+    # Margins (study-level, moved here from per-output 2026-07-08): a 4-value
+    # "top, right, bottom, left" string, a single "all sides" value, and a bad
+    # parse (neither 1 nor 4) that drops -> the prior value stands.
+    session$setInputs(page_margins = "1.5, 1, 1, 1")
+    expect_identical(st$rv$report@theme$page$margins, c(1.5, 1, 1, 1))
+    session$setInputs(page_margins = "0.75")
+    expect_identical(st$rv$report@theme$page$margins, 0.75)
+    session$setInputs(page_margins = "1, 2")
+    expect_identical(st$rv$report@theme$page$margins, 0.75)
+
     # -- Arm --
     session$setInputs(arm_show_header_n = "no")
     expect_false(st$rv$report@theme$arm$show_header_n)

@@ -67,6 +67,20 @@ page, proof-stamp statuses, and a summonable/pinnable galley card. The deliverab
    keep the arframe-side title block + source line (no spec exists there).
    Chrome tokens `{datetime}`/`{program}` are stamped to literals arframe-side
    (`.with_chrome()`); `{page}`/`{npages}` stay as field codes.
+   **Running header/footer bands now render ON the canvas (2026-07-08, user
+   call — supersedes the earlier on-screen band suppression).** `.onscreen_theme()`
+   (mod_paper.R) KEEPS `theme$page$pagehead/pagefoot` and resolves their study
+   tokens (`{sponsor}`/`{protocol}`/`{study}`/`{study_id}`/`{indication}`/
+   `{data_date}`/`{status}`) from Setup > Study via the shared `.study_tokens()`
+   builder; `{page}`/`{npages}` are left to tabular's own field codes (it renders
+   "Page 1 of 1" via a CSS `counter(page)` on the single continuous sheet — the
+   RTF stays the paginated truth). **Fail loud:** a band that references a
+   REQUIRED study token (`.REQUIRED_STUDY_TOKENS` = sponsor/protocol/study/
+   study_id/data_date) Setup left empty raises `arframe_error_input` -> the
+   output shows the render error, never a blank submission header. `{indication}`
+   (Setup marks it optional) + `{status}` resolve to blank without erroring.
+   Consequence: the default seeded band (`{sponsor} - {protocol}`) errors every
+   drilled output until Study is filled in.
 8. **v6 UI frame — LOCKED 2026-07-06** (supersedes v5 2026-07-02 after the
    Setup-as-team-hub redesign):
    - Header — **top app bar** (LOCKED 2026-07-07, supersedes the 2026-07-07
@@ -182,9 +196,45 @@ page, proof-stamp statuses, and a summonable/pinnable galley card. The deliverab
        active tab. Spec/plan:
        `docs/superpowers/specs/2026-07-07-arframe-setup-dashboard-top-nav-design.md`,
        `docs/superpowers/plans/2026-07-07-arframe-setup-dashboard-top-nav.md`.
-       3. Report -> **List-of-Contents table**
-       drilling into paper+inspector (mirrors Data); +Output/+Standard,
-       Options/Prefs segment, Run->Review.  4. **Full CDISC ARS spine** in
+       3. Report -> **List-of-Contents table** (LoC core DONE 2026-07-08;
+       `+Standard` preset add-path, Options/Prefs segment, Run->Review still
+       pending). LoC drills into paper+inspector, mirroring Data. **Locked
+       calls (do NOT re-litigate):** CONTENTS rail is a Data-style **kind
+       FOLDER tree** (Tables/Figures/Listings folders, chevron+count, nested
+       output rows) — NOT a `<select>` dropdown, NOT kind-chips (both built +
+       rejected). The **"All outputs" root row was REMOVED 2026-07-08** (user
+       call); re-clicking the active folder now clears the kind-filter back to
+       all (the root's old job). Folder counts + the rail's `14.x.x` number
+       prefixes stay. Rail PERSISTS on drill. Flat main table `NUMBER LABEL
+       TITLE POPULATION STATUS MODIFIED`; TITLE flat (box on hover/focus only);
+       headers left-pad to sit over their values (glyph/input insets).
+       **Two-stage row edit (2026-07-08, user call):** a row's FIRST click
+       SELECTS it (blue rail), only a SELECTED row's inline controls edit —
+       unselected rows are `pointer-events:none` (CSS, `.ar-loc-row:not(.ar-dx-row-sel)`)
+       so a stray click never drops a cursor into the title. Toolbar **Edit**
+       still drills. The drill breadcrumb carries an **X close** (`.ar-dx-close`,
+       `input$drill_close`) mirroring Data's grid X. **MODIFIED** from `store$mtimes`; **NO "BY"
+       column** (author not tracked). **POPULATION** defaults to
+       `theme$default_population` (safety), never em-dash. `+ Add output` in
+       the top toolbar. **Delete = shift/Cmd multi-select + a
+       `shiny::modalDialog` confirm** (`.select_update` in `fct_store.R`,
+       `.confirm_delete_modal` in `utils_atoms.R`) across BOTH Data + Report;
+       the hover **folder-trash** delete was built then REVERTED — do not
+       revive it. Re-clicking the active tab toggles that mode's OWN rail
+       (`rail_collapsed` vs `loc_rail_collapsed`, independent — no leak).
+       `.ar-dx-row` is `user-select:none` so shift-click selects rows, not
+       text. **Inspector Options/Filters (2026-07-08, user calls):** (a) the
+       per-output **Margins** control was REMOVED — margins is study-level page
+       geometry, edited at Setup > Page & Style (`theme$page$margins`, SPEC
+       `page_margins` + `.as_margins`); the engine still honours a legacy
+       `options$margins` override but arframe no longer writes one. (b) the
+       Filters pane **POPULATION** section lists Setup's analysis sets
+       (`theme$populations`, Setup > Analysis sets), NOT dataset `*FL` flags —
+       picking one writes `options$population` (the SAME field the TOC column
+       shows -> they sync; the engine subsets via the set's `filter`). The
+       ad-hoc `+ Filter` predicate section (`object@filters`) stays. The old
+       `*FL`-flag chips + "Full set" + `.population_flags()` were removed.
+       4. **Full CDISC ARS spine** in
        arpillar (ReportingEvent/Analysis/AnalysisMethod/Operation/
        GroupingFactor/AnalysisSet/DataSubset/OutputDisplay/ListOfContents/ARD)
        + arframe ARM_OID columns.  5. Dark "Instrument" theme.

@@ -106,6 +106,28 @@ library(arframe)
     )
   )
 )
+# Running-header/footer bands + the study meta their tokens resolve against
+# (2026-07-08): the canvas renders the bands with `{sponsor}`/`{protocol}`/
+# `{data_date}` stamped to these values, and `{page}`/`{npages}` left to
+# tabular's own field codes. Without the study meta the fail-loud band rule
+# would error every READY output.
+.theme <- .report@theme
+.theme$study <- list(
+  sponsor = "Demo Sponsor",
+  protocol = "XYZ-2026",
+  data_date = "2026-07-08"
+)
+.page <- .theme$page
+if (is.null(.page)) {
+  .page <- list()
+}
+.page$pagehead <- list(
+  left = "{sponsor} - {protocol}",
+  right = "Page {page} of {npages}"
+)
+.page$pagefoot <- list(left = "Data as of {data_date}", right = "{datetime}")
+.theme$page <- .page
+.report <- S7::set_props(.report, theme = .theme)
 .project <- tempfile(fileext = ".json")
 arpillar::report_to_json(.report, path = .project)
 arpillar::engine_close(.con)

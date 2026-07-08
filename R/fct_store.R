@@ -32,6 +32,17 @@ new_store <- function(con, report = NULL) {
     rv = shiny::reactiveValues(
       report = report,
       selected = NULL,
+      # Report LoC contents-rail filter: NULL = all outputs, else a kind key
+      # ("table"/"figure"/"listing") narrowing the main table to that group
+      # (the Report-mode twin of `data_source`).
+      loc_group = NULL,
+      # Report contents-rail: kind folders whose nested outputs are collapsed
+      # (the Report twin of `src_collapsed`; default empty = all expanded).
+      loc_collapsed = character(0),
+      # LoC multi-select: the set of output ids selected in the main table
+      # (shift / Cmd click). `selected` is the anchor (single); `loc_selected`
+      # is what Delete acts on. The Report twin of Data's `data_selected`.
+      loc_selected = character(0),
       region = NULL,
       card = FALSE,
       pinned = FALSE,
@@ -55,12 +66,20 @@ new_store <- function(con, report = NULL) {
       log = character(0),
       catalog_nonce = 0L,
       rail_collapsed = FALSE,
+      # Report CONTENTS rail hide flag -- INDEPENDENT of the Data `rail_collapsed`
+      # so collapsing one mode's rail never leaks to the other (re-clicking the
+      # active Report tab toggles this).
+      loc_rail_collapsed = FALSE,
       insp_collapsed = FALSE,
       insp_tab = "roles",
       run_nonce = 0L,
       code_view = FALSE,
       data_source = NULL,
       data_focus = NULL,
+      # Data explorer multi-select: the set of dataset names selected (shift /
+      # Cmd click). `data_focus` is the anchor (drives View data + the shift
+      # range); `data_selected` is what Delete acts on.
+      data_selected = character(0),
       grid_dataset = NULL,
       # Data-mode SOURCES tree: folder labels whose dataset children are
       # collapsed. Server-held (not the DOM) so a tree re-render preserves
@@ -468,12 +487,51 @@ cached_ard <- function(store, object) {
   if (identical(store$rv$data_focus, name)) {
     store$rv$data_focus <- NULL
   }
+  store$rv$data_selected <- setdiff(store$rv$data_selected, name)
   if (identical(store$rv$grid_dataset, name)) {
     store$rv$grid_dataset <- NULL
   }
   store$rv$catalog_nonce <- store$rv$catalog_nonce + 1L
   log_line(store, sprintf("removed %s", name))
   invisible(NULL)
+}
+
+#' Recompute a row-selection set after a click, given the modifier keys. Plain
+#' click single-selects the clicked item; Cmd/Ctrl toggles it in/out; Shift
+#' range-selects from the anchor through `ordered` (the display order). Shared
+#' by Data's explorer and the Report LoC (same `.ar-dx-row` multi-select).
+#' @param clicked *The clicked item id/name.* `<character(1)>`.
+#' @param anchor *The current anchor (last non-shift click), or NULL.*
+#' @param ordered *All ids/names in display order* (for the shift range).
+#' @param current *The current selection set.* `<character>`.
+#' @param shift,meta *Modifier keys held.* `<logical(1)>`.
+#' @noRd
+.select_update <- function(
+  clicked,
+  anchor,
+  ordered,
+  current,
+  shift = FALSE,
+  meta = FALSE
+) {
+  if (isTRUE(shift) && !is.null(anchor)) {
+    a <- match(anchor, ordered)
+    b <- match(clicked, ordered)
+    if (!is.na(a) && !is.na(b)) {
+      return(ordered[seq(min(a, b), max(a, b))])
+    }
+    return(clicked)
+  }
+  if (isTRUE(meta)) {
+    return(
+      if (clicked %in% current) {
+        setdiff(current, clicked)
+      } else {
+        union(current, clicked)
+      }
+    )
+  }
+  clicked
 }
 
 #' The source folder a dataset was mounted from, or `NA` when arframe did

@@ -28,6 +28,25 @@
   if (length(iv) != 1L || is.na(iv) || iv < 0L) NULL else iv
 }
 
+# Page margins coerce: a "top, right, bottom, left" (or single "all sides")
+# comma string -> a length-1 or length-4 non-negative numeric vector, the
+# shape the engine's `theme$page$margins` / `.margins_opt()` consumes. NULL
+# (blank or unparseable) drops the edit, keeping the prior value -- the same
+# validation the retired per-output margins control used.
+.as_margins <- function(v) {
+  raw <- trimws(v %||% "")
+  if (!nzchar(raw)) {
+    return(NULL)
+  }
+  parts <- trimws(strsplit(raw, ",", fixed = TRUE)[[1]])
+  parts <- parts[nzchar(parts)]
+  vals <- suppressWarnings(as.numeric(parts))
+  if (anyNA(vals) || !length(vals) %in% c(1L, 4L) || any(vals < 0)) {
+    return(NULL)
+  }
+  vals
+}
+
 # Declarative registry of every SCALAR setup input.
 #   id     : Shiny input id (namespaced via `session$ns` at render time).
 #   path   : character() path into `report@theme` (nested via `[[`).
@@ -69,6 +88,7 @@
       if (length(iv) != 1L || is.na(iv)) NULL else iv
     }
   ),
+  list(id = "page_margins", path = c("page", "margins"), coerce = .as_margins),
   # ---- Arm column headers -----------------------------------------------
   list(
     id = "arm_show_header_n",
@@ -1654,19 +1674,17 @@ s_study <- function(store) {
 
 # ---- Populations section --------------------------------------------------
 
-# CDISC canonical analysis-set seeds. Rendered as editable rows when the
+# CDISC canonical analysis-set seed. Rendered as an editable row when the
 # theme's populations library is empty so users see the shape without
 # hand-writing setup.yml. Once a user edits or adds, the theme takes over.
+# Only SAFFL is seeded -- it is the one subject-level flag present across the
+# ADaM pilot ADSL; the efficacy/FAS seed was dropped (no FASFL in the data).
+# Users add their own analysis sets via "+ Add analysis set".
 .POP_SEEDS <- list(
   safety = list(
     label = "Safety Analysis Set",
     dataset = "ADSL",
     filter = 'SAFFL == "Y"'
-  ),
-  efficacy = list(
-    label = "Full Analysis Set (FAS)",
-    dataset = "ADSL",
-    filter = 'FASFL == "Y"'
   )
 )
 
@@ -1852,6 +1870,12 @@ s_study <- function(store) {
           "page_font_size",
           "Font size",
           as.character(p$font_size %||% 10L)
+        ),
+        .flat_input(
+          ns,
+          "page_margins",
+          "Margins (in)",
+          paste(p$margins %||% c(1, 1, 1, 1), collapse = ", ")
         )
       )
     ),
@@ -1930,7 +1954,7 @@ s_study <- function(store) {
     shiny::tags$input(
       type = "search",
       class = "ar-foot-filter ar-input-flat ar-search",
-      placeholder = "Filter footnotes by key or text…",
+      placeholder = "Filter footnotes by key or text\u2026",
       `aria-label` = "Filter footnotes",
       autocomplete = "off"
     ),

@@ -492,19 +492,19 @@ test_that("a table pane renders the surviving layout sections; a figure never do
     # Per-analysis layout knobs survive the Phase 3 dedup.
     for (lbl in c(
       "PAGE &amp; OUTPUT",
-      "Margins (in)",
       "Blank row between blocks",
       "Total column",
       "Add title line"
     )) {
       expect_match(html, lbl, fixed = TRUE)
     }
-    # Study-default chrome / geometry / header-N moved to Setup > Page &
-    # Style: their per-output controls (and inputs) are gone.
+    # Study-default chrome / geometry / header-N / MARGINS moved to Setup >
+    # Page & Style: their per-output controls (and inputs) are gone.
     for (lbl in c(
       "Header N",
       "Orientation",
       "Font size",
+      "Margins (in)",
       "RUNNING HEADER &amp; FOOTER"
     )) {
       expect_no_match(html, lbl, fixed = TRUE)
@@ -515,6 +515,7 @@ test_that("a table pane renders the surviving layout sections; a figure never do
       "opt_font_family",
       "opt_font_size",
       "opt_header_n",
+      "opt_margins",
       "band_edit"
     )) {
       expect_no_match(html, tok, fixed = TRUE)
@@ -587,27 +588,9 @@ test_that("removed geometry/header-N/band inputs no longer commit (Setup owns th
   })
 })
 
-test_that("margins commit UNSORTED (top/right/bottom/left is an order)", {
-  fx <- .mco_demo_store()
-  withr::defer(arpillar::engine_close(fx$con))
-
-  shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
-    obj <- function() shiny::isolate(selected_object(store))
-
-    session$setInputs(opt_margins = "1.5, 1, 1, 1")
-    expect_identical(obj()@options$margins, c(1.5, 1, 1, 1))
-
-    # All-1s IS the engine default -- elided.
-    session$setInputs(opt_margins = "1, 1, 1, 1")
-    expect_null(obj()@options$margins)
-
-    # 2 values is neither 1 nor 4: rejected, the last good value stands.
-    session$setInputs(opt_margins = "1, 2")
-    expect_null(obj()@options$margins)
-    session$flushReact()
-    expect_match(output$opt_msg$html, "not 1 or 4", fixed = TRUE)
-  })
-})
+# Margins moved to Setup > Page & Style (study-level, 2026-07-08): the
+# per-output margins control + observer were removed here. The study-level
+# `page_margins` parse/write is covered in test-mod_setup.R.
 
 test_that("title lines add/edit/remove commit options$titles", {
   fx <- .mco_demo_store()

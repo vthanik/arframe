@@ -842,7 +842,6 @@
       )
     )
   }
-  margins <- object@options$margins
   list(
     .opt_section(
       "COLUMNS",
@@ -892,25 +891,11 @@
     .opt_section(
       "PAGE & OUTPUT",
       list(
-        choice_row("width_mode"),
-        shiny::tags$div(
-          class = "ar-opt-row ar-opt-row-wide",
-          shiny::tags$span(class = "ar-opt-label", "Margins (in)"),
-          .opt_change_input(
-            ns,
-            "opt_margins",
-            if (is.null(margins)) {
-              ""
-            } else {
-              paste(margins, collapse = ", ")
-            },
-            placeholder = "1, 1, 1, 1"
-          )
-        ),
-        shiny::tags$p(
-          class = "ar-opt-hint ar-mono",
-          "top, right, bottom, left \u00b7 one value = all sides"
-        )
+        # Margins moved to Setup > Page & Style (study-level, 2026-07-08): page
+        # geometry belongs with orientation / paper / font, not per-output. The
+        # engine still honours a per-output `options$margins` override if one
+        # was set, but arframe no longer exposes a control for it.
+        choice_row("width_mode")
       )
     ),
     .opt_spans_section(con, ns, object),
@@ -1311,48 +1296,10 @@ mod_card_options_server <- function(id, store) {
       pane_redraw(pane_redraw() + 1L)
     })
 
-    # ---- margins (unsorted numvec: top, right, bottom, left) ----
-    shiny::observeEvent(input$opt_margins, {
-      obj <- selected_object(store)
-      if (is.null(obj) || .is_figure_type(obj@type)) {
-        return()
-      }
-      raw <- trimws(input$opt_margins %||% "")
-      value <- NULL
-      if (nzchar(raw)) {
-        parts <- trimws(strsplit(raw, ",", fixed = TRUE)[[1]])
-        parts <- parts[nzchar(parts)]
-        vals <- suppressWarnings(as.numeric(parts))
-        # Order matters (top/right/bottom/left) -- NEVER the sorted
-        # `.opt_parse()` numvec path.
-        if (anyNA(vals) || !length(vals) %in% c(1L, 4L) || any(vals < 0)) {
-          rv_err(sprintf(
-            'Margins: "%s" is not 1 or 4 non-negative numbers.',
-            raw
-          ))
-          return()
-        }
-        value <- vals
-        if (all(value == 1)) {
-          value <- NULL # the engine default -- elide
-        }
-      }
-      if (identical(value, obj@options$margins)) {
-        rv_err(NULL)
-        return()
-      }
-      update_object(
-        store,
-        obj@id,
-        function(o) {
-          opts <- o@options
-          opts$margins <- value
-          S7::set_props(o, options = opts)
-        },
-        label = "set margins"
-      )
-      rv_err(NULL)
-    })
+    # Margins moved to Setup > Page & Style (study-level, 2026-07-08) -- its
+    # per-output observer + control were removed. The engine still resolves a
+    # legacy `options$margins` override, but arframe writes only the study
+    # default now (`theme$page$margins`, via `.SETUP_SPEC`'s `page_margins`).
 
     # ---- spanning header bands ----
     .commit_spans <- function(obj, spans, label) {

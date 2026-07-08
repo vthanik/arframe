@@ -406,6 +406,36 @@ test_that("remove_output leaves selected untouched when a different id is remove
   expect_identical(shiny::isolate(store$rv$selected), id2)
 })
 
+test_that(".select_update: plain replaces, Cmd toggles, Shift range-selects", {
+  ordered <- c("a", "b", "c", "d")
+  # Plain click -> single-select, ignoring the current set.
+  expect_identical(.select_update("b", NULL, ordered, character(0)), "b")
+  expect_identical(.select_update("c", "a", ordered, c("a", "b")), "c")
+  # Cmd/Ctrl toggles the clicked item in/out of the set.
+  expect_identical(
+    .select_update("c", "a", ordered, "a", meta = TRUE),
+    c("a", "c")
+  )
+  expect_identical(
+    .select_update("a", "a", ordered, c("a", "c"), meta = TRUE),
+    "c"
+  )
+  # Shift range-selects from the anchor through display order (either way).
+  expect_identical(
+    .select_update("c", "a", ordered, character(0), shift = TRUE),
+    c("a", "b", "c")
+  )
+  expect_identical(
+    .select_update("a", "c", ordered, character(0), shift = TRUE),
+    c("a", "b", "c")
+  )
+  # Shift with no anchor falls back to a single-select.
+  expect_identical(
+    .select_update("b", NULL, ordered, character(0), shift = TRUE),
+    "b"
+  )
+})
+
 test_that("move_output reorders and rename_output relabels", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))

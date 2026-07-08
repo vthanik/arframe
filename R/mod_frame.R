@@ -188,19 +188,21 @@ mod_frame_server <- function(id, store) {
     # state stays frame-owned in the store, mirrored via ar-collapse.
     shiny::observeEvent(input$mode, {
       if (identical(input$mode, store$rv$mode)) {
-        # Report mode has no collapsible contents rail anymore (the LoC is
-        # full-width) -- re-clicking the active Report tab closes the drill,
-        # back to the List-of-Contents. Every other mode keeps the rail
-        # show/hide toggle.
+        # Re-clicking the ACTIVE tab toggles that mode's left rail (the
+        # explorer-style show/hide). Report and Data each flip their OWN flag
+        # so one never hides the other's rail (the "leak"). Report's
+        # `loc_rail_collapsed` hides the CONTENTS rail; Data's `rail_collapsed`
+        # hides the SOURCES rail. Both are mirrored to the workspace each time.
         if (identical(store$rv$mode, "report")) {
-          drill_close(store)
-          return()
+          store$rv$loc_rail_collapsed <- !isTRUE(store$rv$loc_rail_collapsed)
+        } else {
+          toggle_rail(store)
         }
-        toggle_rail(store)
         session$sendCustomMessage(
           "ar-collapse",
           list(
             rail = isTRUE(store$rv$rail_collapsed),
+            loc_rail = isTRUE(store$rv$loc_rail_collapsed),
             insp = isTRUE(store$rv$insp_collapsed)
           )
         )
@@ -225,6 +227,7 @@ mod_frame_server <- function(id, store) {
         "ar-collapse",
         list(
           rail = isTRUE(store$rv$rail_collapsed),
+          loc_rail = isTRUE(store$rv$loc_rail_collapsed),
           insp = isTRUE(store$rv$insp_collapsed)
         )
       )

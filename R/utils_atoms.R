@@ -239,6 +239,35 @@
   btn
 }
 
+#' A "confirm delete" modal (the non-blocking Shiny-native confirm the user
+#' asked for -- NOT a `window.confirm()`). A Cancel button dismisses; the
+#' danger "Delete" posts to `confirm_id`, which the caller wires to the actual
+#' removal. Shared by Data (datasets) and the Report LoC (outputs).
+#' @param confirm_id *The namespaced id of the confirm button.*
+#'   `<character(1)>`. From `session$ns("...")`.
+#' @param n *How many items will be deleted.* `<integer(1)>`.
+#' @param noun *Singular noun for the item ("dataset" / "output").*
+#'   `<character(1)>`.
+#' @param detail *One sentence on what delete does + how to undo.*
+#'   `<character(1)>`.
+#' @noRd
+.confirm_delete_modal <- function(confirm_id, n, noun, detail) {
+  plural <- if (n == 1L) noun else paste0(noun, "s")
+  m <- shiny::modalDialog(
+    title = sprintf("Delete %d %s?", n, plural),
+    shiny::p(detail),
+    size = "s",
+    easyClose = TRUE,
+    footer = shiny::tagList(
+      shiny::modalButton("Cancel"),
+      .action_btn(confirm_id, "Delete", variant = "danger", class = "ex-btn-sm")
+    )
+  )
+  # `ar-confirm-modal` scopes the Galley modal skin (accent title, rounded
+  # borderless card) so it never touches datasetviewer's own modals.
+  shiny::tagAppendAttributes(m, class = "ar-confirm-modal")
+}
+
 #' A dashboard surface card: white, elevated, rounded, padded. Optional
 #' header row (a title plus a right-aligned action slot) above the body.
 #'

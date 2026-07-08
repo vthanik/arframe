@@ -145,13 +145,9 @@
       shiny::tags$span(class = "ar-mono ar-data-src-n", nrow(grid))
     ),
     lapply(orphans, function(nm) .src_dataset_row(nm, open)),
-    nodes,
-    .action_btn(
-      ns("import_folder_tree"),
-      shiny::tagList(.icon("plus", 12), "Add folder"),
-      variant = "link",
-      class = "ar-add-cta"
-    )
+    nodes
+    # "+ Add folder" removed from the rail (2026-07-08) -- the toolbar's
+    # "Import folder" is the single add-folder affordance, kept at the top.
   )
 }
 
@@ -162,11 +158,11 @@
 #' carries the selected class. `data-ar-name` lets the delegated handlers
 #' name the row without a per-row input.
 #' @noRd
-.explorer_row <- function(row, focus) {
-  is_focus <- !is.null(focus) && identical(focus, row$name)
+.explorer_row <- function(row, selected) {
+  is_sel <- row$name %in% selected
   status <- if (isTRUE(row$loaded)) "LOADED" else "LAZY"
   shiny::tags$tr(
-    class = paste("ar-dx-row", if (is_focus) "ar-dx-row-sel"),
+    class = paste("ar-dx-row", if (is_sel) "ar-dx-row-sel"),
     `data-ar-name` = row$name,
     shiny::tags$td(class = "ar-mono ar-dx-name", row$name),
     shiny::tags$td(class = "ar-dx-dim", row$folder %||% "\u2014"),
@@ -189,7 +185,7 @@
 #' `.explorer_row()` per dataset, or an empty-state line when the source is
 #' empty.
 #' @noRd
-.explorer_table <- function(ns, grid, focus) {
+.explorer_table <- function(ns, grid, selected) {
   if (nrow(grid) == 0L) {
     return(shiny::tags$div(
       class = "ar-dx-empty ar-mono",
@@ -218,7 +214,7 @@
     )),
     shiny::tags$tbody(
       lapply(seq_len(nrow(grid)), function(i) {
-        .explorer_row(grid[i, , drop = FALSE], focus)
+        .explorer_row(grid[i, , drop = FALSE], selected)
       })
     )
   )
@@ -380,12 +376,12 @@ mod_data_server <- function(id, store) {
         return(.data_grid(ns, store, store$rv$grid_dataset))
       }
       grid <- .explorer_grid(store, store$rv$data_source)
-      .explorer_table(ns, grid, store$rv$data_focus)
+      .explorer_table(ns, grid, store$rv$data_selected)
     }) |>
       shiny::bindEvent(
         store$rv$catalog_nonce,
         store$rv$data_source,
-        store$rv$data_focus,
+        store$rv$data_selected,
         store$rv$grid_dataset
       )
 
@@ -415,10 +411,31 @@ mod_data_server <- function(id, store) {
       }
     })
 
-    # `input$focus`/`input$open` carry the dataset name from the delegated
-    # row handlers (single vs double click).
+    # A row click carries `{name, shift, meta, nonce}` from the delegated
+    # handler. Plain click single-selects; Cmd/Ctrl toggles; Shift range-selects
+    # from the anchor (`data_focus`) through the explorer's display order.
+    # `data_focus` is the anchor (drives View data + the shift range); it only
+    # moves on a non-shift click.
     shiny::observeEvent(input$focus, {
-      store$rv$data_focus <- input$focus
+      e <- input$focus
+      name <- if (is.list(e)) e$name else e
+      if (is.null(name)) {
+        return()
+      }
+      shift <- is.list(e) && isTRUE(e$shift)
+      meta <- is.list(e) && isTRUE(e$meta)
+      ordered <- .explorer_grid(store, store$rv$data_source)$name
+      store$rv$data_selected <- .select_update(
+        name,
+        store$rv$data_focus,
+        ordered,
+        store$rv$data_selected,
+        shift = shift,
+        meta = meta
+      )
+      if (!shift) {
+        store$rv$data_focus <- name
+      }
     })
 
     shiny::observeEvent(input$open, {
@@ -451,10 +468,29 @@ mod_data_server <- function(id, store) {
       datasetviewer::dataset_viewer(arpillar::dataset_path(store$con, name))
     })
 
+    # Delete: confirm, then unmount every SELECTED dataset (single- or
+    # multi-select). Unmount is reversible (files stay; re-import restores),
+    # but a bulk drop still warrants the confirm the user asked for.
     shiny::observeEvent(input$delete, {
-      if (!is.null(store$rv$data_focus)) {
-        .unmount_dataset(store, store$rv$data_focus)
+      sel <- store$rv$data_selected
+      if (length(sel) == 0L) {
+        return()
       }
+      shiny::showModal(.confirm_delete_modal(
+        session$ns("confirm_delete"),
+        length(sel),
+        "dataset",
+        "The files stay on disk. Re-import the folder to restore them."
+      ))
+    })
+
+    shiny::observeEvent(input$confirm_delete, {
+      for (nm in store$rv$data_selected) {
+        .unmount_dataset(store, nm)
+      }
+      store$rv$data_selected <- character(0)
+      store$rv$data_focus <- NULL
+      shiny::removeModal()
     })
 
     # Import folder (tree CTA + toolbar button both target one chooser).
@@ -472,13 +508,6 @@ mod_data_server <- function(id, store) {
         store$rv$data_source <- NULL
         store$rv$grid_dataset <- NULL
       }
-    })
-
-    shiny::observeEvent(input$import_folder_tree, {
-      session$sendCustomMessage(
-        "ar-click",
-        list(id = ns("import_folder"))
-      )
     })
 
     shiny::observeEvent(input$import_file, {

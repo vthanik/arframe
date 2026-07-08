@@ -1,8 +1,10 @@
 # The Filters pane (chips + editor, 2026-07-04 redesign): the Filters-tab
-# content of the docked inspector. Presets FIRST (one chip per `*FL`
-# population flag in the dataset, CDISC-mapped names, selected state when
-# the committed set IS that flag; "Full set" clears), then one compact
-# chip per predicate (`SAFFL = Y ×`, `AGE > 65 ×`) and a `+ Filter` chip.
+# content of the docked inspector. POPULATION FIRST (2026-07-08: one chip per
+# study analysis set from `theme$populations` / Setup > Analysis sets, the lit
+# chip = `options$population` or the study default; picking one writes
+# `options$population` -- the SAME field the TOC shows, and the engine subsets
+# via the set's filter), then one compact chip per ad-hoc predicate
+# (`AGE > 65 x`) and a `+ Filter` chip.
 # Clicking a chip opens THE editor card (GOV.UK stacked labelled controls:
 # variable -> condition -> type-aware value with real level counts /
 # range hint -> include missing); only one editor exists at a time, so
@@ -69,17 +71,11 @@
   paste0(column, " = Y")
 }
 
-#' Every population-flag candidate in the dataset: category columns ending
-#' in `FL`, mapped flags first (in .POPULATION_FLAGS order), the rest
-#' alphabetical.
-#' @noRd
-.population_flags <- function(items) {
-  flags <- items$name[items$type == "category" & grepl("FL$", items$name)]
-  c(
-    intersect(names(.POPULATION_FLAGS), flags),
-    sort(setdiff(flags, names(.POPULATION_FLAGS)))
-  )
-}
+# `.population_flags()` removed 2026-07-08: the POPULATION section no longer
+# derives chips from dataset `*FL` columns -- it lists the study's analysis-set
+# library (`theme$populations`, Setup > Analysis sets) and writes
+# `options$population`. `.POPULATION_FLAGS` / `.flag_label` / `.flag_filter`
+# stay: the paper's `.filters_tag_label` still names a hand-added flag filter.
 
 # The canonical safety-population predicate (the SAFFL chip's own output)
 # -- kept named because tests and the paper tag pin it.
@@ -465,6 +461,25 @@ mod_card_filters_server <- function(id, store) {
       draft <- store$rv$filter_draft
       open_i <- open_row()
       committed <- lapply(Filter(.filter_complete, draft), .filter_normalize)
+      # POPULATION = the study's analysis-set library (Setup > Analysis sets,
+      # `theme$populations`), NOT raw dataset *FL flags (2026-07-08). Selecting
+      # one writes `options$population` -- the SAME field the TOC's POPULATION
+      # column shows, so the inspector and the LoC stay in sync -- and the
+      # engine subsets via the set's `filter` (resolve_population -> build_ard).
+      # Exactly one is always selected (options$population, else the study
+      # default), mirroring the TOC (decision #12.3: every output has a
+      # population, never blank). The FILTERS section below stays for ad-hoc
+      # non-population predicates (`object@filters`).
+      pops <- store$rv$report@theme$populations %||% list()
+      default_pop <- store$rv$report@theme$default_population %||% ""
+      cur_pop <- {
+        p <- obj@options$population
+        if (!is.null(p) && nzchar(as.character(p))) {
+          as.character(p)
+        } else {
+          default_pop
+        }
+      }
       shiny::tagList(
         shiny::tags$div(
           class = "ar-flt-head",
@@ -475,43 +490,31 @@ mod_card_filters_server <- function(id, store) {
           shiny::tags$div,
           c(
             list(class = "ar-flt-presets"),
-            # One chip per population-flag candidate (`*FL` category
-            # columns): CDISC-mapped names first, the rest by their bare
-            # predicate. Dynamic set -> ONE shared `preset_flag` input.
-            # A preset wears the selected state when the complete draft
-            # IS exactly its canonical predicate (one chip language,
-            # 2026-07-04).
-            lapply(.population_flags(items), function(fl) {
-              js <- sprintf(
-                "Shiny.setInputValue('%s', {column: '%s', nonce: Date.now()}, {priority: 'event'})",
-                ns("preset_flag"),
-                fl
-              )
-              on <- identical(committed, list(.flag_filter(fl)))
-              shiny::tags$button(
-                type = "button",
-                class = paste0(
-                  "ar-flt-preset btn btn-default action-button",
-                  if (on) " ar-flt-preset-on"
-                ),
-                onclick = js,
-                if (on) .icon("check", 10),
-                .flag_label(fl)
-              )
-            }),
-            list(
-              .action_btn(
-                ns("preset_full"),
-                shiny::tagList(
-                  if (length(committed) == 0L) .icon("check", 10),
-                  "Full set"
-                ),
-                class = paste0(
-                  "ar-flt-preset",
-                  if (length(committed) == 0L) " ar-flt-preset-on"
+            if (length(pops) == 0L) {
+              list(shiny::tags$span(
+                class = "ar-opt-hint ar-mono",
+                "Define analysis sets in Setup > Analysis sets."
+              ))
+            } else {
+              lapply(names(pops), function(pid) {
+                on <- identical(pid, cur_pop)
+                js <- sprintf(
+                  "Shiny.setInputValue('%s', {id: '%s', nonce: Date.now()}, {priority: 'event'})",
+                  ns("pick_population"),
+                  pid
                 )
-              )
-            )
+                shiny::tags$button(
+                  type = "button",
+                  class = paste0(
+                    "ar-flt-preset btn btn-default action-button",
+                    if (on) " ar-flt-preset-on"
+                  ),
+                  onclick = js,
+                  if (on) .icon("check", 10),
+                  pops[[pid]]$label %||% pid
+                )
+              })
+            }
           )
         ),
         shiny::tags$div(class = "ar-label ar-flt-sec", "FILTERS"),
@@ -580,19 +583,32 @@ mod_card_filters_server <- function(id, store) {
     shiny::outputOptions(output, "pane", suspendWhenHidden = FALSE)
     shiny::outputOptions(output, "count", suspendWhenHidden = FALSE)
 
-    # ---- presets ----
-    shiny::observeEvent(input$preset_flag, {
-      col <- input$preset_flag$column
-      if (is.null(col) || !nzchar(col)) {
+    # ---- population (analysis set) ----
+    # Picking a population writes `options$population` -- NOT a filter predicate
+    # (2026-07-08). This is the field the TOC POPULATION column reads, so the
+    # two sync; the engine applies the set's `filter` to subset. update_object
+    # marks the proof STALE (a population change re-collects the data).
+    shiny::observeEvent(input$pick_population, {
+      obj <- selected_object(store)
+      if (is.null(obj)) {
         return()
       }
-      store$rv$filter_draft <- .seed_draft(list(.flag_filter(col)))
-      .commit_filters(store)
-    })
-
-    shiny::observeEvent(input$preset_full, {
-      store$rv$filter_draft <- list()
-      .commit_filters(store)
+      pid <- input$pick_population$id
+      if (
+        is.null(pid) || !nzchar(pid) || identical(obj@options$population, pid)
+      ) {
+        return()
+      }
+      update_object(
+        store,
+        obj@id,
+        function(o) {
+          opts <- o@options
+          opts$population <- pid
+          S7::set_props(o, options = opts)
+        },
+        label = "set population"
+      )
     })
 
     # + Filter appends a blank row AND opens it in the editor.

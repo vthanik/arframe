@@ -42,25 +42,28 @@ test_that("mod_frame_ui HTML is a top app bar (mode tabs), a pagehead title, and
   expect_match(html, 'id="frame-export_dl"', fixed = TRUE)
 })
 
-test_that("mod_frame_server: mode click switches; active-mode re-click toggles the rail (closes the drill in Report)", {
+test_that("mod_frame_server: active-mode re-click toggles that mode's OWN rail, no leak across modes", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
   store <- shiny::isolate(new_store(con))
 
   shiny::testServer(mod_frame_server, args = list(store = store), {
-    # Report mode has no collapsible contents rail (the LoC is full-width):
-    # re-clicking the active Report tab CLOSES the drill instead (2026-07-08).
-    # Startup mode is "data", so the first click here is a real SWITCH.
+    # Startup mode is "data", so the first click to report is a real SWITCH.
     session$setInputs(mode = "report")
     expect_identical(store$rv$mode, "report")
     store$rv$report_open <- "out001"
-    session$setInputs(mode = "report") # re-click active Report
-    expect_identical(store$rv$mode, "report") # mode holds
-    expect_null(store$rv$report_open) # drill closed
-    expect_false(store$rv$rail_collapsed) # rail untouched
+    # Re-clicking the active Report tab toggles the CONTENTS rail (its own
+    # flag), leaves the drill OPEN, and does NOT touch the Data rail (no leak).
+    session$setInputs(mode = "report")
+    expect_identical(store$rv$mode, "report")
+    expect_true(store$rv$loc_rail_collapsed)
+    expect_identical(store$rv$report_open, "out001")
+    expect_false(store$rv$rail_collapsed)
+    session$setInputs(mode = "report")
+    expect_false(store$rv$loc_rail_collapsed)
 
-    # Every other mode: re-clicking the ACTIVE button toggles the adjacent
-    # panel (explorer-style show/hide) -- mode holds, rail flips there and back.
+    # Every other mode: re-clicking the ACTIVE button toggles the SOURCES rail
+    # (its own flag) there and back, and never flips the Report rail flag.
     for (m in c("data", "qc", "logs")) {
       session$setInputs(mode = m)
       expect_identical(store$rv$mode, m)
@@ -68,6 +71,7 @@ test_that("mod_frame_server: mode click switches; active-mode re-click toggles t
       session$setInputs(mode = m)
       expect_identical(store$rv$mode, m)
       expect_true(store$rv$rail_collapsed)
+      expect_false(store$rv$loc_rail_collapsed)
       session$setInputs(mode = m)
       expect_false(store$rv$rail_collapsed)
     }

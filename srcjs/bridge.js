@@ -32,7 +32,10 @@ $(document).on("click", "[data-ar-collapse]", function () {
 Shiny.addCustomMessageHandler("ar-collapse", function (m) {
   var ws = document.querySelector(".ar-workspace");
   if (!ws) return;
+  // Data (rail) and Report (loc_rail) hide flags are independent -- one never
+  // hides the other's rail.
   ws.classList.toggle("ar-rail-collapsed", !!m.rail);
+  ws.classList.toggle("ar-loc-rail-collapsed", !!m.loc_rail);
   ws.classList.toggle("ar-insp-collapsed", !!m.insp);
 });
 
@@ -44,6 +47,21 @@ Shiny.addCustomMessageHandler("ar-report-open", function (m) {
   var ws = document.querySelector(".ar-workspace");
   if (!ws) return;
   ws.classList.toggle("ar-report-open", !!m.on);
+});
+
+// Report-mode LoC selection (2026-07-08): the server echoes the authoritative
+// selected-id set here so the highlight is applied WITHOUT re-rendering the
+// table (a full re-render dimmed the page + lagged the click). The `.loc_row`
+// click handler below also flips the class optimistically for an instant plain
+// select; this reconciles shift/meta ranges + keyboard-nav moves.
+Shiny.addCustomMessageHandler("ar-loc-select", function (m) {
+  var ids = (m && m.ids) || [];
+  document.querySelectorAll(".ar-loc-row").forEach(function (r) {
+    r.classList.toggle(
+      "ar-dx-row-sel",
+      ids.indexOf(r.getAttribute("data-ar-id")) !== -1
+    );
+  });
 });
 
 Shiny.addCustomMessageHandler("ar-focus", function (m) {
@@ -292,12 +310,57 @@ $(document).on("keydown", function (e) {
 // fixed "contents" module id, matching the data-mode handlers' convention.
 $(document).on("click", ".ar-loc-row", function (e) {
   if (e.target.closest("input, select, button, a")) return;
-  Shiny.setInputValue("contents-row_click", this.getAttribute("data-ar-id"), {
-    priority: "event",
-  });
+  var shift = e.shiftKey;
+  var meta = e.metaKey || e.ctrlKey;
+  // Optimistic instant highlight for a plain single-select: clear the others,
+  // light this one -- so the row selects with zero round-trip. The server's
+  // `ar-loc-select` echo reconciles (and owns shift/meta ranges). Selecting a
+  // row also un-gates its inline inputs (pointer-events, CSS) for the 2nd click.
+  if (!shift && !meta) {
+    document.querySelectorAll(".ar-loc-row.ar-dx-row-sel").forEach(function (r) {
+      r.classList.remove("ar-dx-row-sel");
+    });
+    this.classList.add("ar-dx-row-sel");
+  }
+  Shiny.setInputValue(
+    "contents-row_click",
+    {
+      id: this.getAttribute("data-ar-id"),
+      shift: shift,
+      meta: meta,
+      nonce: Date.now(),
+    },
+    { priority: "event" }
+  );
 });
 $(document).on("dblclick", ".ar-loc-row", function (e) {
   if (e.target.closest("input, select, button, a")) return;
+  Shiny.setInputValue("contents-open", this.getAttribute("data-ar-id"), {
+    priority: "event",
+  });
+});
+
+// The Report CONTENTS rail (a Data-style folder tree). A folder body filters
+// the LoC to that kind (the "" root clears it); its chevron collapses the
+// nested outputs; a nested output row opens/switches that output into edit
+// mode. The Report twins of Data's `[data-ar-source]`, `[data-ar-src-toggle]`
+// and `[data-ar-open]` handlers.
+$(document).on("click", "[data-ar-loc-group]", function () {
+  Shiny.setInputValue(
+    "contents-group",
+    this.getAttribute("data-ar-loc-group"),
+    { priority: "event" }
+  );
+});
+$(document).on("click", "[data-ar-loc-toggle]", function (e) {
+  e.stopPropagation();
+  Shiny.setInputValue(
+    "contents-loc_toggle",
+    this.getAttribute("data-ar-loc-toggle"),
+    { priority: "event" }
+  );
+});
+$(document).on("click", ".ar-loc-nav", function () {
   Shiny.setInputValue("contents-open", this.getAttribute("data-ar-id"), {
     priority: "event",
   });
@@ -417,10 +480,19 @@ $(document).on("click", "[data-ar-source]", function () {
   });
 });
 
-$(document).on("click", ".ar-dx-row", function () {
-  Shiny.setInputValue("data-focus", this.getAttribute("data-ar-name"), {
-    priority: "event",
-  });
+// A dataset row: single/Cmd/Shift multi-select. `:not(.ar-loc-row)` so this
+// never fires on the Report LoC rows (which also carry `.ar-dx-row`).
+$(document).on("click", ".ar-dx-row:not(.ar-loc-row)", function (e) {
+  Shiny.setInputValue(
+    "data-focus",
+    {
+      name: this.getAttribute("data-ar-name"),
+      shift: e.shiftKey,
+      meta: e.metaKey || e.ctrlKey,
+      nonce: Date.now(),
+    },
+    { priority: "event" }
+  );
 });
 
 $(document).on("dblclick", ".ar-dx-row", function () {
@@ -449,15 +521,23 @@ $(document).on("click", "[data-ar-src-toggle]", function (e) {
   );
 });
 
-// Client-side dataset filter: hide explorer rows whose name/folder does not
-// contain the typed text. Kept in JS (no round-trip) since it is pure view.
+// Client-side row filter for both Data (datasets) and Report (outputs), kept
+// in JS (no round-trip) since it is pure view. Report rows carry a
+// `data-ar-hay` (their number/title live in <input> values, not textContent);
+// Data rows fall back to name+folder. Scoped to the filter's own
+// `.ar-data-main` so the two modes never hide each other's rows.
 $(document).on("input", ".ar-dx-filter", function () {
   var q = this.value.toLowerCase();
-  document.querySelectorAll(".ar-dx-row").forEach(function (tr) {
-    var hay = (
-      tr.getAttribute("data-ar-name") + " " + tr.getAttribute("data-ar-lib")
-    ).toLowerCase();
-    tr.style.display = hay.indexOf(q) === -1 ? "none" : "";
+  var scope = this.closest(".ar-data-main") || document;
+  scope.querySelectorAll(".ar-dx-row").forEach(function (tr) {
+    var hay = tr.getAttribute("data-ar-hay");
+    if (hay === null) {
+      hay =
+        (tr.getAttribute("data-ar-name") || "") +
+        " " +
+        (tr.getAttribute("data-ar-lib") || "");
+    }
+    tr.style.display = hay.toLowerCase().indexOf(q) === -1 ? "none" : "";
   });
 });
 

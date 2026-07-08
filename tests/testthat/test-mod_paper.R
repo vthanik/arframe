@@ -749,7 +749,7 @@ test_that("arframe() paper: a READY table renders live, screenshots the payoff",
 # tabular-structure region annotation -- are gone with the read-only canvas
 # redesign: nothing on the canvas is a click/keyboard target anymore.
 
-test_that("arframe() paper: a ready render never cosplays as a page (decision #7)", {
+test_that("arframe() paper: the canvas renders the running-header bands with tokens resolved (supersedes #7 suppression)", {
   skip_on_cran()
   app <- shinytest2::AppDriver$new(
     app_dir = testthat::test_path("apps/paper"),
@@ -769,9 +769,11 @@ test_that("arframe() paper: a ready render never cosplays as a page (decision #7
   # The canvas is a read-only tabular preview -- no clickable region hooks.
   sheet_html <- app$get_html("#paper-sheet", outer_html = TRUE)
   expect_no_match(sheet_html, "data-ar-region", fixed = TRUE)
-  # No page cosplay anywhere in the artifact.
-  expect_no_match(sheet_html, "runninghead", fixed = TRUE)
-  expect_no_match(sheet_html, "Page 1 of 1", fixed = TRUE)
+  # The running header/footer bands now render on the canvas (2026-07-08,
+  # supersedes decision #7's on-screen suppression): study tokens resolve to
+  # the Setup > Study values; {page}/{npages} are tabular's own field codes.
+  expect_match(sheet_html, "Demo Sponsor - XYZ-2026", fixed = TRUE)
+  expect_match(sheet_html, "Data as of 2026-07-08", fixed = TRUE)
 })
 
 # ---- population/filters tag (Task 12) ---------------------------------------
@@ -903,6 +905,50 @@ test_that(".with_chrome is a no-op without bands and never double-stamps", {
     .with_chrome(lit)@options$pagefoot$right,
     "04JUL2026:00:00:00"
   )
+})
+
+# ---- .onscreen_theme: canvas band resolution (2026-07-08) -------------------
+
+test_that(".onscreen_theme resolves study tokens + previews {page}/{npages}", {
+  obj <- arpillar::object(id = "t1", type = "summary", dataset = "ADSL")
+  theme <- list(
+    study = list(
+      protocol = "XY-123",
+      sponsor = "Acme",
+      data_date = "2026-01-01"
+    ),
+    page = list(
+      pagehead = list(left = "{protocol}", right = "Page {page} of {npages}"),
+      pagefoot = list(left = "Data as of {data_date}", right = "{sponsor}")
+    )
+  )
+  out <- .onscreen_theme(theme, obj)
+  # Study tokens -> Setup > Study values; bands KEPT (not stripped).
+  expect_identical(out$page$pagehead$left, "XY-123")
+  expect_identical(out$page$pagefoot$left, "Data as of 2026-01-01")
+  expect_identical(out$page$pagefoot$right, "Acme")
+  # {page}/{npages} are tabular's own field codes -> left untouched (tabular
+  # resolves them; the canvas is continuous, the .rtf is the paginated truth).
+  expect_identical(out$page$pagehead$right, "Page {page} of {npages}")
+})
+
+test_that(".onscreen_theme errors on a required band token Setup leaves empty", {
+  obj <- arpillar::object(id = "t1", type = "summary", dataset = "ADSL")
+  theme <- list(
+    study = list(protocol = ""),
+    page = list(pagehead = list(left = "Protocol: {protocol}"))
+  )
+  expect_error(.onscreen_theme(theme, obj), class = "arframe_error_input")
+})
+
+test_that(".onscreen_theme leaves an OPTIONAL empty token blank, no error", {
+  obj <- arpillar::object(id = "t1", type = "summary", dataset = "ADSL")
+  theme <- list(
+    study = list(),
+    page = list(pagefoot = list(left = "{indication}"))
+  )
+  out <- .onscreen_theme(theme, obj)
+  expect_identical(out$page$pagefoot$left, "")
 })
 
 test_that(".chrome_stamp is locale-independent ddMMMyyyy:hh:mm:ss", {

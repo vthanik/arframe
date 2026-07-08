@@ -1143,11 +1143,16 @@ select.ar-input-flat {
   color: var(--ar-ink-2);
 }
 
-/* The report body swaps between the full-width List-of-Contents table and a
-   drilled paper + inspector, gated by the `ar-report-open` workspace class
-   (mirrored from the store's `report_open`) -- Data mode's list<->grid one
-   level up. `.ar-loc` is child 1 (the list); `.ar-report-desk` is child 2
-   (the drill: a breadcrumb above the paper|inspector panes). */
+/* The report body swaps between the List-of-Contents table and a drilled
+   paper + inspector, gated by the `ar-report-open` workspace class (mirrored
+   from the store's `report_open`) -- Data mode's list<->grid one level up.
+   `.ar-loc` is child 1 (rail + main list); `.ar-report-desk` is child 2 (the
+   drill: a breadcrumb above the paper|inspector panes).
+
+   On drill the CONTENTS rail PERSISTS -- exactly like Data mode, where the
+   SOURCES rail stays put when a dataset grid opens and only the main column
+   swaps. So the drill hides `.ar-loc`'s MAIN column (toolbar + table) and
+   shrinks `.ar-loc` to just the rail, then reveals the desk beside it. */
 .ar-body-report {
   background: var(--ar-desk);
 }
@@ -1159,6 +1164,9 @@ select.ar-input-flat {
   display: none;
 }
 .ar-report-open .ar-body-report > .ar-loc {
+  flex: 0 0 auto;
+}
+.ar-report-open .ar-loc .ar-data-main {
   display: none;
 }
 .ar-report-open .ar-body-report > .ar-report-desk {
@@ -1204,69 +1212,26 @@ select.ar-input-flat {
 }
 
 /* ============ 03 contents (List of Contents) ============ */
-/* Report mode's full-width, editable List-of-Contents table (2026-07-08):
-   the output switcher that drills into the paper + inspector. Reuses Data
-   mode's `.ar-dx-*` table skin; adds the stat strip, the toolbar, and the
-   inline-edit cells. Sits directly on the desk canvas and owns its own
-   scroll. */
+/* Report mode's List-of-Contents (2026-07-08, decision #12.3): a Data-mode
+   mirror. `.ar-loc` is the flex ROW holding the CONTENTS rail (reusing
+   `.ar-data-rail`) + the main column (`.ar-data-main`: a manage toolbar over a
+   flat editable `.ar-dx-table`). The rail filters by kind; the main column
+   owns its scroll. The drilled paper|inspector live in a sibling
+   `.ar-report-desk` the `ar-report-open` class reveals. */
 .ar-loc {
   height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
+  min-width: 0;
+  display: flex;
+  overflow: hidden;
   background: var(--ar-desk);
-  padding: var(--ar-space-4) var(--ar-space-5);
-  display: flex;
-  flex-direction: column;
-  gap: var(--ar-space-3);
-}
-.ar-loc > .ar-label {
-  margin: 0;
-}
-/* -- stat strip: the first live caller of `.stat_tile()`, each tile in its
-   own elevated cell (the `.ar-panel` recipe) -- */
-.ar-loc-stats {
-  display: flex;
-  gap: var(--ar-space-3);
-  flex-wrap: wrap;
-}
-.ar-loc-stats .ar-stat-tile {
-  flex: 1 1 0;
-  min-width: 120px;
-  padding: var(--ar-space-3) var(--ar-space-4);
-  background: var(--ar-card);
-  border: 1px solid var(--ar-paper-edge);
-  border-radius: var(--ar-radius-lg);
-  box-shadow: var(--ar-shadow-card);
-}
-/* -- toolbar: right-aligned + Add output -- */
-.ar-loc-bar {
-  display: flex;
-  align-items: center;
-}
-/* -- group label -- */
-.ar-loc-group-label {
-  color: var(--ar-ink-5);
-  margin-top: var(--ar-space-2);
-}
-.ar-loc-group-label:first-of-type {
-  margin-top: 0;
 }
 
 /* -- the editable table (reuses `.ar-dx-table` / `.ar-dx-row` from Data) --
-   columns: [type 28px] NUMBER LABEL TITLE(1fr) POPULATION STATUS [actions].
+   columns: NUMBER(glyph+input) LABEL TITLE(1fr) POPULATION STATUS MODIFIED.
    The inline edit controls fill their cell and stay flat (`.ar-input-flat`)
    until focus; TITLE takes the slack, the rest are fixed-ish. */
 .ar-loc-table {
-  margin-top: var(--ar-space-1);
   table-layout: fixed;
-}
-.ar-loc-type {
-  width: 28px;
-  color: var(--ar-ink-3);
-  text-align: center;
-}
-.ar-loc-type .ar-type-icon {
-  vertical-align: middle;
 }
 .ar-loc-table td {
   vertical-align: middle;
@@ -1276,43 +1241,113 @@ select.ar-input-flat {
   width: 100%;
   min-width: 0;
 }
+/* Two-stage edit (2026-07-08): a row's FIRST click selects it; only a selected
+   row's inline controls take the click to edit. On an unselected row the
+   controls are pointer-transparent so the click falls through to the row (=
+   select) instead of dropping a cursor straight into the title. */
+.ar-loc-row:not(.ar-dx-row-sel) .ar-loc-in,
+.ar-loc-row:not(.ar-dx-row-sel) .ar-loc-sel {
+  pointer-events: none;
+}
+/* NUMBER cell: a muted type glyph, then the mono number input. A comfortable
+   gap + a hair of lead so the glyph is not jammed against the number box. */
+.ar-loc-num-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 2px;
+}
+.ar-loc-glyph {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--ar-ink-3);
+}
+.ar-loc-table th:nth-child(1),
+.ar-loc-table td:nth-child(1) {
+  width: 144px;
+}
 .ar-loc-table th:nth-child(2),
 .ar-loc-table td:nth-child(2) {
-  width: 96px;
+  width: 92px;
 }
-.ar-loc-table th:nth-child(3),
-.ar-loc-table td:nth-child(3) {
-  width: 100px;
+.ar-loc-table th:nth-child(4),
+.ar-loc-table td:nth-child(4) {
+  width: 200px;
 }
 .ar-loc-table th:nth-child(5),
 .ar-loc-table td:nth-child(5) {
-  width: 200px;
+  width: 92px;
 }
 .ar-loc-table th:nth-child(6),
 .ar-loc-table td:nth-child(6) {
-  width: 96px;
+  width: 132px;
 }
+/* Align each header over the TEXT of the inline control below it. The flat
+   inputs/selects inset their text ~9px (8px padding + 1px border) past the td
+   edge, and the NUMBER cell adds a 2px lead + a 14px type glyph + a 10px gap
+   (= 47px total). STATUS/MODIFIED have no input, so they keep the default
+   `.ar-dx-table th` padding. ponytail: magic sums; re-tune if the glyph size
+   (`.type_icon(.., 14)`) or the flat-input padding changes. */
+.ar-loc-table th:nth-child(1) {
+  padding-left: 47px;
+}
+.ar-loc-table th:nth-child(2),
+.ar-loc-table th:nth-child(3),
+.ar-loc-table th:nth-child(4) {
+  padding-left: 21px;
+}
+/* TITLE: flat text at rest (no boxed input) -- the box only appears on hover
+   or focus, so the title reads as a heading, not a huge form field. */
 .ar-loc-title {
   font-weight: 500;
+  border-color: transparent;
+  background: transparent;
 }
-/* -- hover-revealed inline actions (Duplicate / Remove) -- opacity-toggled
-   so the column width is reserved even at rest (no layout shift on hover). */
-.ar-loc-acts {
-  width: 62px;
+.ar-loc-title:hover {
+  border-color: var(--ar-rule);
+  background: var(--ar-paper);
+}
+.ar-loc-title:focus {
+  border-color: var(--ar-accent);
+  background: var(--ar-paper);
+}
+.ar-loc-mod {
+  font-size: 11px;
+}
+/* -- CONTENTS rail: a Data-style kind FOLDER tree (folders + chevron + count,
+   reusing `.ar-src-*` / `.ar-data-src`), each nesting its output rows
+   (icon + number + title + status). A touch wider than Data's rail so the
+   number + title + stamp fit before truncation. -- */
+.ar-loc .ar-data-rail {
+  flex-basis: 248px;
+}
+/* a nested output row: reuses `.ar-data-src` for flex/hover, indented under
+   its folder, laying out icon | number | title(grows + truncates) | stamp. */
+.ar-loc-nav {
+  gap: 6px;
+  padding-left: 22px;
+}
+.ar-loc-nav-ic {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--ar-ink-3);
+}
+.ar-loc-nav-num {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--ar-ink-2);
+}
+.ar-loc-nav-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  text-align: right;
-  opacity: 0;
+  font-size: 11.5px;
+  color: var(--ar-ink);
 }
-.ar-loc-row:hover .ar-loc-acts,
-.ar-loc-row:focus-within .ar-loc-acts {
-  opacity: 1;
-}
-.ar-loc-act {
-  width: 24px;
-  height: 24px;
-}
-.ar-loc-act-danger:hover {
-  color: var(--ar-error);
+.ar-loc-nav .ar-stamp {
+  flex: 0 0 auto;
 }
 /* -- empty state -- */
 .ar-loc .ar-dx-empty {
@@ -2595,6 +2630,17 @@ select.ar-input-flat {
 }
 .ar-dx-row {
   cursor: pointer;
+  /* Shift-click would otherwise extend the browser's TEXT selection across
+     rows; disable it so Shift only drives the row multi-select. Editable LoC
+     cells (inputs/selects) re-enable it below so they stay editable. */
+  -webkit-user-select: none;
+  user-select: none;
+}
+.ar-dx-row input,
+.ar-dx-row select,
+.ar-dx-row textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }
 .ar-dx-row:hover {
   background: rgba(27, 31, 35, 0.03);
@@ -3402,9 +3448,8 @@ select.ar-input-flat {
   font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
 }
 
-/* Sources rail collapse (Data mode): a chevron in the header folds the rail
-   to a slim strip -- reuses the frame's `rail` collapse flag (shared with the
-   Report contents rail). The chevron flips to point right when collapsed. */
+/* Sources rail collapse (Data mode): re-clicking the active Data tab folds the
+   left rail. The chevron flips to point right when collapsed. */
 .ar-src-head {
   display: flex;
   align-items: center;
@@ -3414,9 +3459,14 @@ select.ar-input-flat {
 .ar-src-head .ar-label {
   margin: 0;
 }
-/* Same full-hide as the Report contents rail (VS-Code style; see the
-   note above about why `display: none` beats flex-basis: 0). */
-.ar-rail-collapsed .ar-data-rail {
+/* Per-mode rail collapse (2026-07-08): Data and Report each own an INDEPENDENT
+   hide flag, so re-clicking one mode's tab never leaks the collapse to the
+   other rail. `.ar-rail-collapsed` hides ONLY the Data SOURCES rail; the
+   Report CONTENTS rail hides on its own `.ar-loc-rail-collapsed`. */
+.ar-rail-collapsed .ar-body-data .ar-data-rail {
+  display: none;
+}
+.ar-loc-rail-collapsed .ar-body-report .ar-data-rail {
   display: none;
 }
 
@@ -3743,5 +3793,48 @@ select.ar-input-flat {
   gap: 6px;
 }
 .ar-picker .btn {
+  margin: 0;
+}
+
+/* ============ confirm modal (2026-07-08) ============ */
+/* The delete-confirm dialog (Data + Report). Scoped `.ar-confirm-modal` so it
+   wears the Galley skin -- accent-blue title, a rounded elevated card, clean
+   borderless header/footer -- matching the datasetviewer filter modal, and
+   never bleeding onto datasetviewer's own dialogs. */
+.ar-confirm-modal .modal-content {
+  border: none;
+  border-radius: var(--ar-radius-lg);
+  box-shadow: 0 16px 48px rgba(27, 31, 35, 0.2);
+}
+.ar-confirm-modal .modal-header {
+  border-bottom: none;
+  padding: var(--ar-space-4) var(--ar-space-5) 0;
+}
+.ar-confirm-modal .modal-title {
+  color: var(--ar-accent);
+  font-weight: 600;
+  font-size: 17px;
+}
+.ar-confirm-modal .modal-body {
+  padding: var(--ar-space-3) var(--ar-space-5);
+  color: var(--ar-ink-2);
+  font-size: 13px;
+}
+.ar-confirm-modal .modal-body p {
+  margin: 0;
+}
+.ar-confirm-modal .modal-footer {
+  border-top: none;
+  padding: 0 var(--ar-space-5) var(--ar-space-4);
+  gap: 8px;
+}
+/* One size for BOTH buttons -- the default `modalButton()` Cancel would
+   otherwise tower over the `.ex-btn-sm` Delete. */
+.ar-confirm-modal .modal-footer .btn {
+  height: 32px;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--ar-radius);
   margin: 0;
 }

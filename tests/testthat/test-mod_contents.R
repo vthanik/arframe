@@ -85,13 +85,17 @@
 
 # ---- UI ---------------------------------------------------------------
 
-test_that("mod_contents_ui HTML is the LoC surface with the Add-output action", {
+test_that("mod_contents_ui HTML is the LoC rail|main surface with the manage toolbar", {
   ui <- mod_contents_ui("contents")
   html <- as.character(ui)
   expect_match(html, "ar-loc", fixed = TRUE)
-  expect_match(html, "LIST OF CONTENTS", fixed = TRUE)
-  expect_match(html, 'id="contents-add_output"', fixed = TRUE)
-  expect_match(html, "Add output", fixed = TRUE)
+  # Data-mode mirror: a CONTENTS rail + a manage toolbar (filter + Edit /
+  # Duplicate / Delete). Add output lives in the rail (server-rendered), not
+  # this static toolbar.
+  expect_match(html, "ar-data-rail", fixed = TRUE)
+  expect_match(html, 'id="contents-filter"', fixed = TRUE)
+  expect_match(html, 'id="contents-edit"', fixed = TRUE)
+  expect_match(html, 'id="contents-delete_sel"', fixed = TRUE)
 })
 
 # ---- grouping + numbering ---------------------------------------------
@@ -106,11 +110,15 @@ test_that("rows are grouped TABLES/FIGURES and numbered kind-scoped in document 
     {
       html <- output$table$html
       expect_match(html, "ar-loc-row", fixed = TRUE)
-      expect_match(html, "TABLES", fixed = TRUE)
-      expect_match(html, "FIGURES", fixed = TRUE)
-      # LISTINGS never appears -- no listing generator exists, so the group
-      # is always empty and must be omitted entirely.
-      expect_no_match(html, "LISTINGS", fixed = TRUE)
+      # The kind labels moved to the CONTENTS rail (2026-07-08); the main table
+      # is a single flat list with a MODIFIED column (em-dash in-memory).
+      expect_match(html, "MODIFIED", fixed = TRUE)
+      rail <- output$rail$html
+      expect_match(rail, "TABLES", fixed = TRUE)
+      expect_match(rail, "FIGURES", fixed = TRUE)
+      # LISTINGS never appears -- no listing generator exists, so the group is
+      # always empty and the rail omits it.
+      expect_no_match(rail, "LISTINGS", fixed = TRUE)
 
       # id1/id2/id3 each carry an add_from_generator()-auto-suggested
       # options$number, shown verbatim in the NUMBER input -- id1/id2 are both
@@ -258,9 +266,9 @@ test_that("stamps match the output_status oracle; a broken id shows ERROR regard
   )
 })
 
-# ---- stat strip ---------------------------------------------------------
+# ---- contents rail ------------------------------------------------------
 
-test_that("the stat strip counts outputs by status", {
+test_that("the CONTENTS rail is a Data-style kind folder tree with nested outputs", {
   fx <- .tc_store()
   withr::defer(arpillar::engine_close(fx$con))
 
@@ -268,18 +276,136 @@ test_that("the stat strip counts outputs by status", {
     mod_contents_server,
     args = list(store = fx$store),
     {
-      html <- output$stats$html
-      expect_match(html, "ar-stat-tile", fixed = TRUE)
-      expect_match(html, "Outputs", fixed = TRUE)
-      expect_match(html, "Ready", fixed = TRUE)
-      expect_match(html, "Needs attention", fixed = TRUE)
+      html <- output$rail$html
+      # One folder per present kind (Tables, Figures), each a
+      # `[data-ar-loc-group]` filter body with a `[data-ar-loc-toggle]` chevron.
+      # The "All outputs" root was removed 2026-07-08.
+      expect_no_match(html, "All outputs", fixed = TRUE)
+      expect_match(html, 'data-ar-loc-group="table"', fixed = TRUE)
+      expect_match(html, 'data-ar-loc-group="figure"', fixed = TRUE)
+      expect_match(html, 'data-ar-loc-toggle="table"', fixed = TRUE)
+      expect_match(html, "TABLES", fixed = TRUE)
+      # Nested output rows: one clickable `.ar-loc-nav` per output (expanded by
+      # default), carrying its id + number.
+      expect_match(html, "ar-loc-nav", fixed = TRUE)
+      expect_match(html, paste0('data-ar-id="', fx$id1, '"'), fixed = TRUE)
+      expect_match(html, "14.1.1", fixed = TRUE)
+    }
+  )
+})
+
+test_that("a folder chevron toggles its kind's collapsed state", {
+  fx <- .tc_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(
+    mod_contents_server,
+    args = list(store = fx$store),
+    {
+      expect_equal(store$rv$loc_collapsed, character(0))
+      session$setInputs(loc_toggle = "table")
+      expect_equal(store$rv$loc_collapsed, "table")
+      # Collapsed -> the table's nested outputs are not rendered in the rail.
+      expect_no_match(
+        output$rail$html,
+        paste0('data-ar-id="', fx$id1, '"'),
+        fixed = TRUE
+      )
+      session$setInputs(loc_toggle = "table")
+      expect_equal(store$rv$loc_collapsed, character(0))
+    }
+  )
+})
+
+test_that("the POPULATION select defaults to the study population, not an em-dash", {
+  pops <- list(
+    safety = list(label = "Safety Analysis Set"),
+    efficacy = list(label = "Full Analysis Set")
+  )
+  # Unset population -> seeds to the study default (safety), no em-dash option.
+  unset <- as.character(
+    .loc_pop_select(list(population = NA_character_), pops, "safety", "x")
+  )
+  expect_match(
+    unset,
+    '<option value="safety" selected="selected">Safety Analysis Set',
+    fixed = TRUE
+  )
+  expect_no_match(unset, "—", fixed = TRUE)
+  # An explicit population wins over the default.
+  set <- as.character(
+    .loc_pop_select(list(population = "efficacy"), pops, "safety", "x")
+  )
+  expect_match(
+    set,
+    '<option value="efficacy" selected="selected">',
+    fixed = TRUE
+  )
+})
+
+test_that("a rail kind-filter narrows the main table to that group", {
+  fx <- .tc_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(
+    mod_contents_server,
+    args = list(store = fx$store),
+    {
+      # Filter to figures: the lone figure (14.2.1) shows, the tables drop.
+      session$setInputs(group = "figure")
+      expect_equal(store$rv$loc_group, "figure")
+      expect_match(output$table$html, "14.2.1", fixed = TRUE)
+      expect_no_match(output$table$html, "14.1.1", fixed = TRUE)
+      # Re-clicking the active folder clears back to all outputs -- the removed
+      # "All outputs" root used to be the clear affordance (2026-07-08).
+      session$setInputs(group = "figure")
+      expect_null(store$rv$loc_group)
+      expect_match(output$table$html, "14.1.1", fixed = TRUE)
+    }
+  )
+})
+
+test_that("a rail kind pick does NOT close an open drill (rail persists)", {
+  fx <- .tc_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(
+    mod_contents_server,
+    args = list(store = fx$store),
+    {
+      drill_open(fx$store, fx$id1)
+      expect_identical(store$rv$report_open, fx$id1)
+      # The rail is visible while drilled; filtering it just narrows the output
+      # list, leaving the drilled output open.
+      session$setInputs(group = "figure")
+      expect_identical(store$rv$report_open, fx$id1)
+      expect_equal(store$rv$loc_group, "figure")
+    }
+  )
+})
+
+test_that("clicking a rail output row while drilled switches the drilled output", {
+  fx <- .tc_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(
+    mod_contents_server,
+    args = list(store = fx$store),
+    {
+      drill_open(fx$store, fx$id1)
+      expect_identical(store$rv$report_open, fx$id1)
+      # A rail row posts `contents-open` (the drill input); clicking another
+      # output switches edit mode to it without returning to the list.
+      session$setInputs(open = fx$id2)
+      expect_identical(store$rv$report_open, fx$id2)
+      expect_identical(store$rv$selected, fx$id2)
     }
   )
 })
 
 # ---- row click selects --------------------------------------------------
 
-test_that("clicking a row sets rv$selected", {
+test_that("clicking a row sets the anchor + the selection; Cmd-click multi-selects", {
   fx <- .tc_store()
   withr::defer(arpillar::engine_close(fx$con))
 
@@ -287,15 +413,20 @@ test_that("clicking a row sets rv$selected", {
     mod_contents_server,
     args = list(store = fx$store),
     {
+      # Plain click: anchor (selected) + selection (loc_selected) both the row.
       session$setInputs(row_click = fx$id2)
       expect_identical(fx$store$rv$selected, fx$id2)
+      expect_identical(fx$store$rv$loc_selected, fx$id2)
+      # Cmd-click a second row extends the selection; the anchor moves too.
+      session$setInputs(row_click = list(id = fx$id1, meta = TRUE, nonce = 2))
+      expect_setequal(fx$store$rv$loc_selected, c(fx$id1, fx$id2))
     }
   )
 })
 
 # ---- drill (open / close) -----------------------------------------------
 
-test_that("double-click opens the drill (report_open + selected); back closes it", {
+test_that("double-click opens the drill (report_open + selected); back + X close it", {
   fx <- .tc_store()
   withr::defer(arpillar::engine_close(fx$con))
 
@@ -306,10 +437,17 @@ test_that("double-click opens the drill (report_open + selected); back closes it
       session$setInputs(open = fx$id2)
       expect_identical(fx$store$rv$report_open, fx$id2)
       expect_identical(fx$store$rv$selected, fx$id2)
-      # the breadcrumb renders only while drilled
+      # the breadcrumb renders only while drilled, and carries an X close button
       expect_match(output$crumb$html, "ar-loc-crumb", fixed = TRUE)
+      expect_match(output$crumb$html, "ar-dx-close", fixed = TRUE)
 
       session$setInputs(back = 1)
+      expect_null(fx$store$rv$report_open)
+
+      # The breadcrumb X (drill_close) also returns to the list.
+      session$setInputs(open = fx$id2)
+      expect_identical(fx$store$rv$report_open, fx$id2)
+      session$setInputs(drill_close = 1)
       expect_null(fx$store$rv$report_open)
     }
   )
@@ -444,9 +582,9 @@ test_that("a population change marks the proof STALE (it subsets the data)", {
   )
 })
 
-# ---- duplicate --------------------------------------------------------------
+# ---- toolbar Edit / Duplicate / Delete (act on the selected row) ------------
 
-test_that("duplicate clones the object with a fresh id, appended, and selects it", {
+test_that("toolbar Edit drills into the selected output", {
   fx <- .tc_store()
   withr::defer(arpillar::engine_close(fx$con))
 
@@ -454,8 +592,24 @@ test_that("duplicate clones the object with a fresh id, appended, and selects it
     mod_contents_server,
     args = list(store = fx$store),
     {
+      fx$store$rv$selected <- fx$id1
+      session$setInputs(edit = 1)
+      expect_identical(fx$store$rv$report_open, fx$id1)
+    }
+  )
+})
+
+test_that("toolbar Duplicate clones the selected object, appended, and selects it", {
+  fx <- .tc_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(
+    mod_contents_server,
+    args = list(store = fx$store),
+    {
+      fx$store$rv$selected <- fx$id1
       n_before <- length(.all_objects(fx$store$rv$report))
-      session$setInputs(duplicate = fx$id1)
+      session$setInputs(duplicate_sel = 1)
       objs <- .all_objects(fx$store$rv$report)
       expect_length(objs, n_before + 1L)
 
@@ -470,9 +624,7 @@ test_that("duplicate clones the object with a fresh id, appended, and selects it
   )
 })
 
-# ---- delete -----------------------------------------------------------------
-
-test_that("delete removes the object and clears a dangling selection", {
+test_that("toolbar Delete confirms first, then removes the selected output(s)", {
   fx <- .tc_store()
   withr::defer(arpillar::engine_close(fx$con))
 
@@ -480,15 +632,20 @@ test_that("delete removes the object and clears a dangling selection", {
     mod_contents_server,
     args = list(store = fx$store),
     {
-      fx$store$rv$selected <- fx$id2
-      session$setInputs(remove = fx$id2)
+      session$setInputs(row_click = fx$id2)
+      # Delete shows the confirm modal -- the output is still there.
+      session$setInputs(delete_sel = 1)
+      expect_false(is.null(.find_object(fx$store$rv$report, fx$id2)))
+      # Confirming removes it and clears the selection.
+      session$setInputs(confirm_delete_loc = 1)
       expect_null(.find_object(fx$store$rv$report, fx$id2))
       expect_null(fx$store$rv$selected)
+      expect_equal(fx$store$rv$loc_selected, character(0))
     }
   )
 })
 
-test_that("delete leaves an unrelated selection untouched", {
+test_that("multi-select Delete removes every selected output in one commit", {
   fx <- .tc_store()
   withr::defer(arpillar::engine_close(fx$con))
 
@@ -496,9 +653,33 @@ test_that("delete leaves an unrelated selection untouched", {
     mod_contents_server,
     args = list(store = fx$store),
     {
-      fx$store$rv$selected <- fx$id1
-      session$setInputs(remove = fx$id2)
-      expect_identical(fx$store$rv$selected, fx$id1)
+      n_before <- length(.all_objects(fx$store$rv$report))
+      session$setInputs(row_click = fx$id1)
+      session$setInputs(row_click = list(id = fx$id3, meta = TRUE, nonce = 2))
+      expect_setequal(fx$store$rv$loc_selected, c(fx$id1, fx$id3))
+      session$setInputs(delete_sel = 1)
+      session$setInputs(confirm_delete_loc = 1)
+      expect_null(.find_object(fx$store$rv$report, fx$id1))
+      expect_null(.find_object(fx$store$rv$report, fx$id3))
+      # The un-selected output survives; one commit removed exactly two.
+      expect_false(is.null(.find_object(fx$store$rv$report, fx$id2)))
+      expect_length(.all_objects(fx$store$rv$report), n_before - 2L)
+    }
+  )
+})
+
+test_that("toolbar Delete is a no-op when nothing is selected", {
+  fx <- .tc_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(
+    mod_contents_server,
+    args = list(store = fx$store),
+    {
+      fx$store$rv$selected <- NULL
+      n_before <- length(.all_objects(fx$store$rv$report))
+      session$setInputs(delete_sel = 1)
+      expect_length(.all_objects(fx$store$rv$report), n_before)
     }
   )
 })

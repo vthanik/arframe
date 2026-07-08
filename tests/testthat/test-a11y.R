@@ -46,7 +46,9 @@ test_that("the inspector tab rail carries visible labels (no icon-only controls 
   }
 })
 
-test_that("the LoC row inline actions and edit cells are labelled", {
+test_that("the LoC row edit cells are labelled", {
+  # Duplicate/Remove moved to the manage toolbar (2026-07-08); the row now
+  # carries only its inline edit cells, each labelled.
   row <- list(
     id = "o1",
     title = "X",
@@ -56,11 +58,10 @@ test_that("the LoC row inline actions and edit cells are labelled", {
     number = "14.1.1",
     status = "draft",
     number_label = NA_character_,
-    population = NA_character_
+    population = NA_character_,
+    modified = "—"
   )
-  html <- as.character(.loc_row(shiny::NS("contents"), row, list(), NULL))
-  expect_match(html, 'aria-label="Duplicate output"', fixed = TRUE)
-  expect_match(html, 'aria-label="Remove output"', fixed = TRUE)
+  html <- as.character(.loc_row(shiny::NS("contents"), row, list(), "", NULL))
   expect_match(html, 'aria-label="TLF number"', fixed = TRUE)
   expect_match(html, 'aria-label="Output title"', fixed = TRUE)
 })
