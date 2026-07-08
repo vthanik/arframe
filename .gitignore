@@ -11,3 +11,6 @@ CLAUDE.local.md
 .claude/launch.json
 srcjs/node_modules/
 dev.R
+
+# Session-scoped pickup notes (see handoff skill)
+handoff.md
