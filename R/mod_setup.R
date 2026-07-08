@@ -1641,7 +1641,7 @@ s_study <- function(store) {
         shiny::p(
           class = "ar-muted ar-mono",
           shiny::HTML(
-            "Levels are read from the treatment variable -- drag to reorder, edit the label, or <code>+ Add arm</code>. Substitutes into a running header or footer as <code>{arm_label}</code>."
+            "Levels are read from the treatment variable — drag to reorder, edit the label, or <code>+ Add arm</code>. Substitutes into a running header or footer as <code>{arm_label}</code>."
           )
         )
       )
