@@ -1,7 +1,7 @@
 # Token substitution gate (Stage 3). Before this pass, `.with_chrome()`
 # resolved only `{datetime}` / `{program}` / `{program_path}`. Study-
 # meta tokens (`{sponsor}`, `{protocol}`, ...) and semantic tokens
-# (`{analysis-set}`, `{arm-label}`) rendered as literal placeholders on
+# (`{analysis_set}`, `{arm_label}`) rendered as literal placeholders on
 # paper. These tests pin the expanded substitution and prove the
 # byte-golden precondition (empty theme -> passes through unchanged).
 
@@ -46,7 +46,7 @@ test_that("study-meta tokens substitute from theme$study", {
 
 test_that("analysis-set token resolves via object > theme default", {
   obj <- .mk_object(
-    pagehead = list(left = "{analysis-set}"),
+    pagehead = list(left = "{analysis_set}"),
     options = list(population = "safety")
   )
   theme <- list(
@@ -57,7 +57,7 @@ test_that("analysis-set token resolves via object > theme default", {
 })
 
 test_that("analysis-set falls back to theme$default_population", {
-  obj <- .mk_object(pagehead = list(left = "{analysis-set}"))
+  obj <- .mk_object(pagehead = list(left = "{analysis_set}"))
   theme <- list(
     default_population = "itt",
     populations = list(itt = list(label = "ITT Analysis Set"))
@@ -67,7 +67,7 @@ test_that("analysis-set falls back to theme$default_population", {
 })
 
 test_that("arm-label token resolves from theme$arm$label", {
-  obj <- .mk_object(pagefoot = list(right = "Arm: {arm-label}"))
+  obj <- .mk_object(pagefoot = list(right = "Arm: {arm_label}"))
   theme <- list(arm = list(label = "Treatment Group"))
   out <- .with_chrome(obj, theme = theme)
   expect_identical(out@options$pagefoot$right, "Arm: Treatment Group")
@@ -91,9 +91,9 @@ test_that("empty theme + no study-token bands -> only chrome tokens fire", {
 })
 
 test_that("unresolved analysis-set token passes through when no population applies", {
-  obj <- .mk_object(pagehead = list(left = "{analysis-set}"))
+  obj <- .mk_object(pagehead = list(left = "{analysis_set}"))
   out <- .with_chrome(obj, theme = list())
-  expect_identical(out@options$pagehead$left, "{analysis-set}")
+  expect_identical(out@options$pagehead$left, "{analysis_set}")
 })
 
 test_that("all tokens across both bands compose without collision", {
@@ -104,7 +104,7 @@ test_that("all tokens across both bands compose without collision", {
       right = "{data_date}"
     ),
     pagefoot = list(
-      left = "{status} | {analysis-set}",
+      left = "{status} | {analysis_set}",
       center = "Page {page} of {npages}",
       right = "{program} @ {datetime}"
     ),

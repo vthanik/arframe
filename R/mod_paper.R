@@ -121,8 +121,8 @@
 #' The render-time token catalogue for a running header/footer band: chrome
 #' stamps (`{datetime}`/`{program}`/`{program_path}`) + study meta from
 #' `theme$study` (`{sponsor}`/`{protocol}`/`{study}`/`{study_id}`/
-#' `{indication}`/`{data_date}`/`{status}`) + the resolved `{analysis-set}` /
-#' `{arm-label}` labels. Shared by `.with_chrome()` (object bands) and
+#' `{indication}`/`{data_date}`/`{status}`) + the resolved `{analysis_set}` /
+#' `{arm_label}` labels. Shared by `.with_chrome()` (object bands) and
 #' `.with_band_chrome()` (study bands) so the two never drift. `now` is
 #' injectable for tests. `{page}`/`{npages}` are NOT here: they are backend
 #' field codes tabular resolves.
@@ -143,11 +143,11 @@
   )
   as_lbl <- .resolve_analysis_set(object, theme)
   if (!is.null(as_lbl)) {
-    tokens[["analysis-set"]] <- as_lbl
+    tokens[["analysis_set"]] <- as_lbl
   }
   arm_lbl <- .resolve_arm_label(object, theme)
   if (!is.null(arm_lbl)) {
-    tokens[["arm-label"]] <- arm_lbl
+    tokens[["arm_label"]] <- arm_lbl
   }
   tokens
 }
@@ -166,10 +166,10 @@
 #'   * Study meta (from `theme$study`): `{sponsor}`, `{protocol}`,
 #'     `{study}`, `{study_id}`, `{indication}`, `{data_date}`,
 #'     `{status}`.
-#'   * Population label: `{analysis-set}` -- the object's population
+#'   * Population label: `{analysis_set}` -- the object's population
 #'     override, else `theme$default_population`, looked up in
 #'     `theme$populations`.
-#'   * Arm label: `{arm-label}` -- from `theme$arm$label` (per-object
+#'   * Arm label: `{arm_label}` -- from `theme$arm$label` (per-object
 #'     arm-column resolution is a render-leg concern).
 #'
 #' `now` is injectable for tests; `theme` defaults to empty so callers
@@ -279,11 +279,11 @@
   })
 }
 
-#' `{analysis-set}` resolver: the population attached to `object` (via
+#' `{analysis_set}` resolver: the population attached to `object` (via
 #' `object@options$population`) wins; else `theme$default_population`;
 #' looked up in `theme$populations` for the display label. Returns NULL
 #' when no population applies -- caller drops the token from the token
-#' map so an unresolved `{analysis-set}` passes through unchanged.
+#' map so an unresolved `{analysis_set}` passes through unchanged.
 #' @noRd
 .resolve_analysis_set <- function(object, theme) {
   pop_id <- object@options$population
@@ -301,7 +301,7 @@
   as.character(entry$label %||% "")
 }
 
-#' `{arm-label}` resolver: `theme$arm$label` when set (the arframe
+#' `{arm_label}` resolver: `theme$arm$label` when set (the arframe
 #' Setup > Page-and-Style band's default is "Treatment" per
 #' `.SPEC_ARM`). Returns NULL when unset so the token passes through.
 #' @noRd

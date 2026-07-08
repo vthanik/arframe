@@ -197,7 +197,7 @@ mod_setup_server <- function(id, store) {
     })
 
     # Seed the theme's populations library on FIRST render so outputs and
-    # the {analysis-set} token see them. One-shot; subsequent renders read
+    # the {analysis_set} token see them. One-shot; subsequent renders read
     # what the user has since edited.
     shiny::observeEvent(store$rv$report, once = TRUE, {
       r <- store$rv$report
@@ -1521,7 +1521,7 @@ s_study <- function(store) {
 #' list of `list(value = <chr>, label = <chr>)` rows -- the value is a level
 #' read from the data, the label its display text, and the ORDER (list
 #' position, set by dragging) is the arm order. Picking a new variable
-#' auto-fills the levels; the running header / footer resolves `{arm-label}`.
+#' auto-fills the levels; the running header / footer resolves `{arm_label}`.
 #' @noRd
 .setup_treatment <- function(ns, store) {
   t <- store$rv$report@theme$treatment %||% list()
@@ -1641,7 +1641,7 @@ s_study <- function(store) {
         shiny::p(
           class = "ar-muted ar-mono",
           shiny::HTML(
-            "Levels are read from the treatment variable -- drag to reorder, edit the label, or <code>+ Add arm</code>. Substitutes into a running header or footer as <code>{arm-label}</code>."
+            "Levels are read from the treatment variable -- drag to reorder, edit the label, or <code>+ Add arm</code>. Substitutes into a running header or footer as <code>{arm_label}</code>."
           )
         )
       )
@@ -1821,7 +1821,7 @@ s_study <- function(store) {
     shiny::p(
       class = "ar-muted ar-mono",
       shiny::HTML(
-        "Refer to a population in a running header/footer as <code>{analysis-set}</code>, or bind it per output on the Roles tab."
+        "Refer to a population in a running header/footer as <code>{analysis_set}</code>, or bind it per output on the Roles tab."
       )
     )
   )
