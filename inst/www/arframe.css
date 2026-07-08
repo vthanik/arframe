@@ -1052,6 +1052,8 @@ select.ar-input-flat {
   font-size: 11.5px;
   color: var(--ar-ink-3);
   background: var(--ar-chrome);
+  white-space: nowrap; /* status pill never wraps -- readonly label is long */
+  flex-shrink: 0;
 }
 .ar-save-chip[data-state="saving"] {
   color: var(--ar-accent);
