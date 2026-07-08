@@ -62,6 +62,12 @@ new_store <- function(con, report = NULL) {
       data_source = NULL,
       data_focus = NULL,
       grid_dataset = NULL,
+      # Report mode's drill pointer -- the Report-mode twin of `grid_dataset`
+      # (2026-07-08): NULL shows the List-of-Contents table, a non-NULL output
+      # id drills into that output's paper + inspector. `drill_open()` sets it
+      # (alongside `selected`); the `ar-report-open` workspace class mirrors
+      # `!is.null()` for the layout gate.
+      report_open = NULL,
       # Open variable-peek rows in the Roles editor, by item name -- store-
       # side (never the DOM) so a digest redraw or Sortable re-init cannot
       # fold an open peek.
@@ -283,7 +289,7 @@ add_from_generator <- function(store, generator_id, dataset) {
   id <- .next_id(store$rv$report)
   existing_numbers <- vapply(
     .all_objects(store$rv$report),
-    function(o) o@options$number %||% "",
+    function(o) o@options[["number"]] %||% "",
     character(1)
   )
   obj <- .object_from_generator(gen, dataset, id, existing_numbers)
@@ -519,6 +525,29 @@ close_card <- function(store) {
 #' @noRd
 toggle_pin <- function(store) {
   store$rv$pinned <- !isTRUE(store$rv$pinned)
+  invisible(NULL)
+}
+
+# ---- Report-mode drill (2026-07-08) ---------------------------------------
+
+#' Drill into an output: open Report mode's paper + inspector on `id`.
+#'
+#' The Report-mode twin of Data's `grid_dataset` assignment: sets
+#' `report_open` (the layout gate the `ar-report-open` class mirrors) AND
+#' `selected` (which the paper + inspector render from), so a drill is one
+#' atomic move. `drill_close()` returns to the List-of-Contents table.
+#' @noRd
+drill_open <- function(store, id) {
+  store$rv$selected <- id
+  store$rv$report_open <- id
+  invisible(NULL)
+}
+
+#' Close the drill -- back to the List-of-Contents table (`report_open` NULL,
+#' so `ar-report-open` drops and the LoC surface fills the report body).
+#' @noRd
+drill_close <- function(store) {
+  store$rv$report_open <- NULL
   invisible(NULL)
 }
 

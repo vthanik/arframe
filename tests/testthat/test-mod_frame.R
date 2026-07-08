@@ -42,21 +42,29 @@ test_that("mod_frame_ui HTML is a top app bar (mode tabs), a pagehead title, and
   expect_match(html, 'id="frame-export_dl"', fixed = TRUE)
 })
 
-test_that("mod_frame_server: mode click switches; active-mode click toggles the rail", {
+test_that("mod_frame_server: mode click switches; active-mode re-click toggles the rail (closes the drill in Report)", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
   store <- shiny::isolate(new_store(con))
 
   shiny::testServer(mod_frame_server, args = list(store = store), {
-    # Startup mode is "data" (2026-07-04), so lead with "report" -- the
-    # first click must be a SWITCH, not an active-mode toggle.
-    for (m in c("report", "data", "qc", "logs")) {
+    # Report mode has no collapsible contents rail (the LoC is full-width):
+    # re-clicking the active Report tab CLOSES the drill instead (2026-07-08).
+    # Startup mode is "data", so the first click here is a real SWITCH.
+    session$setInputs(mode = "report")
+    expect_identical(store$rv$mode, "report")
+    store$rv$report_open <- "out001"
+    session$setInputs(mode = "report") # re-click active Report
+    expect_identical(store$rv$mode, "report") # mode holds
+    expect_null(store$rv$report_open) # drill closed
+    expect_false(store$rv$rail_collapsed) # rail untouched
+
+    # Every other mode: re-clicking the ACTIVE button toggles the adjacent
+    # panel (explorer-style show/hide) -- mode holds, rail flips there and back.
+    for (m in c("data", "qc", "logs")) {
       session$setInputs(mode = m)
       expect_identical(store$rv$mode, m)
       expect_false(store$rv$rail_collapsed)
-      # Clicking the ACTIVE button toggles the adjacent panel instead of
-      # re-switching (explorer-style show/hide, 2026-07-04): mode holds,
-      # rail collapse flips there and back.
       session$setInputs(mode = m)
       expect_identical(store$rv$mode, m)
       expect_true(store$rv$rail_collapsed)

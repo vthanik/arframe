@@ -188,6 +188,14 @@ mod_frame_server <- function(id, store) {
     # state stays frame-owned in the store, mirrored via ar-collapse.
     shiny::observeEvent(input$mode, {
       if (identical(input$mode, store$rv$mode)) {
+        # Report mode has no collapsible contents rail anymore (the LoC is
+        # full-width) -- re-clicking the active Report tab closes the drill,
+        # back to the List-of-Contents. Every other mode keeps the rail
+        # show/hide toggle.
+        if (identical(store$rv$mode, "report")) {
+          drill_close(store)
+          return()
+        }
         toggle_rail(store)
         session$sendCustomMessage(
           "ar-collapse",

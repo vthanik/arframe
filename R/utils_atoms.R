@@ -378,7 +378,7 @@
 .output_slug <- function(object) {
   label <- object@options$number_label %||% "Table"
   kind <- tolower(substr(label, 1, 1))
-  raw <- paste(kind, object@options$number %||% "", object@title)
+  raw <- paste(kind, object@options[["number"]] %||% "", object@title)
   slug <- tolower(gsub("[^a-zA-Z0-9]+", "-", trimws(raw)))
   gsub("^-+|-+$", "", slug)
 }

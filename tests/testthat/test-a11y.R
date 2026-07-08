@@ -46,12 +46,23 @@ test_that("the inspector tab rail carries visible labels (no icon-only controls 
   }
 })
 
-test_that("the TOC row kebab is labelled", {
-  html <- as.character(.toc_kebab(
-    shiny::NS("contents"),
-    list(id = "o1", title = "X")
-  ))
-  expect_match(html, 'aria-label="Output actions"', fixed = TRUE)
+test_that("the LoC row inline actions and edit cells are labelled", {
+  row <- list(
+    id = "o1",
+    title = "X",
+    kind = "table",
+    type = "summary",
+    group_label = "TABLES",
+    number = "14.1.1",
+    status = "draft",
+    number_label = NA_character_,
+    population = NA_character_
+  )
+  html <- as.character(.loc_row(shiny::NS("contents"), row, list(), NULL))
+  expect_match(html, 'aria-label="Duplicate output"', fixed = TRUE)
+  expect_match(html, 'aria-label="Remove output"', fixed = TRUE)
+  expect_match(html, 'aria-label="TLF number"', fixed = TRUE)
+  expect_match(html, 'aria-label="Output title"', fixed = TRUE)
 })
 
 test_that("the render-error summary announces itself with role=alert", {

@@ -138,19 +138,6 @@ test_that("an occurrence object missing hierarchy gets a rows-region ghost namin
   expect_match(html, "hierarchy", fixed = TRUE)
 })
 
-# ---- empty report ------------------------------------------------------
-
-test_that(".ghost_empty_report renders the context-menu hint (no CTA card)", {
-  ns <- shiny::NS("paper")
-  html <- as.character(.ghost_empty_report(ns))
-  # The old ghost CTA card is gone (2026-07-04): the desk shows a quiet
-  # hint naming the right-click affordance instead.
-  expect_match(html, "ar-desk-hint", fixed = TRUE)
-  expect_match(html, "Right-click", fixed = TRUE)
-  expect_no_match(html, "ar-ghost-cta", fixed = TRUE)
-  expect_no_match(html, "action-button", fixed = TRUE)
-})
-
 # ---- region mapping (helper unit coverage) ---------------------------------
 
 test_that(".ghost_region maps every documented control_id per the brief's jump-link table", {

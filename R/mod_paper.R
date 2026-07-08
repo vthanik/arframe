@@ -22,7 +22,7 @@
     gen <- tryCatch(arpillar::generator(object@type), error = function(e) NULL)
     label <- if (!is.null(gen)) .kind_number_label(gen$kind) else "Table"
   }
-  number <- object@options$number %||% ""
+  number <- object@options[["number"]] %||% ""
   trimws(paste(label, number))
 }
 
@@ -735,9 +735,11 @@ mod_paper_server <- function(id, store) {
   obj <- selected_object(store)
 
   if (is.null(obj)) {
-    return(shiny::tagList(
-      .ghost_empty_report(ns)
-    ))
+    # The paper only shows when the LoC is drilled, which always carries a
+    # selection -- so a NULL here is the hidden list view (the renderUI still
+    # fires while hidden). Render nothing; the List-of-Contents owns the
+    # empty state now, and fabricating one here would just be dead markup.
+    return(NULL)
   }
 
   status <- arpillar::output_status(obj)

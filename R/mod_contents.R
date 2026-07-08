@@ -1,11 +1,13 @@
-# The Contents column: the TOC that IS navigation (design spec #3) -- there
-# are no canvas tabs, so this list is the only way to switch which output the
-# desk shows. Groups outputs TABLES/FIGURES/LISTINGS (kind read off the
-# type->generator map; an empty group is omitted entirely), numbers each row
-# by its preset-seeded/auto-suggested `options$number` (falling back to the
-# old kind-scoped document-order index only when absent), stamps its status,
-# and drives every mutation (reorder/rename/duplicate/remove/select) straight
-# through the injected store -- this module holds no draft state of its own.
+# The Report mode List-of-Contents (LoC): a full-width, editable table of
+# every output that DRILLS into the paper + inspector (2026-07-08, mirrors
+# Data mode's list->grid; supersedes the old 280px TOC rail). Groups outputs
+# TABLES/FIGURES/LISTINGS (kind read off the type->generator map; an empty
+# group is omitted), sorts each group by its `options$number` (the canonical
+# TLF order, so there is no manual drag-reorder), stamps its status, and
+# edits NUMBER / LABEL / TITLE / POPULATION inline. A row single-click
+# selects; double-click / Enter drills (`drill_open()`); the breadcrumb / Esc
+# return (`drill_close()`). Every mutation routes through the injected store
+# -- this module holds no draft state of its own.
 
 # ---- kind lookup ------------------------------------------------------
 
@@ -26,15 +28,15 @@
   stats::setNames(vapply(g, `[[`, "", "kind"), names(g))
 }
 
-#' The TOC's kind-scoped group key -> display label + numbering prefix.
+#' The kind-scoped group key -> display label + numbering prefix.
 #'
 #' An `object@type` outside the known map (a generator not yet wired to a
 #' render leg) falls back to the `listing` group rather than being silently
-#' dropped from the TOC -- every output the report holds must appear
-#' somewhere (see `.toc_rows()`'s `%||% "listing"` fallback). The `prefix`
-#' also backs the fallback auto-number (`.toc_rows()`) and
-#' `.next_number()`'s (`utils_report.R`) auto-suggest for a
-#' generator-seeded (preset-less) new output.
+#' dropped -- every output the report holds must appear somewhere (see
+#' `.toc_rows()`'s `%||% "listing"` fallback). The `prefix` also backs the
+#' fallback auto-number (`.toc_rows()`) and `.next_number()`'s
+#' (`utils_report.R`) auto-suggest for a generator-seeded (preset-less) new
+#' output.
 #' @noRd
 .TOC_GROUPS <- list(
   table = list(label = "TABLES", prefix = "14.1"),
@@ -45,18 +47,20 @@
 # ---- row model ----------------------------------------------------------
 
 #' Build one row per object: id, title, kind, type, group label, TLF
-#' number, and status.
+#' number, status, and the two inline-editable option values (number_label,
+#' population).
 #'
 #' `number` prefers `obj@options$number` -- the number a preset seeded or
-#' `add_from_generator()` auto-suggested -- falling back to the old
-#' kind-scoped 1-based document-order index only when that option is
-#' absent or blank (e.g. an object built by hand, outside either add
-#' path). `status` folds in `rv$broken` ahead of the oracle -- a broken id
-#' always shows ERROR regardless of what `output_status()` would otherwise
-#' report, matching the stamp table's "app-side render-failed flag"
-#' precedence. `type` is `obj@type` verbatim (the render TYPE, e.g.
-#' `"occurrence"`) -- the `.type_icon()` glyph key, distinct from `kind`
-#' which only splits rows into the coarse TABLES/FIGURES/LISTINGS groups.
+#' `add_from_generator()` auto-suggested -- falling back to the kind-scoped
+#' 1-based document-order index only when that option is absent or blank
+#' (e.g. an object built by hand, outside either add path). `status` folds
+#' in `rv$broken` ahead of the oracle -- a broken id always shows ERROR
+#' regardless of what `output_status()` would otherwise report -- then
+#' `rv$stale` (a heavy edit awaiting Run). `type` is `obj@type` verbatim
+#' (the `.type_icon()` glyph key), distinct from `kind` which only splits
+#' rows into the coarse groups. `number_label` / `population` carry the raw
+#' `obj@options` values (NA when unset) so the inline LABEL / POPULATION
+#' selects can seed their current state without a second object lookup.
 #' @noRd
 .toc_rows <- function(report, broken, stale = character(0)) {
   objs <- .all_objects(report)
@@ -75,7 +79,9 @@
     kind <- kinds[[i]]
     grp <- .TOC_GROUPS[[kind]]
     counters[[kind]] <<- counters[[kind]] + 1L
-    seeded_number <- obj@options$number
+    # Exact `[[` -- `$number` partial-matches `number_label` when a user has
+    # cleared the number but kept the label (R's dollar partial matching).
+    seeded_number <- obj@options[["number"]]
     number <- if (length(seeded_number) == 1L && nzchar(seeded_number)) {
       seeded_number
     } else {
@@ -97,7 +103,9 @@
       type = obj@type,
       group_label = grp$label,
       number = number,
-      status = status
+      status = status,
+      number_label = obj@options$number_label %||% NA_character_,
+      population = obj@options$population %||% NA_character_
     )
   })
 }
@@ -116,87 +124,188 @@
   })
 }
 
+#' A version-aware sort key for a TLF number: each dotted numeric segment is
+#' zero-padded to a fixed width so `"14.1.10"` sorts after `"14.1.2"` (a
+#' plain string sort would put "10" before "2"). Non-numeric segments are
+#' kept verbatim.
+#' @noRd
+.number_key <- function(number) {
+  parts <- strsplit(number, ".", fixed = TRUE)[[1]]
+  padded <- vapply(
+    parts,
+    function(p) {
+      if (grepl("^[0-9]+$", p)) {
+        formatC(as.integer(p), width = 6L, flag = "0")
+      } else {
+        p
+      }
+    },
+    character(1)
+  )
+  paste(padded, collapse = ".")
+}
+
+#' Sort a group's rows by their TLF number (the canonical document order).
+#' @noRd
+.loc_sort_rows <- function(rows) {
+  rows[order(vapply(rows, function(r) .number_key(r$number), character(1)))]
+}
+
+#' The output ids in the exact order the LoC displays them (group order, then
+#' number within group) -- so keyboard Up/Down walks the SAME order the eye
+#' sees, not raw document order.
+#' @noRd
+.loc_ordered_ids <- function(
+  report,
+  broken = character(0),
+  stale = character(0)
+) {
+  rows <- .toc_rows(report, broken, stale)
+  if (length(rows) == 0L) {
+    return(character(0))
+  }
+  ids <- unlist(
+    lapply(.toc_groups(rows), function(g) {
+      vapply(.loc_sort_rows(g$rows), `[[`, character(1), "id")
+    }),
+    use.names = FALSE
+  )
+  ids %||% character(0)
+}
+
 # ---- UI ---------------------------------------------------------------
 
-#' The Contents column UI: the `CONTENTS` label, the grouped TOC (server-
-#' rendered), and the `+ Add output` footer action.
+#' The List-of-Contents UI: a section label, the stat strip, the
+#' `+ Add output` toolbar, and the server-rendered editable table. Full
+#' width -- the desk + inspector live in a sibling `.ar-report-desk` that the
+#' `ar-report-open` class reveals on drill.
 #' @param id *The module namespace.* `<character(1)>: required`.
 #' @noRd
 mod_contents_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::div(
-    class = "ar-toc",
-    `data-ar-resizable` = "left",
-    # Drag handle on the panel's RIGHT edge (mirrors the inspector's).
-    shiny::tags$div(
-      class = "ar-rail-resize",
-      `data-ar-resize` = "left",
-      `aria-hidden` = "true"
+    class = "ar-loc",
+    .label("LIST OF CONTENTS"),
+    shiny::uiOutput(ns("stats")),
+    shiny::div(
+      class = "ar-loc-bar",
+      shiny::div(class = "ar-bar-spacer"),
+      .action_btn(
+        ns("add_output"),
+        shiny::tagList(.icon("plus", 13), "Add output"),
+        variant = "link",
+        class = "ar-dx-tb ar-dx-tb-pri"
+      )
     ),
-    .label("CONTENTS"),
-    shiny::uiOutput(ns("toc")),
-    .action_btn(
-      ns("add_output"),
-      shiny::tagList(.icon("plus", 12), "Add output"),
-      variant = "link",
-      class = "ar-toc-add"
+    shiny::uiOutput(ns("table"))
+  )
+}
+
+# ---- table rendering ----------------------------------------------------
+
+#' The stat strip: total outputs + a count per broad status. First live
+#' caller of `.stat_tile()`.
+#' @noRd
+.loc_stats <- function(rows) {
+  st <- vapply(rows, `[[`, character(1), "status")
+  shiny::div(
+    class = "ar-loc-stats",
+    .stat_tile(length(rows), "Outputs"),
+    .stat_tile(sum(st == "ready"), "Ready"),
+    .stat_tile(sum(st %in% c("draft", "needs_data")), "In progress"),
+    .stat_tile(sum(st %in% c("broken", "stale")), "Needs attention")
+  )
+}
+
+.LABEL_CHOICES <- c("Table", "Figure", "Listing")
+
+#' The inline LABEL (`options$number_label`) native select. Seeds to the
+#' explicit label, else the kind's natural label (Table/Figure/Listing).
+#' @noRd
+.loc_label_select <- function(row, onchange) {
+  kind_default <- switch(
+    row$kind,
+    figure = "Figure",
+    listing = "Listing",
+    "Table"
+  )
+  sel <- if (
+    length(row$number_label) == 1L &&
+      !is.na(row$number_label) &&
+      nzchar(row$number_label)
+  ) {
+    row$number_label
+  } else {
+    kind_default
+  }
+  shiny::tags$select(
+    class = "ar-input-flat ar-loc-sel",
+    onchange = onchange,
+    lapply(.LABEL_CHOICES, function(v) {
+      shiny::tags$option(
+        value = v,
+        selected = if (identical(v, sel)) "selected" else NULL,
+        v
+      )
+    })
+  )
+}
+
+#' The inline POPULATION (`options$population`) native select, off the study
+#' `theme$populations` library. A leading em-dash option clears the binding;
+#' an orphan current value (a legacy dataset name or a since-deleted set) is
+#' appended so it still shows and can be re-pointed.
+#' @noRd
+.loc_pop_select <- function(row, pops, onchange) {
+  cur <- if (
+    length(row$population) == 1L &&
+      !is.na(row$population) &&
+      nzchar(row$population)
+  ) {
+    row$population
+  } else {
+    ""
+  }
+  ids <- names(pops)
+  opts <- list(shiny::tags$option(
+    value = "",
+    selected = if (!nzchar(cur)) "selected" else NULL,
+    "\u2014"
+  ))
+  for (pid in ids) {
+    opts <- c(
+      opts,
+      list(shiny::tags$option(
+        value = pid,
+        selected = if (identical(pid, cur)) "selected" else NULL,
+        pops[[pid]]$label %||% pid
+      ))
     )
+  }
+  if (nzchar(cur) && !(cur %in% ids)) {
+    opts <- c(
+      opts,
+      list(shiny::tags$option(
+        value = cur,
+        selected = "selected",
+        paste0(cur, " (unknown)")
+      ))
+    )
+  }
+  shiny::tags$select(
+    class = "ar-input-flat ar-loc-sel",
+    onchange = onchange,
+    opts
   )
 }
 
-# ---- row/group rendering ------------------------------------------------
-
-#' One TOC row: grip (drag handle) + type glyph + mono number + sans title +
-#' dotted leader + status stamp + hover-revealed kebab. Laid out as a
-#' 6-column CSS grid (`[grip 14px] [type icon 14px] [number] [title 1fr]
-#' [stamp] [kebab 18px]`) -- the title's grid cell is itself a flex pair of
-#' the title text (fixed to its content, shrinking to ellipsis under real
-#' pressure) and the leader (`flex: 1`), so the leader always fills exactly
-#' the gap between a SHORT title and the stamp, while a long title still
-#' gets first claim on the shared `1fr` column instead of losing the space
-#' to a leader that grows unconditionally. The whole row is clickable
-#' (posts `row_click` via an inline `onclick`, namespaced through `ns` so
-#' this module never depends on a fixed, hardcoded module id) except the
-#' kebab and its popovers, which stop propagation so opening a menu never
-#' also re-selects the row underneath it.
+#' The hover-revealed inline actions: Duplicate + Remove. Both stop
+#' propagation (belt to the delegated row handler's `closest("button")`
+#' guard) so acting on a row never also selects/drills it. Removal is
+#' undo-able (`commit()` pushes the undo stack), so it needs no confirm
+#' popover -- Cmd-Z is the safety net.
 #' @noRd
-.toc_row <- function(ns, row, active) {
-  click_js <- sprintf(
-    "Shiny.setInputValue('%s', '%s', {priority: 'event'})",
-    ns("row_click"),
-    row$id
-  )
-  shiny::tags$div(
-    class = paste(
-      "ar-toc-row",
-      if (active) "ar-toc-row-active" else NULL
-    ),
-    `data-ar-id` = row$id,
-    onclick = click_js,
-    shiny::tags$span(class = "ar-toc-grip", .icon("grip", 12)),
-    .type_icon(row$type, 13),
-    shiny::tags$span(class = "ar-toc-number ar-mono", row$number),
-    shiny::tags$span(
-      class = "ar-toc-title-wrap",
-      # `title=` gives a truncated entry its native tooltip -- a real
-      # clinical TLF title routinely outgrows a 280px column even after
-      # ellipsis, so the full text stays one hover away rather than lost.
-      shiny::tags$span(class = "ar-toc-title", title = row$title, row$title),
-      shiny::tags$span(class = "ar-toc-leader")
-    ),
-    .stamp(row$status),
-    .toc_kebab(ns, row)
-  )
-}
-
-#' The hover-revealed kebab: a toggle button plus its two `.ar-pop`
-#' popovers (rename: labelled input + Apply; remove: destructive confirm).
-#' Duplicate needs no input, so it fires directly off the menu item -- open
-#' state is pure client-side class-toggling (the same pattern as the
-#' app-bar title edit), never server round-tripped, since it is ephemeral
-#' UI chrome, not document state.
-#' @noRd
-.toc_kebab <- function(ns, row) {
+.loc_actions <- function(ns, row) {
   stop_js <- "event.stopPropagation()"
   dup_js <- sprintf(
     "%s; Shiny.setInputValue('%s', '%s', {priority: 'event'})",
@@ -204,129 +313,120 @@ mod_contents_ui <- function(id) {
     ns("duplicate"),
     row$id
   )
-  remove_js <- sprintf(
+  rm_js <- sprintf(
     "%s; Shiny.setInputValue('%s', '%s', {priority: 'event'})",
     stop_js,
     ns("remove"),
     row$id
   )
-  rename_js <- sprintf(
-    "%s; Shiny.setInputValue('%s', {id: '%s', title: this.previousElementSibling.value}, {priority: 'event'})",
-    stop_js,
-    ns("rename"),
-    row$id
-  )
-  shiny::tags$div(
-    class = "ar-toc-kebab-wrap",
-    onclick = stop_js,
+  shiny::tagList(
     shiny::tags$button(
       type = "button",
-      class = "ar-icon-btn ar-toc-kebab",
-      `aria-label` = "Output actions",
-      onclick = "this.closest('.ar-toc-kebab-wrap').classList.toggle('ar-pop-menu-open')",
-      .icon("kebab", 12)
+      class = "ar-icon-btn ar-loc-act",
+      title = "Duplicate",
+      `aria-label` = "Duplicate output",
+      onclick = dup_js,
+      .icon("copy", 13)
     ),
-    shiny::tags$div(
-      class = "ar-pop-menu",
-      shiny::tags$button(
-        type = "button",
-        class = "ar-pop-menu-item",
-        onclick = "this.closest('.ar-toc-kebab-wrap').classList.remove('ar-pop-menu-open'); this.closest('.ar-toc-kebab-wrap').classList.add('ar-pop-rename-open')",
-        .icon("pencil", 12),
-        "Rename"
-      ),
-      shiny::tags$button(
-        type = "button",
-        class = "ar-pop-menu-item",
-        onclick = paste0(
-          "this.closest('.ar-toc-kebab-wrap').classList.remove('ar-pop-menu-open');",
-          dup_js
-        ),
-        .icon("copy", 12),
-        "Duplicate"
-      ),
-      shiny::tags$button(
-        type = "button",
-        class = "ar-pop-menu-item ar-pop-menu-item-danger",
-        onclick = "this.closest('.ar-toc-kebab-wrap').classList.remove('ar-pop-menu-open'); this.closest('.ar-toc-kebab-wrap').classList.add('ar-pop-remove-open')",
-        .icon("trash", 12),
-        "Remove"
-      )
-    ),
-    shiny::tags$div(
-      class = "ar-pop ar-pop-rename",
-      shiny::tags$input(
-        type = "text",
-        class = "form-control",
-        value = row$title
-      ),
-      shiny::tags$button(
-        type = "button",
-        class = "btn btn-outline-secondary ar-pop-apply",
-        onclick = paste0(
-          rename_js,
-          "; this.closest('.ar-toc-kebab-wrap').classList.remove('ar-pop-rename-open')"
-        ),
-        .icon("check", 12),
-        "Apply"
-      )
-    ),
-    shiny::tags$div(
-      class = "ar-pop ar-pop-remove",
-      shiny::tags$span("Remove this output?"),
-      shiny::tags$button(
-        type = "button",
-        class = "btn btn-danger ar-pop-apply",
-        onclick = remove_js,
-        .icon("trash", 12),
-        "Remove"
-      ),
-      shiny::tags$button(
-        type = "button",
-        class = "btn btn-outline-secondary",
-        onclick = "this.closest('.ar-toc-kebab-wrap').classList.remove('ar-pop-remove-open')",
-        .icon("close", 12),
-        "Cancel"
+    shiny::tags$button(
+      type = "button",
+      class = "ar-icon-btn ar-loc-act ar-loc-act-danger",
+      title = "Remove",
+      `aria-label` = "Remove output",
+      onclick = rm_js,
+      .icon("trash", 13)
+    )
+  )
+}
+
+#' One LoC table row: type glyph + four inline cells (NUMBER / LABEL / TITLE
+#' / POPULATION) + status stamp + hover actions. Each editable cell is a
+#' native `<input>`/`<select>` with NO Shiny id -- its `onchange` posts one
+#' `cell_edit {id, field, value, nonce}` to the shared server observer, the
+#' `arm_edit`/`.dec_select` idiom (commit on blur/change, never per
+#' keystroke). The row carries `data-ar-id` for the delegated select/drill
+#' handlers in bridge.js.
+#' @noRd
+.loc_row <- function(ns, row, pops, selected) {
+  is_sel <- identical(row$id, selected)
+  cell_js <- function(field) {
+    sprintf(
+      "Shiny.setInputValue('%s', {id: '%s', field: '%s', value: this.value, nonce: Date.now()}, {priority: 'event'})",
+      ns("cell_edit"),
+      row$id,
+      field
+    )
+  }
+  shiny::tags$tr(
+    class = paste("ar-dx-row ar-loc-row", if (is_sel) "ar-dx-row-sel"),
+    `data-ar-id` = row$id,
+    shiny::tags$td(class = "ar-loc-type", .type_icon(row$type, 15)),
+    shiny::tags$td(shiny::tags$input(
+      type = "text",
+      class = "ar-input-flat ar-mono ar-loc-in",
+      value = row$number,
+      `aria-label` = "TLF number",
+      onchange = cell_js("number")
+    )),
+    shiny::tags$td(.loc_label_select(row, cell_js("number_label"))),
+    shiny::tags$td(shiny::tags$input(
+      type = "text",
+      class = "ar-input-flat ar-loc-in ar-loc-title",
+      value = row$title,
+      `aria-label` = "Output title",
+      onchange = cell_js("title")
+    )),
+    shiny::tags$td(.loc_pop_select(row, pops, cell_js("population"))),
+    shiny::tags$td(class = "ar-loc-stamp", .stamp(row$status)),
+    shiny::tags$td(class = "ar-loc-acts", .loc_actions(ns, row))
+  )
+}
+
+#' One group block: a faint micro-label + a `.ar-dx-table` of its rows,
+#' number-sorted.
+#' @noRd
+.loc_group <- function(ns, group, pops, selected) {
+  rows <- .loc_sort_rows(group$rows)
+  shiny::tagList(
+    shiny::div(class = "ar-label ar-loc-group-label", group$label),
+    shiny::tags$table(
+      class = "ar-dx-table ar-loc-table",
+      shiny::tags$thead(shiny::tags$tr(
+        lapply(
+          c("", "NUMBER", "LABEL", "TITLE", "POPULATION", "STATUS", ""),
+          function(h) shiny::tags$th(h)
+        )
+      )),
+      shiny::tags$tbody(
+        lapply(rows, function(row) .loc_row(ns, row, pops, selected))
       )
     )
   )
 }
 
-#' One group: a faint micro-label header + its sortable row list. The
-#' sortable container spans the WHOLE toc (see `.toc_ui`), not one per
-#' group -- SortableJS reorders a single flat DOM list; grouping is a
-#' rendering concern, reorder always operates on the full document order.
+#' The drill breadcrumb, rendered into the desk (`contents-crumb` in app.R).
+#' Empty until a drill is open; shows a Contents back-link + the drilled
+#' output's title.
 #' @noRd
-.toc_group_block <- function(ns, group, selected) {
-  shiny::tagList(
-    shiny::div(class = "ar-label ar-toc-group-label", group$label),
-    lapply(group$rows, function(row) {
-      .toc_row(ns, row, active = identical(row$id, selected))
-    })
-  )
-}
-
-#' The full TOC: one `data-ar-sortable` container wrapping every group's
-#' rows back to back, so drag can move a row across the visual boundary
-#' between two group headers (which stay static, non-draggable content
-#' inside the same flex column but outside `[data-ar-sortable-item]`).
-#' @noRd
-.toc_ui <- function(ns, groups, selected) {
-  shiny::tags$div(
-    class = "ar-toc-list",
-    `data-ar-sortable` = "true",
-    `data-ar-sortable-handle` = ".ar-toc-grip",
-    `data-ar-sortable-item` = ".ar-toc-row",
-    `data-ar-sortable-attr` = "data-ar-id",
-    `data-ar-sortable-input` = ns("reorder"),
-    lapply(groups, function(g) .toc_group_block(ns, g, selected))
+.loc_crumb <- function(ns, obj) {
+  shiny::div(
+    class = "ar-loc-crumb ar-mono",
+    .action_btn(
+      ns("back"),
+      shiny::tagList(.icon("chevrons_left", 12), "List of Contents"),
+      variant = "link",
+      class = "ar-dx-bk"
+    ),
+    shiny::tags$span(class = "ar-dx-sep", "/"),
+    shiny::tags$span(class = "ar-loc-crumb-title", obj@title)
   )
 }
 
 # ---- server -------------------------------------------------------------
 
-#' The Contents server: renders the grouped TOC and wires every row action
-#' (select / reorder / rename / duplicate / remove / add) through the
+#' The List-of-Contents server: renders the stat strip, the grouped editable
+#' table, and the drill breadcrumb, and wires every row action (select /
+#' drill / inline edit / duplicate / remove / add / keyboard nav) through the
 #' injected store.
 #' @param id *The module namespace, matching `mod_contents_ui()`.*
 #'   `<character(1)>: required`.
@@ -337,69 +437,105 @@ mod_contents_server <- function(id, store) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # This DOES re-render on order change: `.toc_rows()` reads
-    # `store$rv$report`, and `move_output()`/`commit()` reassign that
-    # reactive on every reorder, so a drop always re-derives rows fresh from
-    # the store's own object list (never from the DOM) and re-numbers them.
-    # That is correct, not merely tolerated -- SortableJS only owns the DOM
-    # order WHILE a drag is physically in progress (`onEnd` posts the order
-    # once, on drop), and `arInitSortables()`'s `_arSortable` guard cleanly
-    # re-binds a fresh Sortable instance to the replaced rows after this
-    # renderUI runs, so numbering stays correct across repeated drags. The
-    # one residual risk is a DIFFERENT module committing to `rv$report`
-    # while a drag is physically mid-gesture (a renderUI mid-drag would
-    # swap out the very DOM nodes the user's mouse is dragging) -- today
-    # nothing else can commit to this store concurrently, so it cannot
-    # happen; Task 9/10 introduces the first concurrent mutator and should
-    # revisit this (see `document.body.dataset.arDragging` in arframe.js).
-    output$toc <- shiny::renderUI({
-      rows <- .toc_rows(store$rv$report, store$rv$broken, store$rv$stale)
-      groups <- .toc_groups(rows)
-      .toc_ui(ns, groups, store$rv$selected)
+    output$stats <- shiny::renderUI({
+      .loc_stats(.toc_rows(store$rv$report, store$rv$broken, store$rv$stale))
     })
-    # The app opens in Data mode (2026-07-04): the TOC is born hidden and
-    # must keep computing or Report mode opens onto a blank rail (the
-    # mod_data lesson, now pointing the other way).
-    shiny::outputOptions(output, "toc", suspendWhenHidden = FALSE)
+
+    output$table <- shiny::renderUI({
+      rows <- .toc_rows(store$rv$report, store$rv$broken, store$rv$stale)
+      if (length(rows) == 0L) {
+        return(shiny::div(
+          class = "ar-dx-empty",
+          "No outputs yet \u2014 add one to begin."
+        ))
+      }
+      pops <- store$rv$report@theme$populations %||% list()
+      shiny::tagList(lapply(
+        .toc_groups(rows),
+        function(g) .loc_group(ns, g, pops, store$rv$selected)
+      ))
+    })
+
+    output$crumb <- shiny::renderUI({
+      id_open <- store$rv$report_open
+      if (is.null(id_open)) {
+        return(NULL)
+      }
+      obj <- .find_object(store$rv$report, id_open)
+      if (is.null(obj)) {
+        return(NULL)
+      }
+      .loc_crumb(ns, obj)
+    })
+
+    # The report body is hidden in other modes, and the LoC surface is hidden
+    # while drilled (the desk shows instead) -- keep all three computing so a
+    # mode switch or a breadcrumb-return never lands on a blank surface.
+    shiny::outputOptions(output, "stats", suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "table", suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "crumb", suspendWhenHidden = FALSE)
+
+    # Mirror the store's drill pointer to the workspace `ar-report-open`
+    # class (the layout gate). ignoreNULL = FALSE so a drill_close (-> NULL)
+    # still drops the class.
+    shiny::observeEvent(
+      store$rv$report_open,
+      {
+        session$sendCustomMessage(
+          "ar-report-open",
+          list(on = !is.null(store$rv$report_open))
+        )
+      },
+      ignoreNULL = FALSE
+    )
 
     shiny::observeEvent(input$row_click, {
       store$rv$selected <- input$row_click
     })
 
-    # Reconcile the posted DOM order against the store's own id set (a
-    # stale id from a since-removed row is dropped; an id the drag never
-    # touched -- e.g. a row in a different group -- is appended at the end,
-    # never lost). `move_output()` is the only reorder primitive the store
-    # exposes, so a multi-row drag walks it position by position; skipping
-    # already-correct slots keeps a same-group drag to the ~1-2 calls (and
-    # matching undo-stack entries) the gesture actually implies, rather than
-    # one call per row regardless of how much moved.
-    shiny::observeEvent(input$reorder, {
-      ord <- vapply(input$reorder$order, as.character, character(1))
-      ids <- vapply(
-        .all_objects(store$rv$report),
-        function(o) o@id,
-        character(1)
-      )
-      full_order <- c(intersect(ord, ids), setdiff(ids, ord))
-      for (i in seq_along(full_order)) {
-        current_ids <- vapply(
-          .all_objects(store$rv$report),
-          function(o) o@id,
-          character(1)
-        )
-        if (!identical(current_ids[[i]], full_order[[i]])) {
-          move_output(store, full_order[[i]], i)
-        }
-      }
+    # Double-click a row -> drill into its paper + inspector.
+    shiny::observeEvent(input$open, {
+      drill_open(store, input$open)
     })
 
-    shiny::observeEvent(input$rename, {
-      title <- trimws(input$rename$title)
-      if (!nzchar(title)) {
+    # The breadcrumb Contents link (and Esc, via bridge.js) -> back to list.
+    shiny::observeEvent(input$back, {
+      drill_close(store)
+    })
+
+    # One channel for every inline cell edit. title -> rename_output (blank is
+    # a no-op); number / number_label / population -> the standing per-output
+    # override (blank clears it, so the value falls back to Setup / the
+    # engine default). A population change is a heavy edit (it subsets the
+    # data), so update_object marks the proof STALE via its .ard_key oracle.
+    shiny::observeEvent(input$cell_edit, {
+      e <- input$cell_edit
+      id_edit <- e$id
+      field <- as.character(e$field %||% "")
+      if (is.null(id_edit) || !nzchar(field)) {
         return()
       }
-      rename_output(store, input$rename$id, title)
+      value <- trimws(as.character(e$value %||% ""))
+      if (identical(field, "title")) {
+        if (nzchar(value)) {
+          rename_output(store, id_edit, value)
+        }
+        return()
+      }
+      if (!field %in% c("number", "number_label", "population")) {
+        return()
+      }
+      val <- if (nzchar(value)) value else NULL
+      update_object(
+        store,
+        id_edit,
+        function(o) {
+          opts <- o@options
+          opts[[field]] <- val
+          S7::set_props(o, options = opts)
+        },
+        label = paste("set", field)
+      )
     })
 
     shiny::observeEvent(input$duplicate, {
@@ -414,17 +550,17 @@ mod_contents_server <- function(id, store) {
       store$rv$adding <- TRUE
     })
 
-    # Keyboard nav (Task 17): Up/Down walk the TOC selection through the
-    # ordered ids (posted by arframe.js's document keydown map); the first
-    # arrow with nothing selected picks the first output. The payload carries
-    # a nonce so a repeated same-direction press is a fresh event (both under
-    # the browser's `priority: event` and a testServer `setInputs`).
+    # Keyboard nav (Task 17): Up/Down walk the selection through the ids in
+    # DISPLAY order (group order, number-sorted -- matching the eye), posted
+    # by bridge.js's report-mode keydown map; the first arrow with nothing
+    # selected picks the first output. The payload nonce makes a repeated
+    # same-direction press a fresh event.
     shiny::observeEvent(input$nav, {
       dir <- input$nav$dir
-      ids <- vapply(
-        .all_objects(store$rv$report),
-        function(o) o@id,
-        character(1)
+      ids <- .loc_ordered_ids(
+        store$rv$report,
+        store$rv$broken,
+        store$rv$stale
       )
       if (length(ids) == 0L) {
         return()
@@ -445,17 +581,12 @@ mod_contents_server <- function(id, store) {
       store$rv$selected <- ids[[nxt]]
     })
 
-    # Enter opens the inspector on the selected output's FIRST unmet region
-    # (a ready output opens on the title block) -- the keyboard twin of
-    # clicking a ghost slot / the error-summary jump link.
+    # Enter drills into the selected output (the keyboard twin of a
+    # double-click). A no-op when nothing is selected.
     shiny::observeEvent(input$activate, {
-      obj <- selected_object(store)
-      if (is.null(obj)) {
-        return()
+      if (!is.null(store$rv$selected)) {
+        drill_open(store, store$rv$selected)
       }
-      v <- arpillar::validate_output(obj)
-      region <- if (nrow(v) > 0L) .ghost_region(v$control_id[[1]]) else "title"
-      open_card(store, region)
     })
 
     invisible(NULL)

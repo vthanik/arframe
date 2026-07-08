@@ -88,10 +88,22 @@ arframe <- function(project = NULL, data = NULL, folders = NULL, daemons = 2L) {
       class = "ar-app-root",
       mod_frame_ui(
         "frame",
+        # Report mode is the full-width List-of-Contents surface plus a
+        # sibling desk that the `ar-report-open` class reveals on drill
+        # (2026-07-08, mirrors Data's list<->grid). The breadcrumb sits above
+        # the paper|inspector panes; `contents-crumb` is rendered by the
+        # contents module.
         report_body = shiny::tagList(
           mod_contents_ui("contents"),
-          mod_paper_ui("paper"),
-          mod_card_ui("card")
+          shiny::div(
+            class = "ar-report-desk",
+            shiny::uiOutput("contents-crumb"),
+            shiny::div(
+              class = "ar-report-panes",
+              mod_paper_ui("paper"),
+              mod_card_ui("card")
+            )
+          )
         ),
         data_body = mod_data_ui("data"),
         qc_body = mod_qc_ui("qc"),

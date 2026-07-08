@@ -173,21 +173,3 @@ ghost_shell <- function(object) {
   g <- gens[[type]]
   !is.null(g) && identical(g$kind, "figure")
 }
-
-# ---- empty report -----------------------------------------------------
-
-#' The blank-sheet hint shown when no output is selected: a quiet line
-#' naming the context-menu affordance (2026-07-04 -- the old CTA card is
-#' gone; right-click on the desk opens Add output / Delete output, wired
-#' in bridge.js to `mod_paper.R`'s `add_first` / `ctx_remove` observers).
-#' The visible sentence keeps the invisible menu honest (GOV.UK: never a
-#' gesture-only affordance).
-#' @param ns *The module namespace function.* `<function>: required`. From
-#'   `session$ns` in the calling module server.
-#' @noRd
-.ghost_empty_report <- function(ns) {
-  shiny::tags$div(
-    class = "ar-desk-hint ar-mono",
-    "Right-click the canvas to add an output"
-  )
-}

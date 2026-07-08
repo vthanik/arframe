@@ -251,7 +251,7 @@ test_that("a DRAFT object renders ghost markup, not table/error content", {
   )
 })
 
-test_that("no selection at all renders the empty-report ghost with the CTA", {
+test_that("no selection renders nothing -- the LoC owns the empty state (2026-07-08)", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
   store <- shiny::isolate(new_store(con))
@@ -260,9 +260,13 @@ test_that("no selection at all renders the empty-report ghost with the CTA", {
     mod_paper_server,
     args = list(store = store),
     {
+      # The paper only shows when the LoC is drilled onto a selection; with no
+      # selection it renders nothing. The old fabricated empty-report ghost /
+      # desk hint is gone -- no dead markup stands in.
       html <- output$sheet_html_slot$html
-      expect_match(html, "ar-desk-hint", fixed = TRUE)
-      expect_match(html, "Right-click", fixed = TRUE)
+      html <- if (is.null(html)) "" else html
+      expect_no_match(html, "ar-desk-hint", fixed = TRUE)
+      expect_no_match(html, "Right-click", fixed = TRUE)
     }
   )
 })
@@ -665,8 +669,8 @@ test_that("arframe() paper: a READY table renders live, screenshots the payoff",
   # AppDriver "ready" before its first renderUI paints (the chromote
   # tracer reports "Already connected" and skips the value wait), so
   # wait for the row itself, not just idle.
-  app$wait_for_js('document.querySelector(".ar-toc-row") !== null')
-  app$click(selector = '.ar-toc-row[data-ar-id="out001"]')
+  app$wait_for_js('document.querySelector(".ar-loc-row") !== null')
+  app$click(selector = '.ar-loc-row[data-ar-id="out001"]')
   app$wait_for_idle()
 
   html <- app$get_html("body", outer_html = TRUE)
@@ -700,8 +704,8 @@ test_that("arframe() paper: a ready render never cosplays as a page (decision #7
   # Second consecutive AppDriver: the first render can land AFTER
   # shinytest2's ready gate (see the sibling test above) -- wait for the
   # row before clicking.
-  app$wait_for_js('document.querySelector(".ar-toc-row") !== null')
-  app$click(selector = '.ar-toc-row[data-ar-id="out001"]')
+  app$wait_for_js('document.querySelector(".ar-loc-row") !== null')
+  app$click(selector = '.ar-loc-row[data-ar-id="out001"]')
   app$wait_for_idle()
 
   # The canvas is a read-only tabular preview -- no clickable region hooks.

@@ -1122,41 +1122,53 @@ select.ar-input-flat {
   color: var(--ar-ink-2);
 }
 
-/* The report body is the three-region contents/desk/card row. Contents sits
-   directly on the desk (no panel chrome of its own); the desk centers the
-   paper slot and grows to fill the remaining width. */
+/* The report body swaps between the full-width List-of-Contents table and a
+   drilled paper + inspector, gated by the `ar-report-open` workspace class
+   (mirrored from the store's `report_open`) -- Data mode's list<->grid one
+   level up. `.ar-loc` is child 1 (the list); `.ar-report-desk` is child 2
+   (the drill: a breadcrumb above the paper|inspector panes). */
 .ar-body-report {
   background: var(--ar-desk);
 }
-.ar-body-report > :first-child {
-  flex: 0 0 280px;
-  transition: flex-basis var(--ar-motion-slow) var(--ar-motion-ease);
+.ar-body-report > .ar-loc {
+  flex: 1 1 auto;
+  min-width: 0;
 }
-.ar-body-report > :nth-child(2) {
+.ar-report-desk {
+  display: none;
+}
+.ar-report-open .ar-body-report > .ar-loc {
+  display: none;
+}
+.ar-report-open .ar-body-report > .ar-report-desk {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* The drilled paper|inspector row: paper fills, inspector is a fixed right
+   column (its own `.ar-card` width). */
+.ar-report-panes {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+.ar-report-panes > :first-child {
   flex: 1 1 auto;
   display: flex;
   align-items: center;
   /* NO justify-content: center -- the desk is a COLUMN flexbox, so it
      became vertical centering and floated the sticky toolbar mid-desk. */
   position: relative;
+  min-width: 0;
 }
-/* v5 collapse (decision #8): the workspace classes mirrored from the store
-   by the ar-collapse message fold each side panel to a 34px strip. What
-   shows INSIDE a folded panel (status dots / icon strip) is that module's
-   own concern -- the frame only owns the width. */
-/* Full-hide (VS-Code-style): the mode button in the activity bar is the
-   re-opener, so a persistent stub column would just look broken.
-   `display: none` is used over `flex-basis: 0` because Chrome refuses to
-   shrink a flex item below its min-content width regardless of
-   `flex-basis: 0 !important` + `min-width: 0 !important` -- only
-   `display: none` or `max-width: 0` actually removes the column. */
-.ar-rail-collapsed .ar-body-report > :first-child {
-  display: none;
-}
-/* The inspector folds to exactly the tab strip's own width -- no leftover
-   card padding on the right of Roles/Options/Filters/Ranks (the strip
-   itself is the show/hide toggle, so it must stay visible). */
-.ar-insp-collapsed .ar-body-report > :nth-child(3) {
+/* v5 collapse (decision #8): the inspector folds to exactly the tab strip's
+   own width -- no leftover card padding on the right of
+   Roles/Options/Filters/Ranks (the strip itself is the show/hide toggle, so
+   it must stay visible). Moved off the old positional `:nth-child(3)` to the
+   panes' own `.ar-card` after the LoC redesign. */
+.ar-insp-collapsed .ar-report-panes > .ar-card {
   flex-basis: var(--ar-rail-w) !important;
 }
 
@@ -1170,215 +1182,135 @@ select.ar-input-flat {
   font-size: 12px;
 }
 
-/* ============ 03 contents ============ */
-/* The Contents column: 280px, set directly on the desk (no panel background
-   of its own -- see `.ar-body-report > :first-child` in 02 frame). The TOC
-   IS the output switcher (design spec #3/#7): no canvas tabs. */
-.ar-toc {
+/* ============ 03 contents (List of Contents) ============ */
+/* Report mode's full-width, editable List-of-Contents table (2026-07-08):
+   the output switcher that drills into the paper + inspector. Reuses Data
+   mode's `.ar-dx-*` table skin; adds the stat strip, the toolbar, and the
+   inline-edit cells. Sits directly on the desk canvas and owns its own
+   scroll. */
+.ar-loc {
   height: 100%;
   overflow-y: auto;
-  /* VS-Code style (2026-07-04): explicit x=hidden kills the bogus horizontal
-     scrollbar that browsers emit when only overflow-y is set. */
   overflow-x: hidden;
-  /* White contents column with its own thin separator against the grey
-     canvas -- three visually distinct bands (activity bar / contents / desk),
-     each ruled off with a 1px line. */
-  background: var(--ar-paper);
-  border-right: 1px solid var(--ar-rule);
-  padding: var(--ar-space-4) var(--ar-space-3);
+  background: var(--ar-desk);
+  padding: var(--ar-space-4) var(--ar-space-5);
   display: flex;
   flex-direction: column;
+  gap: var(--ar-space-3);
 }
-.ar-toc-group-label {
-  color: var(--ar-ink-5);
-  margin-top: var(--ar-space-3);
+.ar-loc > .ar-label {
+  margin: 0;
 }
-.ar-toc-group-label:first-of-type {
-  margin-top: 0;
-}
-.ar-toc-list {
+/* -- stat strip: the first live caller of `.stat_tile()`, each tile in its
+   own elevated cell (the `.ar-panel` recipe) -- */
+.ar-loc-stats {
   display: flex;
-  flex-direction: column;
+  gap: var(--ar-space-3);
+  flex-wrap: wrap;
 }
-
-/* -- one row: a 4-column grid [grip 14px] [number] [title 1fr] [stamp] --
-   per spec, plus a narrow 5th column for the hover-revealed kebab (opacity-
-   toggled, so its width is reserved even at rest -- the same "never shift
-   layout on hover/select" discipline as the pre-reserved active border),
-   plus a 14px 6th column for the per-generator type glyph (`.type_icon()`)
-   right after the grip. A dense TOC row genuinely has six things competing
-   for a 280px column (drag handle, type glyph, number, title, stamp,
-   kebab); the gap is intentionally tighter than the app's general
-   `--ar-space-2` rhythm and the kebab uses its own compact 18px control
-   (not the general 26px `.ar-icon-btn`) so the title -- the one column
-   that must flex with real content -- keeps as much of the row's width as
-   the other five genuinely need. The title column is `1fr` and holds a
-   NESTED flex pair (title text + leader) so a long title claims space
-   first and the leader only ever fills the true leftover gap -- a leader
-   with an unconditional `flex: 1` in the SAME row as the title would
-   instead win most of the column and crush the title to its min-content
-   width regardless of how short the title actually is. */
-.ar-toc-row {
-  position: relative;
-  display: grid;
-  grid-template-columns: 14px 14px auto 1fr auto 18px;
-  align-items: center;
-  gap: 6px;
-  padding: 5px var(--ar-space-1);
-  border-radius: var(--ar-radius);
-  border-left: 2px solid transparent; /* pre-reserved: active adds colour,
-                                          never layout, so selection never
-                                          shifts the row */
-  cursor: pointer;
-}
-.ar-toc-row:hover {
-  background: rgba(27, 31, 35, 0.03);
-}
-.ar-toc-row-active {
-  border-left-color: var(--ar-accent);
-  background: var(--ar-accent-weak);
-}
-.ar-toc-grip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ar-ink-4);
-  opacity: 0;
-  cursor: grab;
-}
-.ar-toc-row:hover .ar-toc-grip {
-  opacity: 1;
-}
-.ar-toc-number {
-  font-size: 11px;
-  color: var(--ar-ink-3);
-}
-.ar-toc-title-wrap {
-  display: flex;
-  align-items: baseline;
-  min-width: 0; /* lets the grid column -- not just the flex child -- shrink
-                    below its content size, the usual grid/flex overflow trap */
-}
-.ar-toc-title {
-  flex: 0 1 auto;
-  font-size: 12.5px;
-  color: var(--ar-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ar-toc-leader {
-  flex: 1;
-  border-bottom: 1px dotted var(--ar-ink-5);
-  margin: 0 5px 3px;
-  min-width: 6px;
-}
-
-/* -- TOC status: dot + word (mockup piece C) -- inside a 280px row the
-   bordered letterpress stamp reads too heavy, so the SAME `.stamp()` atom
-   restyles to a colored dot beside the word. Color still never carries the
-   signal alone (the word stays); the dot inherits the status color via the
-   existing `currentColor` modifiers. QC-pane stamps keep the letterpress. */
-.ar-toc-row .ar-stamp {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  border: none;
-  padding: 0;
-  font-size: 10px;
-}
-.ar-toc-row .ar-stamp::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  flex: 0 0 auto;
-}
-
-/* -- hover-revealed kebab + its popovers -- */
-.ar-toc-kebab-wrap {
-  position: relative;
-  width: 18px;
-}
-.ar-toc-kebab {
-  width: 18px;
-  height: 18px;
-  opacity: 0;
-}
-.ar-toc-row:hover .ar-toc-kebab,
-.ar-toc-kebab-wrap.ar-pop-menu-open .ar-toc-kebab {
-  opacity: 1;
-}
-/* `.ar-toc` scrolls (`overflow-y: auto`), which clips any absolutely-
-   positioned descendant to its own box -- a kebab popover opened on a row
-   near the bottom of a scrolled list would be cut off regardless of
-   z-index. `position: fixed` escapes that ancestor's clipping/scroll
-   context entirely (fixed is relative to the viewport, not any scrollable
-   ancestor), so arPositionPopover() in arframe.js computes top/left from
-   the trigger's getBoundingClientRect() on open and keeps it pinned as
-   the list scrolls under it. */
-.ar-pop-menu,
-.ar-pop {
-  display: none;
-  position: fixed;
-  z-index: 20;
+.ar-loc-stats .ar-stat-tile {
+  flex: 1 1 0;
+  min-width: 120px;
+  padding: var(--ar-space-3) var(--ar-space-4);
   background: var(--ar-card);
   border: 1px solid var(--ar-paper-edge);
-  border-radius: var(--ar-radius);
-  box-shadow: var(--ar-shadow-float);
+  border-radius: var(--ar-radius-lg);
+  box-shadow: var(--ar-shadow-card);
 }
-.ar-pop-menu-open > .ar-pop-menu,
-.ar-pop-rename-open > .ar-pop-rename,
-.ar-pop-remove-open > .ar-pop-remove {
+/* -- toolbar: right-aligned + Add output -- */
+.ar-loc-bar {
   display: flex;
-}
-.ar-pop-menu {
-  flex-direction: column;
-  min-width: 130px;
-  padding: 4px;
-}
-.ar-pop-menu-item {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 5px 8px;
-  border: none;
-  background: transparent;
-  border-radius: var(--ar-radius);
-  font-size: 12px;
-  color: var(--ar-ink);
-}
-.ar-pop-menu-item:hover {
-  background: rgba(27, 31, 35, 0.05);
-}
-.ar-pop-menu-item-danger {
-  color: var(--ar-error);
-}
-.ar-pop {
   align-items: center;
-  gap: var(--ar-space-1);
-  padding: var(--ar-space-2);
 }
-.ar-pop-rename input {
-  width: 180px;
-  font-size: 12px;
+/* -- group label -- */
+.ar-loc-group-label {
+  color: var(--ar-ink-5);
+  margin-top: var(--ar-space-2);
 }
-.ar-pop-apply {
-  white-space: nowrap;
+.ar-loc-group-label:first-of-type {
+  margin-top: 0;
 }
 
-/* -- footer: + Add output -- */
-.ar-toc-add {
-  margin-top: var(--ar-space-3);
-  color: var(--ar-accent);
-  font-size: 12.5px;
-  text-decoration: none;
-  align-self: flex-start;
-  padding: 4px 0;
+/* -- the editable table (reuses `.ar-dx-table` / `.ar-dx-row` from Data) --
+   columns: [type 28px] NUMBER LABEL TITLE(1fr) POPULATION STATUS [actions].
+   The inline edit controls fill their cell and stay flat (`.ar-input-flat`)
+   until focus; TITLE takes the slack, the rest are fixed-ish. */
+.ar-loc-table {
+  margin-top: var(--ar-space-1);
+  table-layout: fixed;
 }
-.ar-toc-add:hover {
-  text-decoration: underline;
+.ar-loc-type {
+  width: 28px;
+  color: var(--ar-ink-3);
+  text-align: center;
+}
+.ar-loc-type .ar-type-icon {
+  vertical-align: middle;
+}
+.ar-loc-table td {
+  vertical-align: middle;
+}
+.ar-loc-in,
+.ar-loc-sel {
+  width: 100%;
+  min-width: 0;
+}
+.ar-loc-table th:nth-child(2),
+.ar-loc-table td:nth-child(2) {
+  width: 96px;
+}
+.ar-loc-table th:nth-child(3),
+.ar-loc-table td:nth-child(3) {
+  width: 100px;
+}
+.ar-loc-table th:nth-child(5),
+.ar-loc-table td:nth-child(5) {
+  width: 200px;
+}
+.ar-loc-table th:nth-child(6),
+.ar-loc-table td:nth-child(6) {
+  width: 96px;
+}
+.ar-loc-title {
+  font-weight: 500;
+}
+/* -- hover-revealed inline actions (Duplicate / Remove) -- opacity-toggled
+   so the column width is reserved even at rest (no layout shift on hover). */
+.ar-loc-acts {
+  width: 62px;
+  white-space: nowrap;
+  text-align: right;
+  opacity: 0;
+}
+.ar-loc-row:hover .ar-loc-acts,
+.ar-loc-row:focus-within .ar-loc-acts {
+  opacity: 1;
+}
+.ar-loc-act {
+  width: 24px;
+  height: 24px;
+}
+.ar-loc-act-danger:hover {
+  color: var(--ar-error);
+}
+/* -- empty state -- */
+.ar-loc .ar-dx-empty {
+  padding: var(--ar-space-5);
+  color: var(--ar-ink-4);
+  font-size: 12.5px;
+}
+/* -- drill breadcrumb (rendered into the desk, above the paper|inspector) -- */
+.ar-loc-crumb {
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-2);
+  padding: var(--ar-space-2) var(--ar-space-4);
+  border-bottom: 1px solid var(--ar-rule);
+  background: var(--ar-paper);
+  flex: 0 0 auto;
+}
+.ar-loc-crumb-title {
+  color: var(--ar-ink);
 }
 
 /* -- SortableJS drag states -- */
@@ -1541,7 +1473,7 @@ select.ar-input-flat {
 
 /* ============ 05 paper ============ */
 /* The typeset sheet (design spec #3/#7): the render payoff. `.ar-desk-col`
-   is the desk's SECOND child (`.ar-body-report > :nth-child(2)` in 02
+   is the drilled desk's paper pane (`.ar-report-panes > :first-child` in 02
    frame, already flex-centered) -- it owns its own vertical scroll so a
    page taller than the viewport scrolls instead of breaking the desk's
    centering, and stacks the toolbar above the sheet. */
@@ -1552,7 +1484,7 @@ select.ar-input-flat {
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* Beat the frame's `.ar-body-report > :nth-child(2)` centering: in this
+  /* Beat the frame's `.ar-report-panes > :first-child` centering: in this
      column flexbox it becomes VERTICAL centering, which floats the sticky
      toolbar mid-desk instead of pinning it to the top. */
   justify-content: flex-start;
@@ -3266,28 +3198,18 @@ select.ar-input-flat {
 }
 
 /* ============ 12 responsive ============ */
-/* Below 1100px the fixed side panels give up width so the desk keeps
-   breathing room and nothing overflows horizontally. The desk column gets
-   min-width:0 so a wide crosstab scrolls inside its own table-wrap
-   (overflow-x) rather than stretching the frame -- the real success
-   criterion is "no horizontal page scroll," which this guarantees at every
-   width. The panels stay usable and can still collapse to a strip via the
-   chevrons; this is the graceful in-between, not a separate mobile layout. */
-.ar-body-report > :nth-child(2) {
-  min-width: 0;
-}
+/* Below 1100px the drilled inspector gives up width so the paper keeps
+   breathing room and nothing overflows horizontally. `.ar-report-panes` and
+   its paper child already carry min-width:0 (02 frame), so a wide crosstab
+   scrolls inside its own table-wrap (overflow-x) rather than stretching the
+   frame -- the real success criterion is "no horizontal page scroll." The
+   LoC list is full-width and needs no per-width basis. */
 @media (max-width: 1100px) {
-  .ar-body-report > :first-child {
-    flex-basis: 220px;
-  }
   .ar-card {
     flex-basis: 232px;
   }
 }
 @media (max-width: 860px) {
-  .ar-body-report > :first-child {
-    flex-basis: 190px;
-  }
   .ar-card {
     flex-basis: 208px;
   }

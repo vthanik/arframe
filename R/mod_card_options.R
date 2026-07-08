@@ -464,7 +464,7 @@
         shiny::textInput(
           ns("number"),
           label = NULL,
-          value = object@options$number %||% "",
+          value = object@options[["number"]] %||% "",
           placeholder = "14.1.1"
         )
       ),
@@ -1127,7 +1127,7 @@ mod_card_options_server <- function(id, store) {
       }
       val <- trimws(input$number)
       value <- if (nzchar(val)) val else NULL
-      if (identical(value, obj@options$number)) {
+      if (identical(value, obj@options[["number"]])) {
         return()
       }
       update_object(

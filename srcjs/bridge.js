@@ -36,6 +36,16 @@ Shiny.addCustomMessageHandler("ar-collapse", function (m) {
   ws.classList.toggle("ar-insp-collapsed", !!m.insp);
 });
 
+// Report-mode drill (2026-07-08): the store's `report_open` mirrors here as
+// a workspace class -- present = the drilled paper+inspector layout, absent
+// = the full-width List-of-Contents table. Same one-class-toggle technique
+// as ar-collapse.
+Shiny.addCustomMessageHandler("ar-report-open", function (m) {
+  var ws = document.querySelector(".ar-workspace");
+  if (!ws) return;
+  ws.classList.toggle("ar-report-open", !!m.on);
+});
+
 Shiny.addCustomMessageHandler("ar-focus", function (m) {
   var el = document.getElementById(m.id);
   if (el) {
@@ -208,84 +218,6 @@ window.arframePickerItem = function (item, escape) {
   );
 };
 
-// The kebab popover portal: `.ar-toc` scrolls (`overflow-y: auto`), which
-// clips an absolutely-positioned popover opened on a row near the bottom of
-// a scrolled list regardless of z-index. The three popovers
-// (`.ar-pop-menu`, `.ar-pop-rename`, `.ar-pop-remove`) are `position: fixed`
-// in CSS -- relative to the viewport, so no scrollable ancestor can clip
-// them -- and this MutationObserver computes their on-screen position from
-// the trigger's own `getBoundingClientRect()` whenever mod_contents.R's
-// inline onclick handlers toggle one of the three `-open` classes onto its
-// `.ar-toc-kebab-wrap`. Watching the class attribute (rather than adding a
-// second click handler) needs no change to those onclick strings and reacts
-// identically whichever of the three popovers just opened. Right-aligned to
-// the wrap's right edge (matching the old `right: 0` layout); flips to open
-// upward, above the trigger, when there is not enough room below it in the
-// viewport.
-function arPositionPopover(wrap) {
-  // Which of the three popovers is open is read straight off which `-open`
-  // class `wrap` currently carries -- at most one is ever set at a time
-  // (every onclick that adds one first removes the other two).
-  var active = null;
-  if (wrap.classList.contains("ar-pop-menu-open")) {
-    active = wrap.querySelector(".ar-pop-menu");
-  } else if (wrap.classList.contains("ar-pop-rename-open")) {
-    active = wrap.querySelector(".ar-pop-rename");
-  } else if (wrap.classList.contains("ar-pop-remove-open")) {
-    active = wrap.querySelector(".ar-pop-remove");
-  }
-  if (!active) return;
-  var rect = wrap.getBoundingClientRect();
-  var margin = 4;
-  active.style.top = "";
-  active.style.bottom = "";
-  active.style.right = window.innerWidth - rect.right + "px";
-  active.style.left = "auto";
-  // Measure after display:flex is applied (the -open class is already on
-  // wrap by the time the observer callback runs) so offsetHeight reflects
-  // the real popover, not the display:none 0-height default.
-  var popHeight = active.offsetHeight;
-  var spaceBelow = window.innerHeight - rect.bottom;
-  if (spaceBelow < popHeight + margin && rect.top > popHeight + margin) {
-    active.style.bottom = window.innerHeight - rect.top + margin + "px";
-  } else {
-    active.style.top = rect.bottom + margin + "px";
-  }
-}
-var arPopoverObserver = new MutationObserver(function (mutations) {
-  mutations.forEach(function (m) {
-    if (m.target.classList.contains("ar-toc-kebab-wrap")) {
-      arPositionPopover(m.target);
-    }
-  });
-});
-// Unlike arInitSortables, this observer is attached ONCE and never needs
-// re-attaching on renderUI: `.ar-toc` is the OUTER static wrapper div from
-// mod_contents_ui() (see arframe.css #03), and Shiny's renderUI only ever
-// replaces the INNER `uiOutput("toc")` div's contents -- the `.ar-toc` node
-// itself is never removed or replaced, so `subtree: true` keeps observing
-// every row's kebab wrap across every reorder/rename/duplicate/remove.
-document.addEventListener("DOMContentLoaded", function () {
-  var toc = document.querySelector(".ar-toc");
-  if (!toc) return;
-  arPopoverObserver.observe(toc, {
-    attributes: true,
-    attributeFilter: ["class"],
-    subtree: true,
-  });
-});
-// Reposition an already-open popover if the window resizes under it (the
-// TOC's own scroll never needs this: `position: fixed` does not move with
-// scroll of a non-fixed ancestor, so the row can scroll away while the
-// popover stays put, exactly like a native OS context menu).
-window.addEventListener("resize", function () {
-  document
-    .querySelectorAll(
-      ".ar-toc-kebab-wrap.ar-pop-menu-open, .ar-toc-kebab-wrap.ar-pop-rename-open, .ar-toc-kebab-wrap.ar-pop-remove-open"
-    )
-    .forEach(arPositionPopover);
-});
-
 // The command-palette hint is platform-specific and can only be resolved in
 // the browser -- the server's OS is not the client's. Mac shows the Command
 // glyph (U+2318); every other platform shows "Ctrl K".
@@ -351,6 +283,47 @@ $(document).on("keydown", function (e) {
   }
 });
 
+// Report-mode List-of-Contents (2026-07-08): a row single-click selects,
+// double-click drills into the paper + inspector. Both guard on `closest`
+// so a click on an inline edit control (number / label / title / population)
+// or a hover action button never selects or drills the row underneath it --
+// the same discipline the plan calls out for cell edits. Delegated + read
+// off `data-ar-id`, so no per-row input is registered; namespaced to the
+// fixed "contents" module id, matching the data-mode handlers' convention.
+$(document).on("click", ".ar-loc-row", function (e) {
+  if (e.target.closest("input, select, button, a")) return;
+  Shiny.setInputValue("contents-row_click", this.getAttribute("data-ar-id"), {
+    priority: "event",
+  });
+});
+$(document).on("dblclick", ".ar-loc-row", function (e) {
+  if (e.target.closest("input, select, button, a")) return;
+  Shiny.setInputValue("contents-open", this.getAttribute("data-ar-id"), {
+    priority: "event",
+  });
+});
+
+// Esc while drilled returns to the List-of-Contents table (the keyboard twin
+// of the breadcrumb's Contents link). Only fires in Report mode WITH the
+// drill open; the Add-output dialog owns Esc when present, and Esc inside an
+// edit control is left to the browser so it never yanks the user out of a
+// half-typed cell.
+$(document).on("keydown", function (e) {
+  if (e.key !== "Escape") return;
+  var ws = document.querySelector(".ar-workspace");
+  if (!ws || !ws.classList.contains("ar-mode-report")) return;
+  if (!ws.classList.contains("ar-report-open")) return;
+  if (document.querySelector(".ar-add-card")) return;
+  if (
+    e.target &&
+    typeof e.target.closest === "function" &&
+    e.target.closest("input, textarea, select, [contenteditable]")
+  ) {
+    return;
+  }
+  Shiny.setInputValue("contents-back", Date.now(), { priority: "event" });
+});
+
 // Move focus into the dialog the moment it appears (design spec #6's
 // "focus != selection" rule). Client-driven, NOT a server "ar-focus"
 // message: `output$overlay`'s first mount of the search box triggers
@@ -363,9 +336,8 @@ $(document).on("keydown", function (e) {
 // element's own appearance sidesteps the race regardless of how many
 // render cycles happen to fire. `.ar-add-overlay-slot` is the STABLE
 // `uiOutput()` wrapper (mod_add_output_ui()) -- renderUI only ever
-// replaces its CONTENTS, matching the `.ar-toc`/arPopoverObserver
-// pattern above, so this observer is attached once and never needs
-// re-binding.
+// replaces its CONTENTS, so this observer is attached once to the stable
+// wrapper and never needs re-binding.
 document.addEventListener("DOMContentLoaded", function () {
   var slot = document.querySelector(".ar-add-overlay-slot");
   if (!slot) return;
@@ -576,7 +548,7 @@ $(document).on("keydown", function (e) {
         });
       })
     );
-    if (document.querySelector(".ar-toc-row-active")) {
+    if (document.querySelector(".ar-workspace.ar-report-open")) {
       menu.appendChild(
         ctxItem("Delete output", true, function () {
           Shiny.setInputValue(ns + "-ctx_remove", Date.now(), {

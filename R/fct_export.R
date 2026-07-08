@@ -51,7 +51,7 @@
 .manifest_row <- function(object, status, file) {
   data.frame(
     file = file %||% NA_character_,
-    number = object@options$number %||% NA_character_,
+    number = object@options[["number"]] %||% NA_character_,
     label = object@options$number_label %||% NA_character_,
     title = object@title,
     dataset = object@dataset,

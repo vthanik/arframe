@@ -36,7 +36,7 @@
       kind = gen$kind,
       generator = p$generator,
       generator_label = gen$label,
-      number = p$options$number %||% ""
+      number = p$options[["number"]] %||% ""
     )
   })
 }
@@ -490,7 +490,9 @@ mod_add_output_server <- function(id, store) {
       if (is.null(p) || is.null(dataset) || !nzchar(dataset)) {
         return()
       }
-      add_from_preset(store, p$id, dataset)
+      # Auto-drill: a fresh output opens straight into its paper + inspector
+      # so the user lands where they configure it, not back on the list.
+      drill_open(store, add_from_preset(store, p$id, dataset))
       .close_overlay()
     })
 
@@ -500,7 +502,7 @@ mod_add_output_server <- function(id, store) {
       if (is.null(p) || is.null(dataset) || !nzchar(dataset)) {
         return()
       }
-      add_from_generator(store, p$id, dataset)
+      drill_open(store, add_from_generator(store, p$id, dataset))
       .close_overlay()
     })
 

@@ -23,6 +23,11 @@
     ws.classList.toggle("ar-rail-collapsed", !!m3.rail);
     ws.classList.toggle("ar-insp-collapsed", !!m3.insp);
   });
+  Shiny.addCustomMessageHandler("ar-report-open", function(m3) {
+    var ws = document.querySelector(".ar-workspace");
+    if (!ws) return;
+    ws.classList.toggle("ar-report-open", !!m3.on);
+  });
   Shiny.addCustomMessageHandler("ar-focus", function(m3) {
     var el = document.getElementById(m3.id);
     if (el) {
@@ -127,51 +132,6 @@
   window.arframePickerItem = function(item, escape) {
     return '<div class="ar-picker-item">' + escape(arPickerParts(item)[0]) + "</div>";
   };
-  function arPositionPopover(wrap) {
-    var active = null;
-    if (wrap.classList.contains("ar-pop-menu-open")) {
-      active = wrap.querySelector(".ar-pop-menu");
-    } else if (wrap.classList.contains("ar-pop-rename-open")) {
-      active = wrap.querySelector(".ar-pop-rename");
-    } else if (wrap.classList.contains("ar-pop-remove-open")) {
-      active = wrap.querySelector(".ar-pop-remove");
-    }
-    if (!active) return;
-    var rect = wrap.getBoundingClientRect();
-    var margin = 4;
-    active.style.top = "";
-    active.style.bottom = "";
-    active.style.right = window.innerWidth - rect.right + "px";
-    active.style.left = "auto";
-    var popHeight = active.offsetHeight;
-    var spaceBelow = window.innerHeight - rect.bottom;
-    if (spaceBelow < popHeight + margin && rect.top > popHeight + margin) {
-      active.style.bottom = window.innerHeight - rect.top + margin + "px";
-    } else {
-      active.style.top = rect.bottom + margin + "px";
-    }
-  }
-  var arPopoverObserver = new MutationObserver(function(mutations) {
-    mutations.forEach(function(m3) {
-      if (m3.target.classList.contains("ar-toc-kebab-wrap")) {
-        arPositionPopover(m3.target);
-      }
-    });
-  });
-  document.addEventListener("DOMContentLoaded", function() {
-    var toc = document.querySelector(".ar-toc");
-    if (!toc) return;
-    arPopoverObserver.observe(toc, {
-      attributes: true,
-      attributeFilter: ["class"],
-      subtree: true
-    });
-  });
-  window.addEventListener("resize", function() {
-    document.querySelectorAll(
-      ".ar-toc-kebab-wrap.ar-pop-menu-open, .ar-toc-kebab-wrap.ar-pop-rename-open, .ar-toc-kebab-wrap.ar-pop-remove-open"
-    ).forEach(arPositionPopover);
-  });
   function arSetShortcutHint() {
     var plat = navigator.userAgentData && navigator.userAgentData.platform || navigator.platform || "";
     var mac = /mac|iphone|ipad|ipod/i.test(plat);
@@ -209,6 +169,29 @@
         { priority: "event" }
       );
     }
+  });
+  $(document).on("click", ".ar-loc-row", function(e3) {
+    if (e3.target.closest("input, select, button, a")) return;
+    Shiny.setInputValue("contents-row_click", this.getAttribute("data-ar-id"), {
+      priority: "event"
+    });
+  });
+  $(document).on("dblclick", ".ar-loc-row", function(e3) {
+    if (e3.target.closest("input, select, button, a")) return;
+    Shiny.setInputValue("contents-open", this.getAttribute("data-ar-id"), {
+      priority: "event"
+    });
+  });
+  $(document).on("keydown", function(e3) {
+    if (e3.key !== "Escape") return;
+    var ws = document.querySelector(".ar-workspace");
+    if (!ws || !ws.classList.contains("ar-mode-report")) return;
+    if (!ws.classList.contains("ar-report-open")) return;
+    if (document.querySelector(".ar-add-card")) return;
+    if (e3.target && typeof e3.target.closest === "function" && e3.target.closest("input, textarea, select, [contenteditable]")) {
+      return;
+    }
+    Shiny.setInputValue("contents-back", Date.now(), { priority: "event" });
   });
   document.addEventListener("DOMContentLoaded", function() {
     var slot = document.querySelector(".ar-add-overlay-slot");
@@ -364,7 +347,7 @@
           });
         })
       );
-      if (document.querySelector(".ar-toc-row-active")) {
+      if (document.querySelector(".ar-workspace.ar-report-open")) {
         menu.appendChild(
           ctxItem("Delete output", true, function() {
             Shiny.setInputValue(ns + "-ctx_remove", Date.now(), {

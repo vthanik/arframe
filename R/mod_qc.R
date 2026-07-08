@@ -230,11 +230,12 @@ mod_qc_server <- function(id, store) {
     shiny::outputOptions(output, "sheet", suspendWhenHidden = FALSE)
     shiny::outputOptions(output, "log_sheet", suspendWhenHidden = FALSE)
 
-    # A jump link: select the output, flip to Report mode (mirror the class
-    # to the client -- setting rv$mode directly bypasses the frame's own
-    # `ar-mode` send), and open the inspector on the mapped region.
+    # A jump link: drill into the output (sets selected + report_open, so the
+    # LoC opens straight onto its paper + inspector), flip to Report mode
+    # (mirror the class to the client -- setting rv$mode directly bypasses the
+    # frame's own `ar-mode` send), and open the inspector on the mapped region.
     shiny::observeEvent(input$jump, {
-      store$rv$selected <- input$jump$id
+      drill_open(store, input$jump$id)
       store$rv$mode <- "report"
       session$sendCustomMessage("ar-mode", "report")
       open_card(store, input$jump$region)
