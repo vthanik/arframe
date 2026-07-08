@@ -309,13 +309,16 @@ mod_add_output_ui <- function(id) {
       shiny::tags$div(
         class = "ar-add-body",
         .label("Preset library"),
-        shiny::textInput(
-          ns("search"),
-          label = NULL,
-          # `search_seed`, NOT `search` -- see `.overlay_ui()`'s own
-          # doc comment for why these two must stay different reads.
-          value = search_seed,
-          placeholder = "Search presets"
+        shiny::div(
+          class = "ar-search-host",
+          shiny::textInput(
+            ns("search"),
+            label = NULL,
+            # `search_seed`, NOT `search` -- see `.overlay_ui()`'s own
+            # doc comment for why these two must stay different reads.
+            value = search_seed,
+            placeholder = "Search presets"
+          )
         ),
         shiny::tags$div(
           class = "ar-add-lib-list",

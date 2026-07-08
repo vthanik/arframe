@@ -1927,6 +1927,13 @@ s_study <- function(store) {
     )
   })
   shiny::tagList(
+    shiny::tags$input(
+      type = "search",
+      class = "ar-foot-filter ar-input-flat ar-search",
+      placeholder = "Filter footnotes by key or text…",
+      `aria-label` = "Filter footnotes",
+      autocomplete = "off"
+    ),
     shiny::div(class = "ar-setup-pops ar-setup-foots", header, rows),
     shiny::tags$button(
       id = ns("foot_add"),

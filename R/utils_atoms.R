@@ -54,6 +54,7 @@
   eye = "eye",
   chevrons_left = "angles-left",
   chevrons_right = "angles-right",
+  chevron_right = "chevron-right",
   play = "play",
   info = "circle-info",
   # Mode-nav glyphs (the left sidebar).

@@ -353,6 +353,21 @@ document.addEventListener("DOMContentLoaded", function () {
   }).observe(slot, { childList: true, subtree: true });
 });
 
+// Footnote register filter: client-side, no server round-trip. Matches the
+// query (case-insensitive) against each row's KEY + TEXT input values and
+// toggles a hidden class. Delegated so it survives the section's renderUI.
+document.addEventListener("input", function (e) {
+  if (!e.target.classList.contains("ar-foot-filter")) return;
+  var q = e.target.value.trim().toLowerCase();
+  document.querySelectorAll(".ar-setup-foot-row").forEach(function (row) {
+    var hay = "";
+    row.querySelectorAll("input").forEach(function (i) {
+      hay += " " + (i.value || "").toLowerCase();
+    });
+    row.classList.toggle("ar-row-hidden", q !== "" && hay.indexOf(q) === -1);
+  });
+});
+
 // The paper is a READ-ONLY tabular preview: no region-click delegation and
 // no editable margin-marks -- editing happens entirely in the right rail.
 // Only the table/figure class-flip message handler remains.
@@ -412,6 +427,26 @@ $(document).on("dblclick", ".ar-dx-row", function () {
   Shiny.setInputValue("data-open", this.getAttribute("data-ar-name"), {
     priority: "event",
   });
+});
+
+// A dataset row nested in the SOURCES tree opens the viewer on a single click,
+// so a user can hop between datasets without closing the open one. Reuses the
+// `data-open` input the explorer double-click already drives.
+$(document).on("click", "[data-ar-open]", function () {
+  Shiny.setInputValue("data-open", this.getAttribute("data-ar-open"), {
+    priority: "event",
+  });
+});
+
+// A folder chevron collapses/expands its dataset children. stopPropagation so
+// the toggle never also fires the folder-select handler.
+$(document).on("click", "[data-ar-src-toggle]", function (e) {
+  e.stopPropagation();
+  Shiny.setInputValue(
+    "data-src_toggle",
+    this.getAttribute("data-ar-src-toggle"),
+    { priority: "event" }
+  );
 });
 
 // Client-side dataset filter: hide explorer rows whose name/folder does not

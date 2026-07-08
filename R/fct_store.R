@@ -62,6 +62,10 @@ new_store <- function(con, report = NULL) {
       data_source = NULL,
       data_focus = NULL,
       grid_dataset = NULL,
+      # Data-mode SOURCES tree: folder labels whose dataset children are
+      # collapsed. Server-held (not the DOM) so a tree re-render preserves
+      # the expand/collapse state.
+      src_collapsed = character(0),
       # Report mode's drill pointer -- the Report-mode twin of `grid_dataset`
       # (2026-07-08): NULL shows the List-of-Contents table, a non-NULL output
       # id drills into that output's paper + inspector. `drill_open()` sets it

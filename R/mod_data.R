@@ -55,28 +55,79 @@
 
 # ---- sources tree ---------------------------------------------------------
 
-#' The SOURCES tree: an "In-memory data" root (the whole catalog) plus one
-#' node per distinct source folder, each carrying its dataset count. The
-#' active node (`store$rv$data_source`, `NULL` = the root) gets the selected
-#' class. A node posts `input$source` (its folder, or `""` for the root)
-#' through the delegated `[data-ar-source]` handler.
+#' One clickable dataset row nested under its SOURCES folder. A single click
+#' opens the viewer (posts `input$open` via the delegated `[data-ar-open]`
+#' handler) so a user can hop between datasets without closing the open one.
+#' The currently-open dataset (`open`) carries the selected class.
 #' @noRd
-.sources_tree <- function(ns, grid, active) {
+.src_dataset_row <- function(name, open) {
+  sel <- if (!is.null(open) && identical(open, name)) "ar-data-ds-sel" else NULL
+  shiny::tags$div(
+    class = paste("ar-data-src ar-data-ds", sel),
+    `data-ar-open` = name,
+    title = name,
+    shiny::tags$span(class = "ar-mono ar-data-ds-name", name)
+  )
+}
+
+#' The SOURCES tree: an "In-memory data" root (the whole catalog) plus one
+#' node per distinct source folder, each carrying its dataset count and its
+#' datasets nested beneath it as click-to-open rows. The active node
+#' (`store$rv$data_source`, `NULL` = the root) gets the selected class; a node
+#' posts `input$source` (its folder, or `""` for the root) through the
+#' delegated `[data-ar-source]` handler. `open` (`store$rv$grid_dataset`)
+#' lights the dataset currently in the viewer. A folder in `collapsed`
+#' (`store$rv$src_collapsed`) hides its dataset children; its chevron posts
+#' `input$src_toggle` through the delegated `[data-ar-src-toggle]` handler.
+#' @noRd
+.sources_tree <- function(
+  ns,
+  grid,
+  active,
+  open = NULL,
+  collapsed = character(0)
+) {
   folders <- if (nrow(grid) == 0L) {
     character(0)
   } else {
     sort(unique(grid$folder[!is.na(grid$folder)]))
   }
+  # Datasets with no folder (WORK-only) hang directly under the root.
+  orphans <- if (nrow(grid) == 0L) {
+    character(0)
+  } else {
+    sort(grid$name[is.na(grid$folder)])
+  }
   root_sel <- if (is.null(active)) "ar-toc-row-sel" else NULL
   nodes <- lapply(folders, function(fol) {
-    n <- sum(!is.na(grid$folder) & grid$folder == fol)
+    kids <- sort(grid$name[!is.na(grid$folder) & grid$folder == fol])
     sel <- if (identical(active, fol)) "ar-toc-row-sel" else NULL
+    is_collapsed <- fol %in% collapsed
+    # Chevron (collapse) and folder body (select) are separate hit zones: the
+    # chevron sits OUTSIDE the `[data-ar-source]` node so a toggle click never
+    # also filters the main list.
     shiny::tags$div(
-      class = paste("ar-data-src ar-toc-row", sel),
-      `data-ar-source` = fol,
-      .icon("open", 14),
-      shiny::tags$span(class = "ar-mono ar-data-src-name", fol),
-      shiny::tags$span(class = "ar-mono ar-data-src-n", n)
+      class = paste("ar-src-group", if (is_collapsed) "ar-src-collapsed"),
+      shiny::tags$div(
+        class = "ar-src-folder-row",
+        shiny::tags$button(
+          class = "ar-src-toggle",
+          type = "button",
+          `data-ar-src-toggle` = fol,
+          `aria-label` = paste("Toggle", fol),
+          .icon("chevron_right", 11)
+        ),
+        shiny::tags$div(
+          class = paste("ar-data-src ar-toc-row", sel),
+          `data-ar-source` = fol,
+          .icon("open", 14),
+          shiny::tags$span(class = "ar-mono ar-data-src-name", fol),
+          shiny::tags$span(class = "ar-mono ar-data-src-n", length(kids))
+        )
+      ),
+      if (!is_collapsed) {
+        lapply(kids, function(nm) .src_dataset_row(nm, open))
+      }
     )
   })
   shiny::tagList(
@@ -93,6 +144,7 @@
       shiny::tags$span("In-memory data"),
       shiny::tags$span(class = "ar-mono ar-data-src-n", nrow(grid))
     ),
+    lapply(orphans, function(nm) .src_dataset_row(nm, open)),
     nodes,
     .action_btn(
       ns("import_folder_tree"),
@@ -154,10 +206,15 @@
     "STATUS",
     "MODIFIED"
   )
+  # COLS/ROWS/SIZE carry right-aligned values; right-align their headers too
+  # so each label sits directly above its column instead of floating left.
+  num_heads <- c("COLS", "ROWS", "SIZE")
   shiny::tags$table(
     class = "ar-dx-table",
     shiny::tags$thead(shiny::tags$tr(
-      lapply(head_cells, function(h) shiny::tags$th(h))
+      lapply(head_cells, function(h) {
+        shiny::tags$th(class = if (h %in% num_heads) "ar-dx-num", h)
+      })
     )),
     shiny::tags$tbody(
       lapply(seq_len(nrow(grid)), function(i) {
@@ -244,38 +301,40 @@ mod_data_ui <- function(id) {
         shiny::tags$input(
           id = ns("filter"),
           type = "text",
-          class = "ar-dx-filter",
+          class = "ar-dx-filter ar-search",
           placeholder = "Filter datasets"
         ),
         shiny::div(class = "ar-bar-spacer"),
         .action_btn(
           ns("view"),
           shiny::tagList(.icon("eye", 13), "View data"),
-          variant = "link",
-          class = "ar-dx-tb ar-dx-tb-pri"
+          variant = "primary",
+          class = "ex-btn-sm ar-dx-tb"
         ),
         # shinyFiles buttons escape a tagList label to text -- pass the
-        # icon through their own `icon` slot instead.
+        # icon through their own `icon` slot instead. `btn-outline-secondary
+        # ex-btn-sm` mirrors the Setup > Sources pickers so both on-ramps
+        # wear one button dialect.
         shinyFiles::shinyFilesButton(
           ns("import_file"),
           label = "Import file",
           title = "Choose a dataset file",
           multiple = FALSE,
           icon = .icon("import", 13),
-          class = "ar-dx-tb"
+          class = "btn btn-outline-secondary ex-btn-sm ar-dx-tb"
         ),
         shinyFiles::shinyDirButton(
           ns("import_folder"),
           label = "Import folder",
           title = "Choose a study folder",
           icon = .icon("folder_plus", 13),
-          class = "ar-dx-tb"
+          class = "btn btn-outline-secondary ex-btn-sm ar-dx-tb"
         ),
         .action_btn(
           ns("delete"),
           shiny::tagList(.icon("trash", 13), "Delete"),
-          variant = "link",
-          class = "ar-dx-tb ar-dx-tb-danger"
+          variant = "outline-danger",
+          class = "ex-btn-sm ar-dx-tb"
         )
       ),
       shiny::uiOutput(ns("explorer"))
@@ -299,9 +358,20 @@ mod_data_server <- function(id, store) {
 
     output$sources <- shiny::renderUI({
       grid <- .explorer_grid(store)
-      .sources_tree(ns, grid, store$rv$data_source)
+      .sources_tree(
+        ns,
+        grid,
+        store$rv$data_source,
+        store$rv$grid_dataset,
+        store$rv$src_collapsed
+      )
     }) |>
-      shiny::bindEvent(store$rv$catalog_nonce, store$rv$data_source)
+      shiny::bindEvent(
+        store$rv$catalog_nonce,
+        store$rv$data_source,
+        store$rv$grid_dataset,
+        store$rv$src_collapsed
+      )
 
     # The explorer: the drill grid when a dataset is open, else the detail
     # table for the active source.
@@ -331,6 +401,18 @@ mod_data_server <- function(id, store) {
     shiny::observeEvent(input$source, {
       store$rv$data_source <- if (nzchar(input$source)) input$source else NULL
       store$rv$grid_dataset <- NULL
+    })
+
+    # A folder chevron toggles its collapsed state in the tree (server-held so
+    # a re-render keeps it).
+    shiny::observeEvent(input$src_toggle, {
+      fol <- input$src_toggle
+      cur <- store$rv$src_collapsed
+      store$rv$src_collapsed <- if (fol %in% cur) {
+        setdiff(cur, fol)
+      } else {
+        c(cur, fol)
+      }
     })
 
     # `input$focus`/`input$open` carry the dataset name from the delegated
@@ -384,6 +466,11 @@ mod_data_server <- function(id, store) {
       dir <- shinyFiles::parseDirPath(volumes, input$import_folder)
       if (length(dir) == 1L && nzchar(dir)) {
         .mount_folder(store, dir)
+        # Show the whole catalog (root) so the just-mounted datasets appear
+        # APPENDED to the list, not a filtered view of only the new folder
+        # (and not left invisible under the previously active folder).
+        store$rv$data_source <- NULL
+        store$rv$grid_dataset <- NULL
       }
     })
 

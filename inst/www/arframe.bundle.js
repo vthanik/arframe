@@ -207,6 +207,17 @@
       }
     }).observe(slot, { childList: true, subtree: true });
   });
+  document.addEventListener("input", function(e3) {
+    if (!e3.target.classList.contains("ar-foot-filter")) return;
+    var q2 = e3.target.value.trim().toLowerCase();
+    document.querySelectorAll(".ar-setup-foot-row").forEach(function(row) {
+      var hay = "";
+      row.querySelectorAll("input").forEach(function(i3) {
+        hay += " " + (i3.value || "").toLowerCase();
+      });
+      row.classList.toggle("ar-row-hidden", q2 !== "" && hay.indexOf(q2) === -1);
+    });
+  });
   Shiny.addCustomMessageHandler("ar-paper-kind", function(m3) {
     var el = document.getElementById(m3.id);
     if (!el) return;
@@ -244,6 +255,19 @@
     Shiny.setInputValue("data-open", this.getAttribute("data-ar-name"), {
       priority: "event"
     });
+  });
+  $(document).on("click", "[data-ar-open]", function() {
+    Shiny.setInputValue("data-open", this.getAttribute("data-ar-open"), {
+      priority: "event"
+    });
+  });
+  $(document).on("click", "[data-ar-src-toggle]", function(e3) {
+    e3.stopPropagation();
+    Shiny.setInputValue(
+      "data-src_toggle",
+      this.getAttribute("data-ar-src-toggle"),
+      { priority: "event" }
+    );
   });
   $(document).on("input", ".ar-dx-filter", function() {
     var q2 = this.value.toLowerCase();
