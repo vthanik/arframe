@@ -907,10 +907,11 @@ test_that(".with_chrome is a no-op without bands and never double-stamps", {
   )
 })
 
-# ---- .onscreen_theme: canvas band resolution (2026-07-08) -------------------
+# ---- .with_band_chrome: study band resolution (screen + .rtf/export) --------
 
-test_that(".onscreen_theme resolves study tokens + previews {page}/{npages}", {
+test_that(".with_band_chrome stamps study tokens + {datetime}, keeps {page}", {
   obj <- arpillar::object(id = "t1", type = "summary", dataset = "ADSL")
+  now <- as.POSIXct("2026-12-31 23:59:09", tz = "UTC")
   theme <- list(
     study = list(
       protocol = "XY-123",
@@ -919,35 +920,43 @@ test_that(".onscreen_theme resolves study tokens + previews {page}/{npages}", {
     ),
     page = list(
       pagehead = list(left = "{protocol}", right = "Page {page} of {npages}"),
-      pagefoot = list(left = "Data as of {data_date}", right = "{sponsor}")
+      pagefoot = list(
+        left = "Data as of {data_date}",
+        center = "{sponsor}",
+        right = "{datetime}"
+      )
     )
   )
-  out <- .onscreen_theme(theme, obj)
+  out <- .with_band_chrome(theme, obj, now = now)
   # Study tokens -> Setup > Study values; bands KEPT (not stripped).
   expect_identical(out$page$pagehead$left, "XY-123")
   expect_identical(out$page$pagefoot$left, "Data as of 2026-01-01")
-  expect_identical(out$page$pagefoot$right, "Acme")
-  # {page}/{npages} are tabular's own field codes -> left untouched (tabular
-  # resolves them; the canvas is continuous, the .rtf is the paginated truth).
+  expect_identical(out$page$pagefoot$center, "Acme")
+  # {datetime} -- the token arpillar rejects as non-deterministic -- is stamped
+  # to a literal so `render_rtf()` does not abort (#7).
+  expect_identical(out$page$pagefoot$right, .chrome_stamp(now))
+  expect_no_match(out$page$pagefoot$right, "{datetime}", fixed = TRUE)
+  # {page}/{npages} are tabular's own field codes -> left untouched (the .rtf
+  # is the paginated truth; the canvas is one continuous sheet).
   expect_identical(out$page$pagehead$right, "Page {page} of {npages}")
 })
 
-test_that(".onscreen_theme errors on a required band token Setup leaves empty", {
+test_that(".with_band_chrome errors on a required band token Setup leaves empty", {
   obj <- arpillar::object(id = "t1", type = "summary", dataset = "ADSL")
   theme <- list(
     study = list(protocol = ""),
     page = list(pagehead = list(left = "Protocol: {protocol}"))
   )
-  expect_error(.onscreen_theme(theme, obj), class = "arframe_error_input")
+  expect_error(.with_band_chrome(theme, obj), class = "arframe_error_input")
 })
 
-test_that(".onscreen_theme leaves an OPTIONAL empty token blank, no error", {
+test_that(".with_band_chrome leaves an OPTIONAL empty token blank, no error", {
   obj <- arpillar::object(id = "t1", type = "summary", dataset = "ADSL")
   theme <- list(
     study = list(),
     page = list(pagefoot = list(left = "{indication}"))
   )
-  out <- .onscreen_theme(theme, obj)
+  out <- .with_band_chrome(theme, obj)
   expect_identical(out$page$pagefoot$left, "")
 })
 
@@ -976,4 +985,32 @@ test_that("the export report leg stamps every output's chrome tokens", {
   expect_match(o@options$pagefoot$right, "^[0-9]{2}[A-Z]{3}[0-9]{4}:")
   # The source line still lands (the composition kept both stamps).
   expect_match(o@options$source, "^Source: ADSL")
+})
+
+test_that("the export report leg stamps the STUDY running bands too (#7)", {
+  # The .rtf/export legs read the STUDY bands (theme$page), not just per-output
+  # overrides. A live {datetime} there aborts arpillar's byte-deterministic
+  # emit -> render_rtf throws -> Shiny serves the error as HTML. .report_with_
+  # source() must stamp theme$page, not only object@options bands.
+  obj <- arpillar::object(id = "t7", type = "summary", dataset = "ADSL")
+  rep <- arpillar::report(
+    id = "r7",
+    name = "R",
+    pages = list(arpillar::page(id = "p1", name = "P", objects = list(obj))),
+    theme = list(
+      study = list(protocol = "XY-7", data_date = "2026-01-01"),
+      page = list(
+        pagefoot = list(
+          left = "Data as of {data_date}",
+          right = "{datetime}"
+        )
+      )
+    )
+  )
+  out <- .report_with_source(rep)
+  pf <- out@theme$page$pagefoot
+  # {datetime} stamped to a literal; the study token resolved.
+  expect_no_match(pf$right, "{datetime}", fixed = TRUE)
+  expect_match(pf$right, "^[0-9]{2}[A-Z]{3}[0-9]{4}:")
+  expect_identical(pf$left, "Data as of 2026-01-01")
 })

@@ -357,6 +357,17 @@
     ),
     if (can_retype) .retype_control(ns, slot$slot, item),
     .peek_distribution(facts),
+    # A measure gets a per-variable decimal-places knob (the "variable level"
+    # of the study -> output -> variable precision cascade); a category has no
+    # numeric precision.
+    if (!is.null(meta) && identical(meta$type, "measure")) {
+      .peek_dp_control(
+        ns,
+        slot$slot,
+        item,
+        .var_dp(store$rv$report@theme, item@name)
+      )
+    },
     if (!is.null(facts) && identical(facts$kind, "counts")) {
       .levels_editor(ns, slot$slot, item, facts)
     }
@@ -515,6 +526,77 @@
       btn("category")
     )
   )
+}
+
+#' The per-variable decimal-places control on a measure peek. Writes THIS
+#' variable's raw precision into the study Decimals-by register
+#' (`theme$decimals_by`, `V|<name>`) -- the same knob Setup > Summaries
+#' exposes, given top precedence by the engine's `.stat_dp()` over the
+#' study/output base (the "variable level" of the precision cascade). Blank =
+#' inherit. Study-wide by variable (not per-output; that needs engine work).
+#' @noRd
+.peek_dp_control <- function(ns, slot_id, item, cur_dp) {
+  js <- sprintf(
+    "Shiny.setInputValue('%s', {slot: '%s', name: '%s', value: this.value, nonce: Date.now()}, {priority: 'event'})",
+    ns("dp_change"),
+    slot_id,
+    item@name
+  )
+  shiny::tags$div(
+    class = "ar-peek-row",
+    shiny::tags$span(class = "ar-peek-key", "Decimal"),
+    shiny::tags$input(
+      type = "number",
+      class = "ar-peek-dp",
+      min = "0",
+      max = "6",
+      step = "1",
+      value = if (length(cur_dp) == 1L && !is.na(cur_dp)) {
+        as.character(cur_dp)
+      } else {
+        ""
+      },
+      placeholder = "inherit",
+      onchange = js,
+      `aria-label` = paste0("Decimal places for ", item@name)
+    )
+  )
+}
+
+#' The raw decimal-places THIS variable currently carries in the study
+#' Decimals-by register (`theme$decimals_by`, `V|`/`P|` keys), or `NA` when it
+#' inherits the base. Mirrors the engine's `.flatten_decimals_by()` read.
+#' @noRd
+.var_dp <- function(theme, name) {
+  rules <- theme$decimals_by %||% list()
+  keys <- c(paste0("V|", name), paste0("P|", name))
+  for (r in rules) {
+    if (any(keys %in% as.character(r$names %||% character(0)))) {
+      dp <- suppressWarnings(as.integer(r$dp))
+      if (length(dp) == 1L && !is.na(dp)) {
+        return(dp)
+      }
+    }
+  }
+  NA_integer_
+}
+
+#' Upsert THIS variable's raw decimals in the Decimals-by register: drop the
+#' `V|<name>` key from every existing rule, then (unless `dp` is `NA`) append a
+#' single-name rule for it -- so editing one variable never disturbs the dp of
+#' others it may have shared a rule with. Returns the new rule list.
+#' @noRd
+.set_var_dp <- function(rules, name, dp) {
+  key <- paste0("V|", name)
+  rules <- lapply(rules, function(r) {
+    r$names <- setdiff(as.character(r$names %||% character(0)), key)
+    r
+  })
+  rules <- Filter(function(r) length(r$names) > 0L, rules)
+  if (length(dp) == 1L && !is.na(dp)) {
+    rules <- c(rules, list(list(names = key, dp = dp)))
+  }
+  rules
 }
 
 #' Render the distribution half of a peek panel from `.peek_facts()`.
@@ -697,54 +779,6 @@
     assign(key, facts, envir = store$cache)
   }
   get(key, envir = store$cache)
-}
-
-#' Inheritance chips: Population (bound / Setup default) and Treatment
-#' (resolved arm column from `resolve_arm()`), rendered above the slot
-#' fieldsets. The Treatment chip shows the ESTIMAND (actual | planned) as a
-#' compact tag so users can see -- at a glance -- which mode drove the
-#' resolved column. Click semantics land in the Preact rewrite; the chip
-#' is read-only for now.
-#' @noRd
-.roles_inherit_chips <- function(store, object) {
-  # Population chip: the bound population id (options$population),
-  # falling back to the study default (theme$default_population).
-  pop <- object@options$population
-  if (is.null(pop) || !nzchar(pop)) {
-    pop <- store$rv$report@theme$default_population %||% ""
-  }
-  pop_chip <- shiny::tags$span(
-    class = "ar-chip ar-chip-inherit",
-    shiny::tags$span(class = "ar-chip-lbl", "Population"),
-    shiny::tags$span(
-      class = "ar-chip-val ar-mono",
-      if (nzchar(pop)) pop else "\u2014"
-    )
-  )
-  # Treatment chip: resolve_arm on the current object against the live
-  # catalog. Fall through silently when the catalog isn't ready.
-  arm_col <- tryCatch(
-    arpillar::resolve_arm(object, store$con),
-    error = function(e) NULL
-  )
-  arm_mode <- object@options$arm_mode %||% "planned"
-  trt_chip <- shiny::tags$span(
-    class = "ar-chip ar-chip-inherit",
-    shiny::tags$span(class = "ar-chip-lbl", "Treatment"),
-    shiny::tags$span(
-      class = "ar-chip-val ar-mono",
-      arm_col %||% "\u2014"
-    ),
-    shiny::tags$span(
-      class = "ar-chip-tag",
-      arm_mode
-    )
-  )
-  shiny::tags$div(
-    class = "ar-role-inherit",
-    pop_chip,
-    trt_chip
-  )
 }
 
 #' The SOURCE row at the top of the Roles pane: the dataset this output
@@ -1074,7 +1108,6 @@ mod_card_roles_server <- function(id, store) {
       items_meta <- .items_meta(store, obj@dataset)
       shiny::tagList(
         .roles_problem_strip(.orphan_problems(obj, slots)),
-        .roles_inherit_chips(store, obj),
         .roles_source_row(store, obj),
         lapply(slots, function(s) {
           .slot_fieldset(store, ns, obj, s, problems, items_meta)
@@ -1234,6 +1267,41 @@ mod_card_roles_server <- function(id, store) {
         obj_id,
         function(o) .retype_item(o, req$slot, req$name, req$role_type),
         label = paste0("treat ", req$name, " as ", req$role_type)
+      )
+    })
+
+    # Per-variable decimals (CHEAP: display-only; the engine applies precision
+    # at render, so the paper re-typesets live off the theme change, no Run).
+    # Writes the study Decimals-by register (`theme$decimals_by`, `V|<name>`),
+    # the same knob Setup > Summaries exposes -- study-wide by variable.
+    shiny::observeEvent(input$dp_change, {
+      req <- input$dp_change
+      name <- req$name
+      if (is.null(name) || !nzchar(name)) {
+        return()
+      }
+      raw <- trimws(as.character(req$value %||% ""))
+      dp <- if (!nzchar(raw)) {
+        NA_integer_
+      } else {
+        suppressWarnings(as.integer(raw))
+      }
+      # Reject non-integer / negative input (leave the register untouched).
+      if (nzchar(raw) && (is.na(dp) || dp < 0L)) {
+        return()
+      }
+      r <- store$rv$report
+      theme <- r@theme
+      rules <- theme$decimals_by %||% list()
+      new_rules <- .set_var_dp(rules, name, dp)
+      if (identical(new_rules, rules)) {
+        return()
+      }
+      theme$decimals_by <- new_rules
+      commit(
+        store,
+        S7::set_props(r, theme = theme),
+        label = paste0("decimals ", name)
       )
     })
 

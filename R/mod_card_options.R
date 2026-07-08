@@ -258,12 +258,23 @@
 #' `.commit_opt()` path, so the full default set stays elided (goldens and
 #' emitted code never carry it).
 #' @noRd
-.opt_stats_control <- function(ns, object, row) {
-  all_stats <- as.character(row$choices[[1]])
-  current <- intersect(
-    as.character(object@options[[row$key]] %||% .opt_default(row)),
+.opt_stats_control <- function(ns, object, row, study_stats = character(0)) {
+  # Mirror the engine's `.stats_opt()`: the BASE set is Setup > Summaries'
+  # continuous rows (`study_stats`) when the study defines them, else the
+  # generator schema's default block. An unset `options$stats` means "all of
+  # base" (not the schema default), so the inspector shows exactly what the
+  # render emits; a set value selects/reorders within base.
+  all_stats <- if (length(study_stats) > 0L) {
+    study_stats
+  } else {
+    as.character(row$choices[[1]])
+  }
+  sel <- object@options[[row$key]]
+  current <- if (is.null(sel)) {
     all_stats
-  )
+  } else {
+    intersect(as.character(sel), all_stats)
+  }
   if (length(current) == 0L) {
     current <- all_stats
   }
@@ -351,7 +362,7 @@
 #' `text`/`numvec` text input, `levels` sortable list). Returns `NULL` for
 #' a levels row whose seed variable is not assigned yet.
 #' @noRd
-.opt_control <- function(con, ns, object, row) {
+.opt_control <- function(con, ns, object, row, study_stats = character(0)) {
   key <- row$key
   current <- .opt_current(object, row)
   input_id <- paste0("opt_", key)
@@ -381,7 +392,7 @@
       inline = TRUE
     ),
     levels = if (identical(key, "stats")) {
-      .opt_stats_control(ns, object, row)
+      .opt_stats_control(ns, object, row, study_stats)
     } else {
       .opt_levels_control(con, ns, object, row)
     },
@@ -396,6 +407,34 @@
     shiny::tags$span(class = "ar-opt-label", row$label),
     control
   )
+  # Statistics carry a per-output override STATUS: unset = inheriting Setup's
+  # continuous rows, set = this output overrides them (with a one-click Reset
+  # back to the Setup default). Makes the study -> output layering visible at
+  # the knob, not just in the header banner.
+  if (identical(key, "stats")) {
+    overridden <- !is.null(object@options[["stats"]])
+    status <- if (overridden) {
+      shiny::tags$p(
+        class = "ar-opt-hint ar-mono ar-opt-override",
+        "Per-output override — ",
+        shiny::tags$button(
+          type = "button",
+          class = "btn btn-link ar-fn-add ar-opt-reset",
+          onclick = sprintf(
+            "Shiny.setInputValue('%s', {nonce: Date.now()}, {priority: 'event'})",
+            ns("opt_stat_reset")
+          ),
+          "Reset to Setup"
+        )
+      )
+    } else {
+      shiny::tags$p(
+        class = "ar-opt-hint ar-mono",
+        "Inheriting Setup default"
+      )
+    }
+    return(shiny::tagList(row_tag, status))
+  }
   if (!identical(key, "decimals")) {
     return(row_tag)
   }
@@ -596,7 +635,13 @@
 #' `.OPT_SECTIONS` order. Ordering keys (`.RANKS_KEYS`) are the Ranks
 #' pane's content and are filtered out here.
 #' @noRd
-.opt_schema_sections <- function(con, ns, object, schema) {
+.opt_schema_sections <- function(
+  con,
+  ns,
+  object,
+  schema,
+  study_stats = character(0)
+) {
   if (is.null(schema) || nrow(schema) == 0L) {
     return(NULL)
   }
@@ -614,10 +659,29 @@
     .opt_section(
       .OPT_SECTIONS[[sec]],
       lapply(idx, function(i) {
-        .opt_control(con, ns, object, schema[i, , drop = FALSE])
+        .opt_control(con, ns, object, schema[i, , drop = FALSE], study_stats)
       })
     )
   })
+}
+
+#' The measure-statistic labels the study defines in Setup > Summaries
+#' (`theme$summaries$continuous`), in display order -- the BASE set both the
+#' engine's `.stats_opt()` and the Options stats control select from. Empty
+#' when the study has not defined continuous rows (the control then falls back
+#' to the generator schema default). Mirrors the engine's row->label read.
+#' @noRd
+.study_stat_labels <- function(theme) {
+  rows <- theme$summaries$continuous
+  if (!is.list(rows) || length(rows) == 0L) {
+    return(character(0))
+  }
+  labs <- vapply(
+    rows,
+    function(r) as.character(r$label %||% ""),
+    character(1)
+  )
+  labs[nzchar(labs)]
 }
 
 # ---- layout sections (global-requirements parity) -------------------------
@@ -1056,11 +1120,12 @@ mod_card_options_server <- function(id, store) {
         arpillar::option_schema(obj@type),
         error = function(e) NULL
       )
+      study_stats <- .study_stat_labels(store$rv$report@theme)
       shiny::tagList(
         .opt_overrides_banner(obj, store),
         .opt_title_section(ns, obj),
         .opt_footnotes_section(ns, obj),
-        .opt_schema_sections(store$con, ns, obj, schema),
+        .opt_schema_sections(store$con, ns, obj, schema, study_stats),
         .opt_layout_sections(store$con, ns, obj),
         shiny::uiOutput(ns("opt_msg"))
       )
@@ -1069,6 +1134,10 @@ mod_card_options_server <- function(id, store) {
         store$rv$selected,
         .roles_digest(selected_object(store)),
         .fn_count(selected_object(store)),
+        # Redraw when Setup > Summaries' continuous rows change so the stats
+        # list stays in step with the study base (a narrow trigger -- avoids
+        # the full-report redraw the text-commit path deliberately skips).
+        .study_stat_labels(store$rv$report@theme),
         pane_redraw()
       )
 
@@ -1423,13 +1492,27 @@ mod_card_options_server <- function(id, store) {
       row
     }
 
+    # The effective statistic set the control DISPLAYS -- the same resolution
+    # `.opt_stats_control()` and the engine's `.stats_opt()` use: the Setup
+    # continuous-row base (else schema default), unset `options$stats` meaning
+    # "all of base". Add/remove operate on THIS, so a custom Setup stat is
+    # never silently dropped by a schema-default read.
+    .stats_current <- function(obj, row) {
+      base <- .study_stat_labels(store$rv$report@theme)
+      if (length(base) == 0L) {
+        base <- as.character(row$choices[[1]])
+      }
+      sel <- obj@options[["stats"]]
+      if (is.null(sel)) base else intersect(as.character(sel), base)
+    }
+
     shiny::observeEvent(input$opt_stat_rm, {
       obj <- selected_object(store)
       row <- if (is.null(obj)) NULL else .stats_row(obj)
       if (is.null(row)) {
         return()
       }
-      current <- as.character(.opt_current(obj, row))
+      current <- .stats_current(obj, row)
       kept <- setdiff(current, input$opt_stat_rm$value)
       # Never commit an empty set -- the engine would fall back to the full
       # block anyway, which reads as "remove did nothing" in the UI.
@@ -1450,11 +1533,31 @@ mod_card_options_server <- function(id, store) {
       if (is.null(row)) {
         return()
       }
-      current <- as.character(.opt_current(obj, row))
+      current <- .stats_current(obj, row)
       if (v %in% current) {
         return()
       }
       .commit_opt(store, rv_err, obj, row, c(current, v))
+      pane_redraw(pane_redraw() + 1L)
+    })
+
+    # Reset to Setup: drop the per-output `options$stats` so the output falls
+    # back to the study's continuous rows (Setup > Summaries).
+    shiny::observeEvent(input$opt_stat_reset, {
+      obj <- selected_object(store)
+      if (is.null(obj) || is.null(obj@options[["stats"]])) {
+        return()
+      }
+      update_object(
+        store,
+        obj@id,
+        function(o) {
+          opts <- o@options
+          opts$stats <- NULL
+          S7::set_props(o, options = opts)
+        },
+        label = "reset statistics to Setup"
+      )
       pane_redraw(pane_redraw() + 1L)
     })
 

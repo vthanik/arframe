@@ -88,6 +88,12 @@ mod_toolbar_server <- function(id, store) {
         # to literals. The ARD memo key ignores options, so the cached ARD
         # is reused as-is.
         theme <- store$rv$report@theme
+        # Stamp the STUDY running-band tokens ({datetime}, study meta) to
+        # literals: the engine rejects them as non-deterministic, and unlike
+        # the object-level `.with_chrome()` below, the deliverable must also
+        # resolve the study bands (`theme$page`) or `render_rtf()` aborts and
+        # Shiny serves the error as an HTML page.
+        theme <- .with_band_chrome(theme, obj)
         obj <- .with_chrome(
           .with_footnotes(.with_source(obj), theme = theme),
           theme = theme

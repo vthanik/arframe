@@ -405,6 +405,46 @@ test_that("stats: remove and add-back commit an ordered subset; the default elid
   })
 })
 
+test_that(".study_stat_labels reads Setup's continuous-row labels in order", {
+  theme <- list(
+    summaries = list(
+      continuous = list(
+        list(label = "n"),
+        list(label = "Mean (SD)"),
+        list(label = "Median"),
+        list(label = "Min, Max"),
+        list(label = "")
+      )
+    )
+  )
+  expect_identical(
+    .study_stat_labels(theme),
+    c("n", "Mean (SD)", "Median", "Min, Max")
+  )
+  # No study rows -> empty (the control then falls back to the schema default).
+  expect_identical(.study_stat_labels(list()), character(0))
+})
+
+test_that("stats control seeds from Setup's continuous rows, not schema Q1,Q3 (#8)", {
+  schema <- arpillar::option_schema("summary")
+  row <- schema[schema$key == "stats", , drop = FALSE]
+  obj <- arpillar::object(id = "t", type = "summary", dataset = "ADSL")
+  # Setup omits Q1, Q3; an unset options$stats inherits the FULL study base.
+  study <- c("n", "Mean (SD)", "Median", "Min, Max")
+  html <- paste(
+    as.character(.opt_stats_control(shiny::NS("x"), obj, row, study)),
+    collapse = ""
+  )
+  expect_match(html, 'data-ar-item="Min, Max"', fixed = TRUE)
+  expect_no_match(html, "Q1, Q3", fixed = TRUE)
+  # With no study rows the control falls back to the schema default (Q1, Q3 in).
+  html0 <- paste(
+    as.character(.opt_stats_control(shiny::NS("x"), obj, row, character(0))),
+    collapse = ""
+  )
+  expect_match(html0, "Q1, Q3", fixed = TRUE)
+})
+
 test_that("stats: a reorder commits the explicit order through default-elision", {
   fx <- .mco_demo_store()
   withr::defer(arpillar::engine_close(fx$con))

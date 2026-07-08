@@ -546,6 +546,10 @@ mod_card_filters_server <- function(id, store) {
         store$rv$selected,
         store$rv$filter_draft,
         store$rv$filter_open,
+        # `report` too: the population chip highlight reads `options$population`,
+        # which the TOC's POPULATION column can also write -- rebind so a
+        # change from either surface moves the lit chip (two-way sync, #12.3).
+        store$rv$report,
         ignoreNULL = FALSE
       )
 

@@ -29,8 +29,11 @@
 .export_render_one <- function(store, object, out_dir) {
   path <- file.path(out_dir, paste0(.output_slug(object), ".rtf"))
   # Thread the study theme so the sync export resolves study-level defaults
-  # identically to the screen and the async daemon (fct_async.R).
-  theme <- store$rv$report@theme
+  # identically to the screen and the async daemon (fct_async.R). Stamp the
+  # running-band chrome tokens ({datetime}, study meta) to literals first --
+  # the engine rejects them, so without this the render throws and the output
+  # is silently dropped from the package.
+  theme <- .with_band_chrome(store$rv$report@theme, object)
   tryCatch(
     {
       if (.is_figure_type(object@type)) {

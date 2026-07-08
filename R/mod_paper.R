@@ -122,10 +122,10 @@
 #' stamps (`{datetime}`/`{program}`/`{program_path}`) + study meta from
 #' `theme$study` (`{sponsor}`/`{protocol}`/`{study}`/`{study_id}`/
 #' `{indication}`/`{data_date}`/`{status}`) + the resolved `{analysis-set}` /
-#' `{arm-label}` labels. Shared by `.with_chrome()` (object bands, export) and
-#' `.onscreen_theme()` (study bands, canvas) so the two never drift. `now` is
+#' `{arm-label}` labels. Shared by `.with_chrome()` (object bands) and
+#' `.with_band_chrome()` (study bands) so the two never drift. `now` is
 #' injectable for tests. `{page}`/`{npages}` are NOT here: they are backend
-#' field codes tabular resolves (the canvas previews them, `.onscreen_theme`).
+#' field codes tabular resolves.
 #' @noRd
 .study_tokens <- function(object, theme = list(), now = NULL) {
   study <- theme$study %||% list()
@@ -210,23 +210,24 @@
   "data_date"
 )
 
-#' The report theme as the CANVAS renders it (2026-07-08, supersedes the
-#' decision-#7 suppression): the running header/footer BANDS are KEPT and their
-#' tokens resolved to literals -- study meta from Setup > Study, chrome stamps,
-#' and `{page}`/`{npages}` previewed as `"1"` (the canvas is one continuous
-#' sheet, so real page numbers belong to the paginated `.rtf`, which renders
-#' with the FULL theme and tabular's own field codes). Every study-level
-#' DISPLAY default (decimals, Summaries vocabulary, arm / header-N) still
-#' resolves through `render_spec()` as before.
+#' The report theme with its running header/footer BANDS resolved for a render:
+#' the study-level `theme$page$pagehead/pagefoot` tokens are stamped to literals
+#' (study meta from Setup > Study, chrome stamps like `{datetime}`), while
+#' `{page}`/`{npages}` stay as tabular's backend field codes. Shared by the
+#' screen canvas (`.try_render_table`) AND the `.rtf`/export legs (mod_toolbar,
+#' fct_export) so the deliverable and the screen never drift -- the ENGINE
+#' rejects `{datetime}` as non-deterministic, so every render leg MUST stamp the
+#' bands here first. The object-level twin is `.with_chrome()` (per-output band
+#' overrides); every other study DISPLAY default (decimals, Summaries, arm)
+#' resolves through `render_spec()`/`render_rtf()` as before.
 #'
 #' @details
 #' **Fail loud on a missing required token.** A band that references a
-#' `.REQUIRED_STUDY_TOKENS` entry Setup left empty raises
-#' `arframe_error_input`, which `.try_render_table()`'s tryCatch turns into the
-#' output's render error -- so the reader sees "the header needs a protocol",
-#' not a silent blank.
+#' `.REQUIRED_STUDY_TOKENS` entry Setup left empty raises `arframe_error_input`
+#' -- turned into the output's render error on screen, and (rightly) refusing to
+#' emit a blank submission header into the `.rtf`.
 #' @noRd
-.onscreen_theme <- function(theme, object) {
+.with_band_chrome <- function(theme, object, now = NULL) {
   if (!is.list(theme)) {
     return(theme)
   }
@@ -234,19 +235,20 @@
   if (!is.list(page)) {
     return(theme)
   }
-  toks <- .study_tokens(object, theme)
-  page$pagehead <- .resolve_band_onscreen(page$pagehead, toks)
-  page$pagefoot <- .resolve_band_onscreen(page$pagefoot, toks)
+  toks <- .study_tokens(object, theme, now)
+  page$pagehead <- .resolve_band(page$pagehead, toks)
+  page$pagefoot <- .resolve_band(page$pagefoot, toks)
   theme$page <- page
   theme
 }
 
-#' Resolve one band's cells for the canvas: (1) error on a referenced-but-empty
-#' required study token, (2) substitute every known token, (3) preview the
-#' `{page}`/`{npages}` field codes as `"1"`. A non-list band (or empty) passes
-#' through untouched.
+#' Resolve one band's cells for a render (screen AND `.rtf`/export -- the study
+#' bands are stamped identically for both): (1) error on a referenced-but-empty
+#' required study token, (2) substitute every known token to a literal, (3)
+#' leave the `{page}`/`{npages}` field codes for tabular's backend to resolve.
+#' A non-list band (or empty) passes through untouched.
 #' @noRd
-.resolve_band_onscreen <- function(band, toks) {
+.resolve_band <- function(band, toks) {
   if (!is.list(band) || length(band) == 0L) {
     return(band)
   }
@@ -360,10 +362,11 @@
 }
 
 #' `.with_source()` + `.with_chrome()` mapped over every output of a
-#' report -- the export package's whole-report leg (both the async JSON
-#' handoff and the sync fallback build from the same injected copy).
-#' One `now` for the whole package so every output carries the same
-#' stamp; the report's own `theme` supplies study-meta tokens.
+#' report, plus the study running bands (`theme$page`) stamped -- the export
+#' package's whole-report leg (both the async JSON handoff and the sync fallback
+#' build from the same injected copy). One `now` for the whole package so every
+#' output carries the same stamp; the report's own `theme` supplies study-meta
+#' tokens.
 #' @noRd
 .report_with_source <- function(report) {
   now <- Sys.time()
@@ -380,7 +383,21 @@
       })
     )
   })
-  S7::set_props(report, pages = pages)
+  report <- S7::set_props(report, pages = pages)
+  # Stamp the STUDY running bands too: the async daemon (fct_async) and sync
+  # export read `theme$page` from this copy, and the engine rejects a live
+  # `{datetime}`. Study bands are report-level (shared by every output), so one
+  # stamp with the same `now`.
+  # ponytail: resolved against the first output -- a per-output band token
+  # ({program}) would need a per-object theme, which no study running band uses.
+  objs <- .all_objects(report)
+  if (length(objs) > 0L && is.list(theme$page)) {
+    report <- S7::set_props(
+      report,
+      theme = .with_band_chrome(theme, objs[[1L]], now = now)
+    )
+  }
+  report
 }
 
 # ---- code view (v5, decision #8) -----------------------------------------
@@ -909,7 +926,7 @@ mod_paper_server <- function(id, store) {
           .with_footnotes(.with_source(object), theme = store$rv$report@theme),
           theme = store$rv$report@theme
         ),
-        theme = .onscreen_theme(store$rv$report@theme, object)
+        theme = .with_band_chrome(store$rv$report@theme, object)
       )
       orient <- object@options$orientation %||% "landscape"
       list(
