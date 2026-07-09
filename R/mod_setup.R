@@ -2210,7 +2210,7 @@ s_study <- function(store) {
           "cat_show_missing",
           "Show missing",
           c("auto", "always", "never"),
-          s$categorical$show_missing %||% "auto"
+          s$categorical$show_missing %||% "never"
         ),
         .flat_input(
           ns,

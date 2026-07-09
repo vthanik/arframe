@@ -8,6 +8,7 @@
 ^CLAUDE\.md$
 ^CLAUDE\.local\.md$
 ^\.local$
+^tasks$
 ^\.superpowers$
 ^handoff\.md$
 ^\.claude$

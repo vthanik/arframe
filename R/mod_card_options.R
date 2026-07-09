@@ -874,16 +874,17 @@
         shiny::tags$div(
           class = "ar-opt-row ar-opt-row-wide",
           shiny::tags$span(class = "ar-opt-label", "Stub column header"),
-          # Textarea, left-aligned: the header often wraps across two lines
-          # (e.g. "Baseline\nCharacteristics"). Enter inside the field
-          # inserts a real newline; blur/Enter+Ctrl commits.
+          # A tidy single-line box (rows = 1) that grows to fit a multi-line
+          # header (e.g. "Baseline\nCharacteristics") via CSS `field-sizing`.
+          # Multi-line stays load-bearing: Enter inserts a real newline that
+          # renders as a line break in the tabular stub column; blur commits.
           .opt_change_textarea(
             ns,
             "opt_stub_label",
             cur("stub_label") %||% "",
             placeholder = "e.g. Parameter",
             width = "150px",
-            rows = 2
+            rows = 1
           )
         ),
         shiny::tags$div(
