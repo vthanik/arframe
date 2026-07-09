@@ -396,7 +396,7 @@
 #' @noRd
 .code_panel <- function(store, ns, object) {
   script <- tryCatch(
-    arpillar::emit_code(store$con, object),
+    arpillar::emit_code(store$con, object, theme = store$rv$report@theme),
     error = function(e) {
       paste0("# Could not emit code:\n# ", conditionMessage(e))
     }
@@ -799,7 +799,12 @@ mod_paper_server <- function(id, store) {
         if (is.null(obj)) {
           .abort_app("No output is selected.")
         }
-        arpillar::emit_code(store$con, obj, path = file)
+        arpillar::emit_code(
+          store$con,
+          obj,
+          path = file,
+          theme = store$rv$report@theme
+        )
       }
     )
 

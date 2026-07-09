@@ -23,22 +23,38 @@ open_project <- function(store, dir) {
   store$rv$path <- dir
   store$rv$dirty <- FALSE
   store$rv$saved_at <- Sys.time()
-  # Mount ADaM data when the theme names it.
-  adam_dir <- report@theme$data$adam_dir
-  if (is.character(adam_dir) && length(adam_dir) == 1L && nzchar(adam_dir)) {
-    resolved <- if (utils::file_test("-d", adam_dir)) {
-      adam_dir
-    } else {
-      file.path(dir, adam_dir)
-    }
-    if (utils::file_test("-d", resolved)) {
-      .mount_folder(store, resolved, folder = "adam")
-    }
-  }
+  # Mount ADaM data the theme names -- shared with the arframe(project=)
+  # startup so both entry points populate the catalog identically.
+  .mount_theme_adam(store, report, dir)
   # Record output mtimes for scan_and_merge.
   .refresh_mtimes(store)
   log_line(store, sprintf("opened project %s", basename(dir)))
   invisible(dir)
+}
+
+#' Mount the theme's ADaM folder into the catalog when it names a valid
+#' directory. Shared by `open_project()` and the `arframe(project=)` startup so
+#' a launched project populates the catalog exactly like the Open button.
+#' `base_dir` resolves a relative `adam_dir`; an absent or invalid path is
+#' silent (a data-source hint must never abort a launch).
+#' @noRd
+.mount_theme_adam <- function(store, report, base_dir) {
+  adam_dir <- report@theme$data$adam_dir
+  if (!is.character(adam_dir) || length(adam_dir) != 1L || !nzchar(adam_dir)) {
+    return(invisible())
+  }
+  resolved <- if (utils::file_test("-d", adam_dir)) {
+    adam_dir
+  } else {
+    file.path(base_dir, adam_dir)
+  }
+  if (utils::file_test("-d", resolved)) {
+    tryCatch(
+      .mount_folder(store, resolved, folder = "adam"),
+      error = function(e) NULL
+    )
+  }
+  invisible()
 }
 
 #' Create a new project from an existing one

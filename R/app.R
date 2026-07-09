@@ -60,6 +60,9 @@ arframe <- function(project = NULL, data = NULL, folders = NULL, daemons = 2L) {
     shiny::isolate({
       store$rv$path <- project_dir
       store$rv$saved_at <- Sys.time()
+      # Mount the theme's ADaM folder so a arframe(project=) launch populates
+      # the catalog like the Open button (open_project()) does.
+      .mount_theme_adam(store, report, project_dir)
       .refresh_mtimes(store)
     })
   }

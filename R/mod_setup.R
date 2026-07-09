@@ -417,6 +417,33 @@ mod_setup_server <- function(id, store) {
       })
     })
 
+    # Typing a valid directory straight into the ADaM/SDTM path field (not only
+    # the Browse picker) also mounts it, so the catalog stays in sync with the
+    # committed path -- the mount is the missing half of the Setup->Data seam.
+    lapply(c("adam", "sdtm"), function(kind) {
+      shiny::observeEvent(
+        input[[paste0("data_", kind, "_dir")]],
+        {
+          dir <- input[[paste0("data_", kind, "_dir")]]
+          if (
+            length(dir) != 1L || !nzchar(dir) || !utils::file_test("-d", dir)
+          ) {
+            return()
+          }
+          tryCatch(
+            .mount_folder(store, dir),
+            error = function(e) {
+              log_line(
+                store,
+                sprintf("mount %s failed: %s", kind, conditionMessage(e))
+              )
+            }
+          )
+        },
+        ignoreInit = TRUE
+      )
+    })
+
     # Populations library observer: on any pop_* field edit, rebuild
     # `theme$populations` from the current inputs (ordered by row index).
     # Count-mismatch guard: skip mid-flush when the input map lags the
@@ -1641,7 +1668,7 @@ s_study <- function(store) {
         shiny::p(
           class = "ar-muted ar-mono",
           shiny::HTML(
-            "Levels are read from the treatment variable — drag to reorder, edit the label, or <code>+ Add arm</code>. Substitutes into a running header or footer as <code>{arm_label}</code>."
+            "Levels are read from the treatment variable \u2014 drag to reorder, edit the label, or <code>+ Add arm</code>. Substitutes into a running header or footer as <code>{arm_label}</code>."
           )
         )
       )
@@ -2167,7 +2194,7 @@ s_study <- function(store) {
           "cat_header_stat",
           "Header stat",
           c("n", "total_n", "none"),
-          s$categorical$header_stat %||% "n"
+          s$categorical$header_stat %||% "none"
         ),
         # Display labels distinct from stored values so the choices read
         # clearly ("n (%)" not "n_pct"); `pct_n` dropped per user request.
@@ -2575,11 +2602,15 @@ s_study <- function(store) {
 # label plus an ordered list of stat atoms. The engine infers the join
 # from the atoms (1 -> bare, mean+sd -> "a (b)", other pairs -> "a, b"),
 # so there is no format template.
+# Mirror arpillar's `.MEASURE_ROWS` (the engine's default block) EXACTLY -- same
+# labels, same order -- so the Setup editor, the inspector's Statistics list,
+# and the rendered paper agree when the theme carries no continuous rows.
 .CONT_SEEDS <- list(
   list(label = "n", stats = "n"),
   list(label = "Mean (SD)", stats = c("mean", "sd")),
   list(label = "Median", stats = "median"),
-  list(label = "Min - Max", stats = c("min", "max"))
+  list(label = "Q1, Q3", stats = c("q1", "q3")),
+  list(label = "Min, Max", stats = c("min", "max"))
 )
 
 # The continuous rows in play: the theme's list, or the canonical seeds when

@@ -252,9 +252,14 @@ page, proof-stamp statuses, and a summonable/pinnable galley card. The deliverab
   licensing status.
 - **No `--` in user-facing text.** Empty-value placeholders, printed cells, and
   any displayed string use the em-dash `—`, never the ASCII double-hyphen
-  `--`. `--` reads as a typo in the rendered UI. (In `#` / `#'` comments and
-  roxygen prose, em-dash `—` is preferred; ASCII `--` there is still
-  tolerated.)
+  `--`. `--` reads as a typo in the rendered UI. **In an R string literal, write
+  the em-dash as the `—` escape** — it renders `—` but keeps the source
+  ASCII, so `R CMD check`'s non-ASCII test stays clean; a *literal* `—` inside a
+  string is a check WARNING (the repo already escapes `…` / `−` this
+  way). Mirrors the tabular/artoo ecosystem rule: em-dash canonical in prose,
+  ASCII-only in `cli_abort()`/`cli_warn()`/`cli_inform()` message strings. (In
+  `#` / `#'` comments and roxygen prose, the em-dash `—` is preferred and left
+  literal, NOT escaped; ASCII `--` there is still tolerated.)
 - **Variable / column / parameter pickers — ONE shared picker everywhere
     (2026-07-07). Every variable/param selector uses it; never a bare
     unlabeled `<select>` of column names, and never inline a selectize

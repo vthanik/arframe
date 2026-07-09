@@ -109,7 +109,8 @@
       arpillar::emit_code(
         store$con,
         obj,
-        path = file.path(prog_dir, paste0(slug, ".R"))
+        path = file.path(prog_dir, paste0(slug, ".R")),
+        theme = report@theme
       ),
       error = function(e) NULL
     )
@@ -141,7 +142,8 @@
     arpillar::emit_report_code(
       store$con,
       report,
-      path = file.path(prog_dir, "run-all.R")
+      path = file.path(prog_dir, "run-all.R"),
+      theme = report@theme
     ),
     error = function(e) NULL
   )
