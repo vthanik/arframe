@@ -33,14 +33,14 @@ test_that("study-meta tokens substitute from theme$study", {
   )
   theme <- list(
     study = list(
-      sponsor = "Pfizer",
+      sponsor = "Acme",
       protocol = "PA-101",
       data_date = "2026-03-05"
     )
   )
   out <- .with_chrome(obj, theme = theme)
-  expect_identical(out@options$pagehead$left, "Pfizer")
-  expect_identical(out@options$pagehead$center, "Pfizer - PA-101")
+  expect_identical(out@options$pagehead$left, "Acme")
+  expect_identical(out@options$pagehead$center, "Acme - PA-101")
   expect_identical(out@options$pagehead$right, "2026-03-05")
 })
 

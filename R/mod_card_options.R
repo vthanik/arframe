@@ -362,7 +362,12 @@
   if (is.null(control)) {
     return(NULL)
   }
-  block <- identical(row$kind, "levels")
+  # Stack the label ABOVE the control for free-text and choice knobs (matches
+  # Setup's field pattern): a full-width text box reads far better than the old
+  # 88px right-pinned box, and a segmented pill group (see the .radio-inline CSS)
+  # has room to lay out its options instead of wrapping. Short toggles (flag)
+  # and the int stepper stay inline (label left, control right).
+  block <- row$kind %in% c("levels", "text", "choice")
   row_tag <- shiny::tags$div(
     class = paste0("ar-opt-row", if (block) " ar-opt-row-block"),
     shiny::tags$span(class = "ar-opt-label", row$label),
@@ -872,18 +877,18 @@
       "COLUMNS",
       list(
         shiny::tags$div(
-          class = "ar-opt-row ar-opt-row-wide",
+          class = "ar-opt-row ar-opt-row-block",
           shiny::tags$span(class = "ar-opt-label", "Stub column header"),
           # A tidy single-line box (rows = 1) that grows to fit a multi-line
           # header (e.g. "Baseline\nCharacteristics") via CSS `field-sizing`.
           # Multi-line stays load-bearing: Enter inserts a real newline that
           # renders as a line break in the tabular stub column; blur commits.
+          # Full-width (block row), no fixed width -- CSS governs.
           .opt_change_textarea(
             ns,
             "opt_stub_label",
             cur("stub_label") %||% "",
             placeholder = "e.g. Parameter",
-            width = "150px",
             rows = 1
           )
         ),
@@ -954,14 +959,13 @@
         },
         choice_row("page_n"),
         shiny::tags$div(
-          class = "ar-opt-row ar-opt-row-wide",
+          class = "ar-opt-row ar-opt-row-block",
           shiny::tags$span(class = "ar-opt-label", "Banner label"),
           .opt_change_input(
             ns,
             "opt_page_banner",
             cur("page_banner") %||% "",
-            placeholder = "e.g. Sex: {SEX}",
-            width = "170px"
+            placeholder = "e.g. Sex: {SEX}"
           )
         ),
         shiny::tags$p(

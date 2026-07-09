@@ -1,6 +1,6 @@
 # Footnote register (Stage 4). `@KEY` in an object's footnotes resolves
-# to the registered text at render/export time -- BMS
-# QC_MasterFile.xlsm's Footnote sheet pattern. Unregistered keys pass
+# to the registered text at render/export time -- the study footnote
+# sheet pattern of a SAS TFL QC workbook. Unregistered keys pass
 # through literally. Byte-golden invariant: empty register + no `@KEY`
 # footnotes render identically to a run with no register at all.
 

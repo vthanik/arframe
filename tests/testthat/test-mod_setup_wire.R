@@ -108,8 +108,8 @@ test_that("wire_all round-trip: individual bindings write to theme", {
   st <- .mk_store()
   shiny::testServer(mod_setup_server, args = list(store = st), {
     # -- Study --
-    session$setInputs(study_sponsor = "Pfizer")
-    expect_identical(st$rv$report@theme$study$sponsor, "Pfizer")
+    session$setInputs(study_sponsor = "Acme")
+    expect_identical(st$rv$report@theme$study$sponsor, "Acme")
 
     session$setInputs(study_protocol = "PA-101")
     expect_identical(st$rv$report@theme$study$protocol, "PA-101")

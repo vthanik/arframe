@@ -34,8 +34,10 @@
   keep <- switch(
     region,
     columns = ids %in% "treatment",
-    rows = ids %in% c("summarize", "hierarchy"),
-    axes = !ids %in% c("treatment", "summarize", "hierarchy"),
+    # `by` is a row-grouping dimension (nested stub bands), so it belongs with
+    # the rows region alongside summarize/hierarchy.
+    rows = ids %in% c("summarize", "hierarchy", "by"),
+    axes = !ids %in% c("treatment", "summarize", "hierarchy", "by"),
     rep(TRUE, length(slots))
   )
   slots[keep]
@@ -379,6 +381,12 @@
 # ponytail: flat cap, no paging -- revisit if a real table needs more.
 .LEVELS_EDITOR_CAP <- 24L
 
+# The reserved `value` for the synthetic "Missing" level: a per-variable
+# override of the study `show_missing` rule, edited in the LEVELS pane as one
+# more row with an include checkbox. Kept in sync with arpillar's
+# `.MISSING_LEVEL_VALUE` (the engine reads it off `data_item@levels`).
+.MISSING_LEVEL_VALUE <- "__ARF_MISSING__"
+
 #' The per-variable LEVELS editor inside a category peek: drag order,
 #' include checkbox, DISPLAY AS recode, and "Add expected level" for
 #' dummy levels the data never observes (they render as zero rows). All
@@ -388,6 +396,17 @@
 .levels_editor <- function(ns, slot_id, item, facts) {
   observed <- names(facts$counts %||% integer(0))
   meta <- item@levels
+  # Split the synthetic Missing override out of the ordinary level metadata:
+  # it is NOT a data level, so it never joins the sortable list -- it renders
+  # as its own row below, reusing the include checkbox to force the Missing row
+  # ON/OFF for this variable (absent = the study `show_missing` rule).
+  is_missing <- vapply(
+    meta,
+    function(m) identical(as.character(m$value), .MISSING_LEVEL_VALUE),
+    logical(1)
+  )
+  miss_meta <- if (any(is_missing)) meta[[which(is_missing)[[1L]]]] else NULL
+  meta <- meta[!is_missing]
   declared <- vapply(meta, function(m) as.character(m$value), character(1))
   if (length(observed) > .LEVELS_EDITOR_CAP) {
     return(shiny::tags$p(
@@ -455,6 +474,26 @@
     slot_id,
     item@name
   )
+  # The synthetic Missing row: below the data levels, no grip/reorder and no
+  # display-as (it is not a data level). Its include checkbox posts the reserved
+  # sentinel through the SAME `lvl_include` observer -- no new server wiring.
+  missing_row <- shiny::tags$div(
+    class = "ar-level-row ar-level-missing",
+    shiny::tags$span(class = "ar-level-grip"),
+    shiny::tags$input(
+      type = "checkbox",
+      class = "ar-level-include",
+      checked = if (isTRUE(miss_meta$include)) "checked",
+      onchange = post(
+        "lvl_include",
+        .MISSING_LEVEL_VALUE,
+        ", on: this.checked"
+      ),
+      `aria-label` = paste0("Show the Missing row for ", item@name)
+    ),
+    shiny::tags$span(class = "ar-level-val", "Missing"),
+    shiny::tags$span(class = "ar-level-hint ar-mono", "show empty / NA")
+  )
   shiny::tags$div(
     class = "ar-levels-editor",
     shiny::tags$span(class = "ar-label ar-levels-label", "Levels"),
@@ -474,6 +513,7 @@
       ),
       rows
     ),
+    missing_row,
     shiny::tags$div(
       class = "ar-levels-add",
       shiny::tags$input(

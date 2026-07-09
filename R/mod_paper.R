@@ -299,8 +299,8 @@
 }
 
 #' A copy of `object` with `@KEY` footnote references resolved against
-#' `theme$footnotes` (a keyword -> text register mirroring BMS
-#' QC_MasterFile.xlsm's Footnote sheet). Applied at render/export time,
+#' `theme$footnotes` (a keyword -> text register mirroring a study
+#' footnote sheet in a SAS TFL QC workbook). Applied at render/export time,
 #' same seam as `.with_chrome()`, so the raw `@KEY` reference stays in
 #' `emit_code()` output for reproducibility. An entry that is exactly
 #' `@KEY` resolves to the registered text; a mixed line like

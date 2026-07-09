@@ -1127,11 +1127,19 @@ mod_setup_server <- function(id, store) {
     if (!nzchar(id)) {
       next
     }
-    out[[id]] <- list(
+    rec <- list(
       label = as.character(input[[paste0("pop_label_", i)]] %||% ""),
       dataset = as.character(input[[paste0("pop_dataset_", i)]] %||% ""),
       filter = as.character(input[[paste0("pop_filter_", i)]] %||% "")
     )
+    # Persist the estimand basis only when it is a real actual/planned choice;
+    # "auto" (or empty) leaves the key off so the set stays clean and the engine
+    # falls back to the generator default.
+    basis <- as.character(input[[paste0("pop_basis_", i)]] %||% "")
+    if (basis %in% c("actual", "planned")) {
+      rec$basis <- basis
+    }
+    out[[id]] <- rec
   }
   out
 }
@@ -1472,6 +1480,27 @@ s_study <- function(store) {
   )
 }
 
+# The estimand-basis cell: auto (defer to the generator default) / actual /
+# planned. Drives which treatment column a bound output resolves to
+# (arpillar's `.estimand_mode()`). A native <select>, read as `pop_basis_<i>`.
+.pop_basis_cell <- function(ns, id, selected) {
+  shiny::div(
+    class = "ar-setup-field",
+    shiny::tags$label(class = "ar-label", `for` = ns(id), NULL),
+    shiny::tags$select(
+      id = ns(id),
+      class = "ar-input-flat ar-mono",
+      lapply(c("auto", "actual", "planned"), function(v) {
+        shiny::tags$option(
+          value = v,
+          selected = if (identical(v, selected)) "selected" else NULL,
+          v
+        )
+      })
+    )
+  )
+}
+
 # One selected subject-id column as a removable chip: "A NAME x". The x
 # posts `{name, nonce}` to the shared `data_subject_remove` observer via an
 # inline onclick (the `mod_card_roles` remove idiom -- one observer, not one
@@ -1711,9 +1740,33 @@ s_study <- function(store) {
   safety = list(
     label = "Safety Analysis Set",
     dataset = "ADSL",
-    filter = 'SAFFL == "Y"'
+    filter = 'SAFFL == "Y"',
+    # Estimand the set implies: safety -> actual treatment (arpillar's
+    # `.estimand_mode()` reads this). Element order matches `.collect_pops()`
+    # so a re-render is `identical()` and never spurious-commits.
+    basis = "actual"
   )
 )
+
+# Name-seed a set's estimand basis when it declares none: a safety set implies
+# actual treatment, an efficacy / ITT / FAS / PP set implies planned. Anything
+# else defers ("auto"). Used only as the DISPLAYED default -- `.collect_pops()`
+# persists actual/planned, drops auto, so an un-inferrable set stays clean.
+.basis_from_name <- function(id, label) {
+  hay <- tolower(paste(id %||% "", label %||% ""))
+  if (grepl("safe", hay)) {
+    return("actual")
+  }
+  if (
+    grepl(
+      "effica|\\bitt\\b|full analysis|\\bfas\\b|per.?protocol|\\bpp\\b",
+      hay
+    )
+  ) {
+    return("planned")
+  }
+  "auto"
+}
 
 # Setup > Populations: the population DATASET binding (which ADaM dataset
 # defines the population + the subject key). The analysis-set library moved
@@ -1783,6 +1836,7 @@ s_study <- function(store) {
     shiny::span("LABEL"),
     shiny::span("DATASET"),
     shiny::span("FILTER"),
+    shiny::span("BASIS"),
     shiny::span("DEFAULT"),
     shiny::span("")
   )
@@ -1810,6 +1864,11 @@ s_study <- function(store) {
         NULL,
         p$filter %||% "",
         mono = TRUE
+      ),
+      .pop_basis_cell(
+        ns,
+        paste0("pop_basis_", i),
+        p$basis %||% .basis_from_name(id, p$label)
       ),
       shiny::tags$button(
         type = "button",

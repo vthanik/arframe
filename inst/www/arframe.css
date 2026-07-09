@@ -636,7 +636,7 @@ input[type="radio"] {
 }
 .ar-setup-pop-header {
   display: grid;
-  grid-template-columns: 100px 1.5fr 90px 1.5fr 40px 32px;
+  grid-template-columns: 100px 1.5fr 90px 1.5fr 92px 40px 32px;
   gap: 8px;
   padding: 4px 12px;
   font-size: 10.5px;
@@ -646,7 +646,7 @@ input[type="radio"] {
 }
 .ar-setup-pop-row {
   display: grid;
-  grid-template-columns: 100px 1.5fr 90px 1.5fr 40px 32px;
+  grid-template-columns: 100px 1.5fr 90px 1.5fr 92px 40px 32px;
   gap: 8px;
   padding: 6px 12px;
   background: var(--ar-chrome);
@@ -2390,6 +2390,28 @@ select.ar-input-flat {
   color: var(--ar-ink-4);
   font-style: italic;
 }
+/* The synthetic Missing-override row: a per-variable show_missing toggle, set
+   apart from the data levels above it (top rule, muted hint, no drag). */
+.ar-level-missing {
+  margin-top: 4px;
+  padding-top: 5px;
+  border-top: 1px dashed var(--ar-rule);
+}
+.ar-level-missing .ar-level-grip {
+  cursor: default;
+  visibility: hidden;
+}
+.ar-level-missing .ar-level-val {
+  font-size: 11px;
+  color: var(--ar-ink-2);
+}
+.ar-level-hint {
+  grid-column: 4 / 6;
+  justify-self: end;
+  font-size: 9.5px;
+  color: var(--ar-ink-4);
+  white-space: nowrap;
+}
 .ar-level-display,
 .ar-levels-add input {
   min-width: 0;
@@ -2889,29 +2911,6 @@ select.ar-input-flat {
   text-decoration: none;
 }
 
-/* wide text knobs (Header N template, margins list, stub label): the 88px
-   right-align numeric default reads wrong for templated text. Two-class
-   specificity so the later `.ar-opt-row input[type="text"]` right-align
-   default does not win. Textarea covers the stub-label multi-line case. */
-.ar-opt-row.ar-opt-row-wide input[type="text"],
-.ar-opt-row.ar-opt-row-wide textarea {
-  width: 150px;
-  text-align: left;
-}
-.ar-opt-row.ar-opt-row-wide textarea.ar-opt-input {
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 12px;
-  line-height: 1.35;
-  min-height: 28px;
-  /* Reads as a single-line box (rows=1) but grows to fit a multi-line stub
-     header natively -- no drag grip, no JS. `field-sizing` degrades to a
-     fixed one-line box on browsers that lack it (content still scrolls). */
-  resize: none;
-  field-sizing: content;
-  padding: 3px 6px;
-  border: 1px solid var(--ar-rule);
-  border-radius: var(--ar-radius);
-}
 
 /* -- running header/footer band rows: [left][center][right][remove] -- */
 .ar-band {
@@ -3000,12 +2999,68 @@ select.ar-input-flat {
   font-family: "IBM Plex Mono", monospace;
   text-align: right;
 }
-.ar-opt-row-block input[type="text"] {
+/* Block rows (free text + choice): the input/textarea fills the pane width and
+   reads left-to-right -- no 88px right-pinned numeric box for prose knobs. */
+.ar-opt-row-block input[type="text"],
+.ar-opt-row-block textarea {
   width: 100%;
+  text-align: left;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+}
+/* The stub-header textarea grows to fit a multi-line header (moved here from
+   the retired .ar-opt-row-wide): single-line box, no drag grip, auto-grow. */
+.ar-opt-row-block textarea.ar-opt-input {
+  line-height: 1.35;
+  min-height: 28px;
+  resize: none;
+  field-sizing: content;
+  padding: 3px 6px;
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius);
+}
+/* Choice knobs render as a segmented pill group -- Shiny's inline radios
+   restyled into the .ar-seg language (hidden radio, one filled active pill),
+   so Palette / Legend / Interval read as one clean control, not wrapped
+   circles. Keyboard operation is preserved (the radio stays focusable). */
+.ar-opt-row .shiny-input-radiogroup .control-label:empty {
+  display: none;
+}
+.ar-opt-row .shiny-options-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius);
+  overflow: hidden;
+  background: var(--ar-paper);
 }
 .ar-opt-row .radio-inline {
-  font-size: 11.5px;
+  position: relative;
+  margin: 0;
+  padding: 5px 12px;
+  border-right: 1px solid var(--ar-rule);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.3;
   color: var(--ar-ink-2);
+}
+.ar-opt-row .radio-inline:last-child {
+  border-right: none;
+}
+.ar-opt-row .radio-inline input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.ar-opt-row .radio-inline:hover {
+  background: var(--ar-chrome);
+}
+.ar-opt-row .radio-inline:has(input:checked) {
+  background: var(--ar-accent);
+  color: var(--ar-paper);
+}
+.ar-opt-row .radio-inline:focus-within {
+  box-shadow: inset 0 0 0 2px var(--ar-accent);
 }
 .ar-opt-row .checkbox {
   margin: 0;
