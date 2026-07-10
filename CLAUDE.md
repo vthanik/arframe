@@ -234,6 +234,25 @@ page, proof-stamp statuses, and a summonable/pinnable galley card. The deliverab
        shows -> they sync; the engine subsets via the set's `filter`). The
        ad-hoc `+ Filter` predicate section (`object@filters`) stays. The old
        `*FL`-flag chips + "Full set" + `.population_flags()` were removed.
+       (c) **2026-07-10 user calls:** choice pills render proper-case display
+       labels over lowercase engine tokens (`.opt_choice_named`), fill the
+       control edge-to-edge (bslib's radiogroup column-gap + radio-dot
+       padding-left are explicitly zeroed), and a 4-option group lays out
+       2x2; `legend_position` renders as a **Show legend** toggle + 4-way
+       position pill (off = "none"); occurrence's **Population dataset row is
+       hidden** (`.HIDDEN_OPT_KEYS` — population comes from Setup analysis
+       sets, no per-output override); **Any-event label** shows only while
+       Any-event row is ticked; **Treatment (`arm_mode`) is a select of
+       Setup's treatment variables by NAME** (value = the variable's
+       estimand basis; Auto defers to the analysis set). **Setup > Treatment
+       is a row LIST** (`theme$treatment$vars`, each `{var, basis}`,
+       `+ Add treatment variable`; `trtvar` mirrors row 1 for legacy reads)
+       and the **arm decode is the deduplicated UNION of every listed
+       variable's levels**, labels preserved across refills. Summary/crosstab
+       gained `options$group_display` (engine `.GROUP_DISPLAY_OPT`,
+       tabular's `col_spec(group_display)`): Nested rows (default) /
+       Column / Column (repeated), a select in the ROWS section. The line
+       generator's x slot label is "X axis" (no "(visit)").
        4. **Full CDISC ARS spine** in
        arpillar (ReportingEvent/Analysis/AnalysisMethod/Operation/
        GroupingFactor/AnalysisSet/DataSubset/OutputDisplay/ListOfContents/ARD)

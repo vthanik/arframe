@@ -22,6 +22,7 @@
 .OPT_REGION <- c(
   decimals = "rows",
   stats = "rows",
+  group_display = "rows",
   error_type = "axes",
   ci_level = "axes",
   mean_diamond = "axes",
@@ -40,6 +41,11 @@
 # Keys whose semantics are ORDERING, not display: they render in the Ranks
 # pane (mod_card_ranks) so ordering lives in one place, and never here.
 .RANKS_KEYS <- c("hier_sort", "x_order")
+
+# Keys the pane never shows (user call 2026-07-10): the population comes from
+# Setup > Analysis sets via the Filters pane's POPULATION section -- there is
+# no per-output override. The engine still honours a legacy saved value.
+.HIDDEN_OPT_KEYS <- "population"
 
 # Display order + micro-label for the option-row groups.
 .OPT_SECTIONS <- c(
@@ -107,6 +113,67 @@
 #' @noRd
 .opt_current <- function(object, row) {
   object@options[[row$key]] %||% .opt_default(row)
+}
+
+# Display labels for choice VALUES (the committed value stays the lowercase
+# engine token). Initialisms map explicitly; everything else title-cases its
+# first letter, so a pill never reads as a bare code word ("rows" -> "Rows").
+.OPT_CHOICE_LABELS <- c(
+  ci = "CI",
+  se = "SE",
+  sd = "SD",
+  freq = "Frequency",
+  alpha = "Alphabetical",
+  header_row = "Nested rows",
+  column = "Column",
+  column_repeat = "Column (repeated)"
+)
+
+#' Named choice vector for a segmented pill: values = engine tokens,
+#' names = display labels.
+#' @noRd
+.opt_choice_named <- function(choices) {
+  vals <- as.character(choices)
+  labs <- vapply(
+    vals,
+    function(v) {
+      if (v %in% names(.OPT_CHOICE_LABELS)) {
+        return(.OPT_CHOICE_LABELS[[v]])
+      }
+      if (grepl("^[a-z]", v)) {
+        substr(v, 1, 1) <- toupper(substr(v, 1, 1))
+      }
+      v
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
+  stats::setNames(vals, labs)
+}
+
+#' The Treatment control's choices: Setup > Treatment's variables by NAME,
+#' each valued by its estimand basis (the token `arm_mode` carries), after
+#' "Auto" (defer to the bound analysis set's basis / generator convention).
+#' `vars` is the RESOLVED row list (`.trt_vars()` -- committed theme rows or
+#' the same seeds Setup displays), so the two surfaces never disagree. Two
+#' variables sharing a basis keep the first; no rows falls back to the bare
+#' estimand words.
+#' @noRd
+.arm_mode_choices <- function(vars) {
+  ch <- c(Auto = "auto")
+  if (is.list(vars)) {
+    for (v in vars) {
+      basis <- as.character(v$basis %||% "")
+      nm <- as.character(v$var %||% "")
+      if (basis %in% c("actual", "planned") && nzchar(nm) && !basis %in% ch) {
+        ch[[nm]] <- basis
+      }
+    }
+  }
+  if (length(ch) == 1L) {
+    ch <- c(ch, Actual = "actual", Planned = "planned")
+  }
+  ch
 }
 
 # ---- controls ---------------------------------------------------------
@@ -323,10 +390,47 @@
 #' `text`/`numvec` text input, `levels` sortable list). Returns `NULL` for
 #' a levels row whose seed variable is not assigned yet.
 #' @noRd
-.opt_control <- function(con, ns, object, row, study_stats = character(0)) {
+.opt_control <- function(
+  con,
+  ns,
+  object,
+  row,
+  study_stats = character(0),
+  trt_vars = list()
+) {
   key <- row$key
   current <- .opt_current(object, row)
   input_id <- paste0("opt_", key)
+  # Legend renders as a Show-legend toggle; the four position pills appear
+  # only while it is on (a value of "none" = off). The position pill keeps
+  # the generic `opt_legend_position` commit path; the toggle has its own
+  # observer that flips between "none" and "bottom".
+  if (identical(key, "legend_position")) {
+    show <- !identical(current, "none")
+    return(shiny::tagList(
+      shiny::tags$div(
+        class = "ar-opt-row",
+        shiny::tags$span(class = "ar-opt-label", "Show legend"),
+        shiny::checkboxInput(ns("opt_legend_show"), label = NULL, value = show)
+      ),
+      if (show) {
+        shiny::tags$div(
+          class = "ar-opt-row ar-opt-row-block",
+          shiny::tags$span(class = "ar-opt-label", "Position"),
+          shiny::radioButtons(
+            ns(input_id),
+            label = NULL,
+            choices = .opt_choice_named(setdiff(
+              as.character(row$choices[[1]]),
+              "none"
+            )),
+            selected = current,
+            inline = TRUE
+          )
+        )
+      }
+    ))
+  }
   control <- switch(
     row$kind,
     int = .opt_int_control(
@@ -345,13 +449,37 @@
       label = NULL,
       value = isTRUE(current)
     ),
-    choice = shiny::radioButtons(
-      ns(input_id),
-      label = NULL,
-      choices = row$choices[[1]],
-      selected = current,
-      inline = TRUE
-    ),
+    # Treatment picks BY VARIABLE: the choices are Setup > Treatment's
+    # variables (value = each one's estimand basis -- the token the engine
+    # consumes), so the user selects TRT01A/TRT01P, never an abstract word.
+    choice = if (identical(key, "arm_mode")) {
+      shiny::selectInput(
+        ns(input_id),
+        label = NULL,
+        choices = .arm_mode_choices(trt_vars),
+        selected = current,
+        selectize = FALSE,
+        width = "170px"
+      )
+    } else if (identical(key, "group_display")) {
+      # Three long labels never fit the docked pane as a pill group.
+      shiny::selectInput(
+        ns(input_id),
+        label = NULL,
+        choices = .opt_choice_named(row$choices[[1]]),
+        selected = current,
+        selectize = FALSE,
+        width = "170px"
+      )
+    } else {
+      shiny::radioButtons(
+        ns(input_id),
+        label = NULL,
+        choices = .opt_choice_named(row$choices[[1]]),
+        selected = current,
+        inline = TRUE
+      )
+    },
     levels = if (identical(key, "stats")) {
       .opt_stats_control(ns, object, row, study_stats)
     } else {
@@ -367,7 +495,11 @@
   # 88px right-pinned box, and a segmented pill group (see the .radio-inline CSS)
   # has room to lay out its options instead of wrapping. Short toggles (flag)
   # and the int stepper stay inline (label left, control right).
-  block <- row$kind %in% c("levels", "text", "choice")
+  # The Treatment select sits inline (label left, 170px control right) like
+  # the layout selects; other choice knobs stack as full-width pill groups.
+  block <- row$kind %in%
+    c("levels", "text", "choice") &&
+    !key %in% c("arm_mode", "group_display")
   row_tag <- shiny::tags$div(
     class = paste0("ar-opt-row", if (block) " ar-opt-row-block"),
     shiny::tags$span(class = "ar-opt-label", row$label),
@@ -606,12 +738,25 @@
   ns,
   object,
   schema,
-  study_stats = character(0)
+  study_stats = character(0),
+  trt_vars = list()
 ) {
   if (is.null(schema) || nrow(schema) == 0L) {
     return(NULL)
   }
-  schema <- schema[!schema$key %in% .RANKS_KEYS, , drop = FALSE]
+  schema <- schema[
+    !schema$key %in% c(.RANKS_KEYS, .HIDDEN_OPT_KEYS),
+    ,
+    drop = FALSE
+  ]
+  # The any-event LABEL edits only while the any-event row is on -- an
+  # editable label for a row the render omits is dead UI.
+  if (all(c("overall_row", "overall_label") %in% schema$key)) {
+    orow <- schema[schema$key == "overall_row", , drop = FALSE]
+    if (!isTRUE(.opt_current(object, orow))) {
+      schema <- schema[schema$key != "overall_label", , drop = FALSE]
+    }
+  }
   if (nrow(schema) == 0L) {
     return(NULL)
   }
@@ -625,7 +770,14 @@
     .opt_section(
       .OPT_SECTIONS[[sec]],
       lapply(idx, function(i) {
-        .opt_control(con, ns, object, schema[i, , drop = FALSE], study_stats)
+        .opt_control(
+          con,
+          ns,
+          object,
+          schema[i, , drop = FALSE],
+          study_stats,
+          trt_vars
+        )
       })
     )
   })
@@ -872,26 +1024,33 @@
       )
     )
   }
+  # A listing has no stub column and no pooled arm -- those two knobs are
+  # ARD-table concepts and never render for it. "Blank row between blocks"
+  # stays: it governs the listing's subject-block blank row (group_skip on
+  # the id column).
+  is_listing <- identical(object@type, "listing")
   list(
     .opt_section(
       "COLUMNS",
       list(
-        shiny::tags$div(
-          class = "ar-opt-row ar-opt-row-block",
-          shiny::tags$span(class = "ar-opt-label", "Stub column header"),
-          # A tidy single-line box (rows = 1) that grows to fit a multi-line
-          # header (e.g. "Baseline\nCharacteristics") via CSS `field-sizing`.
-          # Multi-line stays load-bearing: Enter inserts a real newline that
-          # renders as a line break in the tabular stub column; blur commits.
-          # Full-width (block row), no fixed width -- CSS governs.
-          .opt_change_textarea(
-            ns,
-            "opt_stub_label",
-            cur("stub_label") %||% "",
-            placeholder = "e.g. Parameter",
-            rows = 1
+        if (!is_listing) {
+          shiny::tags$div(
+            class = "ar-opt-row ar-opt-row-block",
+            shiny::tags$span(class = "ar-opt-label", "Stub column header"),
+            # A tidy single-line box (rows = 1) that grows to fit a multi-line
+            # header (e.g. "Baseline\nCharacteristics") via CSS `field-sizing`.
+            # Multi-line stays load-bearing: Enter inserts a real newline that
+            # renders as a line break in the tabular stub column; blur commits.
+            # Full-width (block row), no fixed width -- CSS governs.
+            .opt_change_textarea(
+              ns,
+              "opt_stub_label",
+              cur("stub_label") %||% "",
+              placeholder = "e.g. Parameter",
+              rows = 1
+            )
           )
-        ),
+        },
         shiny::tags$div(
           class = "ar-opt-row",
           shiny::tags$span(
@@ -904,19 +1063,23 @@
             value = !identical(cur("group_skip"), FALSE)
           )
         ),
-        shiny::tags$div(
-          class = "ar-opt-row",
-          shiny::tags$span(class = "ar-opt-label", "Total column"),
-          shiny::checkboxInput(
-            ns("opt_total"),
-            label = NULL,
-            value = isTRUE(cur("total"))
+        if (!is_listing) {
+          shiny::tags$div(
+            class = "ar-opt-row",
+            shiny::tags$span(class = "ar-opt-label", "Total column"),
+            shiny::checkboxInput(
+              ns("opt_total"),
+              label = NULL,
+              value = isTRUE(cur("total"))
+            )
           )
-        ),
-        shiny::tags$p(
-          class = "ar-opt-hint ar-mono",
-          "Pooled across arms; a heavy edit \u2014 Run re-collects."
-        )
+        },
+        if (!is_listing) {
+          shiny::tags$p(
+            class = "ar-opt-hint ar-mono",
+            "Pooled across arms; a heavy edit \u2014 Run re-collects."
+          )
+        }
       )
     ),
     .opt_section(
@@ -1090,7 +1253,15 @@ mod_card_options_server <- function(id, store) {
       shiny::tagList(
         .opt_title_section(ns, obj),
         .opt_footnotes_section(ns, obj),
-        .opt_schema_sections(store$con, ns, obj, schema, study_stats),
+        .opt_schema_sections(
+          store$con,
+          ns,
+          obj,
+          schema,
+          study_stats,
+          .trt_vars(store$rv$report@theme, .pop_bindings(store))
+        ),
+        .opt_listing_sections(store$con, ns, obj),
         .opt_layout_sections(store$con, ns, obj),
         shiny::uiOutput(ns("opt_msg"))
       )
@@ -1123,6 +1294,11 @@ mod_card_options_server <- function(id, store) {
     # computing or the Options tab opens blank.
     shiny::outputOptions(output, "pane", suspendWhenHidden = FALSE)
     shiny::outputOptions(output, "opt_msg", suspendWhenHidden = FALSE)
+
+    # The listing generator's structured-option observers (sort / transpose
+    # / stacks) -- registered once here, inert for any other generator
+    # (mod_card_listing.R).
+    .listing_option_observers(input, output, session, store, pane_redraw)
 
     # ---- title section commits ----
     shiny::observeEvent(input$title, {
@@ -1526,6 +1702,36 @@ mod_card_options_server <- function(id, store) {
       pane_redraw(pane_redraw() + 1L)
     })
 
+    # Show-legend toggle: off commits "none", on restores "bottom" (the
+    # engine default); the position pill then commits through the generic
+    # `opt_legend_position` observer. A bind-time post matching the current
+    # state is a no-op, so a fresh render never pushes an undo entry.
+    shiny::observeEvent(input$opt_legend_show, {
+      obj <- selected_object(store)
+      if (is.null(obj)) {
+        return()
+      }
+      schema <- tryCatch(
+        arpillar::option_schema(obj@type),
+        error = function(e) NULL
+      )
+      row <- if (is.null(schema)) {
+        NULL
+      } else {
+        schema[schema$key == "legend_position", , drop = FALSE]
+      }
+      if (is.null(row) || nrow(row) != 1L) {
+        return()
+      }
+      shown <- !identical(.opt_current(obj, row), "none")
+      want <- isTRUE(input$opt_legend_show)
+      if (identical(shown, want)) {
+        return()
+      }
+      .commit_opt(store, rv_err, obj, row, if (want) "bottom" else "none")
+      pane_redraw(pane_redraw() + 1L)
+    })
+
     # ---- schema-row commits ----
     # One observer per known option key across every generator -- the same
     # bounded static-registration pattern as the Roles module's slot
@@ -1563,7 +1769,16 @@ mod_card_options_server <- function(id, store) {
           if (nrow(row) != 1L) {
             return()
           }
+          before <- obj@options[[k]]
           .commit_opt(store, rv_err, obj, row, input[[input_id]])
+          # The any-event toggle shows/hides its label row -- repaint only on
+          # a REAL flip (a bind-time no-op post must not redraw-loop).
+          if (identical(k, "overall_row")) {
+            after <- selected_object(store)@options[[k]]
+            if (!identical(before, after)) {
+              pane_redraw(pane_redraw() + 1L)
+            }
+          }
         })
 
         # A levels drop posts its own reorder input (the sortable JS

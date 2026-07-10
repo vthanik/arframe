@@ -393,6 +393,17 @@ rename_output <- function(store, id, title) {
   if (length(pb) == 1L && !is.na(pb) && nzchar(pb)) {
     parts$page_by <- as.character(pb)
   }
+  # A listing bakes these into its SQL pull (ORDER BY / LIMIT / PIVOT), so
+  # they change the collected frame, not just the display -- key them.
+  # Conditional, so an option-free listing keeps a stable hash.
+  if (identical(object@type, "listing")) {
+    for (k in c("sort", "limit", "transpose")) {
+      v <- object@options[[k]]
+      if (length(v) > 0L) {
+        parts[[k]] <- v
+      }
+    }
+  }
   # The bound analysis set changes the ARD -- it ANDs a row filter and (for
   # occurrence) picks the denominator dataset -- and it resolves against the
   # THEME, so a Setup edit to the set's filter must invalidate the memo. Fold

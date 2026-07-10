@@ -25,6 +25,7 @@
   "roles-treatment" = "columns",
   "roles-summarize" = "rows",
   "roles-hierarchy" = "rows",
+  "roles-columns" = "rows",
   "roles-x" = "axes",
   "roles-y" = "axes",
   "roles-group" = "axes",

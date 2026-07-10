@@ -66,11 +66,11 @@
   # Subject-id is NOT a scalar input: it is a chip list fed by an
   # "Add a variable" picker, managed by dedicated add/remove observers
   # (see `mod_setup_server`). Stored as a comma-separated string.
-  # ---- Treatment: ONE variable; its levels become the arm decode --------
-  # The `trtvar` write rides `.wire_all`; a companion observer auto-fills
-  # `treatment$arms` from the column's levels when the user changes it.
-  # (Old `trtvarn` / `data$pop_treatment_var` were folded away 2026-07-07.)
-  list(id = "treatment_trtvar", path = c("treatment", "trtvar")),
+  # ---- Treatment ----------------------------------------------------------
+  # Treatment is a dynamic ROW LIST (`theme$treatment$vars`, 2026-07-10),
+  # managed by dedicated observers (`trt_var_set` / `trt_basis_set` /
+  # `trt_var_add` / `trt_var_delete`) -- not a scalar `.wire_all` input.
+  # Row 1's column doubles as `treatment$trtvar` (the arm-decode source).
   # ---- Output directories -----------------------------------------------
   list(id = "paths_programs_dir", path = c("paths", "programs_dir")),
   list(id = "paths_output_rtf_dir", path = c("paths", "output_rtf_dir")),
@@ -226,12 +226,6 @@ mod_setup_server <- function(id, store) {
     bump_sections <- function() {
       render_nonce(shiny::isolate(render_nonce()) + 1L)
     }
-
-    # Tracks the treatment variable the arm decode was last filled for, so the
-    # dropdown's initial connect-post (which looks like a change from NULL)
-    # does NOT clobber arms/labels saved in setup.yml -- only a genuine
-    # user switch re-derives the levels. See the auto-fill observer below.
-    armed_trtvar <- shiny::reactiveVal(NULL)
 
     # Tab strip: reacts to the whole report so completion badges stay live as
     # fields fill. It holds only buttons (no text inputs), so re-rendering it
@@ -554,45 +548,120 @@ mod_setup_server <- function(id, store) {
       bump_sections()
     })
 
-    # Auto-fill arms from the chosen treatment variable's data levels. Fires
-    # only on a genuine USER switch: the first post (page connect) merely arms
-    # the tracker, so arms/labels saved in setup.yml survive a reload; a later
-    # change replaces them with the column's distinct values.
-    shiny::observeEvent(
-      input$treatment_trtvar,
-      {
-        trtvar <- input$treatment_trtvar
-        if (is.null(trtvar) || !nzchar(trtvar)) {
-          return()
-        }
-        prev <- shiny::isolate(armed_trtvar())
-        armed_trtvar(trtvar)
-        if (is.null(prev) || identical(prev, trtvar)) {
-          return()
-        }
-        r <- store$rv$report
-        theme <- r@theme
-        ds <- theme$data$pop_dataset %||% .pop_bindings(store)$pop_dataset
-        vals <- tryCatch(
-          as.character(arpillar::distinct_values(
-            store$con,
-            ds,
-            trtvar,
-            limit = 50L
-          )),
-          error = function(e) character(0)
+    # ---- treatment-variable rows (theme$treatment$vars) --------------------
+    # Shared write path: mutate the row list, keep `trtvar` mirroring row 1
+    # (the legacy single-variable read), commit, repaint the section.
+    .write_trt_vars <- function(vars, label, arms = NULL) {
+      r <- store$rv$report
+      theme <- r@theme
+      if (is.null(theme$treatment)) {
+        theme$treatment <- list()
+      }
+      theme$treatment$vars <- vars
+      if (!is.null(arms)) {
+        theme$treatment$arms <- arms
+      }
+      theme$treatment$trtvar <- if (length(vars) > 0L) {
+        as.character(vars[[1L]]$var %||% "")
+      } else {
+        NULL
+      }
+      commit(store, S7::set_props(r, theme = theme), label = label)
+      bump_sections()
+    }
+
+    trt_vars_now <- function() {
+      .trt_vars(store$rv$report@theme, .pop_bindings(store))
+    }
+
+    # A row's variable pick. Selectize only fires onChange on a USER change
+    # (the seeded value binds silently), so saved arms survive a reload; a
+    # genuine switch of ROW 1 re-derives the arm decode from the new
+    # column's data levels.
+    shiny::observeEvent(input$trt_var_set, {
+      e <- input$trt_var_set
+      i <- suppressWarnings(as.integer(e$i))
+      val <- as.character(e$value %||% "")
+      vars <- trt_vars_now()
+      # A catalog-less project has no seed rows yet: the first pick creates
+      # row 1 (basis by CDISC suffix) instead of dropping on the floor.
+      if (length(vars) == 0L && i == 1L && nzchar(val)) {
+        vars <- list(list(
+          var = "",
+          basis = if (grepl("A$", val)) "actual" else "planned"
+        ))
+      }
+      if (is.na(i) || i < 1L || i > length(vars) || !nzchar(val)) {
+        return()
+      }
+      if (identical(as.character(vars[[i]]$var %||% ""), val)) {
+        return()
+      }
+      vars[[i]]$var <- val
+      # Refill the decode from the UNION of every listed variable's levels
+      # (planned + actual deduplicate to one set when they agree). A label
+      # the user already edited for a surviving value is kept.
+      theme <- store$rv$report@theme
+      ds <- theme$data$pop_dataset %||% .pop_bindings(store)$pop_dataset
+      vals <- .trt_arm_levels(store, vars, ds)
+      arms <- NULL
+      if (length(vals) > 0L) {
+        old_arms <- theme$treatment$arms %||% list()
+        old_labels <- stats::setNames(
+          vapply(old_arms, function(a) as.character(a$label %||% ""), ""),
+          vapply(old_arms, function(a) as.character(a$value %||% ""), "")
         )
-        if (is.null(theme$treatment)) {
-          theme$treatment <- list()
-        }
-        theme$treatment$arms <- lapply(vals, function(v) {
-          list(value = v, label = v)
+        arms <- lapply(vals, function(v) {
+          lab <- old_labels[[v]] %||% v
+          if (!nzchar(lab)) {
+            lab <- v
+          }
+          list(value = v, label = lab)
         })
-        commit(store, S7::set_props(r, theme = theme), label = "auto-fill arms")
-        bump_sections()
-      },
-      ignoreInit = TRUE
-    )
+      }
+      .write_trt_vars(vars, "set treatment variable", arms = arms)
+    })
+
+    shiny::observeEvent(input$trt_basis_set, {
+      e <- input$trt_basis_set
+      i <- suppressWarnings(as.integer(e$i))
+      val <- as.character(e$value %||% "")
+      vars <- trt_vars_now()
+      if (is.na(i) || i < 1L || i > length(vars)) {
+        return()
+      }
+      if (!val %in% c("planned", "actual") || identical(vars[[i]]$basis, val)) {
+        return()
+      }
+      vars[[i]]$basis <- val
+      .write_trt_vars(vars, "set treatment estimand")
+    })
+
+    shiny::observeEvent(input$trt_var_add, {
+      vars <- trt_vars_now()
+      # A fresh row defaults to the estimand the list does not cover yet.
+      bases <- vapply(
+        vars,
+        function(v) as.character(v$basis %||% ""),
+        character(1)
+      )
+      basis <- if ("planned" %in% bases && !"actual" %in% bases) {
+        "actual"
+      } else {
+        "planned"
+      }
+      vars <- c(vars, list(list(var = "", basis = basis)))
+      .write_trt_vars(vars, "add treatment variable")
+    })
+
+    shiny::observeEvent(input$trt_var_delete, {
+      i <- suppressWarnings(as.integer(input$trt_var_delete))
+      vars <- trt_vars_now()
+      if (is.na(i) || i < 1L || i > length(vars) || length(vars) == 1L) {
+        return()
+      }
+      .write_trt_vars(vars[-i], "delete treatment variable")
+    })
 
     # Drag reorder: bridge.js posts `{order}` = the new sequence of row
     # `data-ar-item` indices. Shiny delivers the JSON array as a LIST, so
@@ -1572,30 +1641,158 @@ s_study <- function(store) {
   list(value = "Active", label = "Active")
 )
 
-#' Setup > Treatment: ONE treatment variable whose data levels become the
-#' arm decode. `trtvar` names the ADaM grouping column; `arms` is an ordered
-#' list of `list(value = <chr>, label = <chr>)` rows -- the value is a level
-#' read from the data, the label its display text, and the ORDER (list
-#' position, set by dragging) is the arm order. Picking a new variable
-#' auto-fills the levels; the running header / footer resolves `{arm_label}`.
+#' The treatment-variable ROWS: `theme$treatment$vars`, an ordered list of
+#' `list(var = <column>, basis = "planned"|"actual")`. Migrates the older
+#' single `trtvar` (basis by CDISC suffix), else seeds from the population
+#' dataset's TRT01P/TRT01A columns. The arm decode unions the levels of
+#' every row's variable; row 1 mirrors into `trtvar` (the legacy read).
+#' @noRd
+.trt_vars <- function(theme, pb) {
+  t <- theme$treatment %||% list()
+  vars <- t$vars
+  if (is.list(vars) && length(vars) > 0L) {
+    return(vars)
+  }
+  legacy <- t$trtvar %||% (theme$data %||% list())$pop_treatment_var %||% ""
+  if (nzchar(legacy)) {
+    basis <- if (grepl("A$", legacy)) "actual" else "planned"
+    return(list(list(var = legacy, basis = basis)))
+  }
+  vars <- list()
+  if ("TRT01P" %in% pb$cols) {
+    vars <- c(vars, list(list(var = "TRT01P", basis = "planned")))
+  }
+  if ("TRT01A" %in% pb$cols) {
+    vars <- c(vars, list(list(var = "TRT01A", basis = "actual")))
+  }
+  if (length(vars) == 0L && length(pb$cols) > 0L) {
+    vars <- list(list(var = pb$cols[[1L]], basis = "planned"))
+  }
+  vars
+}
+
+#' The arm-decode LEVELS: the deduplicated union of distinct data values
+#' across ALL treatment variables (planned + actual), in row order. The two
+#' estimand columns usually share one level set; an estimand-specific level
+#' (e.g. a rescue arm only in the actual column) still surfaces. Empty on
+#' any probe failure -- the caller falls back to its seeds.
+#' @noRd
+.trt_arm_levels <- function(store, vars, dataset) {
+  vals <- character(0)
+  for (v in vars) {
+    nm <- as.character(v$var %||% "")
+    if (!nzchar(nm)) {
+      next
+    }
+    lv <- tryCatch(
+      as.character(arpillar::distinct_values(
+        store$con,
+        dataset,
+        nm,
+        limit = 50L
+      )),
+      error = function(e) character(0)
+    )
+    vals <- unique(c(vals, lv))
+  }
+  vals
+}
+
+#' One treatment-variable row: the shared variable picker (re-seeded with
+#' the committed column, bare-name values) + a Planned/Actual basis select +
+#' delete. Dynamic rows post through SHARED inputs (`trt_var_set` /
+#' `trt_basis_set` / `trt_var_delete`) with the row index baked in -- no
+#' per-row observer to leak inside the renderUI.
+#' @noRd
+.trt_row <- function(ns, i, row, items, deletable) {
+  var <- as.character(row$var %||% "")
+  basis <- as.character(row$basis %||% "planned")
+  packed <- vapply(
+    seq_len(nrow(items)),
+    function(k) {
+      .pack_item_choice(items$name[[k]], items$type[[k]], items$label[[k]])
+    },
+    character(1)
+  )
+  onchange <- sprintf(
+    paste0(
+      "function(value) { if (value) { ",
+      "Shiny.setInputValue('%s', {i: %d, value: value, nonce: Date.now()}, ",
+      "{priority: 'event'}); } }"
+    ),
+    ns("trt_var_set"),
+    as.integer(i)
+  )
+  basis_js <- sprintf(
+    "Shiny.setInputValue('%s', {i: %d, value: this.value, nonce: Date.now()}, {priority: 'event'})",
+    ns("trt_basis_set"),
+    as.integer(i)
+  )
+  shiny::div(
+    class = "ar-setup-pop-row ar-setup-trt-row",
+    .ar_picker_select(
+      ns = ns,
+      input_id = paste0("trt_var_pick_", i),
+      choices = stats::setNames(items$name, packed),
+      selected = var,
+      placeholder = "Treatment variable",
+      onchange = onchange
+    ),
+    shiny::tags$select(
+      class = "ar-input-flat",
+      `aria-label` = paste0("Treatment variable ", i, " estimand"),
+      onchange = basis_js,
+      shiny::tags$option(
+        value = "planned",
+        selected = if (identical(basis, "planned")) "selected" else NULL,
+        "Planned"
+      ),
+      shiny::tags$option(
+        value = "actual",
+        selected = if (identical(basis, "actual")) "selected" else NULL,
+        "Actual"
+      )
+    ),
+    if (deletable) {
+      shiny::tags$button(
+        type = "button",
+        class = "ar-pop-delete",
+        onclick = sprintf(
+          "Shiny.setInputValue('%s', %d, {priority: 'event'})",
+          ns("trt_var_delete"),
+          i
+        ),
+        title = "Delete treatment variable",
+        "\u00d7"
+      )
+    } else {
+      shiny::span()
+    }
+  )
+}
+
+#' Setup > Treatment: the treatment-variable rows (each a column + its
+#' Planned/Actual estimand; `+ Add treatment variable` appends one) and the
+#' arm decode. Row 1 is the primary variable -- picking a new column there
+#' auto-fills `arms` from its data levels; the running header / footer
+#' resolves `{arm_label}`. An output's Options > Treatment lists these rows
+#' by name.
 #' @noRd
 .setup_treatment <- function(ns, store) {
   t <- store$rv$report@theme$treatment %||% list()
-  d <- store$rv$report@theme$data %||% list()
   pb <- .pop_bindings(store)
-  # One treatment variable, folding in the old planned/actual pair.
-  trtvar <- t$trtvar %||%
-    d$pop_treatment_var %||%
-    (if ("TRT01P" %in% pb$cols) {
-      "TRT01P"
-    } else if (length(pb$cols) > 0L) {
-      pb$cols[[1L]]
+  vars <- .trt_vars(store$rv$report@theme, pb)
+  # Display arms: the committed decode, else the LIVE union of the seeded
+  # variables' levels (so a fresh study never shows placeholder arms the
+  # data contradicts), else the generic seeds.
+  arms <- t$arms
+  if (is.null(arms) || length(arms) == 0L) {
+    lv <- .trt_arm_levels(store, vars, pb$pop_dataset)
+    arms <- if (length(lv) > 0L) {
+      lapply(lv, function(v) list(value = v, label = v))
     } else {
-      ""
-    })
-  arms <- t$arms %||% .ARM_SEEDS
-  if (length(arms) == 0L) {
-    arms <- .ARM_SEEDS
+      .ARM_SEEDS
+    }
   }
   header <- shiny::div(
     class = "ar-setup-pop-header ar-setup-arm-header",
@@ -1640,38 +1837,41 @@ s_study <- function(store) {
       )
     )
   })
-  # The treatment variable is a variable picker, so it wears the shared
-  # chip + name + label selectize like Roles / Populations (not a bare native
-  # `<select>`). `bare_value = TRUE`: the value is the plain column name, which
-  # `input$treatment_trtvar` (wired via `.wire_all`) and the arm auto-fill
-  # observer read directly. A synthetic row keeps a saved trtvar visible even
-  # before its dataset's columns load.
+  # Each row's variable picker wears the shared chip + name + label selectize
+  # like Roles / Populations. Synthetic rows keep a saved variable visible
+  # even before its dataset's columns load.
   trt_items <- .items_meta(store, pb$pop_dataset)
-  if (nzchar(trtvar) && !(trtvar %in% trt_items$name)) {
-    trt_items <- rbind(
-      trt_items,
-      data.frame(
-        name = trtvar,
-        type = "category",
-        sql_type = "",
-        label = "",
-        stringsAsFactors = FALSE
+  for (v in vars) {
+    nm <- as.character(v$var %||% "")
+    if (nzchar(nm) && !(nm %in% trt_items$name)) {
+      trt_items <- rbind(
+        trt_items,
+        data.frame(
+          name = nm,
+          type = "category",
+          sql_type = "",
+          label = "",
+          stringsAsFactors = FALSE
+        )
       )
-    )
+    }
   }
   shiny::tagList(
-    shiny::div(
-      class = "ar-setup-grid",
-      shiny::div(
-        class = "ar-setup-field",
-        shiny::tags$label(class = "ar-label", "Treatment variable"),
-        .eligible_picker(
-          ns,
-          "treatment_trtvar",
-          trt_items,
-          selected = trtvar,
-          placeholder = "Treatment variable",
-          bare_value = TRUE
+    .setup_group(
+      "Treatment variables",
+      shiny::tagList(
+        lapply(seq_along(vars), function(i) {
+          .trt_row(ns, i, vars[[i]], trt_items, deletable = length(vars) > 1L)
+        }),
+        shiny::tags$button(
+          id = ns("trt_var_add"),
+          type = "button",
+          class = "ar-pop-add action-button",
+          "+ Add treatment variable"
+        ),
+        shiny::p(
+          class = "ar-muted ar-mono",
+          "Planned vs actual is the estimand an output's Treatment option picks from \u2014 the arm decode below unions the levels of every variable listed here."
         )
       )
     ),
@@ -1697,7 +1897,7 @@ s_study <- function(store) {
         shiny::p(
           class = "ar-muted ar-mono",
           shiny::HTML(
-            "Levels are read from the treatment variable \u2014 drag to reorder, edit the label, or <code>+ Add arm</code>. Substitutes into a running header or footer as <code>{arm_label}</code>."
+            "Levels are the deduplicated union across the treatment variables above \u2014 drag to reorder, edit the label, or <code>+ Add arm</code>. Substitutes into a running header or footer as <code>{arm_label}</code>."
           )
         )
       )

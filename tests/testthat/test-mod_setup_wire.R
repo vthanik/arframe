@@ -118,9 +118,16 @@ test_that("wire_all round-trip: individual bindings write to theme", {
     session$setInputs(data_adam_dir = "/data/adam")
     expect_identical(st$rv$report@theme$data$adam_dir, "/data/adam")
 
-    # -- Treatment (Stage 2 wiring proved here) --
-    session$setInputs(treatment_trtvar = "TRT01A")
+    # -- Treatment (row-list wiring, 2026-07-10): a row's pick writes
+    # `vars[[i]]` and mirrors row 1 into `trtvar` (the arm-decode source) --
+    session$setInputs(trt_var_set = list(i = 1, value = "TRT01A"))
     expect_identical(st$rv$report@theme$treatment$trtvar, "TRT01A")
+    expect_identical(
+      st$rv$report@theme$treatment$vars[[1]],
+      list(var = "TRT01A", basis = "actual")
+    )
+    session$setInputs(trt_basis_set = list(i = 1, value = "planned"))
+    expect_identical(st$rv$report@theme$treatment$vars[[1]]$basis, "planned")
 
     # -- Paths --
     session$setInputs(paths_programs_dir = "pgms")

@@ -35,9 +35,11 @@
     region,
     columns = ids %in% "treatment",
     # `by` is a row-grouping dimension (nested stub bands), so it belongs with
-    # the rows region alongside summarize/hierarchy.
-    rows = ids %in% c("summarize", "hierarchy", "by"),
-    axes = !ids %in% c("treatment", "summarize", "hierarchy", "by"),
+    # the rows region alongside summarize/hierarchy. A listing's table content
+    # is its `id` + `columns` slots -- same region.
+    rows = ids %in% c("summarize", "hierarchy", "by", "id", "columns"),
+    axes = !ids %in%
+      c("treatment", "summarize", "hierarchy", "by", "id", "columns"),
     rep(TRUE, length(slots))
   )
   slots[keep]

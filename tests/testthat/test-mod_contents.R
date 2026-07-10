@@ -231,15 +231,23 @@ test_that("within a group rows sort by TLF number, not document order", {
   expect_identical(ids, c("outB", "outA"))
 })
 
-test_that("the LISTINGS group is present when a listing-kind row exists (future-proof, currently unreachable)", {
-  # No listing generator exists in arpillar today (verified: generators()
-  # has no kind == "listing" entry), so this documents the omission
-  # contract without asserting on a row that cannot currently be
-  # constructed.
+test_that("a listing-kind row lands in the LISTINGS group with the 16.2 prefix", {
   fx <- .tc_store()
   withr::defer(arpillar::engine_close(fx$con))
   kinds <- vapply(arpillar::generators(), function(g) g$kind, "")
-  expect_false("listing" %in% kinds)
+  expect_true("listing" %in% kinds)
+
+  shiny::isolate(add_from_generator(fx$store, "listing", "ADSL"))
+  rows <- .toc_rows(
+    shiny::isolate(fx$store$rv$report),
+    character(0)
+  )
+  listing_rows <- Filter(function(r) identical(r$kind, "listing"), rows)
+  expect_length(listing_rows, 1L)
+  expect_identical(listing_rows[[1L]]$group, "LISTINGS")
+  # No seeded number on a bare generator add: the kind-scoped fallback
+  # numbers it off the LISTINGS prefix.
+  expect_match(listing_rows[[1L]]$number, "^16\\.2\\.")
 })
 
 # ---- stamps -------------------------------------------------------------
