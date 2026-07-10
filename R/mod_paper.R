@@ -91,7 +91,7 @@
   study <- theme$study %||% list()
   tokens <- c(
     datetime = .chrome_stamp(now %||% Sys.time()),
-    program = paste0("programs/", .output_slug(object), ".R"),
+    program = paste0("programs/", arpillar::output_slug(object), ".R"),
     program_path = "programs",
     sponsor = as.character(study$sponsor %||% ""),
     protocol = as.character(study$protocol %||% ""),
@@ -402,7 +402,7 @@
     }
   )
   pre_id <- ns("code_pre")
-  fname <- paste0(.output_slug(object), ".R")
+  fname <- paste0(arpillar::output_slug(object), ".R")
   shiny::tags$div(
     class = "ar-code",
     shiny::tags$div(
@@ -792,7 +792,11 @@ mod_paper_server <- function(id, store) {
     output$code_dl <- shiny::downloadHandler(
       filename = function() {
         obj <- selected_object(store)
-        if (is.null(obj)) "output.R" else paste0(.output_slug(obj), ".R")
+        if (is.null(obj)) {
+          "output.R"
+        } else {
+          paste0(arpillar::output_slug(obj), ".R")
+        }
       },
       content = function(file) {
         obj <- selected_object(store)

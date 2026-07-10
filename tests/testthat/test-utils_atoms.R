@@ -55,7 +55,7 @@ test_that(".type_icon renders a distinct glyph per generator type, with a safe f
   )
 })
 
-test_that(".output_slug: kind letter + number + title, filesystem-safe", {
+test_that("arpillar::output_slug: kind letter + number + title, filesystem-safe", {
   obj <- arpillar::object(
     id = "o1",
     type = "km",
@@ -63,7 +63,7 @@ test_that(".output_slug: kind letter + number + title, filesystem-safe", {
     title = "Kaplan-Meier, OS",
     options = list(number = "14.2.1", number_label = "Figure")
   )
-  expect_identical(.output_slug(obj), "f-14-2-1-kaplan-meier-os")
+  expect_identical(arpillar::output_slug(obj), "f-14-2-1-kaplan-meier-os")
 })
 
 test_that(".card wraps a body, and adds a header only when titled", {

@@ -75,7 +75,11 @@ mod_toolbar_server <- function(id, store) {
     output$rtf <- shiny::downloadHandler(
       filename = function() {
         obj <- selected_object(store)
-        if (is.null(obj)) "output.rtf" else paste0(.output_slug(obj), ".rtf")
+        if (is.null(obj)) {
+          "output.rtf"
+        } else {
+          paste0(arpillar::output_slug(obj), ".rtf")
+        }
       },
       content = function(file) {
         obj <- selected_object(store)

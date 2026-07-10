@@ -24,10 +24,11 @@
 
 #' Render one output's RTF into `outputs/`, returning `TRUE` on success. A
 #' status-ready output whose render throws (the static-oracle gap) is
-#' reported as a failure, not a silent drop.
+#' reported as a failure, not a silent drop. `slug` is the caller's
+#' already-computed `arpillar::output_slugs()` entry for `object`.
 #' @noRd
-.export_render_one <- function(store, object, out_dir) {
-  path <- file.path(out_dir, paste0(.output_slug(object), ".rtf"))
+.export_render_one <- function(store, object, out_dir, slug) {
+  path <- file.path(out_dir, paste0(slug, ".rtf"))
   # Thread the study theme so the sync export resolves study-level defaults
   # identically to the screen and the async daemon (fct_async.R). Stamp the
   # running-band chrome tokens ({datetime}, study meta) to literals first --
@@ -74,8 +75,8 @@
 #' (`export_mirai()`) -- means the RTFs are ALREADY written into `outputs/`;
 #' this function then only classifies (present in the map -> ready, absent ->
 #' skipped/error) and assembles the cheap parts (programs, report.json,
-#' manifest). Either way the outputs/ filenames are the `.output_slug()`
-#' slugs, so the manifest linkage is identical.
+#' manifest). Either way the outputs/ filenames are the
+#' `arpillar::output_slug()` slugs, so the manifest linkage is identical.
 #'
 #' `report` lets the export click hand in its render-prepared copy
 #' (`.report_for_export()`) so outputs/, programs/ (emit_code embeds
@@ -96,13 +97,14 @@
   dir.create(prog_dir, recursive = TRUE, showWarnings = FALSE)
 
   objects <- .all_objects(report)
+  slugs <- arpillar::output_slugs(report)
   rows <- list()
   ready <- character(0)
   skipped <- character(0)
 
   for (obj in objects) {
     status <- arpillar::output_status(obj)
-    slug <- .output_slug(obj)
+    slug <- slugs[[obj@id]]
     # Every output gets its reproduction program, ready or not -- the
     # program IS the record, and a draft's program documents intent.
     prog <- tryCatch(
@@ -117,7 +119,8 @@
     # Sync leg renders here; async leg trusts the daemon's already-written
     # file (present in `rendered` -> it rendered ok).
     render_ok <- if (is.null(rendered)) {
-      identical(status, "ready") && .export_render_one(store, obj, out_dir)
+      identical(status, "ready") &&
+        .export_render_one(store, obj, out_dir, slug)
     } else {
       obj@id %in% names(rendered)
     }

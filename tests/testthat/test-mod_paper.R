@@ -218,7 +218,9 @@ test_that("the screen render seam applies report@theme, matching the .rtf export
 
   # Export seam -- report@theme threaded (fct_export.R).
   out_dir <- withr::local_tempdir()
-  shiny::isolate(.export_render_one(fx$store, obj, out_dir))
+  shiny::isolate(
+    .export_render_one(fx$store, obj, out_dir, arpillar::output_slug(obj))
+  )
   export_txt <- paste(
     readLines(
       list.files(out_dir, "\\.rtf$", full.names = TRUE)[[1L]],
@@ -238,7 +240,9 @@ test_that("the screen render seam applies report@theme, matching the .rtf export
   out0 <- withr::local_tempdir()
   shiny::isolate(commit(fx$store, S7::set_props(rep0, theme = list())))
   obj0 <- shiny::isolate(selected_object(fx$store))
-  shiny::isolate(.export_render_one(fx$store, obj0, out0))
+  shiny::isolate(
+    .export_render_one(fx$store, obj0, out0, arpillar::output_slug(obj0))
+  )
   export0 <- paste(
     readLines(
       list.files(out0, "\\.rtf$", full.names = TRUE)[[1L]],

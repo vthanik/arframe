@@ -28,7 +28,7 @@
 }
 
 #' The `id -> "<slug>.rtf"` filename map for every ready output. Computed on
-#' the main process (where `.output_slug()` lives) and handed to the daemon
+#' the main process (via `arpillar::output_slugs()`) and handed to the daemon
 #' so the RTFs it writes carry the SAME filenames the synchronous export tree
 #' uses -- the daemon never needs any arframe naming logic.
 #' @noRd
@@ -37,8 +37,9 @@
     function(o) identical(arpillar::output_status(o), "ready"),
     .all_objects(report)
   )
+  slugs <- arpillar::output_slugs(report)
   stats::setNames(
-    lapply(ready, function(o) paste0(.output_slug(o), ".rtf")),
+    lapply(ready, function(o) paste0(slugs[[o@id]], ".rtf")),
     vapply(ready, function(o) o@id, character(1))
   )
 }
