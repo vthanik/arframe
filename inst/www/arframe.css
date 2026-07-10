@@ -1639,7 +1639,7 @@ select.ar-input-flat {
   color: #7c3aed;
 }
 .ar-code-body .op {
-  color: #dc2626;
+  color: var(--ar-error);
 }
 .ar-code-body .st {
   color: var(--ar-ready);
