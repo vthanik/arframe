@@ -514,7 +514,7 @@
     overridden <- !is.null(object@options[["stats"]])
     status <- if (overridden) {
       shiny::tags$p(
-        class = "ar-opt-hint ar-mono ar-opt-override",
+        class = "ar-opt-status ar-mono ar-opt-override",
         "Per-output override \u2014 ",
         shiny::tags$button(
           type = "button",
@@ -528,42 +528,39 @@
       )
     } else {
       shiny::tags$p(
-        class = "ar-opt-hint ar-mono",
+        class = "ar-opt-status ar-mono",
         "Inheriting Setup default"
       )
     }
     return(shiny::tagList(row_tag, status))
   }
-  if (!identical(key, "decimals")) {
-    return(row_tag)
-  }
-  # The derived-precision contract, spelled out where the knob lives: the
-  # engine renders mean at d, SD at d+1, percentages always at 1 dp.
-  d <- suppressWarnings(as.integer(current %||% 1L))
-  if (length(d) != 1L || is.na(d)) {
-    d <- 1L
-  }
-  shiny::tagList(
-    row_tag,
-    shiny::tags$p(
-      class = "ar-opt-hint ar-mono",
-      sprintf("mean %d dp \u00b7 SD %d dp \u00b7 %% always 1 dp", d, d + 1L)
-    )
-  )
+  # The derived-precision contract (mean at d, SD at d+1, % always 1 dp) is
+  # documented in the ROWS help topic, not spelled out inline (2026-07-10).
+  row_tag
 }
 
 # ---- sections ---------------------------------------------------------
 
-#' One pane section: micro-label + content rows.
+#' One pane section: micro-label + content rows, with an optional pre-built
+#' `help` tag (Task 10's `.help_icon()`) pinned to the right of the label.
 #' @noRd
-.opt_section <- function(label, rows) {
+.opt_section <- function(label, rows, help = NULL) {
   rows <- Filter(Negate(is.null), rows)
   if (length(rows) == 0L) {
     return(NULL)
   }
+  head <- if (is.null(help)) {
+    shiny::tags$span(class = "ar-label ar-opt-sec-label", label)
+  } else {
+    shiny::tags$div(
+      class = "ar-opt-sec-head",
+      shiny::tags$span(class = "ar-label ar-opt-sec-label", label),
+      help
+    )
+  }
   shiny::tags$div(
     class = "ar-opt-sec",
-    shiny::tags$span(class = "ar-label ar-opt-sec-label", label),
+    head,
     rows
   )
 }
@@ -602,7 +599,8 @@
   sel_label <- if (current_label %in% labels) current_label else "Table"
   .opt_section(
     "TITLE",
-    list(
+    help = .help_icon(ns, "title"),
+    rows = list(
       shiny::tags$div(
         class = "ar-opt-number ar-mono",
         shiny::tags$select(
@@ -723,7 +721,8 @@
   fns <- object@footnotes
   .opt_section(
     "FOOTNOTES",
-    list(
+    help = .help_icon(ns, "footnotes_out"),
+    rows = list(
       # Footnote ORDER is part of the output (line 1 doubles as the paper's
       # population subtitle), so the rows drag-reorder through the same
       # sortable contract the Roles slots use; rows are keyed by index and
@@ -792,7 +791,8 @@
     }
     .opt_section(
       .OPT_SECTIONS[[sec]],
-      lapply(idx, function(i) {
+      help = .help_icon(ns, paste0("options_", sec)),
+      rows = lapply(idx, function(i) {
         .opt_control(
           con,
           ns,
@@ -834,7 +834,8 @@
   }
   .opt_section(
     "ROW BLOCKS",
-    list(
+    help = .help_icon(ns, "order"),
+    rows = list(
       do.call(
         shiny::tags$div,
         c(
@@ -857,10 +858,6 @@
             )
           })
         )
-      ),
-      shiny::tags$p(
-        class = "ar-opt-hint",
-        "Drag to set the order the blocks appear in the table."
       )
     )
   )
@@ -914,14 +911,11 @@
   })
   .opt_section(
     "INCIDENCE ORDER",
-    list(
+    help = .help_icon(ns, "order"),
+    rows = list(
       shiny::tags$div(
         class = "ar-opt-row ar-opt-row-block",
         shiny::tags$div(class = "shiny-options-group", pills)
-      ),
-      shiny::tags$p(
-        class = "ar-opt-hint",
-        "Frequency ranks by pooled-arm incidence, ties alphabetical."
       )
     )
   )
@@ -953,13 +947,8 @@
   }
   .opt_section(
     "X LEVEL ORDER",
-    list(
-      control,
-      shiny::tags$p(
-        class = "ar-opt-hint",
-        "Drag to set the axis order; the engine default is data order."
-      )
-    )
+    help = .help_icon(ns, "order"),
+    rows = list(control)
   )
 }
 
@@ -1159,12 +1148,10 @@
   )
   .opt_section(
     "SPANNING HEADER",
-    list(
+    help = .help_icon(ns, "options_spans"),
+    rows = list(
       if (length(arms) == 0L) {
-        shiny::tags$p(
-          class = "ar-opt-hint ar-mono",
-          "Assign a treatment variable first."
-        )
+        .order_empty("Assign a treatment variable in Roles first.")
       } else {
         # Threaded `claimed` set: each band's row sees the arms already
         # taken by EARLIER bands and disables their checkboxes, so the
@@ -1183,10 +1170,6 @@
             class = "btn btn-link ar-fn-add",
             onclick = add_js,
             "+ Add band"
-          ),
-          shiny::tags$p(
-            class = "ar-opt-hint ar-mono",
-            "No bands = one Treatment Group band over every arm."
           )
         )
       }
@@ -1229,7 +1212,8 @@
   list(
     .opt_section(
       "COLUMNS",
-      list(
+      help = .help_icon(ns, "options_columns"),
+      rows = list(
         if (!is_listing) {
           shiny::tags$div(
             class = "ar-opt-row ar-opt-row-block",
@@ -1271,28 +1255,27 @@
             )
           )
         },
-        if (!is_listing) {
-          shiny::tags$p(
-            class = "ar-opt-hint ar-mono",
-            "Pooled across arms; a heavy edit \u2014 Run re-collects."
-          )
-        }
+        NULL
       )
     ),
     .opt_section(
       "PAGE & OUTPUT",
-      list(
+      help = .help_icon(ns, "options_page"),
+      rows = list(
         # Margins moved to Setup > Page & Style (study-level, 2026-07-08): page
         # geometry belongs with orientation / paper / font, not per-output. The
         # engine still honours a per-output `options$margins` override if one
         # was set, but arframe no longer exposes a control for it.
+        # The "Total column pools across arms; a heavy edit" note moved to the
+        # COLUMNS help topic (2026-07-10).
         choice_row("width_mode")
       )
     ),
     .opt_spans_section(con, ns, object),
     .opt_section(
       "SUBGROUP / PAGE BY",
-      list(
+      help = .help_icon(ns, "options_pageby"),
+      rows = list(
         {
           # Pageable columns: the dataset's categories, minus the arm var.
           items <- .items_meta_for(con, object)
@@ -1327,10 +1310,6 @@
             cur("page_banner") %||% "",
             placeholder = "e.g. Sex: {SEX}"
           )
-        ),
-        shiny::tags$p(
-          class = "ar-opt-hint ar-mono",
-          "Banner tokens are the page-by column name, e.g. {SEX}. Blank = auto."
         ),
         shiny::tags$div(
           class = "ar-opt-row",
@@ -1430,6 +1409,12 @@ mod_card_options_ui <- function(id) {
 mod_card_options_server <- function(id, store) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
+    # One shared help observer for every `?` icon rendered in this pane (the
+    # sections build icons with THIS module's ns, so the observer lives here,
+    # not in the parent card scope). `.show_help` is a no-op for a stale nonce.
+    shiny::observeEvent(input$help_open, {
+      .show_help(input$help_open$topic)
+    })
     rv_err <- shiny::reactiveVal(NULL)
     # Structural edits made FROM this pane whose controls must repaint
     # (footnote reorder re-keys the rows; a stats add/remove changes the

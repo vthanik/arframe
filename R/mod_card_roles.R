@@ -764,11 +764,9 @@
       slot$label,
       shiny::tags$span(class = "ar-role-card-hint", .cardinality_hint(slot))
     ),
-    # The generator's own slot hint (arpillar `.SLOT(hint=)`) -- what the
-    # slot does, shown before the pick (e.g. the listing's group column).
-    if (!is.null(slot$hint)) {
-      shiny::tags$p(class = "ar-opt-hint", slot$hint)
-    },
+    # The generator's own slot hint (arpillar `.SLOT(hint=)`) was shown here
+    # as inline gray text; the Roles help topic (the section `?` icon, wired
+    # with the accordion in the follow-up task) now carries the slot guidance.
     do.call(
       shiny::tags$div,
       c(
@@ -1128,6 +1126,12 @@ mod_card_roles_ui <- function(id) {
 mod_card_roles_server <- function(id, store) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
+
+    # Shared help observer for the Roles pane `?` icon (wired with the
+    # accordion header in the follow-up task; the topic already exists here).
+    shiny::observeEvent(input$help_open, {
+      .show_help(input$help_open$topic)
+    })
 
     output$slots <- shiny::renderUI({
       obj <- selected_object(store)

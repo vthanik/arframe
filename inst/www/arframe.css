@@ -4167,3 +4167,112 @@ select.ar-input-flat {
   border-radius: var(--ar-radius);
   margin: 0;
 }
+
+/* ============ help system (spec 2026-07-10 section 4) ============ */
+
+/* The `?` icon on section / card headers: a small quiet circled button that
+   opens the in-depth help modal. Stays out of the way until hovered. */
+.ar-help-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius-pill);
+  background: transparent;
+  color: var(--ar-ink-4);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color 0.12s ease,
+    border-color 0.12s ease,
+    background 0.12s ease;
+}
+.ar-help-btn:hover,
+.ar-help-btn:focus-visible {
+  color: var(--ar-accent);
+  border-color: var(--ar-accent);
+  background: var(--ar-accent-weaker);
+  outline: none;
+}
+
+/* The Options section header when it carries a help icon: label left, icon
+   pinned right. Filters mirrors it with `.ar-flt-sec-head`. */
+.ar-opt-sec-head,
+.ar-flt-sec-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-2);
+}
+.ar-opt-sec-head .ar-opt-sec-label,
+.ar-flt-sec-head .ar-flt-sec {
+  flex: 1 1 auto;
+}
+
+/* Per-output statistics override status (was `.ar-opt-hint`, renamed so no
+   `ar-opt-hint` class survives; same muted look). */
+.ar-opt-status {
+  margin: 2px 0 0;
+  font-size: 10px;
+  color: var(--ar-ink-5);
+}
+
+/* Empty-state directive (a call to action, not helper text). */
+.ar-insp-directive {
+  margin: var(--ar-space-2) 0 0;
+  font-size: 11px;
+  color: var(--ar-ink-4);
+}
+
+/* The help modal: a rounded elevated card of sectioned prose with bordered
+   code chips/blocks, matching the datasetviewer filter-help dialog. Scoped
+   `.ar-help-modal` so it never touches datasetviewer's own modals. */
+.ar-help-modal .modal-content {
+  border: none;
+  border-radius: var(--ar-radius-lg);
+  box-shadow: 0 16px 48px rgba(27, 31, 35, 0.2);
+}
+.ar-help-modal .modal-body {
+  padding: var(--ar-space-5) var(--ar-space-6);
+  max-height: 72vh;
+  overflow-y: auto;
+}
+.ar-help-h {
+  margin: 0 0 var(--ar-space-4);
+  color: var(--ar-ink);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.ar-help-p {
+  margin: 0 0 var(--ar-space-3);
+  color: var(--ar-ink-2);
+  font-size: 13px;
+  line-height: 1.6;
+}
+/* Inline code chip inside a sentence. */
+code.ar-help-code {
+  padding: 1px 5px;
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius-sm);
+  background: var(--ar-rule-2);
+  color: var(--ar-ink);
+  font-size: 12px;
+}
+/* A worked-example block: its own bordered line, a touch of accent. */
+.ar-help-block {
+  margin: var(--ar-space-2) 0 var(--ar-space-3);
+  padding: var(--ar-space-2) var(--ar-space-3);
+  border: 1px solid var(--ar-rule);
+  border-left: 2px solid var(--ar-accent);
+  border-radius: var(--ar-radius-sm);
+  background: var(--ar-rule-2);
+  color: var(--ar-ink);
+  font-size: 12.5px;
+  white-space: pre-wrap;
+}

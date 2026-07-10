@@ -247,13 +247,10 @@
   srt <- .listing_opt_list(object, "sort")
   .opt_section(
     "SORT",
-    list(
+    help = .help_icon(ns, "listing_sort"),
+    rows = list(
       lapply(seq_along(srt), function(i) .srt_row(ns, i, srt[[i]])),
-      .eligible_picker(ns, "srt_add", items, placeholder = "Add a sort key"),
-      shiny::tags$p(
-        class = "ar-opt-hint ar-mono",
-        "Keys may be any dataset column \u2014 displayed or not."
-      )
+      .eligible_picker(ns, "srt_add", items, placeholder = "Add a sort key")
     )
   )
 }
@@ -295,7 +292,8 @@
   numeric_cols <- items$name[items$type %in% "measure"]
   .opt_section(
     "TRANSPOSE",
-    list(
+    help = .help_icon(ns, "listing_transpose"),
+    rows = list(
       sel_row(
         "tr_param",
         "Parameter",
@@ -313,13 +311,6 @@
         "On duplicates",
         .LISTING_AGGS,
         as.character(tr$agg %||% "first")
-      ),
-      shiny::tags$p(
-        class = "ar-opt-hint ar-mono",
-        paste(
-          "Spreads the parameter's levels to columns \u2014 needs both",
-          "Parameter and Value. Choices are the selected list variables."
-        )
       )
     )
   )
@@ -363,18 +354,12 @@
   })
   .opt_section(
     "DATE FORMATS",
-    list(
+    help = .help_icon(ns, "listing_formats"),
+    rows = list(
       rows,
       shiny::tags$datalist(
         id = ns("fmt_presets"),
         lapply(.FMT_PRESETS, function(f) shiny::tags$option(value = f))
-      ),
-      shiny::tags$p(
-        class = "ar-opt-hint ar-mono",
-        paste(
-          "SAS names (date9.), patterns (mm/dd/yyyy \u2014 tokens yyyy yy",
-          "mon mm dd hh mi ss), or strftime (%d%b%Y). Empty = as stored."
-        )
       )
     )
   )
@@ -551,16 +536,10 @@
   sel <- .listing_selected_items(object, items)
   .opt_section(
     "STACKED COLUMNS",
-    list(
+    help = .help_icon(ns, "listing_stack"),
+    rows = list(
       lapply(seq_along(st), function(i) .stack_block(ns, i, st[[i]], sel)),
-      .listing_add_btn(ns, "stk_add", "+ Add stack"),
-      shiny::tags$p(
-        class = "ar-opt-hint ar-mono",
-        paste(
-          "Each stack is one column; its lines stack inside the cell.",
-          "Indent steps each line two more spaces."
-        )
-      )
+      .listing_add_btn(ns, "stk_add", "+ Add stack")
     )
   )
 }

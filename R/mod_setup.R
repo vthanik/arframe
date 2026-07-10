@@ -185,6 +185,12 @@ mod_setup_server <- function(id, store) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
+    # One shared help observer for every Setup card's `?` icon (the icon's
+    # topic is the section id). `.show_help` no-ops an unknown/stale topic.
+    shiny::observeEvent(input$help_open, {
+      .show_help(input$help_open$topic)
+    })
+
     # The visible section. Server-authoritative so a commit-driven
     # re-render of `output$page` never bounces the user back to the first
     # tab: the client swaps the class instantly for feel, and posts here so
@@ -1216,8 +1222,15 @@ mod_setup_server <- function(id, store) {
 # ---- section shell --------------------------------------------------------
 
 .setup_section <- function(ns, id, title, body) {
+  # The section id doubles as its help topic; the `?` icon sits in the card
+  # header's right-aligned action slot.
   shiny::tagAppendAttributes(
-    .card(body, title = title, class = "ar-setup-section"),
+    .card(
+      body,
+      title = title,
+      action = .help_icon(ns, id),
+      class = "ar-setup-section"
+    ),
     `data-ar-section` = id
   )
 }

@@ -397,8 +397,10 @@ test_that("the decimals stepper steps off the committed value and repaints", {
       shiny::isolate(selected_object(store))@options$decimals,
       2L
     )
-    # The derived-precision hint follows the stepped value.
-    expect_match(output$pane$html, "mean 2 dp", fixed = TRUE)
+    # The pane repaints so the decimals stepper shows the stepped value.
+    # (The old inline "mean 2 dp" precision hint was absorbed into the ROWS
+    # help topic, 2026-07-10 — no longer rendered under the knob.)
+    expect_match(output$pane$html, 'value="2"[^>]*opt_decimals')
 
     # Step down back to the default -> the key elides.
     session$setInputs(opt_step = list(key = "decimals", dir = -1, nonce = 2))

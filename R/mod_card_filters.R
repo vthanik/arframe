@@ -421,6 +421,12 @@ mod_card_filters_server <- function(id, store) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
+    # One shared help observer for the POPULATION / FILTERS `?` icons (built
+    # with this module's ns, so the observer lives here).
+    shiny::observeEvent(input$help_open, {
+      .show_help(input$help_open$topic)
+    })
+
     # Selection change re-seeds the draft from the committed predicates --
     # a draft never survives across outputs, and neither does an open
     # editor (a stale filter_open would index into the wrong draft).
@@ -484,15 +490,17 @@ mod_card_filters_server <- function(id, store) {
         shiny::tags$div(
           class = "ar-flt-head",
           shiny::tags$span(class = "ar-label", "POPULATION"),
-          shiny::uiOutput(ns("count"), inline = TRUE)
+          shiny::uiOutput(ns("count"), inline = TRUE),
+          shiny::tags$span(class = "ar-bar-spacer"),
+          .help_icon(ns, "population")
         ),
         do.call(
           shiny::tags$div,
           c(
             list(class = "ar-flt-presets"),
             if (length(pops) == 0L) {
-              list(shiny::tags$span(
-                class = "ar-opt-hint ar-mono",
+              list(shiny::tags$p(
+                class = "ar-insp-directive",
                 "Define analysis sets in Setup > Analysis sets."
               ))
             } else {
@@ -517,7 +525,12 @@ mod_card_filters_server <- function(id, store) {
             }
           )
         ),
-        shiny::tags$div(class = "ar-label ar-flt-sec", "FILTERS"),
+        shiny::tags$div(
+          class = "ar-flt-sec-head",
+          shiny::tags$span(class = "ar-label ar-flt-sec", "FILTERS"),
+          shiny::tags$span(class = "ar-bar-spacer"),
+          .help_icon(ns, "filters")
+        ),
         do.call(
           shiny::tags$div,
           c(
