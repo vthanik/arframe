@@ -867,12 +867,18 @@
 }
 
 #' The SOC/PT incidence order control (occurrence): the engine's
-#' `hier_sort` choice rendered with the SAME `.opt_choice_named` pill idiom
-#' every other choice-kind option uses -- commits through the EXISTING
-#' generic per-key schema observer (`opt_hier_sort`, see
-#' `mod_card_options_server`'s `known` loop), so no bespoke observer is
-#' needed; `.commit_opt()`'s default-elision already turns the "freq"
-#' default back into `NULL`.
+#' `hier_sort` choice as an ID-LESS two-way pill -- native radio inputs
+#' with NO Shiny id (only a shared `name` for mutual exclusion) whose
+#' onchange posts `{key, value, nonce}` to the shared `opt_edit` observer,
+#' the TITLE section's `title_edit` idiom. A real Shiny id here would
+#' replay a stale value across a drill switch on rebind (the 2026-07-10
+#' data-loss class); the onchange post only fires on a real user click, so
+#' there is nothing to replay. The pill reuses the structural classes the
+#' choice-pill CSS keys off (`.ar-opt-row .shiny-options-group
+#' .radio-inline`) WITHOUT `shiny-input-radiogroup`, so Shiny's input
+#' binding never claims it. Commits route through `.commit_opt()`, so the
+#' "freq" default still elides to `NULL` and an identical value is a
+#' no-op.
 #' @noRd
 .order_hier_section <- function(ns, object) {
   schema <- tryCatch(
@@ -887,15 +893,31 @@
   if (is.null(row) || nrow(row) != 1L) {
     return(NULL)
   }
+  current <- .opt_current(object, row)
+  choices <- .opt_choice_named(row$choices[[1]])
+  edit_js <- sprintf(
+    "Shiny.setInputValue('%s', {key: 'hier_sort', value: this.value, nonce: Date.now()}, {priority: 'event'})",
+    ns("opt_edit")
+  )
+  pills <- lapply(seq_along(choices), function(i) {
+    shiny::tags$label(
+      class = "radio-inline",
+      shiny::tags$input(
+        type = "radio",
+        name = ns("order_hier"),
+        value = choices[[i]],
+        checked = if (identical(current, choices[[i]])) NA,
+        onchange = edit_js
+      ),
+      shiny::tags$span(names(choices)[[i]])
+    )
+  })
   .opt_section(
     "INCIDENCE ORDER",
     list(
-      shiny::radioButtons(
-        ns("opt_hier_sort"),
-        label = NULL,
-        choices = .opt_choice_named(row$choices[[1]]),
-        selected = .opt_current(object, row),
-        inline = TRUE
+      shiny::tags$div(
+        class = "ar-opt-row ar-opt-row-block",
+        shiny::tags$div(class = "shiny-options-group", pills)
       ),
       shiny::tags$p(
         class = "ar-opt-hint",
@@ -1568,6 +1590,32 @@ mod_card_options_server <- function(id, store) {
         function(o) .reorder_slot(o, "summarize", order),
         label = "rank row blocks"
       )
+    })
+
+    # One shared id-less post for schema-key edits whose controls must NOT
+    # carry a real Shiny id (the title_edit idiom -- an id'd control
+    # replays its stale value across a drill switch on rebind). Routes to
+    # the SAME `.commit_opt()` path as the generic per-key observers, so
+    # default-elision and the identical-value no-op hold. Today only the
+    # ORDER section's hier_sort pill posts here.
+    shiny::observeEvent(input$opt_edit, {
+      obj <- selected_object(store)
+      key <- as.character(input$opt_edit$key %||% "")
+      if (is.null(obj) || !nzchar(key)) {
+        return()
+      }
+      schema <- tryCatch(
+        arpillar::option_schema(obj@type),
+        error = function(e) NULL
+      )
+      if (is.null(schema)) {
+        return()
+      }
+      row <- schema[schema$key == key, , drop = FALSE]
+      if (nrow(row) != 1L) {
+        return()
+      }
+      .commit_opt(store, rv_err, obj, row, input$opt_edit$value)
     })
 
     # ---- footnote commits ----

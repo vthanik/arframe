@@ -585,16 +585,43 @@ test_that("occurrence: hier_sort commits alpha and elides the freq default", {
 
   shiny::testServer(mod_card_options_server, args = list(store = store), {
     session$flushReact()
-    expect_match(output$pane$html, "INCIDENCE ORDER", fixed = TRUE)
+    html <- output$pane$html
+    expect_match(html, "INCIDENCE ORDER", fixed = TRUE)
+    # The pill is ID-LESS (the title_edit idiom): no namespaced Shiny id to
+    # replay a stale value across a drill switch -- only an onchange post
+    # to the shared opt_edit observer.
+    expect_no_match(html, 'id="proxy1-opt_hier_sort"', fixed = TRUE)
+    expect_match(html, "opt_edit", fixed = TRUE)
 
-    session$setInputs(opt_hier_sort = "alpha")
+    session$setInputs(
+      opt_edit = list(key = "hier_sort", value = "alpha", nonce = 1)
+    )
     expect_identical(
       shiny::isolate(selected_object(store))@options$hier_sort,
       "alpha"
     )
     # Back to the engine default -> the key elides.
-    session$setInputs(opt_hier_sort = "freq")
+    session$setInputs(
+      opt_edit = list(key = "hier_sort", value = "freq", nonce = 2)
+    )
     expect_null(shiny::isolate(selected_object(store))@options$hier_sort)
+  })
+})
+
+test_that("line: the ORDER section directs to Roles until the x slot is filled", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  id <- shiny::isolate(add_from_generator(store, "line", "ADVS"))
+  shiny::isolate(store$rv$selected <- id)
+
+  shiny::testServer(mod_card_options_server, args = list(store = store), {
+    session$flushReact()
+    expect_match(
+      output$pane$html,
+      "Assign an X variable in Roles first",
+      fixed = TRUE
+    )
   })
 })
 
