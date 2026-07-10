@@ -80,6 +80,40 @@ test_that(".emit_programs writes slug-named programs and prunes stale ones", {
   expect_setequal(progs2, c(paste0(unname(slugs2), ".R"), "run-all.R"))
 })
 
+test_that(".emit_programs never prunes the last-known-good program on emit failure", {
+  fx <- .demo_project_store()
+  withr::defer(arpillar::engine_close(fx$con))
+  store <- fx$store
+
+  # Pass 1 (real emits): both slug programs exist -- the record on disk.
+  shiny::isolate(.emit_programs(store))
+  slugs1 <- shiny::isolate(arpillar::output_slugs(store$rv$report))
+  kept_prog <- paste0(slugs1[[fx$ids[[1]]]], ".R")
+  old_sibling_prog <- paste0(slugs1[[fx$ids[[2]]]], ".R")
+  expect_true(file.exists(file.path(fx$dir, "programs", kept_prog)))
+
+  # Rename the SIBLING (its slug changes) and force every emit_code to
+  # fail. The unchanged output's last-known-good program must SURVIVE the
+  # failed pass ("the program IS the record"); the sibling's OLD slug file
+  # is still pruned because no current output claims it.
+  shiny::isolate(update_object(
+    store,
+    fx$ids[[2]],
+    function(o) S7::set_props(o, title = "Renamed sibling"),
+    label = "retitle"
+  ))
+  testthat::local_mocked_bindings(
+    emit_code = function(...) stop("emit failed"),
+    .package = "arpillar"
+  )
+  shiny::isolate(.emit_programs(store))
+
+  progs <- list.files(file.path(fx$dir, "programs"))
+  expect_true(kept_prog %in% progs)
+  expect_false(old_sibling_prog %in% progs)
+  expect_true("run-all.R" %in% progs)
+})
+
 test_that(".emit_programs is a no-op when the store has no project path", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))

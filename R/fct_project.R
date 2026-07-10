@@ -124,9 +124,9 @@ save_touched <- function(store) {
 #' them in numbering order. Path from `theme$paths$programs_dir`; default
 #' `./programs/` relative to the project root. Absolute paths pass through.
 #' Errors are swallowed per-output so one failing generator does not block
-#' the save; a swallowed output's stale program (if any) is pruned along
-#' with any file for an output that was renamed/removed since the last
-#' emit.
+#' the save; a failing output KEEPS its last-known-good program. Only files
+#' no current output claims (renamed/removed since the last emit) are
+#' pruned; `run-all.R` never is.
 #' @noRd
 .emit_programs <- function(store) {
   if (is.null(store$rv$path)) {
@@ -146,15 +146,10 @@ save_touched <- function(store) {
   # (`.study_tokens()` in mod_paper.R) so a printed program path resolves to
   # a real file on disk.
   slugs <- arpillar::output_slugs(store$rv$report)
-  written <- character(0)
   for (obj in objs) {
-    fname <- paste0(slugs[[obj@id]], ".R")
-    out <- file.path(prog_dir, fname)
+    out <- file.path(prog_dir, paste0(slugs[[obj@id]], ".R"))
     tryCatch(
-      {
-        arpillar::emit_code(store$con, obj, path = out, theme = theme)
-        written <- c(written, fname)
-      },
+      arpillar::emit_code(store$con, obj, path = out, theme = theme),
       error = function(e) NULL
     )
   }
@@ -168,11 +163,12 @@ save_touched <- function(store) {
     error = function(e) NULL
   )
   # Prune stale programs -- a rename/re-slug leaves the OLD file behind
-  # otherwise. `run-all.R` is never a candidate.
-  stale <- setdiff(
-    list.files(prog_dir, pattern = "\\.R$"),
-    c(written, "run-all.R")
-  )
+  # otherwise. Prune against the EXPECTED set (every current output's slug
+  # + run-all.R), never against what this pass managed to write: a failed
+  # emit for a still-present output must keep its last-known-good program
+  # ("the program IS the record"), not lose it to the prune.
+  expected <- c(paste0(unname(slugs), ".R"), "run-all.R")
+  stale <- setdiff(list.files(prog_dir, pattern = "\\.R$"), expected)
   unlink(file.path(prog_dir, stale))
   invisible(prog_dir)
 }
