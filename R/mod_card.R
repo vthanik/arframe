@@ -63,9 +63,10 @@
 
 # ---- inspector tabs (2026-07-10, pill-strip consolidation) -----------------
 
-#' The three inspector tabs, in display order. Ranks left this map -- the
-#' next task relocates `mod_card_ranks.R`'s content; this frame no longer
-#' mounts or references it.
+#' The three inspector tabs, in display order. Ranks left this map --
+#' `mod_card_ranks.R`'s content was relocated into the Options pane's
+#' ORDER section and the file deleted; this frame no longer mounts or
+#' references it.
 #' @noRd
 .INSP_TABS <- c(
   roles = "Roles",

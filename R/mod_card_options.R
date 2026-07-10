@@ -38,8 +38,9 @@
   legend_position = "legend"
 )
 
-# Keys whose semantics are ORDERING, not display: they render in the Ranks
-# pane (mod_card_ranks) so ordering lives in one place, and never here.
+# Keys whose semantics are ORDERING, not display: they render in the ORDER
+# section (`.opt_order_section()`) below so ordering lives in one place,
+# never inside the regular AXES-style schema grouping.
 .RANKS_KEYS <- c("hier_sort", "x_order")
 
 # Keys the pane never shows (user call 2026-07-10): the population comes from
@@ -752,8 +753,8 @@
 }
 
 #' The schema-generated option sections, grouped by `.OPT_REGION` in
-#' `.OPT_SECTIONS` order. Ordering keys (`.RANKS_KEYS`) are the Ranks
-#' pane's content and are filtered out here.
+#' `.OPT_SECTIONS` order. Ordering keys (`.RANKS_KEYS`) are the ORDER
+#' section's content (`.opt_order_section()`) and are filtered out here.
 #' @noRd
 .opt_schema_sections <- function(
   con,
@@ -803,6 +804,158 @@
       })
     )
   })
+}
+
+# ---- ORDER section (relocated from the deleted mod_card_ranks.R) ----------
+
+#' Informational directive when the ORDER section has no drag surface to
+#' show yet -- e.g. "Assign an X variable in Roles first". Not a decorative
+#' placeholder: the sentence tells the user what to do to unlock the
+#' section. Rendered as a plain paragraph so no `.ar-*-empty` class ships
+#' (the redesign strips those), but the text is still there.
+#' @noRd
+.order_empty <- function(text) {
+  shiny::tags$p(class = "ar-insp-directive", text)
+}
+
+#' The row-block order editor (summary/crosstab): one grip row per
+#' summarize item, dragging posts `rank_items` and commits through
+#' `.reorder_slot()` -- identical semantics to reordering inside the Roles
+#' fieldset, surfaced here because order IS the rank for a summary table.
+#' @noRd
+.order_items_section <- function(ns, object) {
+  role <- .role_for_slot(object, "summarize")
+  items <- if (is.null(role)) list() else role@items
+  if (length(items) == 0L) {
+    return(.order_empty(paste0(
+      "Assign variables in Roles first ",
+      "\u2014 their row-block order is ranked here."
+    )))
+  }
+  .opt_section(
+    "ROW BLOCKS",
+    list(
+      do.call(
+        shiny::tags$div,
+        c(
+          list(
+            class = "ar-opt-levels ar-rank-items",
+            `data-ar-sortable` = "true",
+            `data-ar-sortable-item` = ".ar-opt-level",
+            `data-ar-sortable-attr` = "data-ar-item",
+            `data-ar-sortable-input` = ns("rank_items")
+          ),
+          lapply(items, function(it) {
+            shiny::tags$div(
+              class = "ar-opt-level",
+              `data-ar-item` = it@name,
+              .icon("grip", 11),
+              shiny::tags$span(class = "ar-rank-name ar-mono", it@name),
+              if (nzchar(it@label %||% "")) {
+                shiny::tags$span(class = "ar-rank-sub", it@label)
+              }
+            )
+          })
+        )
+      ),
+      shiny::tags$p(
+        class = "ar-opt-hint",
+        "Drag to set the order the blocks appear in the table."
+      )
+    )
+  )
+}
+
+#' The SOC/PT incidence order control (occurrence): the engine's
+#' `hier_sort` choice rendered with the SAME `.opt_choice_named` pill idiom
+#' every other choice-kind option uses -- commits through the EXISTING
+#' generic per-key schema observer (`opt_hier_sort`, see
+#' `mod_card_options_server`'s `known` loop), so no bespoke observer is
+#' needed; `.commit_opt()`'s default-elision already turns the "freq"
+#' default back into `NULL`.
+#' @noRd
+.order_hier_section <- function(ns, object) {
+  schema <- tryCatch(
+    arpillar::option_schema(object@type),
+    error = function(e) NULL
+  )
+  row <- if (is.null(schema)) {
+    NULL
+  } else {
+    schema[schema$key == "hier_sort", , drop = FALSE]
+  }
+  if (is.null(row) || nrow(row) != 1L) {
+    return(NULL)
+  }
+  .opt_section(
+    "INCIDENCE ORDER",
+    list(
+      shiny::radioButtons(
+        ns("opt_hier_sort"),
+        label = NULL,
+        choices = .opt_choice_named(row$choices[[1]]),
+        selected = .opt_current(object, row),
+        inline = TRUE
+      ),
+      shiny::tags$p(
+        class = "ar-opt-hint",
+        "Frequency ranks by pooled-arm incidence, ties alphabetical."
+      )
+    )
+  )
+}
+
+#' The x level order control (line/box): the SAME `.opt_levels_control()`
+#' every other `levels`-kind key uses, seeded from the committed order else
+#' the x variable's distinct values; commits through the EXISTING generic
+#' reorder observer (`opt_reorder_x_order`).
+#' @noRd
+.order_xorder_section <- function(con, ns, object) {
+  schema <- tryCatch(
+    arpillar::option_schema(object@type),
+    error = function(e) NULL
+  )
+  row <- if (is.null(schema)) {
+    NULL
+  } else {
+    schema[schema$key == "x_order", , drop = FALSE]
+  }
+  if (is.null(row) || nrow(row) != 1L) {
+    return(NULL)
+  }
+  control <- .opt_levels_control(con, ns, object, row)
+  if (is.null(control)) {
+    return(.order_empty(
+      "Assign an X variable in Roles first \u2014 its levels are ranked here."
+    ))
+  }
+  .opt_section(
+    "X LEVEL ORDER",
+    list(
+      control,
+      shiny::tags$p(
+        class = "ar-opt-hint",
+        "Drag to set the axis order; the engine default is data order."
+      )
+    )
+  )
+}
+
+#' The ORDER section: per-generator ordering controls, relocated from the
+#' deleted `mod_card_ranks.R` so ordering lives inside Options alongside
+#' every other per-object control (one docked pane, not four). `NULL` for
+#' km/listing -- nothing to rank there, so no empty-state clutter.
+#' @noRd
+.opt_order_section <- function(con, ns, object) {
+  switch(
+    object@type,
+    summary = ,
+    crosstab = .order_items_section(ns, object),
+    occurrence = .order_hier_section(ns, object),
+    line = ,
+    box = .order_xorder_section(con, ns, object),
+    NULL
+  )
 }
 
 #' The measure-statistic labels the study defines in Setup > Summaries
@@ -1283,6 +1436,7 @@ mod_card_options_server <- function(id, store) {
           study_stats,
           .trt_vars(store$rv$report@theme, .pop_bindings(store))
         ),
+        .opt_order_section(store$con, ns, obj),
         .opt_listing_sections(store$con, ns, obj),
         .opt_layout_sections(store$con, ns, obj),
         shiny::uiOutput(ns("opt_msg"))
@@ -1395,6 +1549,26 @@ mod_card_options_server <- function(id, store) {
       }
     }) |>
       shiny::bindEvent(store$rv$region, store$rv$insp_tab)
+
+    # ---- ORDER section commits (relocated from mod_card_ranks.R) ----
+    # Row-block order (summary/crosstab): the SAME reconcile-and-commit the
+    # Roles fieldset drag uses -- one helper, two surfaces, zero drift.
+    # (occurrence's hier_sort and line/box's x_order commit through the
+    # EXISTING generic schema-row observers below -- see `.opt_order_section`
+    # for why no bespoke observer is needed for those two.)
+    shiny::observeEvent(input$rank_items, {
+      obj_id <- store$rv$selected
+      if (is.null(obj_id)) {
+        return()
+      }
+      order <- vapply(input$rank_items$order, as.character, character(1))
+      update_object(
+        store,
+        obj_id,
+        function(o) .reorder_slot(o, "summarize", order),
+        label = "rank row blocks"
+      )
+    })
 
     # ---- footnote commits ----
     shiny::observeEvent(input$fn_add, {

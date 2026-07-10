@@ -522,7 +522,7 @@ test_that("stats: the last remaining statistic can never be removed", {
   })
 })
 
-test_that("ordering keys (hier_sort, x_order) no longer render in Options", {
+test_that("ordering keys (hier_sort, x_order) render in ORDER, not the AXES grouping", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))
   store <- shiny::isolate(new_store(con))
@@ -543,10 +543,95 @@ test_that("ordering keys (hier_sort, x_order) no longer render in Options", {
   shiny::testServer(mod_card_options_server, args = list(store = store), {
     session$flushReact()
     html <- output$pane$html
-    # x_order's sortable list moved to the Ranks pane; the axes section
-    # still carries the other figure knobs.
+    # x_order's mixed-case schema label never renders in the AXES grouping
+    # (still filtered by .RANKS_KEYS); it shows under the ORDER section's
+    # own all-caps header instead -- relocated, not dropped.
     expect_no_match(html, "X level order", fixed = TRUE)
     expect_match(html, "X axis label", fixed = TRUE)
+    expect_match(html, "X LEVEL ORDER", fixed = TRUE)
+  })
+})
+
+# ---- ORDER section (relocated from the deleted Ranks pane) -----------------
+
+test_that("summary: drag-reordering row blocks commits through the shared helper", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  id <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
+  shiny::isolate(store$rv$selected <- id)
+
+  shiny::testServer(mod_card_options_server, args = list(store = store), {
+    session$flushReact()
+    html <- output$pane$html
+    expect_match(html, "ROW BLOCKS", fixed = TRUE)
+    for (v in c("AGE", "SEX", "RACE")) {
+      expect_match(html, sprintf('data-ar-item="%s"', v), fixed = TRUE)
+    }
+
+    session$setInputs(rank_items = list(order = list("RACE", "AGE", "SEX")))
+    obj <- shiny::isolate(selected_object(store))
+    got <- vapply(obj@roles[[2]]@items, function(it) it@name, character(1))
+    expect_identical(got, c("RACE", "AGE", "SEX"))
+  })
+})
+
+test_that("occurrence: hier_sort commits alpha and elides the freq default", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  id <- shiny::isolate(add_from_generator(store, "occurrence", "ADAE"))
+  shiny::isolate(store$rv$selected <- id)
+
+  shiny::testServer(mod_card_options_server, args = list(store = store), {
+    session$flushReact()
+    expect_match(output$pane$html, "INCIDENCE ORDER", fixed = TRUE)
+
+    session$setInputs(opt_hier_sort = "alpha")
+    expect_identical(
+      shiny::isolate(selected_object(store))@options$hier_sort,
+      "alpha"
+    )
+    # Back to the engine default -> the key elides.
+    session$setInputs(opt_hier_sort = "freq")
+    expect_null(shiny::isolate(selected_object(store))@options$hier_sort)
+  })
+})
+
+test_that("line: x_order renders a sortable list seeded from distinct_values", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  id <- shiny::isolate(add_from_generator(store, "line", "ADVS"))
+  shiny::isolate(update_object(store, id, function(o) {
+    S7::set_props(
+      o,
+      roles = list(
+        arpillar::role(
+          slot = "x",
+          items = list(arpillar::data_item(name = "AVISIT"))
+        )
+      )
+    )
+  }))
+  shiny::isolate(store$rv$selected <- id)
+
+  shiny::testServer(mod_card_options_server, args = list(store = store), {
+    session$flushReact()
+    html <- output$pane$html
+    expect_match(html, "data-ar-sortable", fixed = TRUE)
+    for (lv in c("Baseline", "Week 4", "Week 8")) {
+      expect_match(html, sprintf('data-ar-item="%s"', lv), fixed = TRUE)
+    }
+
+    # A drop commits the explicit order.
+    session$setInputs(
+      opt_reorder_x_order = list(order = list("Week 8", "Baseline", "Week 4"))
+    )
+    expect_identical(
+      shiny::isolate(selected_object(store))@options$x_order,
+      c("Week 8", "Baseline", "Week 4")
+    )
   })
 })
 
