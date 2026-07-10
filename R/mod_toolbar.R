@@ -89,6 +89,7 @@ mod_toolbar_server <- function(id, store) {
         "ar-collapse",
         list(
           rail = isTRUE(store$rv$rail_collapsed),
+          loc_rail = isTRUE(store$rv$loc_rail_collapsed),
           insp = isTRUE(store$rv$insp_collapsed)
         )
       )

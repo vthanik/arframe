@@ -66,6 +66,39 @@ test_that("mod_toolbar_server: panel_toggle flips insp_collapsed and mirrors ar-
   })
 })
 
+test_that("mod_toolbar_server: the ar-collapse send preserves the LoC rail state", {
+  # Regression (2026-07-10 review): bridge.js toggles ALL three workspace
+  # classes off one message, so a payload missing `loc_rail` forces a
+  # collapsed CONTENTS rail back open. Capture the message MockShinySession
+  # otherwise discards by overriding its sendCustomMessage.
+  fx <- .mc_ready_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_toolbar_server, args = list(store = fx$store), {
+    sent <- NULL
+    # `session` here is shiny's session_proxy, which delegates method
+    # lookup to its parent -- walk to the root MockShinySession and
+    # override its (discarding) sendCustomMessage to record the payload.
+    root <- session
+    while (inherits(root, "session_proxy")) {
+      root <- get("parent", envir = root)
+    }
+    base::unlockBinding("sendCustomMessage", root)
+    assign(
+      "sendCustomMessage",
+      function(type, message) {
+        if (identical(type, "ar-collapse")) sent <<- message
+      },
+      envir = root
+    )
+    store$rv$loc_rail_collapsed <- TRUE
+    session$setInputs(panel_toggle = 1)
+    expect_true(sent$insp)
+    expect_true(sent$loc_rail)
+    expect_false(sent$rail)
+  })
+})
+
 test_that("mod_toolbar_server: Run drops the ARD memo and bumps run_nonce", {
   fx <- .mc_ready_store()
   withr::defer(arpillar::engine_close(fx$con))
