@@ -290,12 +290,12 @@ test_that("stacks: add stack + line + var commit the engine shape; remove -> abs
     expect_identical(st[[1]]$entries[[1]]$prefix, "(")
     expect_identical(st[[1]]$entries[[1]]$suffix, ")")
 
-    # A SECOND line prefills the DPP continuation wrap: "(", ")".
+    # A SECOND line seeds NO glue (2026-07-10 user call): vars only,
+    # prefix/suffix stay unset until the user picks them.
     session$setInputs(stk_line_add = list(i = 1, nonce = 10))
     st <- obj()@options$stacks
     expect_length(st[[1]]$entries, 2L)
-    expect_identical(st[[1]]$entries[[2]]$prefix, "(")
-    expect_identical(st[[1]]$entries[[2]]$suffix, ")")
+    expect_identical(st[[1]]$entries[[2]], list(vars = character(0)))
     session$setInputs(stk_line_rm = list(i = 1, j = 2, nonce = 11))
 
     # Var + line removal walk back through the same shared inputs.
@@ -309,6 +309,83 @@ test_that("stacks: add stack + line + var commit the engine shape; remove -> abs
     # Removing the only stack removes the key entirely.
     session$setInputs(stk_rm = list(i = 1, nonce = 14))
     expect_null(obj()@options$stacks)
+  })
+})
+
+# ---- date formats -------------------------------------------------------------
+
+test_that("DATE FORMATS renders only when a date variable is selected", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  items <- arpillar::data_items(con, "ADSL")
+
+  no_dates <- arpillar::object(
+    id = "l",
+    type = "listing",
+    dataset = "ADSL",
+    roles = list(
+      arpillar::role(
+        slot = "columns",
+        items = list(arpillar::data_item(name = "AGE"))
+      )
+    )
+  )
+  expect_null(.listing_formats_section(shiny::NS("x"), no_dates, items))
+
+  with_date <- arpillar::object(
+    id = "l",
+    type = "listing",
+    dataset = "ADSL",
+    roles = list(
+      arpillar::role(
+        slot = "columns",
+        items = list(
+          arpillar::data_item(name = "AGE"),
+          arpillar::data_item(name = "RANDDT")
+        )
+      )
+    ),
+    options = list(column_specs = list(RANDDT = list(format = "date9.")))
+  )
+  html <- paste(
+    as.character(.listing_formats_section(shiny::NS("x"), with_date, items)),
+    collapse = ""
+  )
+  expect_match(html, "DATE FORMATS", fixed = TRUE)
+  # One row for the date variable only, seeded with the committed format.
+  expect_match(html, "RANDDT", fixed = TRUE)
+  expect_no_match(html, 'aria-label="Display format for AGE"', fixed = TRUE)
+  expect_match(html, 'value="date9."', fixed = TRUE)
+  # The datalist offers the preset formats.
+  expect_match(html, 'value="mm/dd/yyyy"', fixed = TRUE)
+})
+
+test_that("fmt_set commits column_specs$format; emptied clears the key", {
+  fx <- .mcl_listing_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
+    obj <- function() shiny::isolate(selected_object(store))
+
+    session$setInputs(
+      fmt_set = list(name = "RANDDT", value = "date9.", nonce = 1)
+    )
+    expect_identical(
+      obj()@options$column_specs,
+      list(RANDDT = list(format = "date9."))
+    )
+
+    session$setInputs(
+      fmt_set = list(name = "RANDDT", value = "mm/dd/yyyy", nonce = 2)
+    )
+    expect_identical(
+      obj()@options$column_specs$RANDDT$format,
+      "mm/dd/yyyy"
+    )
+
+    # Emptying removes the format AND the emptied column entry entirely.
+    session$setInputs(fmt_set = list(name = "RANDDT", value = "", nonce = 3))
+    expect_null(obj()@options$column_specs)
   })
 })
 

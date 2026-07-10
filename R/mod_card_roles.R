@@ -764,6 +764,11 @@
       slot$label,
       shiny::tags$span(class = "ar-role-card-hint", .cardinality_hint(slot))
     ),
+    # The generator's own slot hint (arpillar `.SLOT(hint=)`) -- what the
+    # slot does, shown before the pick (e.g. the listing's group column).
+    if (!is.null(slot$hint)) {
+      shiny::tags$p(class = "ar-opt-hint", slot$hint)
+    },
     do.call(
       shiny::tags$div,
       c(

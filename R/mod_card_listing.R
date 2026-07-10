@@ -4,7 +4,8 @@
 # glued display columns). Cell recodes live in the Roles LEVELS editor
 # (item @levels -- one place, not two); the decode footnote is the user's
 # own Footnotes line. Scalar `limit` auto-surfaces through the generic int
-# row; `column_specs` / `column_order` have no pane UI yet. Everything here
+# row; `column_specs$format` edits through the DATE FORMATS section; the
+# other `column_specs` fields / `column_order` have no pane UI yet. Everything here
 # renders the COMMITTED
 # `object@options` (server-authoritative -- the store is the only state
 # carrier); every dynamic per-row control posts through a SHARED input via
@@ -24,6 +25,29 @@
 
 # The per-entry glue fields a stack line carries beside its vars.
 .STACK_ENTRY_FIELDS <- c("delim", "prefix", "suffix")
+
+# Preset choices for the glue selects. Values are what commits ("" = engine
+# default); an off-list committed value is injected as its own option.
+.STACK_GLUE_CHOICES <- list(
+  delim = c("/" = "", "," = ",", "space" = " ", "-" = "-", "new line" = "\\n"),
+  prefix = c("none" = "", "(" = "(", "[" = "[", "{" = "{"),
+  suffix = c("none" = "", ")" = ")", "]" = "]", "}" = "}")
+)
+
+# Common date/time formats offered by the DATE FORMATS datalist -- SAS names
+# and picture patterns the engine's `.datetime_strftime()` resolves.
+.FMT_PRESETS <- c(
+  "date9.",
+  "date11.",
+  "yymmdd10.",
+  "mmddyy10.",
+  "ddmmyy10.",
+  "mm/dd/yyyy",
+  "dd-mon-yyyy",
+  "datetime20.",
+  "time8.",
+  "time5."
+)
 
 #' A committed listing option as a plain list -- `NULL`/non-list reads as
 #' empty, so every editor renders off one shape.
@@ -116,8 +140,7 @@
   field,
   value,
   placeholder = NULL,
-  j = NULL,
-  width = NULL
+  j = NULL
 ) {
   keys <- if (is.null(j)) {
     sprintf("i: %d", as.integer(i))
@@ -136,7 +159,6 @@
     value = value %||% "",
     placeholder = placeholder,
     onchange = js,
-    style = if (!is.null(width)) paste0("width:", width, ";"),
     `aria-label` = paste(field, "for row", i)
   )
 }
@@ -204,7 +226,7 @@
     )
   }
   shiny::tags$div(
-    class = "ar-fn-row",
+    class = "ar-fn-row ar-srt-row",
     shiny::tags$span(class = "ar-role-name ar-mono", s$col %||% ""),
     shiny::tags$div(
       class = "ar-peek-type",
@@ -303,12 +325,108 @@
   )
 }
 
+# ---- DATE FORMATS ----------------------------------------------------------
+
+#' The DATE FORMATS section: one row per SELECTED date/time variable with a
+#' free-text-plus-datalist combo (native `<input list>`) committing
+#' `column_specs[[var]]$format` -- SAS names (date9.), picture patterns
+#' (mm/dd/yyyy), or raw strftime, resolved engine-side by
+#' `.datetime_strftime()`. `NULL` when no date variable is selected.
+#' @noRd
+.listing_formats_section <- function(ns, object, items) {
+  sel <- .listing_selected_items(object, items)
+  dates <- sel[sel$type %in% "date", , drop = FALSE]
+  if (nrow(dates) == 0L) {
+    return(NULL)
+  }
+  specs <- .listing_opt_list(object, "column_specs")
+  rows <- lapply(seq_len(nrow(dates)), function(k) {
+    nm <- dates$name[[k]]
+    js <- sprintf(
+      "Shiny.setInputValue('%s', {name: '%s', value: this.value, nonce: Date.now()}, {priority: 'event'})",
+      ns("fmt_set"),
+      nm
+    )
+    shiny::tags$div(
+      class = "ar-opt-row",
+      shiny::tags$span(class = "ar-role-name ar-mono", nm),
+      shiny::tags$input(
+        type = "text",
+        class = "ar-lst-fmt ar-mono",
+        list = ns("fmt_presets"),
+        value = as.character(specs[[nm]]$format %||% ""),
+        placeholder = "date9.",
+        onchange = js,
+        `aria-label` = paste("Display format for", nm)
+      )
+    )
+  })
+  .opt_section(
+    "DATE FORMATS",
+    list(
+      rows,
+      shiny::tags$datalist(
+        id = ns("fmt_presets"),
+        lapply(.FMT_PRESETS, function(f) shiny::tags$option(value = f))
+      ),
+      shiny::tags$p(
+        class = "ar-opt-hint ar-mono",
+        paste(
+          "SAS names (date9.), patterns (mm/dd/yyyy \u2014 tokens yyyy yy",
+          "mon mm dd hh mi ss), or strftime (%d%b%Y). Empty = as stored."
+        )
+      )
+    )
+  )
+}
+
 # ---- STACKED COLUMNS -------------------------------------------------------
 
-#' One stack entry line: its vars as removable chips, an add-var picker,
-#' small delim/prefix/suffix fields, and a remove-line X. An entry with no
-#' vars is skipped by the engine, so it can exist transiently while being
-#' built.
+#' One glue select (delim / prefix / suffix) for a stack line: preset
+#' choices, the committed off-list value injected, posting `{i, j, field,
+#' value}` to the SAME shared `stk_entry_field` input the old text fields
+#' used -- the server observer is unchanged.
+#' @noRd
+.stack_glue_select <- function(ns, i, j, field, value) {
+  value <- as.character(value %||% "")
+  choices <- .STACK_GLUE_CHOICES[[field]]
+  if (!value %in% choices) {
+    choices <- c(stats::setNames(value, value), choices)
+  }
+  js <- sprintf(
+    "Shiny.setInputValue('%s', {i: %d, j: %d, field: '%s', value: this.value, nonce: Date.now()}, {priority: 'event'})",
+    ns("stk_entry_field"),
+    i,
+    j,
+    field
+  )
+  shiny::tags$label(
+    class = "ar-lst-glue-field",
+    shiny::tags$span(c(
+      delim = "Delimiter",
+      prefix = "Prefix",
+      suffix = "Suffix"
+    )[[field]]),
+    shiny::tags$select(
+      class = "ar-lst-glue-sel",
+      onchange = js,
+      `aria-label` = sprintf("%s for stack %d line %d", field, i, j),
+      lapply(seq_along(choices), function(k) {
+        shiny::tags$option(
+          value = choices[[k]],
+          selected = if (identical(choices[[k]], value)) "selected",
+          names(choices)[[k]]
+        )
+      })
+    )
+  )
+}
+
+#' One stack entry line, all on ONE row: its vars as removable chips with a
+#' compact add-picker inline, a mono glue-preview button that reveals the
+#' Delimiter/Prefix/Suffix selects (hidden by default), and a hover-shown
+#' remove-line X. An entry with no vars is skipped by the engine, so it can
+#' exist transiently while being built.
 #' @noRd
 .stack_entry_row <- function(ns, i, j, entry, items) {
   vars <- as.character(unlist(entry$vars %||% character(0)))
@@ -331,60 +449,62 @@
       )
     )
   })
+  glue_preview <- paste0(
+    entry$prefix %||% "",
+    entry$delim %||% "/",
+    entry$suffix %||% ""
+  )
   shiny::tags$div(
-    class = "ar-fn-row ar-lst-entry",
-    shiny::tags$div(class = "ar-flt-chips", chips),
-    .listing_add_picker(ns, "stk_var_add", items, i, j),
-    .listing_field_input(
-      ns,
-      "stk_entry_field",
-      i,
-      "delim",
-      entry$delim,
-      placeholder = "/",
-      j = j,
-      width = "48px"
+    class = "ar-lst-line",
+    shiny::tags$div(
+      class = "ar-lst-line-main",
+      shiny::tags$div(
+        class = "ar-flt-chips ar-lst-vars",
+        chips,
+        .listing_add_picker(ns, "stk_var_add", items, i, j, placeholder = "+")
+      ),
+      shiny::tags$button(
+        type = "button",
+        class = "ar-lst-glue-btn ar-mono",
+        `aria-expanded` = "false",
+        `aria-label` = sprintf("Edit separators for stack %d line %d", i, j),
+        title = "Delimiter / prefix / suffix",
+        onclick = paste0(
+          "this.setAttribute('aria-expanded', ",
+          "this.closest('.ar-lst-line').classList.toggle('ar-lst-glue-open'));"
+        ),
+        glue_preview
+      ),
+      .listing_rm_btn(
+        ns,
+        "stk_line_rm",
+        i,
+        paste0("Remove stack ", i, " line ", j),
+        j = j
+      )
     ),
-    .listing_field_input(
-      ns,
-      "stk_entry_field",
-      i,
-      "prefix",
-      entry$prefix,
-      placeholder = "(",
-      j = j,
-      width = "48px"
-    ),
-    .listing_field_input(
-      ns,
-      "stk_entry_field",
-      i,
-      "suffix",
-      entry$suffix,
-      placeholder = ")",
-      j = j,
-      width = "48px"
-    ),
-    .listing_rm_btn(
-      ns,
-      "stk_line_rm",
-      i,
-      paste0("Remove stack ", i, " line ", j),
-      j = j
+    shiny::tags$div(
+      class = "ar-lst-glue",
+      .stack_glue_select(ns, i, j, "delim", entry$delim),
+      .stack_glue_select(ns, i, j, "prefix", entry$prefix),
+      .stack_glue_select(ns, i, j, "suffix", entry$suffix)
     )
   )
 }
 
-#' One stack block: name field, Indent toggle, remove-stack X, its entry
-#' lines, and "+ Add line". Each stack is ONE output column whose entries
-#' stack as lines in the cell.
+#' One stack block: a single header row (name field, Indent pill toggle,
+#' remove-stack X), its entry lines, and "+ Add line". Each stack is ONE
+#' output column whose entries stack as lines in the cell; Indent steps
+#' each line two spaces deeper than the one above (engine-side).
+#' The pill flips its own class client-side (the commit never redraws).
 #' @noRd
 .stack_block <- function(ns, i, st, items) {
   entries <- if (is.list(st$entries)) st$entries else list()
+  on <- isTRUE(st$indent)
   shiny::tags$div(
     class = "ar-opt-row ar-opt-row-block",
     shiny::tags$div(
-      class = "ar-fn-row",
+      class = "ar-fn-row ar-lst-head",
       .listing_field_input(
         ns,
         "stk_field",
@@ -393,19 +513,25 @@
         st$name,
         placeholder = "Header label (\\n = line break)"
       ),
-      shiny::tags$label(
-        class = "ar-lst-indent",
-        shiny::tags$input(
-          type = "checkbox",
-          checked = if (isTRUE(st$indent)) "checked",
-          onchange = sprintf(
-            "Shiny.setInputValue('%s', {i: %d, on: this.checked, nonce: Date.now()}, {priority: 'event'})",
-            ns("stk_indent"),
-            i
-          ),
-          `aria-label` = paste0("Indent continuation lines of stack ", i)
+      shiny::tags$button(
+        type = "button",
+        class = paste0(
+          "ar-peek-type-btn ar-lst-indent",
+          if (on) " ar-peek-type-on"
         ),
-        shiny::tags$span("Indent")
+        `aria-pressed` = if (on) "true" else "false",
+        title = "Step each line two more spaces",
+        onclick = sprintf(
+          paste0(
+            "var on = this.classList.toggle('ar-peek-type-on'); ",
+            "this.setAttribute('aria-pressed', on); ",
+            "Shiny.setInputValue('%s', {i: %d, on: on, nonce: Date.now()}, ",
+            "{priority: 'event'});"
+          ),
+          ns("stk_indent"),
+          i
+        ),
+        "Indent"
       ),
       .listing_rm_btn(ns, "stk_rm", i, paste0("Remove stack ", i))
     ),
@@ -432,8 +558,7 @@
         class = "ar-opt-hint ar-mono",
         paste(
           "Each stack is one column; its lines stack inside the cell.",
-          "Pick from the selected variables; line 2+ wraps in",
-          "parentheses by default."
+          "Indent steps each line two more spaces."
         )
       )
     )
@@ -455,6 +580,7 @@
   shiny::tagList(
     .listing_sort_section(ns, object, items),
     .listing_transpose_section(ns, object, items),
+    .listing_formats_section(ns, object, items),
     .listing_stacks_section(ns, object, items)
   )
 }
@@ -666,13 +792,9 @@
     }
     entries <- if (is.list(st[[i]]$entries)) st[[i]]$entries else list()
     # An entry with no vars is skipped by the engine -- it exists
-    # transiently while the user builds the line. A continuation line
-    # (2+) prefills the DPP paren wrap: "USUBJID" over "(Age/Sex/Race)".
-    entries[[length(entries) + 1L]] <- if (length(entries) >= 1L) {
-      list(vars = character(0), prefix = "(", suffix = ")")
-    } else {
-      list(vars = character(0))
-    }
+    # transiently while the user builds the line. No glue is seeded
+    # (2026-07-10 user call): prefix/suffix stay empty until set.
+    entries[[length(entries) + 1L]] <- list(vars = character(0))
     st[[i]]$entries <- entries
     .commit_listing_key(store, obj, "stacks", st, "add stack line")
     redraw()
@@ -742,6 +864,28 @@
     st[[i]]$entries <- entries
     .commit_listing_key(store, obj, "stacks", st, "remove stack variable")
     redraw()
+  })
+
+  # ---- date formats ----
+  # A plain text commit (never redraws); an emptied field removes the
+  # format key, and an emptied spec entry removes the column entirely.
+  shiny::observeEvent(input$fmt_set, {
+    obj <- lst_obj()
+    nm <- as.character(input$fmt_set$name %||% "")
+    if (is.null(obj) || !nzchar(nm)) {
+      return()
+    }
+    specs <- .listing_opt_list(obj, "column_specs")
+    val <- trimws(as.character(input$fmt_set$value %||% ""))
+    if (nzchar(val)) {
+      specs[[nm]]$format <- val
+    } else {
+      specs[[nm]]$format <- NULL
+      if (!length(specs[[nm]])) {
+        specs[[nm]] <- NULL
+      }
+    }
+    .commit_listing_key(store, obj, "column_specs", specs, "set date format")
   })
 
   shiny::observeEvent(input$stk_entry_field, {

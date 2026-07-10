@@ -50,6 +50,9 @@
   adsl$DCDECOD <- ifelse(adsl$DISCFL == "Y", "ADVERSE EVENT", "COMPLETED")
   # Placebo = 0 mg; Xanomeline = the CDISC-pilot 81 mg/day dose.
   adsl$EXDOSE <- ifelse(adsl$TRT01P == "Placebo", 0, 81)
+  # RANDDT: a fixed date sequence (never RNG) -- the demo catalog's one
+  # temporal column, so the listing DATE FORMATS editor has a target.
+  adsl$RANDDT <- as.Date("2024-01-15") + seq_len(nrow(adsl)) * 7L
 
   visits <- c("Baseline", "Week 4", "Week 8")
   advs <- data.frame(
@@ -122,7 +125,8 @@
       RACE = "Race",
       DISCFL = "Discontinued Study Flag",
       DCDECOD = "Standardized Disposition Term",
-      EXDOSE = "Dose per Administration"
+      EXDOSE = "Dose per Administration",
+      RANDDT = "Date of Randomization"
     )
   )
   advs <- .demo_label(

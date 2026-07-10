@@ -3195,6 +3195,108 @@ select.ar-input-flat {
   vertical-align: baseline;
 }
 
+/* -- listing SORT rows: [name 1fr][asc|desc][x] -- the shared 1fr column
+   pins every asc/desc pill to the same right edge, so the keys read as two
+   neat columns regardless of name length. */
+.ar-srt-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+/* -- listing STACKED COLUMNS -- */
+/* Block header: [name input 1fr][Indent pill][x], never wraps. */
+.ar-lst-head {
+  flex-wrap: nowrap;
+}
+.ar-lst-indent {
+  flex: 0 0 auto;
+  font-size: 11px;
+  padding: 3px 9px;
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius);
+}
+/* One entry line: chips + the compact "+" picker share ONE wrapping row;
+   the glue selects live on a second row that is HIDDEN until the mono
+   glue-preview button opens it. */
+.ar-lst-line {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ar-lst-line-main {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.ar-lst-vars {
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+}
+.ar-lst-vars .ar-add-picker {
+  flex: 0 0 auto;
+  min-width: 0;
+  width: 84px;
+  max-width: 84px;
+}
+/* The compact "+" picker's dropdown must NOT inherit the 84px control
+   width -- open it at a readable width (still inside the pane).
+   !important: selectize stamps an INLINE min-width copied from the
+   control on every open, which would win otherwise. */
+.ar-lst-vars .ar-add-picker .selectize-dropdown {
+  min-width: 220px !important;
+}
+.ar-lst-glue-btn {
+  flex: 0 0 auto;
+  font-size: 11px;
+  line-height: 1.3;
+  padding: 2px 7px;
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius);
+  background: var(--ar-paper);
+  color: var(--ar-ink-3);
+  cursor: pointer;
+}
+.ar-lst-glue-btn:hover {
+  color: var(--ar-ink);
+  border-color: var(--ar-accent);
+}
+.ar-lst-glue {
+  display: none;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
+}
+.ar-lst-glue-open .ar-lst-glue {
+  display: grid;
+}
+.ar-lst-glue-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  font-size: 10px;
+  color: var(--ar-ink-5);
+}
+.ar-lst-glue-sel {
+  width: 100%;
+  min-width: 0;
+  font-size: 11px;
+}
+/* Fewer x's at rest: the line-remove X shows on hover / keyboard focus. */
+.ar-lst-line .ar-fn-remove {
+  opacity: 0;
+}
+.ar-lst-line:hover .ar-fn-remove,
+.ar-lst-line:focus-within .ar-fn-remove {
+  opacity: 1;
+}
+
+/* -- listing DATE FORMATS: [name 1fr][format combo] -- */
+.ar-opt-row input.ar-lst-fmt {
+  width: 132px;
+  text-align: left;
+}
+
 /* -- footnote drag grip -- */
 .ar-fn-grip {
   flex: 0 0 auto;
