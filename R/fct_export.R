@@ -152,16 +152,6 @@
   )
   arpillar::report_to_json(report, path = file.path(dir, "report.json"))
 
-  # Prune stale RTFs -- a rename/re-slug or a removed output leaves the OLD
-  # file behind otherwise. Prune against the EXPECTED set (every current
-  # output's slug, ready or not), never against what THIS pass rendered: a
-  # per-output render failure, or an output currently draft/error, must keep
-  # its last-known-good RTF ("the last render IS the record"), not lose it to
-  # the prune. Only a renamed-away or deleted output loses its file.
-  expected <- paste0(unname(slugs), ".rtf")
-  stale <- setdiff(list.files(out_dir, pattern = "\\.rtf$"), expected)
-  unlink(file.path(out_dir, stale))
-
   manifest <- if (length(rows) > 0L) {
     m <- do.call(rbind, rows)
     m$timestamp <- stamp
@@ -177,6 +167,40 @@
   )
 
   list(ready = ready, skipped = skipped, dir = dir, manifest = manifest)
+}
+
+#' Sync this pass's rendered RTFs into the project's PERSISTENT output dir
+#' (Setup > Paths `output_rtf_dir`, default `./output/` under the project
+#' root -- resolved exactly like `.emit_programs()` resolves programs_dir),
+#' then prune `*.rtf` there against the EXPECTED name set: every CURRENT
+#' output's slug, ready or not, never "what this pass rendered". So a
+#' per-output render failure, or an output flipping ready -> draft/error,
+#' keeps its last-known-good RTF; only a renamed-away or deleted output
+#' loses its file (the Task-4 `.emit_programs` prune semantics). `files` is
+#' the daemon's `id -> path` result; each is copied in (overwrite). A
+#' project-less session (`store$rv$path` NULL) is a silent no-op -- there
+#' is no persistent dir to sync.
+#' @noRd
+.sync_output_dir <- function(store, files) {
+  if (is.null(store$rv$path)) {
+    return(invisible(NULL))
+  }
+  paths <- store$rv$report@theme$paths %||% list()
+  out_dir <- paths$output_rtf_dir %||% "./output/"
+  if (!.is_absolute_path(out_dir)) {
+    out_dir <- file.path(store$rv$path, sub("^\\./", "", out_dir))
+  }
+  dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+  for (p in unlist(files)) {
+    if (is.character(p) && file.exists(p)) {
+      file.copy(p, file.path(out_dir, basename(p)), overwrite = TRUE)
+    }
+  }
+  slugs <- arpillar::output_slugs(store$rv$report)
+  expected <- paste0(unname(slugs), ".rtf")
+  stale <- setdiff(list.files(out_dir, pattern = "\\.rtf$"), expected)
+  unlink(file.path(out_dir, stale))
+  invisible(out_dir)
 }
 
 #' Zip the export package `dir` into `zipfile`, rooted at the package

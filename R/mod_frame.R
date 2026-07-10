@@ -347,6 +347,12 @@ mod_frame_server <- function(id, store) {
           rendered = rendered,
           report = ex$report
         )
+        # Persist this pass's renders into the project's output dir (Setup >
+        # Paths `output_rtf_dir`, default ./output/) and prune stale slugs
+        # there -- the zip's staging tree above is temp and rebuilt fresh per
+        # export; this dir is the durable on-disk record teammates see.
+        # No-op without an open project folder.
+        .sync_output_dir(store, rendered)
         ex$zip <- file.path(tempdir(), paste0(basename(ex$dir), ".zip"))
         .zip_export(ex$dir, ex$zip)
         log_line(

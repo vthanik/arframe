@@ -132,12 +132,16 @@ test_that(".build_export_package(rendered=) assembles the tree from pre-rendered
   expect_true(file.exists(file.path(dir, "report.json")))
 })
 
-test_that(".build_export_package(rendered=) prunes stale RTFs against the current slug set, not this pass's render", {
+test_that(".sync_output_dir copies renders in, prunes against the current slug set, keeps last-known-good", {
   f <- .async_fixture()
   withr::defer(arpillar::engine_close(f$con))
   report <- shiny::isolate(f$store$rv$report)
-  dir <- withr::local_tempdir()
-  out_dir <- file.path(dir, "outputs")
+
+  # Open project folder: the persistent output dir resolves under it
+  # (default ./output/ -- no Setup > Paths override in this fixture).
+  proj <- withr::local_tempdir()
+  shiny::isolate(f$store$rv$path <- proj)
+  out_dir <- file.path(proj, "output")
   dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
   names_map <- .export_names(report)
@@ -146,35 +150,63 @@ test_that(".build_export_package(rendered=) prunes stale RTFs against the curren
   # must be pruned.
   writeLines("{\\rtf1}", file.path(out_dir, "stale-name.rtf"))
 
-  # id1's last-known-good render already on disk, but id1's render FAILS
-  # this pass (absent from `rendered`) -- its file must survive, since id1
-  # is still a current output (fail loud on render, never on disk state).
+  # id1's last-known-good render already in the persistent dir, but id1's
+  # render FAILS this pass (absent from `files`) -- its file must survive,
+  # since id1 is still a current output.
   writeLines("{\\rtf1 old}", file.path(out_dir, names_map[[f$id1]]))
 
-  # id2 renders successfully this pass.
-  p2 <- file.path(out_dir, names_map[[f$id2]])
+  # id2 renders successfully this pass into the daemon's temp staging dir.
+  staging <- withr::local_tempdir()
+  p2 <- file.path(staging, names_map[[f$id2]])
   writeLines("{\\rtf1 new}", p2)
-  rendered <- stats::setNames(list(p2), f$id2)
+  files <- stats::setNames(list(p2), f$id2)
 
-  res <- shiny::isolate(
-    .build_export_package(
-      f$store,
-      dir,
-      stamp = "2026-07-02T00:00:00",
-      rendered = rendered
-    )
-  )
-
-  # id2 ready; id1 reported as an error (ready status, but not rendered
-  # this pass) -- yet its RTF is not deleted.
-  expect_setequal(res$ready, f$id2)
-  expect_setequal(res$skipped, f$id1)
+  got <- shiny::isolate(.sync_output_dir(f$store, files))
+  expect_identical(normalizePath(got), normalizePath(out_dir))
 
   rtfs <- list.files(out_dir, pattern = "\\.rtf$")
   expect_setequal(rtfs, unname(unlist(names_map)))
   expect_false("stale-name.rtf" %in% rtfs)
+  # The new render was copied in; the failed output's last-known-good stays.
+  expect_identical(
+    readLines(file.path(out_dir, names_map[[f$id2]]), warn = FALSE),
+    "{\\rtf1 new}"
+  )
   expect_identical(
     readLines(file.path(out_dir, names_map[[f$id1]]), warn = FALSE),
     "{\\rtf1 old}"
+  )
+})
+
+test_that(".sync_output_dir honours Setup > Paths output_rtf_dir, relative to the project root", {
+  f <- .async_fixture()
+  withr::defer(arpillar::engine_close(f$con))
+  proj <- withr::local_tempdir()
+  shiny::isolate(f$store$rv$path <- proj)
+  shiny::isolate({
+    r <- f$store$rv$report
+    theme <- r@theme
+    theme$paths <- c(theme$paths, list(output_rtf_dir = "./tlf/"))
+    f$store$rv$report <- S7::set_props(r, theme = theme)
+  })
+
+  names_map <- shiny::isolate(.export_names(f$store$rv$report))
+  staging <- withr::local_tempdir()
+  p1 <- file.path(staging, names_map[[f$id1]])
+  writeLines("{\\rtf1}", p1)
+
+  got <- shiny::isolate(
+    .sync_output_dir(f$store, stats::setNames(list(p1), f$id1))
+  )
+  expect_identical(normalizePath(got), normalizePath(file.path(proj, "tlf")))
+  expect_true(file.exists(file.path(proj, "tlf", names_map[[f$id1]])))
+})
+
+test_that(".sync_output_dir is a silent no-op without an open project folder", {
+  f <- .async_fixture()
+  withr::defer(arpillar::engine_close(f$con))
+  expect_null(shiny::isolate(f$store$rv$path))
+  expect_no_error(
+    expect_null(shiny::isolate(.sync_output_dir(f$store, list())))
   )
 })
