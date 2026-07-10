@@ -120,11 +120,13 @@ save_touched <- function(store) {
   invisible(NULL)
 }
 
-#' Emit `programs/<id>.R` per output and a `programs/run-all.R` that runs
+#' Emit `programs/<slug>.R` per output and a `programs/run-all.R` that runs
 #' them in numbering order. Path from `theme$paths$programs_dir`; default
 #' `./programs/` relative to the project root. Absolute paths pass through.
 #' Errors are swallowed per-output so one failing generator does not block
-#' the save.
+#' the save; a swallowed output's stale program (if any) is pruned along
+#' with any file for an output that was renamed/removed since the last
+#' emit.
 #' @noRd
 .emit_programs <- function(store) {
   if (is.null(store$rv$path)) {
@@ -140,10 +142,19 @@ save_touched <- function(store) {
   # filter, summaries, decimals, and chrome -- not just the roles/dataset.
   theme <- store$rv$report@theme
   objs <- .all_objects(store$rv$report)
+  # Slug filenames, not `<id>.R` -- must match the `{program}` chrome token
+  # (`.study_tokens()` in mod_paper.R) so a printed program path resolves to
+  # a real file on disk.
+  slugs <- arpillar::output_slugs(store$rv$report)
+  written <- character(0)
   for (obj in objs) {
-    out <- file.path(prog_dir, paste0(obj@id, ".R"))
+    fname <- paste0(slugs[[obj@id]], ".R")
+    out <- file.path(prog_dir, fname)
     tryCatch(
-      arpillar::emit_code(store$con, obj, path = out, theme = theme),
+      {
+        arpillar::emit_code(store$con, obj, path = out, theme = theme)
+        written <- c(written, fname)
+      },
       error = function(e) NULL
     )
   }
@@ -156,6 +167,13 @@ save_touched <- function(store) {
     ),
     error = function(e) NULL
   )
+  # Prune stale programs -- a rename/re-slug leaves the OLD file behind
+  # otherwise. `run-all.R` is never a candidate.
+  stale <- setdiff(
+    list.files(prog_dir, pattern = "\\.R$"),
+    c(written, "run-all.R")
+  )
+  unlink(file.path(prog_dir, stale))
   invisible(prog_dir)
 }
 
