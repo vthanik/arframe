@@ -7,7 +7,10 @@
 # The Preact side posts plain namespaced inputs (view / run / rtf_click),
 # so the store stays the only state owner (all state in rv, never DOM).
 
-#' The canvas toolbar UI: the Preact mount point plus a hidden download
+#' The canvas toolbar UI: the Preact mount point, a quiet icon toggle for
+#' the docked inspector (`panel_toggle`, 2026-07-10 -- the inspector's pill
+#' strip lost its own click-to-collapse affordance when the icon rail was
+#' removed, so the re-open/fold control moved here), plus a hidden download
 #' link (a browser download must be initiated by an <a>; the Preact .rtf
 #' button posts `rtf_click` and the server relays an `ar-click` to this
 #' link -- the same pattern as the frame's Export package).
@@ -21,6 +24,13 @@ mod_toolbar_ui <- function(id) {
       id = ns("mount"),
       class = "ar-toolbar-mount",
       `data-ar-toolbar` = ns(NULL)
+    ),
+    shiny::tags$button(
+      id = ns("panel_toggle"),
+      type = "button",
+      class = "ar-tb-icon-btn action-button",
+      `aria-label` = "Toggle inspector panel",
+      .icon("chevrons_right", 14)
     ),
     shiny::tagAppendAttributes(
       shiny::downloadLink(ns("rtf"), label = NULL, class = "ar-hidden-dl"),
@@ -67,6 +77,21 @@ mod_toolbar_server <- function(id, store) {
     # hidden download link.
     shiny::observeEvent(input$rtf_click, {
       session$sendCustomMessage("ar-click", list(id = ns("rtf")))
+    })
+
+    # The docked inspector's fold/re-open toggle (2026-07-10): the pill
+    # strip itself no longer doubles as a collapse control, so this quiet
+    # icon button flips `insp_collapsed` and mirrors it the same way
+    # `mod_frame.R`'s `input$collapse` observer does.
+    shiny::observeEvent(input$panel_toggle, {
+      toggle_insp(store)
+      session$sendCustomMessage(
+        "ar-collapse",
+        list(
+          rail = isTRUE(store$rv$rail_collapsed),
+          insp = isTRUE(store$rv$insp_collapsed)
+        )
+      )
     })
 
     # The per-output RTF -- the SAME render seam as export (decision #7's

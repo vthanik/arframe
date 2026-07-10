@@ -61,23 +61,22 @@
   if (is.na(hit)) toupper(region) else hit
 }
 
-# ---- inspector tabs (v5, decision #8) ---------------------------------------
+# ---- inspector tabs (2026-07-10, pill-strip consolidation) -----------------
 
-#' The four inspector tabs, in display order. Ranks is a disabled-coming
-#' row per the plan (v1.1), but the tab exists so the frame never reflows
-#' when it arrives.
+#' The three inspector tabs, in display order. Ranks left this map -- the
+#' next task relocates `mod_card_ranks.R`'s content; this frame no longer
+#' mounts or references it.
 #' @noRd
 .INSP_TABS <- c(
   roles = "Roles",
   options = "Options",
-  filters = "Filters",
-  ranks = "Ranks"
+  filters = "Filters"
 )
 
-#' One inspector tab button. The ACTIVE tab is styled by a pure CSS rule
-#' keyed off the `ar-insp-tab-*` class on the card root (set by the
-#' "ar-insp-tab" message), mirroring the frame's mode-button pattern -- a
-#' tab switch never re-renders the panel body.
+#' One inspector tab pill (text label, no icon). The ACTIVE tab is styled
+#' by a pure CSS rule keyed off the `ar-insp-tab-*` class on the card root
+#' (set by the "ar-insp-tab" message), mirroring the frame's mode-button
+#' pattern -- a tab switch never re-renders the panel body.
 #' @noRd
 .insp_tab_btn <- function(ns, tab) {
   shiny::tags$button(
@@ -85,22 +84,22 @@
     type = "button",
     class = "ar-insp-tab action-button",
     `data-ar-insp-tab` = tab,
-    .icon(tab, 15),
-    shiny::tags$span(class = "ar-insp-tab-lbl", .INSP_TABS[[tab]])
+    .INSP_TABS[[tab]]
   )
 }
 
 # ---- UI ---------------------------------------------------------------
 
-#' The docked inspector UI: a fixed-width right panel -- the pane stack
-#' (every pane mounts once, the `ar-insp-tab-*` class on the card root
-#' picks which shows -- matching `mod_frame_ui()`'s pattern, so a role
-#' edit made on one tab survives any amount of tab switching), the
-#' telemetry line, and the explorer-style labeled tab rail on the far
-#' right edge (Roles/Options/Filters/Ranks). When the workspace carries
-#' `ar-insp-collapsed` (frame-owned, see `toggle_insp()`) CSS hides only
-#' `.ar-insp-main` -- the tab rail itself is the collapsed strip. The
-#' action footer moved to the canvas toolbar (mod_toolbar.R, 2026-07-04).
+#' The docked inspector UI: a fixed-width right panel -- a horizontal
+#' segmented pill strip (Roles/Options/Filters) at the TOP of the panel,
+#' then the pane stack (every pane mounts once, the `ar-insp-tab-*` class
+#' on the card root picks which shows -- matching `mod_frame_ui()`'s
+#' pattern, so a role edit made on one tab survives any amount of tab
+#' switching), then the telemetry line. When the workspace carries
+#' `ar-insp-collapsed` (frame-owned, see `toggle_insp()`) the whole card
+#' folds -- the re-open affordance is the toolbar's `panel_toggle` button
+#' (mod_toolbar.R), not a persistent rail. The action footer moved to the
+#' canvas toolbar (mod_toolbar.R, 2026-07-04).
 #' @param id *The module namespace.* `<character(1)>: required`.
 #' @noRd
 mod_card_ui <- function(id) {
@@ -120,6 +119,10 @@ mod_card_ui <- function(id) {
       shiny::div(
         class = "ar-insp-main",
         shiny::div(
+          class = "ar-insp-strip",
+          lapply(names(.INSP_TABS), function(tab) .insp_tab_btn(ns, tab))
+        ),
+        shiny::div(
           class = "ar-insp-body",
           shiny::div(
             class = "ar-insp-pane ar-insp-pane-roles",
@@ -132,20 +135,9 @@ mod_card_ui <- function(id) {
           shiny::div(
             class = "ar-insp-pane ar-insp-pane-filters",
             mod_card_filters_ui(ns("filters"))
-          ),
-          shiny::div(
-            class = "ar-insp-pane ar-insp-pane-ranks",
-            mod_card_ranks_ui(ns("ranks"))
           )
         ),
         shiny::uiOutput(ns("telemetry"), class = "ar-insp-tel ar-mono")
-      ),
-      # Explorer-style labeled tab rail on the inspector's FAR RIGHT edge
-      # (2026-07-04): the rail itself is the persistent slim strip when the
-      # pane is collapsed, so no chevrons and no separate slim div remain.
-      shiny::div(
-        class = "ar-insp-tabs",
-        lapply(names(.INSP_TABS), function(tab) .insp_tab_btn(ns, tab))
       )
     )
   )
@@ -153,7 +145,7 @@ mod_card_ui <- function(id) {
 
 # ---- server -------------------------------------------------------------
 
-#' The docked inspector server: mounts the four panes once, routes tab
+#' The docked inspector server: mounts the three panes once, routes tab
 #' clicks into `rv$insp_tab` (region clicks route via `open_card()`), and
 #' mirrors the tab to the card root's `ar-insp-tab-*` class (a message,
 #' never a `renderUI` -- switching tabs must not remount pane state).
@@ -170,18 +162,17 @@ mod_card_server <- function(id, store) {
     mod_card_roles_server("roles", store)
     mod_card_options_server("options", store)
     mod_card_filters_server("filters", store)
-    mod_card_ranks_server("ranks", store)
 
-    # The tab strip doubles as a show/hide toggle: clicking the ACTIVE tab
-    # while the pane is open collapses it (the strip stays); clicking any tab
-    # while collapsed re-opens it on that tab; clicking a different tab while
-    # open just switches. `insp_collapsed` is mirrored to the client via the
-    # frame's own `ar-collapse` message (any session may send it -- it targets
-    # the workspace class), so the CSS folds/unfolds the pane.
+    # The strip now lives INSIDE the folding pane (2026-07-10) -- a tab click
+    # only switches (or re-opens when collapsed); the click-active-tab-to-
+    # collapse toggle moved to the toolbar's explicit `panel_toggle` button
+    # (mod_toolbar.R). `insp_collapsed` is mirrored to the client via the
+    # frame's own `ar-collapse` message (any session may send it -- it
+    # targets the workspace class), so the CSS folds/unfolds the card.
     lapply(names(.INSP_TABS), function(tab) {
       shiny::observeEvent(input[[paste0("tab_", tab)]], {
-        # Nothing selected = nothing to inspect: the rail stays a rail
-        # (2026-07-04) -- a tab click never opens an empty pane.
+        # Nothing selected = nothing to inspect: a tab click never opens an
+        # empty pane.
         if (is.null(store$rv$selected)) {
           return()
         }
@@ -189,21 +180,18 @@ mod_card_server <- function(id, store) {
         # stale region focus so a pane never renders a region-narrowed (or
         # empty) subset after the user moved on from a jump-link.
         store$rv$region <- NULL
-        if (isTRUE(store$rv$insp_collapsed)) {
-          store$rv$insp_collapsed <- FALSE
-          store$rv$insp_tab <- tab
-        } else if (identical(store$rv$insp_tab, tab)) {
-          store$rv$insp_collapsed <- TRUE
-        } else {
-          store$rv$insp_tab <- tab
-        }
-        session$sendCustomMessage(
-          "ar-collapse",
-          list(
-            rail = isTRUE(store$rv$rail_collapsed),
-            insp = isTRUE(store$rv$insp_collapsed)
+        was_collapsed <- isTRUE(store$rv$insp_collapsed)
+        store$rv$insp_tab <- tab
+        store$rv$insp_collapsed <- FALSE
+        if (was_collapsed) {
+          session$sendCustomMessage(
+            "ar-collapse",
+            list(
+              rail = isTRUE(store$rv$rail_collapsed),
+              insp = isTRUE(store$rv$insp_collapsed)
+            )
           )
-        )
+        }
       })
     })
 

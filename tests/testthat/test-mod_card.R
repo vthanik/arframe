@@ -1,9 +1,10 @@
-# The docked inspector: fixed-width right panel with the explorer-style
-# Roles/Options/Filters/Ranks tab rail and the telemetry line (the action
-# footer moved to the canvas toolbar -- see test-mod_toolbar.R). Tab state
-# lives in the store (`rv$insp_tab`);
+# The docked inspector: fixed-width right panel with a top segmented pill
+# strip (Roles/Options/Filters, 2026-07-10 -- the icon rail is gone) and
+# the telemetry line (the action footer moved to the canvas toolbar -- see
+# test-mod_toolbar.R). Tab state lives in the store (`rv$insp_tab`);
 # region clicks route to a tab through `open_card()` (tested in
-# test-fct_store.R); collapse is frame-owned (test-mod_frame.R).
+# test-fct_store.R); collapse is frame-owned (test-mod_frame.R /
+# test-mod_toolbar.R's `panel_toggle`).
 
 # A minimal READY summary output on ADSL, selected -- mirrors
 # test-mod_paper.R's fixture (kept local per the no-shared-ambient rule).
@@ -39,18 +40,22 @@
   list(con = con, store = store)
 }
 
-test_that("mod_card_ui: labeled tab rail, all four panes, no footer or chevrons", {
+test_that("mod_card_ui: top pill strip (3 tabs), all three panes, no rail or footer", {
   ui <- mod_card_ui("card")
   html <- as.character(ui)
 
-  for (tab in c("roles", "options", "filters", "ranks")) {
+  for (tab in c("roles", "options", "filters")) {
     expect_match(html, sprintf('data-ar-insp-tab="%s"', tab), fixed = TRUE)
     expect_match(html, sprintf("ar-insp-pane-%s", tab), fixed = TRUE)
   }
-  # Explorer-style rail (2026-07-04): visible labels on the tab buttons;
-  # the rail itself is the collapsed strip, so chevrons and the slim div
-  # are gone, and the action footer moved to the canvas toolbar.
-  expect_match(html, '<span class="ar-insp-tab-lbl">Roles</span>', fixed = TRUE)
+  # Ranks left the frame entirely (2026-07-10) -- no tab, no pane, no mount.
+  expect_no_match(html, 'data-ar-insp-tab="ranks"', fixed = TRUE)
+  expect_no_match(html, "ar-insp-pane-ranks", fixed = TRUE)
+  expect_no_match(html, 'id="card-ranks-pane"', fixed = TRUE)
+
+  # The icon rail is gone -- replaced by a horizontal pill strip.
+  expect_no_match(html, "ar-insp-tabs", fixed = TRUE)
+  expect_no_match(html, "ar-insp-tab-lbl", fixed = TRUE)
   expect_no_match(html, "ar-insp-slim", fixed = TRUE)
   expect_no_match(html, "ar-insp-cv", fixed = TRUE)
   expect_no_match(html, "ar-insp-act", fixed = TRUE)
@@ -61,12 +66,18 @@ test_that("mod_card_ui: labeled tab rail, all four panes, no footer or chevrons"
   expect_no_match(html, 'id="card-close"', fixed = TRUE)
 })
 
-test_that("mod_card_ui: the Ranks pane mounts the real ranks module", {
+test_that("mod_card_ui: the pill strip is the FIRST child of .ar-insp-main, exactly 3 buttons", {
   html <- as.character(mod_card_ui("card"))
-  # The Task-11 stub is gone: the pane hosts mod_card_ranks' own output.
-  expect_match(html, 'id="card-ranks-pane"', fixed = TRUE)
-  expect_no_match(html, "ar-tag-coming", fixed = TRUE)
-  expect_no_match(html, "arrive with the AE hierarchy table", fixed = TRUE)
+  main_pos <- regexpr('<div class="ar-insp-main">', html, fixed = TRUE)
+  expect_true(main_pos > 0)
+  after_main <- substring(html, main_pos + attr(main_pos, "match.length"))
+  # The first element opened after `.ar-insp-main` must be the strip -- not
+  # the pane body (i.e. no rail, no other wrapper in between).
+  expect_match(after_main, '^\\s*<div class="ar-insp-strip">', perl = TRUE)
+
+  strip_end <- regexpr("</div>", after_main, fixed = TRUE)
+  strip_html <- substring(after_main, 1, strip_end - 1L)
+  expect_length(gregexpr("<button", strip_html, fixed = TRUE)[[1]], 3L)
 })
 
 test_that("mod_card_server: tab clicks route rv$insp_tab", {
@@ -98,19 +109,30 @@ test_that("mod_card_server: a tab click clears the region focus (empty-pane regr
   })
 })
 
-test_that("mod_card_server: clicking a tab toggles the pane collapsed/open", {
+test_that("mod_card_server: re-clicking the active tab just switches, it no longer collapses (2026-07-10)", {
+  # The strip moved inside the folding pane -- clicking the ACTIVE tab
+  # twice is a no-op on collapse state now; only the toolbar's
+  # `panel_toggle` (test-mod_toolbar.R) folds the card.
   fx <- .mc_ready_store()
   withr::defer(arpillar::engine_close(fx$con))
 
   shiny::testServer(mod_card_server, args = list(store = fx$store), {
     expect_false(isTRUE(store$rv$insp_collapsed))
-    # Switch to Options (open), then click Options again -> collapse.
     session$setInputs(tab_options = 1)
     expect_identical(store$rv$insp_tab, "options")
     expect_false(isTRUE(store$rv$insp_collapsed))
     session$setInputs(tab_options = 2)
-    expect_true(store$rv$insp_collapsed)
-    # Clicking any tab while collapsed re-opens it on that tab.
+    expect_identical(store$rv$insp_tab, "options")
+    expect_false(isTRUE(store$rv$insp_collapsed))
+  })
+})
+
+test_that("mod_card_server: clicking any tab while collapsed re-opens it on that tab", {
+  fx <- .mc_ready_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_server, args = list(store = fx$store), {
+    store$rv$insp_collapsed <- TRUE
     session$setInputs(tab_filters = 1)
     expect_false(store$rv$insp_collapsed)
     expect_identical(store$rv$insp_tab, "filters")

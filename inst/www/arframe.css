@@ -1208,13 +1208,13 @@ select.ar-input-flat {
   position: relative;
   min-width: 0;
 }
-/* v5 collapse (decision #8): the inspector folds to exactly the tab strip's
-   own width -- no leftover card padding on the right of
-   Roles/Options/Filters/Ranks (the strip itself is the show/hide toggle, so
-   it must stay visible). Moved off the old positional `:nth-child(3)` to the
-   panes' own `.ar-card` after the LoC redesign. */
+/* Inspector collapse (2026-07-10): the pill strip moved INSIDE the folding
+   pane (no persistent icon rail left to show), so a collapsed inspector
+   folds the whole card to zero width -- reopened via the toolbar's
+   `panel_toggle` button. Moved off the old positional `:nth-child(3)` to
+   the panes' own `.ar-card` after the LoC redesign. */
 .ar-insp-collapsed .ar-report-panes > .ar-card {
-  flex-basis: var(--ar-rail-w) !important;
+  flex-basis: 0 !important;
 }
 
 /* A stand-in for a mode body whose real module lands in a later task. */
@@ -1868,11 +1868,13 @@ select.ar-input-flat {
 }
 
 /* ============ 07 card ============ */
-/* v5 (decision #8): the DOCKED inspector -- `.ar-body-report`'s 3rd child,
-   a fixed-width right column. The float/pin behavior is gone; collapse to
-   the icon strip is frame-owned (`ar-insp-collapsed` on the workspace,
-   see 02 frame). The active tab is the `ar-insp-tab-*` class on the card
-   root (the "ar-insp-tab" message) -- pure CSS pane flip, no remount. */
+/* v5 (decision #8), pill-strip consolidation (2026-07-10): the DOCKED
+   inspector -- `.ar-body-report`'s 3rd child, a fixed-width right column.
+   The float/pin behavior is gone; collapse folds the whole card
+   (`ar-insp-collapsed` on the workspace, see 02 frame), reopened via the
+   canvas toolbar's `panel_toggle` button. The active tab is the
+   `ar-insp-tab-*` class on the card root (the "ar-insp-tab" message) --
+   pure CSS pane flip, no remount. */
 .ar-card {
   flex: 0 0 300px;
   height: 100%;
@@ -1913,11 +1915,13 @@ select.ar-input-flat {
 .ar-insp-collapsed .ar-insp-resize {
   display: none;
 }
-/* Collapsed = hide the pane CONTENT but KEEP the tab strip (which doubles as
-   the show/hide toggle: clicking the active tab collapses, clicking any tab
-   re-opens). The rail shrinks to just the icon strip. */
+/* Collapsed = fold the whole card away (2026-07-10) -- the strip that used
+   to double as the show/hide toggle now lives INSIDE `.ar-insp-main`, so
+   nothing persists at rail width; reopen via the toolbar's `panel_toggle`. */
 .ar-insp-collapsed .ar-card {
-  flex-basis: var(--ar-rail-w);
+  flex-basis: 0;
+  border-left: none;
+  overflow: hidden;
 }
 .ar-insp-full {
   display: flex;
@@ -1925,8 +1929,7 @@ select.ar-input-flat {
   height: 100%;
   min-height: 0;
 }
-/* The pane body / footer / telemetry column, to the right of the vertical
-   tab strip. */
+/* The strip / pane body / telemetry column. */
 .ar-insp-main {
   flex: 1 1 auto;
   min-width: 0;
@@ -1937,45 +1940,36 @@ select.ar-input-flat {
 .ar-insp-collapsed .ar-insp-main {
   display: none;
 }
-/* -- tab rail: VERTICAL, icon+label, on the inspector's FAR-RIGHT edge
-   (explorer-style, 2026-07-04). The rail itself is the collapsed strip --
-   no chevrons, no slim div. Width shared with the left activity rail. -- */
-.ar-insp-tabs {
-  flex-grow: 0;
+/* -- tab strip: horizontal segmented pill group at the TOP of the panel
+   (2026-07-10, replaces the far-right icon rail). Text-label pills, same
+   `ar-insp-tab-*` root class + `data-ar-insp-tab` active-state mechanism
+   the rail used -- a tab switch is a pure CSS pane flip, no remount. -- */
+.ar-insp-strip {
+  display: inline-flex;
+  align-self: flex-start;
   flex-shrink: 0;
-  flex-basis: var(--ar-rail-w);
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  border-left: 1px solid var(--ar-rule);
-  padding: var(--ar-space-2) 0;
+  margin: var(--ar-space-3) var(--ar-space-3) 0;
+  border: 1px solid var(--ar-rule);
+  border-radius: var(--ar-radius-pill);
+  background: var(--ar-paper);
+  overflow: hidden;
 }
 .ar-insp-tab {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
   background: transparent;
   border: none;
-  border-right: 2px solid transparent;
-  font-size: 9.5px;
-  color: var(--ar-ink-4);
-  padding: 8px 2px;
+  font-size: 12px;
+  color: var(--ar-ink-2);
+  padding: 6px 14px;
   cursor: pointer;
 }
-.ar-insp-tab-lbl {
-  line-height: 1;
-}
 .ar-insp-tab:hover {
-  color: var(--ar-ink);
+  background: var(--ar-chrome);
 }
 .ar-insp-tab-roles .ar-insp-tab[data-ar-insp-tab="roles"],
 .ar-insp-tab-options .ar-insp-tab[data-ar-insp-tab="options"],
-.ar-insp-tab-filters .ar-insp-tab[data-ar-insp-tab="filters"],
-.ar-insp-tab-ranks .ar-insp-tab[data-ar-insp-tab="ranks"] {
-  color: var(--ar-accent);
-  background: var(--ar-accent-weak);
-  border-right-color: var(--ar-accent);
+.ar-insp-tab-filters .ar-insp-tab[data-ar-insp-tab="filters"] {
+  background: var(--ar-accent);
+  color: var(--ar-paper);
   font-weight: 500;
 }
 /* -- pane stack: every pane mounts, the root tab class picks one -- */
@@ -1990,15 +1984,16 @@ select.ar-input-flat {
 }
 .ar-insp-tab-roles .ar-insp-pane-roles,
 .ar-insp-tab-options .ar-insp-pane-options,
-.ar-insp-tab-filters .ar-insp-pane-filters,
-.ar-insp-tab-ranks .ar-insp-pane-ranks {
+.ar-insp-tab-filters .ar-insp-pane-filters {
   display: block;
 }
 
 /* ============ 07a canvas toolbar ============ */
 /* Explorer-style (2026-07-04): Run / .rtf / Output|Code at the TOP of the
    desk column. The controls are the Preact component (srcjs/toolbar.js);
-   these classes are what it renders. */
+   these classes are what it renders. `panel_toggle` (2026-07-10) is a
+   plain Shiny button rendered outside the Preact mount, so `.ar-toolbar`
+   itself needs to be a flex row to seat it at the right end. */
 .ar-toolbar {
   flex-grow: 0;
   flex-shrink: 0;
@@ -2007,12 +2002,37 @@ select.ar-input-flat {
   position: sticky;
   top: 0;
   z-index: 5;
+  display: flex;
+  align-items: center;
   background: var(--ar-chrome);
   border-bottom: 1px solid var(--ar-rule);
+}
+.ar-toolbar-mount {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .ar-toolbar-mount,
 .ar-tb-row {
   height: 100%;
+}
+/* Quiet icon toggle for the docked inspector, at the toolbar's right end. */
+.ar-tb-icon-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-right: var(--ar-space-3);
+  border: none;
+  border-radius: var(--ar-radius);
+  background: transparent;
+  color: var(--ar-ink-3);
+  cursor: pointer;
+}
+.ar-tb-icon-btn:hover {
+  background: var(--ar-accent-weak);
+  color: var(--ar-ink);
 }
 .ar-tb-row {
   display: flex;

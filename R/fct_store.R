@@ -633,7 +633,9 @@ toggle_rail <- function(store) {
   invisible(NULL)
 }
 
-#' Toggle the docked inspector between full and the icon strip.
+#' Toggle the docked inspector between full and folded (2026-07-10 -- the
+#' icon strip is gone; the toolbar's `panel_toggle` button and the
+#' auto-fold-on-no-selection observer are the two callers).
 #' @noRd
 toggle_insp <- function(store) {
   store$rv$insp_collapsed <- !isTRUE(store$rv$insp_collapsed)

@@ -45,6 +45,27 @@ test_that("mod_toolbar_ui: the Preact mount div and the hidden download link", {
   expect_match(html, "ar-hidden-dl", fixed = TRUE)
 })
 
+test_that("mod_toolbar_ui: the panel_toggle button is present", {
+  # 2026-07-10: the inspector's icon rail is gone, so the fold/re-open
+  # affordance is this quiet icon button at the toolbar's right end.
+  html <- as.character(mod_toolbar_ui("toolbar"))
+  expect_match(html, 'id="toolbar-panel_toggle"', fixed = TRUE)
+  expect_match(html, "ar-tb-icon-btn", fixed = TRUE)
+})
+
+test_that("mod_toolbar_server: panel_toggle flips insp_collapsed and mirrors ar-collapse", {
+  fx <- .mc_ready_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_toolbar_server, args = list(store = fx$store), {
+    expect_false(isTRUE(store$rv$insp_collapsed))
+    session$setInputs(panel_toggle = 1)
+    expect_true(store$rv$insp_collapsed)
+    session$setInputs(panel_toggle = 2)
+    expect_false(store$rv$insp_collapsed)
+  })
+})
+
 test_that("mod_toolbar_server: Run drops the ARD memo and bumps run_nonce", {
   fx <- .mc_ready_store()
   withr::defer(arpillar::engine_close(fx$con))

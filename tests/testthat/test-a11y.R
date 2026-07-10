@@ -32,18 +32,24 @@ test_that("the top app bar's icon-only mode tabs are labelled", {
   expect_match(html, "ar-hidden-dl", fixed = TRUE)
 })
 
-test_that("the inspector tab rail carries visible labels (no icon-only controls remain)", {
-  # The chevrons and the icon-only code button are gone (2026-07-04): the
-  # labeled tab rail is the collapse affordance, and Run/.rtf/code moved
-  # to the canvas toolbar. Every remaining tab button has a visible label.
+test_that("the inspector pill strip carries visible labels (no icon-only controls remain)", {
+  # The chevrons and the icon-only code button are gone (2026-07-04); the
+  # icon rail is gone too (2026-07-10, replaced by a top pill strip). Every
+  # tab button has a visible text label; Run/.rtf/code moved to the canvas
+  # toolbar.
   html <- as.character(mod_card_ui("card"))
-  for (label in c("Roles", "Options", "Filters", "Ranks")) {
+  for (label in c("Roles", "Options", "Filters")) {
     expect_match(
       html,
-      sprintf('<span class="ar-insp-tab-lbl">%s</span>', label),
+      sprintf('data-ar-insp-tab="%s">%s</button>', tolower(label), label),
       fixed = TRUE
     )
   }
+})
+
+test_that("the toolbar's icon-only panel_toggle button is labelled", {
+  html <- as.character(mod_toolbar_ui("toolbar"))
+  expect_match(html, 'aria-label="Toggle inspector panel"', fixed = TRUE)
 })
 
 test_that("the LoC row edit cells are labelled", {

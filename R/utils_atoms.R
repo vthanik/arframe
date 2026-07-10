@@ -61,12 +61,7 @@
   report = "file-lines",
   logs = "terminal",
   gear = "gear",
-  review = "clipboard-check",
-  # Inspector tab glyphs (the far-right icon strip).
-  roles = "table-list",
-  options = "sliders",
-  filters = "filter",
-  ranks = "arrow-down-wide-short"
+  review = "clipboard-check"
 )
 
 #' An inline workspace icon by semantic name (HTML to drop into a label/button).
