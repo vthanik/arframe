@@ -431,71 +431,23 @@
     shiny::tags$pre(
       id = pre_id,
       class = "ar-code-body ar-mono",
-      shiny::HTML(.hl_r(script))
+      shiny::HTML(.code_html(script))
     )
   )
 }
 
-#' Lightweight server-side R syntax highlighting: comments, strings,
-#' numbers, keywords, and function calls wrapped in `ar-hl-*` spans.
-#' Everything is HTML-escaped piecewise, so the pre's textContent (what
-#' the Copy button reads) stays byte-identical to the script.
+#' R syntax highlighting via `downlit::highlight()` -- the same mechanism
+#' pkgdown/tidyverse uses for rendered code chunks. Falls back to plain
+#' HTML-escaped text when highlighting fails (unparseable code), so the
+#' pre's textContent (what the Copy button reads) stays byte-identical to
+#' the script either way.
 #' @noRd
-.hl_r <- function(code) {
-  # ponytail: one-alternation tokenizer, not a grammar -- strings and
-  # comments win by pattern order; nested quotes inside strings are the
-  # known ceiling (emit_code never produces them).
-  pat <- paste0(
-    "\"[^\"\n]*\"", # string
-    "|#[^\n]*", # comment
-    "|(?<![\\w.])\\d+(?:\\.\\d+)?(?![\\w.])", # number
-    "|\\b(?:library|function|if|else|for|TRUE|FALSE|NULL|NA)\\b",
-    "|[A-Za-z_.][A-Za-z0-9_.]*(?=\\()" # function call
+.code_html <- function(script) {
+  out <- tryCatch(
+    downlit::highlight(script, classes = downlit::classes_pandoc()),
+    error = function(e) NA_character_
   )
-  esc <- function(x) htmltools::htmlEscape(x)
-  m <- gregexpr(pat, code, perl = TRUE)[[1]]
-  if (identical(m[1L], -1L)) {
-    return(esc(code))
-  }
-  lens <- attr(m, "match.length")
-  out <- character(0)
-  pos <- 1L
-  for (i in seq_along(m)) {
-    if (m[i] > pos) {
-      out <- c(out, esc(substr(code, pos, m[i] - 1L)))
-    }
-    tok <- substr(code, m[i], m[i] + lens[i] - 1L)
-    cls <- if (startsWith(tok, "\"")) {
-      "ar-hl-str"
-    } else if (startsWith(tok, "#")) {
-      "ar-hl-com"
-    } else if (grepl("^[0-9]", tok)) {
-      "ar-hl-num"
-    } else if (
-      tok %in%
-        c(
-          "library",
-          "function",
-          "if",
-          "else",
-          "for",
-          "TRUE",
-          "FALSE",
-          "NULL",
-          "NA"
-        )
-    ) {
-      "ar-hl-kw"
-    } else {
-      "ar-hl-fn"
-    }
-    out <- c(out, sprintf('<span class="%s">%s</span>', cls, esc(tok)))
-    pos <- m[i] + lens[i]
-  }
-  if (pos <= nchar(code)) {
-    out <- c(out, esc(substr(code, pos, nchar(code))))
-  }
-  paste(out, collapse = "")
+  if (is.na(out)) as.character(htmltools::htmlEscape(script)) else out
 }
 
 # ---- stale notice (run semantics, decision #8) ----------------------------

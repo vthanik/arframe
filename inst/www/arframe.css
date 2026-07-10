@@ -1631,23 +1631,36 @@ select.ar-input-flat {
   flex: 1 1 auto;
   min-height: 0;
 }
-/* R syntax highlighting (server-side spans, .hl_r in mod_paper.R). */
-.ar-hl-com {
+/* R syntax highlighting (downlit::highlight(), pandoc classes, .code_html
+   in mod_paper.R). Class vocab: fu=function, kw=keyword, op=operator,
+   st=string, fl/dv=float/int, co=comment, va=identifier (default ink). */
+.ar-code-body .fu,
+.ar-code-body .kw {
+  color: #7c3aed;
+}
+.ar-code-body .op {
+  color: #dc2626;
+}
+.ar-code-body .st {
+  color: var(--ar-ready);
+}
+.ar-code-body .fl,
+.ar-code-body .dv {
+  color: var(--ar-accent);
+}
+.ar-code-body .co {
   color: var(--ar-ink-4);
   font-style: italic;
 }
-.ar-hl-str {
-  color: var(--ar-ready);
+.ar-code-body .va {
+  color: var(--ar-ink-2);
 }
-.ar-hl-num {
-  color: #6d28d9;
+.ar-code-body a {
+  color: inherit;
+  text-decoration: none;
 }
-.ar-hl-kw {
-  color: #0369a1;
-  font-weight: 500;
-}
-.ar-hl-fn {
-  color: var(--ar-accent);
+.ar-code-body a:hover {
+  text-decoration: underline;
 }
 .ar-paper {
   background: var(--ar-paper);

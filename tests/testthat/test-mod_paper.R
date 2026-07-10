@@ -647,18 +647,12 @@ test_that("mod_paper code view renders the emit_code script when rv$code_view is
     html <- output$code_slot$html
     # The reproduction script: library, the assign, the emit, the filename
     # bar, and the three actions.
-    # Tokens are wrapped in ar-hl-* highlight spans (2026-07-04), so
+    # Tokens are wrapped in downlit's pandoc-class spans (2026-07-10), so
     # match the spanned forms; the pre's textContent stays byte-identical.
-    expect_match(
-      html,
-      '<span class="ar-hl-kw">library</span>(arpillar)',
-      fixed = TRUE
-    )
-    expect_match(
-      html,
-      '<span class="ar-hl-fn">engine_open</span>()',
-      fixed = TRUE
-    )
+    expect_match(html, "class='kw'", fixed = TRUE)
+    expect_match(html, ">library</a>", fixed = TRUE)
+    expect_match(html, "class='fu'", fixed = TRUE)
+    expect_match(html, ">engine_open</a>", fixed = TRUE)
     expect_match(html, "14.1.1", fixed = TRUE)
     expect_match(html, "-demographics", fixed = TRUE)
     # Ids are namespaced by testServer's own proxy, so match the suffix.
@@ -1001,4 +995,34 @@ test_that("the export report leg stamps the STUDY running bands too (#7)", {
   expect_no_match(pf$right, "{datetime}", fixed = TRUE)
   expect_match(pf$right, "^[0-9]{2}[A-Z]{3}[0-9]{4}:")
   expect_identical(pf$left, "Data as of 2026-01-01")
+})
+
+# ---- code view highlighting (.code_html, downlit) --------------------------
+
+#' Strip HTML tags and decode the handful of entities downlit emits
+#' (`&lt;` `&gt;` `&amp;` `&quot;` `&#39;`), so the Copy-button textContent
+#' parity check does not need rvest (not in Suggests).
+#' @noRd
+.strip_html <- function(html) {
+  txt <- gsub("<[^>]+>", "", html)
+  txt <- gsub("&lt;", "<", txt, fixed = TRUE)
+  txt <- gsub("&gt;", ">", txt, fixed = TRUE)
+  txt <- gsub("&quot;", "\"", txt, fixed = TRUE)
+  txt <- gsub("&#39;", "'", txt, fixed = TRUE)
+  gsub("&amp;", "&", txt, fixed = TRUE)
+}
+
+test_that(".code_html highlights via downlit with textContent parity", {
+  script <- "x <- adsl |> head(2) # note\ny <- \"str\""
+  html <- arframe:::.code_html(script)
+  expect_match(html, "class='fu'|class=\"fu\"")
+  expect_identical(.strip_html(html), script)
+})
+
+test_that(".code_html falls back to escaped text when highlighting fails", {
+  bad <- "x <- ("
+  expect_identical(
+    arframe:::.code_html(bad),
+    as.character(htmltools::htmlEscape(bad))
+  )
 })

@@ -19,6 +19,7 @@ Imports:
     cli,
     datasetviewer,
     DBI,
+    downlit,
     fontawesome,
     htmltools,
     jsonlite,
