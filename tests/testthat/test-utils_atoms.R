@@ -97,3 +97,42 @@ test_that(".avatar rings when live and labels with the full name", {
   live <- as.character(.avatar("VT", live = TRUE))
   expect_match(live, "ar-avatar-live", fixed = TRUE)
 })
+
+test_that(".accordion_section renders a native details/summary with a chevron", {
+  acc <- as.character(.accordion_section("TITLE", shiny::tags$p("body")))
+  expect_match(acc, "<details", fixed = TRUE)
+  expect_match(acc, "ar-acc", fixed = TRUE)
+  expect_match(acc, "open", fixed = TRUE)
+  expect_match(acc, "<summary", fixed = TRUE)
+  expect_match(acc, "ar-acc-label", fixed = TRUE)
+  expect_match(acc, "TITLE", fixed = TRUE)
+  expect_match(acc, "ar-acc-body", fixed = TRUE)
+  expect_match(acc, "body", fixed = TRUE)
+})
+
+test_that(".accordion_section omits the open attribute when open = FALSE", {
+  closed <- as.character(
+    .accordion_section("TITLE", shiny::tags$p("body"), open = FALSE)
+  )
+  expect_match(closed, "<details", fixed = TRUE)
+  expect_no_match(closed, "open>")
+  expect_no_match(closed, "open ")
+})
+
+test_that(".accordion_section slots an optional help tag and count chip", {
+  help_tag <- shiny::tags$span(class = "ar-help-marker", "?")
+  acc <- as.character(.accordion_section(
+    "FOOTNOTES",
+    shiny::tags$p("body"),
+    count = "3",
+    help = help_tag
+  ))
+  expect_match(acc, "ar-acc-count", fixed = TRUE)
+  expect_match(acc, ">3<", fixed = TRUE)
+  expect_match(acc, "ar-help-marker", fixed = TRUE)
+})
+
+test_that(".accordion_section elides to NULL when the body is empty, matching .opt_section", {
+  expect_null(.accordion_section("TITLE", NULL))
+  expect_null(.accordion_section("TITLE", list(NULL, NULL)))
+})

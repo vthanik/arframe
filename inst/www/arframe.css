@@ -3356,6 +3356,57 @@ select.ar-input-flat {
   color: var(--ar-draft);
 }
 
+/* -- inspector-pane accordion (Task 7): native <details>/<summary>, no JS
+      library. Hairline-separated inside the pane; the chevron rotates 90deg
+      when the section is open. -- */
+.ar-acc {
+  border-bottom: 1px solid var(--ar-rule-2);
+}
+.ar-acc:last-child {
+  border-bottom: 0;
+}
+.ar-acc-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-2);
+  padding: var(--ar-space-3);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.ar-acc-head::-webkit-details-marker {
+  display: none;
+}
+.ar-acc-head:hover {
+  background: rgba(27, 31, 35, 0.03);
+}
+.ar-acc-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--ar-radius-sm);
+  background: var(--ar-accent-weaker);
+  color: var(--ar-accent);
+}
+.ar-acc-label {
+  margin: 0;
+}
+.ar-acc-count {
+  color: var(--ar-ink-3);
+  font-size: 11px;
+}
+.ar-acc-head svg {
+  transition: transform var(--ar-motion-fast) var(--ar-motion-ease);
+}
+.ar-acc[open] > .ar-acc-head svg:last-child {
+  transform: rotate(90deg);
+}
+.ar-acc-body {
+  padding: 0 var(--ar-space-3) var(--ar-space-3);
+}
+
 /* ============ 10 filters ============ */
 /* The Filters pane (Task 12): POPULATION header + live count, preset
    buttons, builder rows. */

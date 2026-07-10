@@ -402,3 +402,53 @@
     )
   )
 }
+
+#' A fold/unfold inspector-pane section: a native `<details>`/`<summary>`
+#' accordion, no JS library. Mirrors `.opt_section()`'s elision (NULL/empty
+#' body collapses to NULL) so it drops into the same call sites.
+#'
+#' The summary row packs an optional soft-tinted icon chip, the uppercase
+#' `.ar-label`, an optional muted count chip, a flex spacer, an optional
+#' pre-built help tag (e.g. Task 10's `.help_icon()`), and a trailing chevron
+#' that rotates on `[open]` (CSS).
+#' @param label *Section heading.* `<character(1)>: required`.
+#' @param body *Section content.* A tag, or a list of tags/`NULL` (elided).
+#' @param icon *Leading chip icon name (see `.fa_names`), `| NULL`.*
+#' @param open *Start expanded.* `<logical(1)> default TRUE`.
+#' @param help *A pre-built help tag slotted before the chevron, `| NULL`.*
+#' @param count *A muted mono count/summary chip, `| NULL`.*
+#' @noRd
+.accordion_section <- function(
+  label,
+  body,
+  icon = NULL,
+  open = TRUE,
+  help = NULL,
+  count = NULL
+) {
+  body <- Filter(Negate(is.null), if (is.list(body)) body else list(body))
+  if (length(body) == 0L) {
+    return(NULL)
+  }
+  args <- list(
+    class = "ar-acc",
+    shiny::tags$summary(
+      class = "ar-acc-head",
+      if (!is.null(icon)) {
+        shiny::tags$span(class = "ar-acc-chip", .icon(icon, 13))
+      },
+      shiny::tags$span(class = "ar-label ar-acc-label", label),
+      if (!is.null(count)) {
+        shiny::tags$span(class = "ar-acc-count ar-mono", count)
+      },
+      shiny::tags$span(class = "ar-bar-spacer"),
+      help,
+      .icon("chevron_right", 12)
+    ),
+    shiny::tags$div(class = "ar-acc-body", body)
+  )
+  if (isTRUE(open)) {
+    args$open <- NA
+  }
+  do.call(shiny::tags$details, args)
+}
