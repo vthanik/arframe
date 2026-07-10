@@ -152,6 +152,16 @@
   )
   arpillar::report_to_json(report, path = file.path(dir, "report.json"))
 
+  # Prune stale RTFs -- a rename/re-slug or a removed output leaves the OLD
+  # file behind otherwise. Prune against the EXPECTED set (every current
+  # output's slug, ready or not), never against what THIS pass rendered: a
+  # per-output render failure, or an output currently draft/error, must keep
+  # its last-known-good RTF ("the last render IS the record"), not lose it to
+  # the prune. Only a renamed-away or deleted output loses its file.
+  expected <- paste0(unname(slugs), ".rtf")
+  stale <- setdiff(list.files(out_dir, pattern = "\\.rtf$"), expected)
+  unlink(file.path(out_dir, stale))
+
   manifest <- if (length(rows) > 0L) {
     m <- do.call(rbind, rows)
     m$timestamp <- stamp

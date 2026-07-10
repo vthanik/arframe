@@ -131,3 +131,50 @@ test_that(".build_export_package(rendered=) assembles the tree from pre-rendered
   expect_true(file.exists(file.path(dir, "programs", "run-all.R")))
   expect_true(file.exists(file.path(dir, "report.json")))
 })
+
+test_that(".build_export_package(rendered=) prunes stale RTFs against the current slug set, not this pass's render", {
+  f <- .async_fixture()
+  withr::defer(arpillar::engine_close(f$con))
+  report <- shiny::isolate(f$store$rv$report)
+  dir <- withr::local_tempdir()
+  out_dir <- file.path(dir, "outputs")
+  dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+
+  names_map <- .export_names(report)
+
+  # A completely unclaimed file (a renamed/deleted output's leftover) --
+  # must be pruned.
+  writeLines("{\\rtf1}", file.path(out_dir, "stale-name.rtf"))
+
+  # id1's last-known-good render already on disk, but id1's render FAILS
+  # this pass (absent from `rendered`) -- its file must survive, since id1
+  # is still a current output (fail loud on render, never on disk state).
+  writeLines("{\\rtf1 old}", file.path(out_dir, names_map[[f$id1]]))
+
+  # id2 renders successfully this pass.
+  p2 <- file.path(out_dir, names_map[[f$id2]])
+  writeLines("{\\rtf1 new}", p2)
+  rendered <- stats::setNames(list(p2), f$id2)
+
+  res <- shiny::isolate(
+    .build_export_package(
+      f$store,
+      dir,
+      stamp = "2026-07-02T00:00:00",
+      rendered = rendered
+    )
+  )
+
+  # id2 ready; id1 reported as an error (ready status, but not rendered
+  # this pass) -- yet its RTF is not deleted.
+  expect_setequal(res$ready, f$id2)
+  expect_setequal(res$skipped, f$id1)
+
+  rtfs <- list.files(out_dir, pattern = "\\.rtf$")
+  expect_setequal(rtfs, unname(unlist(names_map)))
+  expect_false("stale-name.rtf" %in% rtfs)
+  expect_identical(
+    readLines(file.path(out_dir, names_map[[f$id1]]), warn = FALSE),
+    "{\\rtf1 old}"
+  )
+})
