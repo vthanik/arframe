@@ -75,19 +75,29 @@ test_that("title-section edits commit number, label word, and title props", {
   withr::defer(arpillar::engine_close(fx$con))
 
   shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
-    session$setInputs(number = "14.9.9")
+    session$setInputs(
+      title_edit = list(field = "number", value = "14.9.9", nonce = 1)
+    )
     expect_identical(
       shiny::isolate(selected_object(store))@options$number,
       "14.9.9"
     )
 
-    session$setInputs(number_label = "Listing")
+    session$setInputs(
+      title_edit = list(field = "number_label", value = "Listing", nonce = 2)
+    )
     expect_identical(
       shiny::isolate(selected_object(store))@options$number_label,
       "Listing"
     )
 
-    session$setInputs(title = "Baseline Characteristics")
+    session$setInputs(
+      title_edit = list(
+        field = "title",
+        value = "Baseline Characteristics",
+        nonce = 3
+      )
+    )
     expect_identical(
       shiny::isolate(selected_object(store))@title,
       "Baseline Characteristics"
@@ -95,18 +105,38 @@ test_that("title-section edits commit number, label word, and title props", {
   })
 })
 
-test_that("an identical value never commits (no undo churn on input seeding)", {
+test_that("an identical value never commits (no undo churn on repost)", {
   fx <- .mco_demo_store()
   withr::defer(arpillar::engine_close(fx$con))
 
   shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
     current <- shiny::isolate(selected_object(store))@title
     depth <- length(store$undo$stack)
-    # A dynamically-rendered input posts its seeded value on bind; that
-    # first post must not push an undo entry or flip the dirty flag.
-    session$setInputs(title = current)
+    session$setInputs(
+      title_edit = list(field = "title", value = current, nonce = 1)
+    )
     expect_length(store$undo$stack, depth)
   })
+})
+
+test_that("title inputs are id-less: no Shiny id to replay across a drill switch", {
+  # Regression (2026-07-10): shiny::textInput(ns('title'))/ns('number')
+  # replayed the PREVIOUS output's values onto a newly drilled output on
+  # rebind, overwriting its title/number. The section must render native
+  # inputs with NO id -- commits ride the shared `title_edit` post only.
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  obj <- arpillar::object(
+    id = "o1",
+    type = "listing",
+    dataset = "ADSL",
+    title = "A Listing"
+  )
+  html <- as.character(.opt_title_section(shiny::NS("card-options"), obj))
+  expect_no_match(html, 'id="card-options-title"', fixed = TRUE)
+  expect_no_match(html, 'id="card-options-number"', fixed = TRUE)
+  expect_no_match(html, 'id="card-options-number_label"', fixed = TRUE)
+  expect_match(html, "title_edit", fixed = TRUE)
 })
 
 # ---- option rows: render --------------------------------------------------

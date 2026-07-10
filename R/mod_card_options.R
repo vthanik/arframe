@@ -585,31 +585,53 @@
   } else {
     character(0)
   }
+  # Number / label / title are ID-LESS native inputs posting one shared
+  # `title_edit {field, value, nonce}` on blur/change -- a real Shiny id
+  # here replays the PREVIOUS output's values on rebind when the drill
+  # switches outputs, silently overwriting the new output's title/number
+  # (observed data-loss bug, 2026-07-10). The onchange idiom posts only
+  # on a real user edit, so there is nothing to replay.
+  edit_js <- function(field) {
+    sprintf(
+      "Shiny.setInputValue('%s', {field: '%s', value: this.value, nonce: Date.now()}, {priority: 'event'})",
+      ns("title_edit"),
+      field
+    )
+  }
+  sel_label <- if (current_label %in% labels) current_label else "Table"
   .opt_section(
     "TITLE",
     list(
       shiny::tags$div(
         class = "ar-opt-number ar-mono",
-        shiny::selectInput(
-          ns("number_label"),
-          label = NULL,
-          choices = labels,
-          selected = if (current_label %in% labels) current_label else "Table",
-          selectize = FALSE,
-          width = "90px"
+        shiny::tags$select(
+          class = "ar-lst-glue-sel ar-opt-labelword",
+          `aria-label` = "Number label word",
+          onchange = edit_js("number_label"),
+          lapply(labels, function(l) {
+            shiny::tags$option(
+              value = l,
+              selected = if (identical(l, sel_label)) "selected",
+              l
+            )
+          })
         ),
-        shiny::textInput(
-          ns("number"),
-          label = NULL,
+        shiny::tags$input(
+          type = "text",
+          class = "ar-fn-input ar-mono",
           value = object@options[["number"]] %||% "",
-          placeholder = "14.1.1"
+          placeholder = "14.1.1",
+          `aria-label` = "TLF number",
+          onchange = edit_js("number")
         )
       ),
-      shiny::textInput(
-        ns("title"),
-        label = NULL,
+      shiny::tags$input(
+        type = "text",
+        class = "ar-fn-input ar-opt-title-in",
         value = object@title,
-        placeholder = "Output title"
+        placeholder = "Output title",
+        `aria-label` = "Output title",
+        onchange = edit_js("title")
       ),
       lapply(seq_along(extra), function(i) {
         edit_js <- sprintf(
@@ -1301,50 +1323,52 @@ mod_card_options_server <- function(id, store) {
     .listing_option_observers(input, output, session, store, pane_redraw)
 
     # ---- title section commits ----
-    shiny::observeEvent(input$title, {
+    # One shared id-less post for number / label word / title (see
+    # .opt_title_section: a real Shiny id replays stale values across a
+    # drill switch). An identical value is still a no-op.
+    shiny::observeEvent(input$title_edit, {
       obj <- selected_object(store)
-      if (is.null(obj) || identical(input$title, obj@title)) {
+      field <- as.character(input$title_edit$field %||% "")
+      if (is.null(obj) || !field %in% c("title", "number", "number_label")) {
         return()
       }
-      val <- input$title
-      update_object(
-        store,
-        obj@id,
-        function(o) S7::set_props(o, title = val),
-        label = "retitle output"
-      )
-    })
-
-    shiny::observeEvent(input$number, {
-      obj <- selected_object(store)
-      if (is.null(obj)) {
+      val <- as.character(input$title_edit$value %||% "")
+      if (identical(field, "title")) {
+        if (identical(val, obj@title)) {
+          return()
+        }
+        update_object(
+          store,
+          obj@id,
+          function(o) S7::set_props(o, title = val),
+          label = "retitle output"
+        )
         return()
       }
-      val <- trimws(input$number)
-      value <- if (nzchar(val)) val else NULL
-      if (identical(value, obj@options[["number"]])) {
+      if (identical(field, "number")) {
+        val <- trimws(val)
+        value <- if (nzchar(val)) val else NULL
+        if (identical(value, obj@options[["number"]])) {
+          return()
+        }
+        update_object(
+          store,
+          obj@id,
+          function(o) {
+            opts <- o@options
+            opts$number <- value
+            S7::set_props(o, options = opts)
+          },
+          label = "renumber output"
+        )
         return()
       }
-      update_object(
-        store,
-        obj@id,
-        function(o) {
-          opts <- o@options
-          opts$number <- value
-          S7::set_props(o, options = opts)
-        },
-        label = "renumber output"
-      )
-    })
-
-    shiny::observeEvent(input$number_label, {
-      obj <- selected_object(store)
       if (
-        is.null(obj) || identical(input$number_label, obj@options$number_label)
+        !val %in% c("Table", "Figure", "Listing") ||
+          identical(val, obj@options$number_label)
       ) {
         return()
       }
-      val <- input$number_label
       update_object(
         store,
         obj@id,
@@ -1365,7 +1389,9 @@ mod_card_options_server <- function(id, store) {
         identical(store$rv$region, "title") &&
           identical(store$rv$insp_tab, "options")
       ) {
-        session$sendCustomMessage("ar-focus", list(id = ns("title")))
+        # The Title input is deliberately id-less (see .opt_title_section);
+        # focus it by class instead.
+        session$sendCustomMessage("ar-focus", list(sel = ".ar-opt-title-in"))
       }
     }) |>
       shiny::bindEvent(store$rv$region, store$rv$insp_tab)

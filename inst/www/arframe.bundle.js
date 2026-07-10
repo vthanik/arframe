@@ -39,7 +39,7 @@
     });
   });
   Shiny.addCustomMessageHandler("ar-focus", function(m3) {
-    var el = document.getElementById(m3.id);
+    var el = m3.sel ? document.querySelector(m3.sel) : document.getElementById(m3.id);
     if (el) {
       el.scrollIntoView({ block: "nearest" });
       el.focus();

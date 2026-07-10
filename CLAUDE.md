@@ -260,6 +260,17 @@ page, proof-stamp statuses, and a summonable/pinnable galley card. The deliverab
 
 ## Working conventions (arframe-specific)
 
+- **Per-object inspector controls are ID-LESS `onchange` posts, never raw
+  Shiny inputs (2026-07-10, data-loss bug).** A `shiny::textInput`/
+  `selectInput` with a real id inside the per-object Options pane replays
+  its stale value across a drill switch on rebind — the PREVIOUS output's
+  title/number overwrote the newly drilled output's (observed twice, real
+  pilot data). Every value-carrying control renders as a native
+  `<input>`/`<select>` with NO id whose `onchange` posts
+  `{field, value, nonce}` to one shared observer (the `cell_edit` /
+  `title_edit` / `stk_field` idiom). Remaining known exception: the
+  TRANSPOSE `tr_param`/`tr_value`/`tr_agg` selects (same class, unfixed —
+  guarded only by identical-value no-ops).
 - **`arframe()` is the only export**; everything else is internal (`@noRd`). ONE
   injected structured store is the sole inter-module channel; ALL draft/edit
   state lives in the store, never in the DOM (the audit's top data-loss risk).

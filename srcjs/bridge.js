@@ -65,7 +65,7 @@ Shiny.addCustomMessageHandler("ar-loc-select", function (m) {
 });
 
 Shiny.addCustomMessageHandler("ar-focus", function (m) {
-  var el = document.getElementById(m.id);
+  var el = m.sel ? document.querySelector(m.sel) : document.getElementById(m.id);
   if (el) {
     el.scrollIntoView({ block: "nearest" });
     el.focus();
