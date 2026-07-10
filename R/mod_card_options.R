@@ -541,28 +541,12 @@
 
 # ---- sections ---------------------------------------------------------
 
-#' One pane section: micro-label + content rows, with an optional pre-built
-#' `help` tag (Task 10's `.help_icon()`) pinned to the right of the label.
+#' One pane section: a fold/unfold accordion (`.accordion_section()`) around
+#' the content rows, with an optional pre-built `help` tag (Task 10's
+#' `.help_icon()`) and an optional leading icon in the summary.
 #' @noRd
-.opt_section <- function(label, rows, help = NULL) {
-  rows <- Filter(Negate(is.null), rows)
-  if (length(rows) == 0L) {
-    return(NULL)
-  }
-  head <- if (is.null(help)) {
-    shiny::tags$span(class = "ar-label ar-opt-sec-label", label)
-  } else {
-    shiny::tags$div(
-      class = "ar-opt-sec-head",
-      shiny::tags$span(class = "ar-label ar-opt-sec-label", label),
-      help
-    )
-  }
-  shiny::tags$div(
-    class = "ar-opt-sec",
-    head,
-    rows
-  )
+.opt_section <- function(label, rows, help = NULL, icon = NULL) {
+  .accordion_section(label, rows, icon = icon, help = help)
 }
 
 #' The TITLE section: number + label word (both editable, addendum

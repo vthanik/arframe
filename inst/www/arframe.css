@@ -2858,28 +2858,14 @@ select.ar-input-flat {
 }
 
 /* ============ 09 options ============ */
-/* The Options pane (Task 11): TITLE / FOOTNOTES / schema-row sections.
-   Option-value controls stay quiet -- mono where the value is data-like
-   (number, levels), the same input chrome as the rest of the card. */
-.ar-opt-sec {
-  margin-bottom: var(--ar-space-3);
-  display: flex;
-  flex-direction: column;
-  gap: var(--ar-space-1);
-}
-/* Filled band so each section header reads as a header, not another
-   option row. Applies to every inspector-pane section label:
-   Options   -- TITLE, FOOTNOTES, ROWS, COLUMNS, PAGE & OUTPUT, ...
-   Roles     -- SOURCE, TREATMENT ARMS, SUMMARIZE, ...
-   Filters   -- POPULATION, ...
-   Ranks     -- ORDER, HIERARCHY, ...
-   `.ar-role-src` (the top SOURCE line) is banded as a whole -- it's not
-   just a label, it packs {SOURCE, ADSL, kind, dims}.
-   `<legend>` in the roles pane defaults to intrinsic content-width even
-   with `display: block`; force it to 100% + box-sizing so the band
-   full-bleeds across the pane regardless of drag-resize width. */
-.ar-opt-sec-label,
-.ar-insp-pane legend.ar-label,
+/* The Options pane (Task 11): TITLE / FOOTNOTES / schema-row sections, each
+   an accordion (`.ar-acc`, see the atom's own CSS below) rather than a
+   bespoke banded header -- the accordion summary now carries every
+   inspector-pane section label (Options, Roles, Filters). Option-value
+   controls stay quiet -- mono where the value is data-like (number,
+   levels), the same input chrome as the rest of the card.
+   `.ar-role-src` (the Roles pane's top SOURCE line) keeps its own banded
+   look -- it packs {SOURCE, ADSL, kind, dims}, not a section label. */
 .ar-insp-pane > .ar-label,
 .ar-insp-pane .ar-role-src {
   display: flex;
@@ -2893,31 +2879,6 @@ select.ar-input-flat {
   margin: 0 calc(-1 * var(--ar-space-3)) 4px;
   border-top: 0;
   border-bottom: 0;
-}
-/* Legend needs width:100% AND float:none to actually stretch. */
-.ar-insp-pane legend.ar-label {
-  width: calc(100% + var(--ar-space-3) * 2);
-  float: none;
-}
-.ar-opt-sec .form-group,
-.ar-opt-sec .shiny-input-container {
-  margin-bottom: 0;
-  width: 100%;
-}
-.ar-opt-sec input[type="text"],
-.ar-opt-sec select {
-  width: 100%;
-  border: 1px solid var(--ar-rule);
-  border-radius: var(--ar-radius);
-  background: var(--ar-paper);
-  color: var(--ar-ink);
-  font-size: 12px;
-  padding: 5px 8px;
-}
-.ar-opt-sec input[type="text"]:focus,
-.ar-opt-sec select:focus {
-  outline: none;
-  border-color: var(--ar-accent);
 }
 
 /* -- TITLE: [label-word select | number input] over the title line -- */
@@ -3425,17 +3386,22 @@ select.ar-input-flat {
 }
 .ar-acc-body {
   padding: 0 var(--ar-space-3) var(--ar-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ar-space-1);
+}
+/* A real Shiny input (e.g. the Listing TRANSPOSE selects) inside an
+   accordion body loses its bootstrap form-group's default vertical
+   rhythm -- the section already spaces rows via the flex gap above. */
+.ar-acc-body .form-group,
+.ar-acc-body .shiny-input-container {
+  margin-bottom: 0;
+  width: 100%;
 }
 
 /* ============ 10 filters ============ */
 /* The Filters pane (Task 12): POPULATION header + live count, preset
    buttons, builder rows. */
-.ar-flt-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: var(--ar-space-1);
-}
 .ar-flt-count {
   font-size: 10.5px;
   color: var(--ar-ink-4);
@@ -3467,9 +3433,6 @@ select.ar-input-flat {
   font-weight: 500;
 }
 /* -- predicate chips (2026-07-04): one compact chip per draft row -- */
-.ar-flt-sec {
-  margin: var(--ar-space-2) 0 var(--ar-space-1);
-}
 .ar-flt-chips {
   display: flex;
   flex-wrap: wrap;
@@ -4199,19 +4162,6 @@ select.ar-input-flat {
   border-color: var(--ar-accent);
   background: var(--ar-accent-weaker);
   outline: none;
-}
-
-/* The Options section header when it carries a help icon: label left, icon
-   pinned right. Filters mirrors it with `.ar-flt-sec-head`. */
-.ar-opt-sec-head,
-.ar-flt-sec-head {
-  display: flex;
-  align-items: center;
-  gap: var(--ar-space-2);
-}
-.ar-opt-sec-head .ar-opt-sec-label,
-.ar-flt-sec-head .ar-flt-sec {
-  flex: 1 1 auto;
 }
 
 /* Per-output statistics override status (was `.ar-opt-hint`, renamed so no

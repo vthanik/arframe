@@ -728,13 +728,16 @@
   sprintf("%d\u2013%d", slot$min, slot$max)
 }
 
-#' One slot's whole fieldset: legend (the slot label + the cardinality
-#' hint), assigned rows (sortable when `max > 1`, each with its peek
-#' panel), the "+ Add variable" picker row, and an inline
-#' `validate_output` message when this slot's control_id is among the
-#' object's unmet requirements (message text IDENTICAL to the oracle's own
-#' -- never reworded, so the ghost hint, the error summary, and this
-#' inline message always agree).
+#' One slot's whole section: an accordion (`.accordion_section()`) whose
+#' summary carries the slot label + the cardinality hint + the shared Roles
+#' help icon, wrapping a `<fieldset>` (kept for a11y -- assistive tech still
+#' groups the assigned rows/picker under a `<legend>`, now visually hidden
+#' since the visible label lives in the accordion summary instead). Body:
+#' assigned rows (sortable when `max > 1`, each with its peek panel), the
+#' "+ Add variable" picker row, and an inline `validate_output` message when
+#' this slot's control_id is among the object's unmet requirements (message
+#' text IDENTICAL to the oracle's own -- never reworded, so the ghost hint,
+#' the error summary, and this inline message always agree).
 #' @noRd
 .slot_fieldset <- function(store, ns, object, slot, problems, items_meta) {
   role <- .role_for_slot(object, slot$slot)
@@ -757,46 +760,47 @@
 
   problem <- problems[[slot$slot]]
 
-  shiny::tags$fieldset(
-    class = "ar-role-slot",
-    shiny::tags$legend(
-      class = "ar-label",
-      slot$label,
-      shiny::tags$span(class = "ar-role-card-hint", .cardinality_hint(slot))
-    ),
-    # The generator's own slot hint (arpillar `.SLOT(hint=)`) was shown here
-    # as inline gray text; the Roles help topic (the section `?` icon, wired
-    # with the accordion in the follow-up task) now carries the slot guidance.
-    do.call(
-      shiny::tags$div,
-      c(
-        list(class = "ar-role-assigned"),
-        sortable_attrs,
-        lapply(items, function(it) {
-          .assigned_row(
-            store,
-            ns,
-            object,
-            slot,
-            it,
-            multi,
-            .item_meta_row(items_meta, it@name)
-          )
-        })
-      )
-    ),
-    .eligible_picker(
-      ns,
-      paste0("add_", slot$slot),
-      .eligible_items(items_meta, slot, assigned_names)
-    ),
-    if (!is.null(problem)) {
-      shiny::tags$p(
-        class = "ar-role-problem ar-mono",
-        .icon("warn", 11),
-        shiny::span(problem)
-      )
-    }
+  .accordion_section(
+    slot$label,
+    help = .help_icon(ns, "roles"),
+    count = .cardinality_hint(slot),
+    body = list(shiny::tags$fieldset(
+      class = "ar-role-slot",
+      shiny::tags$legend(class = "visually-hidden", slot$label),
+      # The generator's own slot hint (arpillar `.SLOT(hint=)`) was shown here
+      # as inline gray text; the Roles help topic (the accordion's `?` icon)
+      # now carries the slot guidance.
+      do.call(
+        shiny::tags$div,
+        c(
+          list(class = "ar-role-assigned"),
+          sortable_attrs,
+          lapply(items, function(it) {
+            .assigned_row(
+              store,
+              ns,
+              object,
+              slot,
+              it,
+              multi,
+              .item_meta_row(items_meta, it@name)
+            )
+          })
+        )
+      ),
+      .eligible_picker(
+        ns,
+        paste0("add_", slot$slot),
+        .eligible_items(items_meta, slot, assigned_names)
+      ),
+      if (!is.null(problem)) {
+        shiny::tags$p(
+          class = "ar-role-problem ar-mono",
+          .icon("warn", 11),
+          shiny::span(problem)
+        )
+      }
+    ))
   )
 }
 

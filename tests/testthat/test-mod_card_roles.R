@@ -105,6 +105,27 @@ test_that("mod_card_roles_server: the slots pane renders without a region focus"
   })
 })
 
+# ---- accordion sections (Task 11) ------------------------------------------
+
+test_that("each role slot renders as a default-open accordion, legend visually hidden", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  id <- shiny::isolate(add_from_preset(store, "demographics", "ADSL"))
+  shiny::isolate(store$rv$selected <- id)
+
+  shiny::testServer(mod_card_roles_server, args = list(store = store), {
+    session$flushReact()
+    html <- output$slots$html
+    expect_match(html, '<details class="ar-acc" open', fixed = TRUE)
+    # The fieldset survives INSIDE the accordion body, its legend kept for
+    # assistive tech but visually hidden (the visible label moved to the
+    # accordion summary).
+    expect_match(html, "<fieldset", fixed = TRUE)
+    expect_match(html, '<legend class="visually-hidden">', fixed = TRUE)
+  })
+})
+
 # ---- stage-9 depth: digest, source row, labels, peek, relabel, retype ------
 
 .mcr_store <- function() {

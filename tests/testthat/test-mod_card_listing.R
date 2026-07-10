@@ -43,6 +43,9 @@ test_that(".opt_listing_sections: NULL for a summary, three sections for a listi
   expect_no_match(html, "VALUE LEGENDS", fixed = TRUE)
   expect_match(html, "Add a sort key", fixed = TRUE)
   expect_match(html, "On duplicates", fixed = TRUE)
+  # Each section is a default-open accordion (Task 11): SORT, TRANSPOSE,
+  # STACKED COLUMNS.
+  expect_length(gregexpr('<details class="ar-acc" open', html)[[1]], 3L)
 })
 
 test_that("transpose and stack pickers offer only the selected variables", {

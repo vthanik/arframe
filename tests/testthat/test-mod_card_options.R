@@ -139,6 +139,23 @@ test_that("title inputs are id-less: no Shiny id to replay across a drill switch
   expect_match(html, "title_edit", fixed = TRUE)
 })
 
+# ---- accordion sections (Task 11) ------------------------------------------
+
+test_that("every Options section renders as a default-open accordion", {
+  fx <- .mco_demo_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
+    session$flushReact()
+    html <- output$pane$html
+    expect_match(html, "<details", fixed = TRUE)
+    expect_match(html, 'class="ar-acc"', fixed = TRUE)
+    # Every section is open by default -- native <details open>.
+    expect_no_match(html, "<details class=\"ar-acc\">")
+    expect_match(html, '<details class="ar-acc" open', fixed = TRUE)
+  })
+})
+
 # ---- option rows: render --------------------------------------------------
 
 test_that("demographics renders exactly the decimals row (summary schema)", {

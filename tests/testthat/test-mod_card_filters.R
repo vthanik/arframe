@@ -59,6 +59,22 @@ test_that(".filter_complete mirrors the engine's compilability rules", {
   expect_false(.filter_complete(list(column = "AGE", op = ">")))
 })
 
+# ---- accordion sections (Task 11) ------------------------------------------
+
+test_that("POPULATION and FILTERS render as two default-open accordion sections", {
+  fx <- .mcf_store()
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_filters_server, args = list(store = fx$store), {
+    session$flushReact()
+    html <- output$pane$html
+    expect_match(html, ">POPULATION<", fixed = TRUE)
+    expect_match(html, ">FILTERS<", fixed = TRUE)
+    # Two accordion roots, both open by default.
+    expect_length(gregexpr('<details class="ar-acc" open', html)[[1]], 2L)
+  })
+})
+
 # ---- presets ---------------------------------------------------------------
 
 test_that("POPULATION chips come from Setup's analysis sets, not dataset flags", {

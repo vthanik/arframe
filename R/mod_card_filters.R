@@ -487,72 +487,70 @@ mod_card_filters_server <- function(id, store) {
         }
       }
       shiny::tagList(
-        shiny::tags$div(
-          class = "ar-flt-head",
-          shiny::tags$span(class = "ar-label", "POPULATION"),
-          shiny::uiOutput(ns("count"), inline = TRUE),
-          shiny::tags$span(class = "ar-bar-spacer"),
-          .help_icon(ns, "population")
-        ),
-        do.call(
-          shiny::tags$div,
-          c(
-            list(class = "ar-flt-presets"),
-            if (length(pops) == 0L) {
-              list(shiny::tags$p(
-                class = "ar-insp-directive",
-                "Define analysis sets in Setup > Analysis sets."
-              ))
-            } else {
-              lapply(names(pops), function(pid) {
-                on <- identical(pid, cur_pop)
-                js <- sprintf(
-                  "Shiny.setInputValue('%s', {id: '%s', nonce: Date.now()}, {priority: 'event'})",
-                  ns("pick_population"),
-                  pid
-                )
-                shiny::tags$button(
-                  type = "button",
-                  class = paste0(
-                    "ar-flt-preset btn btn-default action-button",
-                    if (on) " ar-flt-preset-on"
-                  ),
-                  onclick = js,
-                  if (on) .icon("check", 10),
-                  pops[[pid]]$label %||% pid
-                )
-              })
-            }
-          )
-        ),
-        shiny::tags$div(
-          class = "ar-flt-sec-head",
-          shiny::tags$span(class = "ar-label ar-flt-sec", "FILTERS"),
-          shiny::tags$span(class = "ar-bar-spacer"),
-          .help_icon(ns, "filters")
-        ),
-        do.call(
-          shiny::tags$div,
-          c(
-            list(class = "ar-flt-chips"),
-            lapply(seq_along(draft), function(i) {
-              .flt_chip(ns, i, draft[[i]], open = identical(open_i, i))
-            }),
-            list(
-              if (length(draft) < .FILTER_MAX_ROWS) {
-                .action_btn(
-                  ns("f_add"),
-                  shiny::tagList(.icon("plus", 10), "Filter"),
-                  variant = "link",
-                  class = "ar-flt-add"
-                )
+        .accordion_section(
+          "POPULATION",
+          help = .help_icon(ns, "population"),
+          count = shiny::uiOutput(ns("count"), inline = TRUE),
+          body = list(do.call(
+            shiny::tags$div,
+            c(
+              list(class = "ar-flt-presets"),
+              if (length(pops) == 0L) {
+                list(shiny::tags$p(
+                  class = "ar-insp-directive",
+                  "Define analysis sets in Setup > Analysis sets."
+                ))
+              } else {
+                lapply(names(pops), function(pid) {
+                  on <- identical(pid, cur_pop)
+                  js <- sprintf(
+                    "Shiny.setInputValue('%s', {id: '%s', nonce: Date.now()}, {priority: 'event'})",
+                    ns("pick_population"),
+                    pid
+                  )
+                  shiny::tags$button(
+                    type = "button",
+                    class = paste0(
+                      "ar-flt-preset btn btn-default action-button",
+                      if (on) " ar-flt-preset-on"
+                    ),
+                    onclick = js,
+                    if (on) .icon("check", 10),
+                    pops[[pid]]$label %||% pid
+                  )
+                })
               }
             )
-          )
+          ))
         ),
-        if (!is.null(open_i)) {
-          .flt_editor(store$con, ns, items, draft[[open_i]], obj@dataset)
-        }
+        .accordion_section(
+          "FILTERS",
+          help = .help_icon(ns, "filters"),
+          body = list(
+            do.call(
+              shiny::tags$div,
+              c(
+                list(class = "ar-flt-chips"),
+                lapply(seq_along(draft), function(i) {
+                  .flt_chip(ns, i, draft[[i]], open = identical(open_i, i))
+                }),
+                list(
+                  if (length(draft) < .FILTER_MAX_ROWS) {
+                    .action_btn(
+                      ns("f_add"),
+                      shiny::tagList(.icon("plus", 10), "Filter"),
+                      variant = "link",
+                      class = "ar-flt-add"
+                    )
+                  }
+                )
+              )
+            ),
+            if (!is.null(open_i)) {
+              .flt_editor(store$con, ns, items, draft[[open_i]], obj@dataset)
+            }
+          )
+        )
       )
     }) |>
       shiny::bindEvent(
