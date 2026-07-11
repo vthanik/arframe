@@ -447,7 +447,17 @@
     downlit::highlight(script, classes = downlit::classes_pandoc()),
     error = function(e) NA_character_
   )
-  if (is.na(out)) as.character(htmltools::htmlEscape(script)) else out
+  if (is.na(out)) {
+    return(as.character(htmltools::htmlEscape(script)))
+  }
+  # downlit's doc links carry no target, so a click navigates the whole
+  # Shiny tab away and drops session state; force them into a new tab.
+  gsub(
+    "<a href=",
+    "<a target=\"_blank\" rel=\"noopener\" href=",
+    out,
+    fixed = TRUE
+  )
 }
 
 # ---- stale notice (run semantics, decision #8) ----------------------------

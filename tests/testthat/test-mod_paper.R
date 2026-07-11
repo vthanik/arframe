@@ -1019,6 +1019,17 @@ test_that(".code_html highlights via downlit with textContent parity", {
   expect_identical(.strip_html(html), script)
 })
 
+test_that(".code_html opens downlit doc links in a new tab", {
+  script <- "library(arpillar)"
+  html <- arframe:::.code_html(script)
+  expect_match(
+    html,
+    "<a target=\"_blank\" rel=\"noopener\" href=",
+    fixed = TRUE
+  )
+  expect_identical(.strip_html(html), script)
+})
+
 test_that(".code_html falls back to escaped text when highlighting fails", {
   bad <- "x <- ("
   expect_identical(

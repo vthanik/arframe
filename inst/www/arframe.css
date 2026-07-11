@@ -1655,6 +1655,8 @@ select.ar-input-flat {
 .ar-code-body .va {
   color: var(--ar-ink-2);
 }
+/* target="_blank" is injected by .code_html() (mod_paper.R), not by
+   downlit -- its <a> markup carries no target on its own. */
 .ar-code-body a {
   color: inherit;
   text-decoration: none;
