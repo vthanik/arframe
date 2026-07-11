@@ -186,7 +186,7 @@
     return(invisible(NULL))
   }
   paths <- store$rv$report@theme$paths %||% list()
-  out_dir <- paths$output_rtf_dir %||% "./output/"
+  out_dir <- .path_or_default(paths$output_rtf_dir, "./output/")
   if (!.is_absolute_path(out_dir)) {
     out_dir <- file.path(store$rv$path, sub("^\\./", "", out_dir))
   }

@@ -133,7 +133,7 @@ save_touched <- function(store) {
     return(invisible(NULL))
   }
   paths <- store$rv$report@theme$paths %||% list()
-  prog_dir <- paths$programs_dir %||% "./programs/"
+  prog_dir <- .path_or_default(paths$programs_dir, "./programs/")
   if (!.is_absolute_path(prog_dir)) {
     prog_dir <- file.path(store$rv$path, sub("^\\./", "", prog_dir))
   }
@@ -171,6 +171,21 @@ save_touched <- function(store) {
   stale <- setdiff(list.files(prog_dir, pattern = "\\.R$"), expected)
   unlink(file.path(prog_dir, stale))
   invisible(prog_dir)
+}
+
+#' A Setup > Paths entry, or a default when it is unset OR blank.
+#'
+#' Setup > Paths serialises an empty field as `""` (not NULL), so
+#' `paths$x %||% default` keeps the blank and resolves it against the
+#' project root -- spilling programs / renders into the root instead of
+#' `programs/` / `output/`. Treat a blank string as unset.
+#' @noRd
+.path_or_default <- function(path, default) {
+  if (is.null(path) || !is.character(path) || !nzchar(trimws(path[[1]]))) {
+    default
+  } else {
+    path
+  }
 }
 
 #' TRUE for POSIX absolute paths (`/`), Windows drive paths (`C:\`), and

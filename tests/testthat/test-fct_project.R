@@ -114,6 +114,34 @@ test_that(".emit_programs never prunes the last-known-good program on emit failu
   expect_true("run-all.R" %in% progs)
 })
 
+test_that(".emit_programs falls back to programs/ when programs_dir is blank, not just NULL", {
+  # Setup > Paths writes an EMPTY STRING (not NULL) when the path field is
+  # left at its default. `%||%` only defaults on NULL, so a blank string
+  # must also fall back to ./programs/ -- otherwise the .R programs spill
+  # into the project root and the canonical folder layout breaks.
+  fx <- .demo_project_store()
+  withr::defer(arpillar::engine_close(fx$con))
+  store <- fx$store
+  shiny::isolate({
+    r <- store$rv$report
+    store$rv$report <- S7::set_props(
+      r,
+      theme = modifyList(r@theme, list(paths = list(programs_dir = "")))
+    )
+  })
+
+  shiny::isolate(.emit_programs(store))
+
+  slugs <- shiny::isolate(arpillar::output_slugs(store$rv$report))
+  expect_true(dir.exists(file.path(fx$dir, "programs")))
+  expect_setequal(
+    list.files(file.path(fx$dir, "programs")),
+    c(paste0(unname(slugs), ".R"), "run-all.R")
+  )
+  # No .R spilled into the project root.
+  expect_length(list.files(fx$dir, pattern = "\\.R$"), 0L)
+})
+
 test_that(".emit_programs is a no-op when the store has no project path", {
   con <- .demo_catalog()
   withr::defer(arpillar::engine_close(con))

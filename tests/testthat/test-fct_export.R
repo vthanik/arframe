@@ -183,3 +183,32 @@ test_that("the export click's report renders a self-consistent package, no sourc
     expect_null(obj@options$source)
   }
 })
+
+test_that(".sync_output_dir falls back to output/ when output_rtf_dir is blank, not just NULL", {
+  # Twin of the .emit_programs blank-path bug: Setup > Paths writes "" for an
+  # unset output dir, and `%||%` keeps it -- spilling renders into the project
+  # root instead of ./output/. A blank string must fall back to output/.
+  fx <- .ex_store()
+  withr::defer(arpillar::engine_close(fx$con))
+  store <- fx$store
+  dir <- withr::local_tempdir()
+  shiny::isolate({
+    store$rv$path <- dir
+    r <- store$rv$report
+    store$rv$report <- S7::set_props(
+      r,
+      theme = modifyList(r@theme, list(paths = list(output_rtf_dir = "")))
+    )
+  })
+
+  slugs <- shiny::isolate(arpillar::output_slugs(store$rv$report))
+  slug1 <- slugs[[fx$ready[[1]]]]
+  src <- file.path(withr::local_tempdir(), paste0(slug1, ".rtf"))
+  writeLines("rtf", src)
+
+  shiny::isolate(.sync_output_dir(store, list(src)))
+
+  expect_true(file.exists(file.path(dir, "output", paste0(slug1, ".rtf"))))
+  # No .rtf spilled into the project root.
+  expect_length(list.files(dir, pattern = "\\.rtf$"), 0L)
+})
