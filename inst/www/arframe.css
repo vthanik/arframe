@@ -1948,22 +1948,28 @@ select.ar-input-flat {
   display: inline-flex;
   align-self: flex-start;
   flex-shrink: 0;
+  gap: 2px;
   margin: var(--ar-space-3) var(--ar-space-3) 0;
+  padding: var(--ar-pill-pad);
   border: 1px solid var(--ar-rule);
-  border-radius: var(--ar-radius-pill);
-  background: var(--ar-paper);
-  overflow: hidden;
+  border-radius: var(--ar-pill-radius);
+  background: var(--ar-pill-track);
 }
 .ar-insp-tab {
   background: transparent;
   border: none;
+  border-radius: var(--ar-pill-radius);
   font-size: 12px;
   color: var(--ar-ink-2);
-  padding: 6px 14px;
+  padding: 5px 14px;
   cursor: pointer;
+  transition:
+    background var(--ar-motion-fast) var(--ar-motion-ease),
+    color var(--ar-motion-fast) var(--ar-motion-ease);
 }
 .ar-insp-tab:hover {
   background: var(--ar-chrome);
+  color: var(--ar-ink);
 }
 .ar-insp-tab-roles .ar-insp-tab[data-ar-insp-tab="roles"],
 .ar-insp-tab-options .ar-insp-tab[data-ar-insp-tab="options"],
@@ -3405,10 +3411,10 @@ select.ar-input-flat {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: var(--ar-radius-sm);
-  background: var(--ar-accent-weaker);
+  width: var(--ar-chip-size);
+  height: var(--ar-chip-size);
+  border-radius: var(--ar-chip-radius);
+  background: var(--ar-chip-fill);
   color: var(--ar-accent);
 }
 .ar-acc-label {
@@ -4229,7 +4235,7 @@ select.ar-input-flat {
 .ar-help-modal .modal-content {
   border: none;
   border-radius: var(--ar-radius-lg);
-  box-shadow: 0 16px 48px rgba(27, 31, 35, 0.2);
+  box-shadow: var(--ar-shadow-float);
 }
 .ar-help-modal .modal-body {
   padding: var(--ar-space-5) var(--ar-space-6);

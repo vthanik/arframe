@@ -137,11 +137,32 @@
   --ar-radius-xl: 16px;
   --ar-radius-pill: 999px;
 
+  /* ------------ segmented pill control ------------
+     The reference "All History | Purchase" segmented switch (LUVAL): a
+     rounded-full track with inset padding whose active segment is an
+     individually-rounded filled pill. Shared by the inspector pane
+     strip; consume the tokens, never re-hardcode the track/pad. */
+  --ar-pill-track: var(--ar-paper-2);
+  --ar-pill-pad: 3px;
+  --ar-pill-radius: var(--ar-radius-pill);
+
+  /* ------------ soft-tinted icon chip ------------
+     Standardises the leading-icon chip treatment (accordion headers,
+     pickers, role rows): one size, one neutral fill, one radius. The
+     semantic variable-type chips (char/num/date below) keep their own
+     fg/bg pairs but share this size + radius. */
+  --ar-chip-size: 22px;
+  --ar-chip-radius: var(--ar-radius-sm);
+  --ar-chip-fill: var(--ar-accent-weaker);
+
   /* ------------ elevation (dashboard: cards float) ------------
      Three soft steps on a slate-tinted shadow: card at rest, lift on
-     hover, float for overlays (palette, Add-output dialog, popovers). */
-  --ar-shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04),
-                    0 1px 3px rgba(16, 24, 40, 0.06);
+     hover, float for overlays (palette, Add-output dialog, popovers).
+     The rest card is the reference two-layer pair — a hairline
+     (0 1px 2px) that carries the edge plus a wide diffuse (0 8px 24px)
+     at low alpha that lifts the card off the cool canvas. */
+  --ar-shadow-card: 0 1px 2px rgba(16, 24, 40, 0.05),
+                    0 8px 24px rgba(16, 24, 40, 0.05);
   --ar-shadow-lift: 0 2px 4px rgba(16, 24, 40, 0.04),
                     0 6px 16px rgba(16, 24, 40, 0.10);
   --ar-shadow-float: 0 4px 8px rgba(16, 24, 40, 0.06),
