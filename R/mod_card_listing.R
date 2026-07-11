@@ -1,13 +1,13 @@
 # The listing generator's structured-option editors (Options pane): the
 # listing schema carries three structured kinds the generic schema rows skip
-# -- `sort` (ORDER BY keys), `transpose` (BDS PIVOT), `stacks` (multi-line
+# — `sort` (ORDER BY keys), `transpose` (BDS PIVOT), `stacks` (multi-line
 # glued display columns). Cell recodes live in the Roles LEVELS editor
-# (item @levels -- one place, not two); the decode footnote is the user's
+# (item @levels — one place, not two); the decode footnote is the user's
 # own Footnotes line. Scalar `limit` auto-surfaces through the generic int
 # row; `column_specs$format` edits through the DATE FORMATS section; the
 # other `column_specs` fields / `column_order` have no pane UI yet. Everything here
 # renders the COMMITTED
-# `object@options` (server-authoritative -- the store is the only state
+# `object@options` (server-authoritative — the store is the only state
 # carrier); every dynamic per-row control posts through a SHARED input via
 # an inline `Shiny.setInputValue({i, ..., nonce})` (the `.assigned_row()` /
 # `.toc_kebab()` pattern), never a per-row observer inside a renderUI.
@@ -34,22 +34,46 @@
   suffix = c("none" = "", ")" = ")", "]" = "]", "}" = "}")
 )
 
-# Common date/time formats offered by the DATE FORMATS datalist -- SAS names
+# Common date/time formats offered by the DATE FORMATS datalist, keyed by
+# the column's actual sub-taxonomy so a DATE column only sees date formats,
+# a TIME column only time formats, and a TIMESTAMP column only datetime
+# formats -- a plain date column should never advertise `time8.` (nothing
+# to render) and a time column should never advertise `date9.`. SAS names
 # and picture patterns the engine's `.datetime_strftime()` resolves.
-.FMT_PRESETS <- c(
-  "date9.",
-  "date11.",
-  "yymmdd10.",
-  "mmddyy10.",
-  "ddmmyy10.",
-  "mm/dd/yyyy",
-  "dd-mon-yyyy",
-  "datetime20.",
-  "time8.",
-  "time5."
+.FMT_PRESETS <- list(
+  date = c(
+    "date9.",
+    "date11.",
+    "yymmdd10.",
+    "mmddyy10.",
+    "ddmmyy10.",
+    "mm/dd/yyyy",
+    "dd-mon-yyyy"
+  ),
+  time = c("time8.", "time5."),
+  datetime = c("datetime20.")
 )
 
-#' A committed listing option as a plain list -- `NULL`/non-list reads as
+#' Classify one column's raw DuckDB `sql_type` into `"date"` / `"time"` /
+#' `"datetime"` -- the DATE FORMATS section shows only the presets that
+#' actually render on that column. Anything unrecognised falls back to
+#' `"datetime"` (the widest option set) rather than dropping the row.
+#' @noRd
+.date_subtype <- function(sql_type) {
+  t <- toupper(as.character(sql_type %||% ""))
+  if (grepl("^TIMESTAMP", t)) {
+    return("datetime")
+  }
+  if (grepl("^TIME", t)) {
+    return("time")
+  }
+  if (grepl("^DATE", t)) {
+    return("date")
+  }
+  "datetime"
+}
+
+#' A committed listing option as a plain list — `NULL`/non-list reads as
 #' empty, so every editor renders off one shape.
 #' @noRd
 .listing_opt_list <- function(object, key) {
@@ -58,7 +82,7 @@
 }
 
 #' The items-meta rows for the listing's SELECTED variables (id first,
-#' then the list variables, role order) -- the choice set the transpose
+#' then the list variables, role order) — the choice set the transpose
 #' and stack editors offer, so a pick can only reference a displayed
 #' column. `extra` re-admits a committed value the user has since
 #' deselected, so a stale select still shows it. Sort keys keep the FULL
@@ -81,7 +105,7 @@
 #' A per-row "add variable" picker for the DYNAMIC listing blocks: the
 #' shared chip + name + muted-label render, always empty (it only ADDS).
 #' On pick it posts `{i[, j], value, nonce}` to the SHARED `target_input`
-#' observer and clears -- the row indices are baked in here, so no per-row
+#' observer and clears — the row indices are baked in here, so no per-row
 #' Shiny observer leaks inside the renderUI (the `.rich_picker()` idiom).
 #' @noRd
 .listing_add_picker <- function(
@@ -130,7 +154,7 @@
 
 #' A blur/Enter-commit text field for one DYNAMIC listing row: posts
 #' `{i[, j], field, value, nonce}` to the shared `target_input` on change
-#' -- typing never commits per keystroke, and a plain text commit never
+#' — typing never commits per keystroke, and a plain text commit never
 #' redraws the pane mid-edit (the `.opt_change_input()` contract).
 #' @noRd
 .listing_field_input <- function(
@@ -163,7 +187,7 @@
   )
 }
 
-#' A remove X posting `{i[, j], nonce}` to the shared `target_input` --
+#' A remove X posting `{i[, j], nonce}` to the shared `target_input` —
 #' the same X every assigned row / filter chip wears.
 #' @noRd
 .listing_rm_btn <- function(ns, target_input, i, label, j = NULL) {
@@ -186,7 +210,7 @@
 }
 
 #' An inline "+ <label>" link button posting `{i?, nonce}` to a shared
-#' input (the `span_add` idiom -- plain onclick, no per-block actionButton).
+#' input (the `span_add` idiom — plain onclick, no per-block actionButton).
 #' @noRd
 .listing_add_btn <- function(ns, target_input, label, i = NULL) {
   keys <- if (is.null(i)) "" else sprintf("i: %d, ", as.integer(i))
@@ -240,7 +264,7 @@
 }
 
 #' The SORT section: one row per committed key + a trailing add-picker.
-#' Sort keys may be ANY dataset column (displayed or not) -- the engine's
+#' Sort keys may be ANY dataset column (displayed or not) — the engine's
 #' ORDER BY needs no display presence, so the picker is unfiltered.
 #' @noRd
 .listing_sort_section <- function(ns, object, items) {
@@ -262,7 +286,7 @@
 #' the WHOLE option from the three inputs on every change; the key commits
 #' only while param and value are both set and distinct, else it is absent.
 #' Choices are the SELECTED list variables (id + columns roles), never the
-#' whole dataset -- a transpose can only consume displayed columns.
+#' whole dataset — a transpose can only consume displayed columns.
 #' @noRd
 .listing_transpose_section <- function(ns, object, items) {
   tr <- object@options$transpose
@@ -320,7 +344,7 @@
 
 #' The DATE FORMATS section: one row per SELECTED date/time variable with a
 #' free-text-plus-datalist combo (native `<input list>`) committing
-#' `column_specs[[var]]$format` -- SAS names (date9.), picture patterns
+#' `column_specs[[var]]$format` — SAS names (date9.), picture patterns
 #' (mm/dd/yyyy), or raw strftime, resolved engine-side by
 #' `.datetime_strftime()`. `NULL` when no date variable is selected.
 #' @noRd
@@ -331,6 +355,14 @@
     return(NULL)
   }
   specs <- .listing_opt_list(object, "column_specs")
+  subtype <- vapply(
+    seq_len(nrow(dates)),
+    function(k) .date_subtype(dates$sql_type[[k]]),
+    character(1)
+  )
+  # Placeholder mirrors the row's subtype so an empty field hints at the
+  # right shape (date9. / time8. / datetime20.) rather than always "date9.".
+  placeholders <- c(date = "date9.", time = "time8.", datetime = "datetime20.")
   rows <- lapply(seq_len(nrow(dates)), function(k) {
     nm <- dates$name[[k]]
     js <- sprintf(
@@ -344,24 +376,27 @@
       shiny::tags$input(
         type = "text",
         class = "ar-lst-fmt ar-mono",
-        list = ns("fmt_presets"),
+        list = ns(paste0("fmt_presets_", subtype[[k]])),
         value = as.character(specs[[nm]]$format %||% ""),
-        placeholder = "date9.",
+        placeholder = placeholders[[subtype[[k]]]],
         onchange = js,
         `aria-label` = paste("Display format for", nm)
       )
     )
   })
+  # One datalist per subtype that is actually present -- browsers cache the
+  # first `<datalist>` with a given id, so only emit ones the rows point at.
+  used <- unique(subtype)
+  datalists <- lapply(used, function(sub) {
+    shiny::tags$datalist(
+      id = ns(paste0("fmt_presets_", sub)),
+      lapply(.FMT_PRESETS[[sub]], function(f) shiny::tags$option(value = f))
+    )
+  })
   .opt_section(
     "DATE FORMATS",
     help = .help_icon(ns, "listing_formats"),
-    rows = list(
-      rows,
-      shiny::tags$datalist(
-        id = ns("fmt_presets"),
-        lapply(.FMT_PRESETS, function(f) shiny::tags$option(value = f))
-      )
-    )
+    rows = list(rows, datalists)
   )
 }
 
@@ -370,7 +405,7 @@
 #' One glue select (delim / prefix / suffix) for a stack line: preset
 #' choices, the committed off-list value injected, posting `{i, j, field,
 #' value}` to the SAME shared `stk_entry_field` input the old text fields
-#' used -- the server observer is unchanged.
+#' used — the server observer is unchanged.
 #' @noRd
 .stack_glue_select <- function(ns, i, j, field, value) {
   value <- as.character(value %||% "")
@@ -529,7 +564,7 @@
 
 #' The STACKED COLUMNS section: one block per committed stack + "+ Add
 #' stack". Pickers offer only the SELECTED variables (id + list
-#' variables) -- a stack glues displayed columns, never free text.
+#' variables) — a stack glues displayed columns, never free text.
 #' @noRd
 .listing_stacks_section <- function(ns, object, items) {
   st <- .listing_opt_list(object, "stacks")
@@ -547,7 +582,7 @@
 # ---- entry: sections -------------------------------------------------------
 
 #' The listing structured-option sections (SORT / TRANSPOSE / STACKED
-#' COLUMNS) for the Options pane -- `NULL` for any other generator.
+#' COLUMNS) for the Options pane — `NULL` for any other generator.
 #' Renders the COMMITTED `object@options` every time; no draft state
 #' lives outside the store. Cell recodes live in the Roles LEVELS editor.
 #' @noRd
@@ -568,7 +603,7 @@
 
 #' Commit one listing option key on the SELECTED object: an emptied list
 #' removes the key entirely (the engine's own defaults then apply), and an
-#' identical value is a no-op -- a bind-time repost never pushes an undo
+#' identical value is a no-op — a bind-time repost never pushes an undo
 #' entry. Returns TRUE when a commit landed.
 #' @noRd
 .commit_listing_key <- function(store, obj, key, value, label) {
@@ -594,7 +629,7 @@
 #' Register the listing-option commit observers ONCE (module scope, from
 #' `mod_card_options_server`). Structural commits (row add/remove/toggle,
 #' a var pick) bump `pane_redraw` so the pane
-#' repaints with fresh row keys; plain text-field commits never do --
+#' repaints with fresh row keys; plain text-field commits never do —
 #' typing must not redraw the input mid-edit.
 #' @noRd
 .listing_option_observers <- function(
@@ -604,7 +639,7 @@
   store,
   pane_redraw
 ) {
-  # The selected object, but only when it IS a listing -- every observer
+  # The selected object, but only when it IS a listing — every observer
   # below is inert for any other generator (a stale client post from a
   # previously selected listing never touches a summary's options).
   lst_obj <- function() {
@@ -675,7 +710,7 @@
   # Re-derive the WHOLE option from the three inputs (Shiny holds each
   # select's last post, so a half-built pick needs no store draft):
   # committed only while param and value are both set and DISTINCT, else
-  # the key is absent -- the engine's own completeness rule.
+  # the key is absent — the engine's own completeness rule.
   tr_commit <- function() {
     obj <- lst_obj()
     if (is.null(obj)) {
@@ -770,9 +805,9 @@
       return()
     }
     entries <- if (is.list(st[[i]]$entries)) st[[i]]$entries else list()
-    # An entry with no vars is skipped by the engine -- it exists
+    # An entry with no vars is skipped by the engine — it exists
     # transiently while the user builds the line. No glue is seeded
-    # (2026-07-10 user call): prefix/suffix stay empty until set.
+    # User call: prefix/suffix stay empty until set.
     entries[[length(entries) + 1L]] <- list(vars = character(0))
     st[[i]]$entries <- entries
     .commit_listing_key(store, obj, "stacks", st, "add stack line")
@@ -884,7 +919,7 @@
       return()
     }
     val <- as.character(input$stk_entry_field$value %||% "")
-    # An emptied glue field falls back to the engine default -- keep the
+    # An emptied glue field falls back to the engine default — keep the
     # committed entry minimal (no empty-string keys).
     entries[[j]][[field]] <- if (nzchar(val)) val else NULL
     st[[i]]$entries <- entries
