@@ -110,10 +110,17 @@ page, proof-stamp statuses, and a summonable/pinnable galley card. The deliverab
      icons, proof stamps; chevron-collapsible to a status-dot strip) |
      chrome-free artifact with proofreader **margin-mark** region hit-zones
      bound to tabular's own classes (`.tabular-title`, `thead`, `tbody`,
-     `.tabular-footnote`) | fixed-width docked inspector (Roles / Options /
-     Filters / Ranks tabs; chevron-collapsible to icon strip) with action
-     footer **Run ⌘↵ · .rtf · `</>`** (code view = `arpillar::emit_code()`
-     script, copy + download). Live telemetry line
+     `.tabular-footnote`) | fixed-width docked inspector — a **top segmented
+     pill strip** (Roles / Options / Filters; LUVAL-style rounded track +
+     filled active pill, `.ar-insp-strip`/`.ar-insp-tab`, pure-CSS pane flip
+     via the `ar-insp-tab-*` root class) over **`<details>` accordion
+     sections** (`.ar-acc`, one per pane-section — the old **Ranks tab was
+     folded into Options' ORDER/INCIDENCE-ORDER section**, 2026-07-10) — with
+     action footer **Run ⌘↵ · .rtf · `</>`** (code view =
+     `arpillar::emit_code()` script rendered through **downlit** syntax
+     highlighting, copy + download). Each section header carries a **`?` help
+     chip** opening an in-depth `.ar-help-modal` from the `.HELP_TOPICS`
+     registry (`utils_help.R`) — inline hints are gone. Live telemetry line
      (`adsl · 254 subjects · 254 records`).
    - Data mode: datasetviewer manage-data, full-width (no inspector): SOURCES
      multi-folder tree (+ Add folder), toolbar (Filter · View data · Import
@@ -146,12 +153,17 @@ page, proof-stamp statuses, and a summonable/pinnable galley card. The deliverab
     <project root>/
       setup.yml                     study config, sources, populations,
                                     preferences, paths (Setup writes here)
-      outputs/<id>.json             spec — canonical source of truth
-      programs/<id>.R               emit_code(spec) — team-visible artifact,
-                                    regenerated every save
+      outputs/<slug>.json           spec — canonical source of truth. Filename
+                                    is the auditable SLUG (kind-number-title,
+                                    e.g. `t-14-3-2-adverse-events-...`, via
+                                    arpillar::output_slug/output_slugs), NOT
+                                    the opaque `<id>`; collisions suffix `-id`.
+                                    Re-slugging prunes the stale file.
+      programs/<slug>.R             emit_code(spec) — team-visible artifact,
+                                    regenerated every save (same slug base)
       programs/run-all.R            reproduces the whole package via
                                     `Rscript programs/run-all.R`
-      output/<id>.rtf|.pdf          renders (destination configurable)
+      output/<slug>.rtf|.pdf        renders (destination configurable)
       data/                         inputs (destination configurable)
       report.json + manifest.csv    report-level metadata
       .arframe/                     TEAM STATE — excluded from tarball export
@@ -268,9 +280,18 @@ page, proof-stamp statuses, and a summonable/pinnable galley card. The deliverab
   pilot data). Every value-carrying control renders as a native
   `<input>`/`<select>` with NO id whose `onchange` posts
   `{field, value, nonce}` to one shared observer (the `cell_edit` /
-  `title_edit` / `stk_field` idiom). Remaining known exception: the
-  TRANSPOSE `tr_param`/`tr_value`/`tr_agg` selects (same class, unfixed —
-  guarded only by identical-value no-ops).
+  `title_edit` / `stk_field` / `hier_sort` idiom — the ORDER section's
+  Frequency/Alphabetical pill is now id-less too, 2026-07-10). Remaining
+  known exception: the TRANSPOSE `tr_param`/`tr_value`/`tr_agg` selects
+  (same class, unfixed — guarded only by identical-value no-ops).
+- **Setup > Paths entries default on BLANK, not just NULL (2026-07-10,
+  root-spill bug).** Setup serialises an unset path field as `""` (empty
+  string), so `paths$programs_dir %||% "./programs/"` KEEPS the blank and
+  resolves it against the project root — spilling `programs/*.R` and
+  `output/*.rtf` into the root instead of the canonical subdirs. Consume path
+  config through `.path_or_default(x, default)` (`fct_project.R`), which
+  treats a blank string as unset. Mirrors the Setup↔engine contract: every
+  Setup-written field needs an explicit blank-safe consumer.
 - **`arframe()` is the only export**; everything else is internal (`@noRd`). ONE
   injected structured store is the sole inter-module channel; ALL draft/edit
   state lives in the store, never in the DOM (the audit's top data-loss risk).

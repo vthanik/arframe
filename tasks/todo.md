@@ -1,5 +1,32 @@
 # todo — Listing generator port (explorer list_table → arpillar + arframe, FULL parity)
 
+## 2026-07-10 (latest): inspector polish + date formats + title-replay fix — DONE, COMMITTED
+
+Commits: arframe `b5cbb11` + `13a200f`; arpillar `3dd2632` (golden font
+refresh, tabular #33) + `111e409`. Both repos 0/0/0, trees clean, NOT pushed.
+
+- [x] SORT rows grid-aligned `[name 1fr][asc|desc][x]` — pills share one
+      right edge.
+- [x] STACKED COLUMNS redesign: one-row block header (name + Indent pill
+      + x); one-row lines (chips + compact `+` picker); delim/prefix/suffix
+      as SELECTS hidden behind a mono glue-preview toggle; hover-only line x.
+      **Line 2+ seeds NO glue** (user call — supersedes the paren prefill
+      below).
+- [x] Indent is PROGRESSIVE engine-side (0/2/4… two spaces per line).
+- [x] **Date-format gap CLOSED** (the "Known gap" below): DATE FORMATS
+      section → `column_specs$format` → arpillar `.datetime_strftime()`
+      (SAS names / mm-dd-yyyy patterns / strftime), applied BEFORE stacks
+      so glued cells carry `03JAN2014`-style dates. Live-verified.
+- [x] "Identifying label" slot → **"Group column"** + `.SLOT(hint=)` shown
+      in the roles pane.
+- [x] BUG FIX (data loss): TITLE-section number/title/number_label were
+      raw Shiny inputs and replayed the previous output's values onto a
+      newly drilled output on rebind — converted to id-less `title_edit`
+      onchange posts; regression tests; convention in CLAUDE.md.
+      Follow-up: TRANSPOSE `tr_*` selects are the same class, unconverted.
+- [x] Demo ADSL gained `RANDDT`; pilot `out005.json` repaired after the
+      corruption.
+
 ## 2026-07-10 (later): DPP-shell rework (GS_CSR_AE_L_002) — DONE
 
 Plan: `docs/superpowers/plans/2026-07-10-arframe-listing-dpp-shell.md`. All
@@ -110,3 +137,40 @@ see git history / handoff.md.
   STALE->Run->READY, legend prefill (MILD/MODERATE/SEVERE). Found+fixed live:
   blank-code legend pairs blanked cells -> .filled_pairs() inert-pair guard +
   regression test; golden unchanged.
+
+## Task 12 review — design-grade inspector polish + verification sweep (2026-07-10)
+
+**Token/polish pass (surgical, tokens only):**
+- `--ar-shadow-card` rebuilt to the reference two-layer pair — hairline
+  `0 1px 2px` + wide diffuse `0 8px 24px` at low alpha (was two tight
+  hairlines, too flat). Lifts every `.ar-panel` card off the canvas.
+- New segmented-pill tokens (`--ar-pill-track`/`--ar-pill-pad`/`--ar-pill-radius`)
+  applied to `.ar-insp-strip`/`.ar-insp-tab`: the Roles/Options/Filters strip is
+  now a LUVAL-style rounded track with an individually-rounded filled active
+  segment (was a clipped hard-cornered fill).
+- New soft-tinted chip tokens (`--ar-chip-size`/`--ar-chip-radius`/`--ar-chip-fill`)
+  applied to `.ar-acc-chip` (one size / one fill).
+- Help modal overlay shadow → `--ar-shadow-float` token (dropped a hardcoded
+  `0 16px 48px` rgba). Code pane already token-clean (left surgical).
+
+**Gates:** arpillar 0/0/0 (1218 tests). arframe 0/0/0 (1500 tests after +2
+regression tests). air clean. Per-file coverage on touched files: fct_export
+98.1, mod_paper 96.3, mod_card_filters 95.6, mod_card_listing 95.9, mod_card
+93.1, mod_card_options 92.4, utils_atoms 89.3, mod_card_roles 82.5, utils_help
+69.2, fct_project 18.7. Sub-95 files are pre-existing Shiny server/UI (observers,
+renderUI) not exercised by unit tests; this pass added no untested logic beyond
+the two new regression tests. Flagged honestly, not silently accepted.
+
+**Bug found + fixed during real-data eyeball (test-first):** Setup > Paths
+serialises an unset dir as `""`; `%||%` only defaults on NULL, so `.emit_programs`
+and `.sync_output_dir` spilled `programs/*.R` + `output/*.rtf` into the PROJECT
+ROOT instead of the canonical subdirs. Added `.path_or_default()` (blank-safe),
++2 regression tests (red→green). After the fix the slug triplet lands correctly:
+`outputs/<slug>.json` + `programs/<slug>.R` + `output/<slug>.rtf`, no root
+spillage.
+
+**Real-data screenshot eyeball (cdisc-adam-pilot, .local/screens/task12/):**
+6 shots captured + eyeballed — Setup+help modal, Report LoC, drilled Roles,
+Options (INCIDENCE-ORDER pill visible on occurrence), Filters, code view (slug
+filename + downlit highlighting). All reference-grade; the segmented pill strip
+and float-shadowed help modal are the visible wins. No CSS-level defects.
