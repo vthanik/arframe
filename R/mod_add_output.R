@@ -305,38 +305,44 @@ mod_add_output_ui <- function(id) {
       ),
       shiny::tags$div(
         class = "ar-add-body",
-        .label("Preset library"),
-        shiny::div(
-          class = "ar-search-host",
-          shiny::textInput(
-            ns("search"),
-            label = NULL,
-            # `search_seed`, NOT `search` -- see `.overlay_ui()`'s own
-            # doc comment for why these two must stay different reads.
-            value = search_seed,
-            placeholder = "Search presets"
+        # Two columns (user call 2026-07-11, superseding the collapsed
+        # <details> footer that read as a dead section header): presets
+        # left, generators always visible right. Each column scrolls
+        # independently; bridge.js preserves the PRESET column's scroll
+        # across re-renders (the generator list never outgrows the card).
+        shiny::tags$div(
+          class = "ar-add-col ar-add-col-presets",
+          .label("Preset library"),
+          shiny::div(
+            class = "ar-search-host",
+            shiny::textInput(
+              ns("search"),
+              label = NULL,
+              # `search_seed`, NOT `search` -- see `.overlay_ui()`'s own
+              # doc comment for why these two must stay different reads.
+              value = search_seed,
+              placeholder = "Search presets"
+            )
+          ),
+          shiny::tags$div(
+            class = "ar-add-lib-list",
+            lapply(groups, function(g) {
+              shiny::tagList(
+                shiny::tags$div(class = "ar-label ar-add-lib-domain", g$domain),
+                lapply(g$rows, function(row) {
+                  .library_row_ui(ns, row, active = FALSE)
+                })
+              )
+            })
           )
         ),
         shiny::tags$div(
-          class = "ar-add-lib-list",
-          lapply(groups, function(g) {
-            shiny::tagList(
-              shiny::tags$div(class = "ar-label ar-add-lib-domain", g$domain),
-              lapply(g$rows, function(row) {
-                .library_row_ui(ns, row, active = FALSE)
-              })
-            )
-          })
-        ),
-        shiny::tags$details(
-          class = "ar-add-gen-section",
-          # Force-open whenever a generator is the active pick -- a bare
-          # <details> defaults to closed, and a re-render triggered by
-          # something else (a search keystroke) rebuilds this element
-          # from scratch, which would otherwise re-collapse it and hide
-          # the open dataset picker underneath.
-          open = if (identical(picked$kind, "generator")) NA,
-          shiny::tags$summary(.label("Start from a generator")),
+          class = "ar-add-col ar-add-col-gens",
+          .label("Start from a generator"),
+          shiny::tags$div(
+            class = "ar-add-gen-hint",
+            "Blank canvas \u2014 pick a shape, assign roles yourself."
+          ),
           lapply(gens, function(gen) {
             .generator_row_ui(ns, gen, active = FALSE)
           })

@@ -1429,7 +1429,7 @@ select.ar-input-flat {
 .ar-add-card {
   display: flex;
   flex-direction: column;
-  width: 640px;
+  width: 880px;
   max-width: 100%;
   max-height: 100%;
   background: var(--ar-card);
@@ -1462,11 +1462,23 @@ select.ar-input-flat {
 }
 .ar-add-body {
   flex: 1 1 auto;
-  overflow-y: auto;
+  min-height: 0;
   padding: var(--ar-space-3) var(--ar-space-4) var(--ar-space-4);
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: var(--ar-space-3);
+}
+.ar-add-col {
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: var(--ar-space-2);
+}
+.ar-add-gen-hint {
+  font-size: 11px;
+  color: var(--ar-ink-4);
+  margin-bottom: var(--ar-space-1);
 }
 
 /* -- Preset library: search + domain-grouped rows -- */
@@ -1531,18 +1543,46 @@ select.ar-input-flat {
   margin-top: 1px;
 }
 
-/* -- Start from a generator (collapsed by default) -- */
-.ar-add-gen-section {
-  margin-top: var(--ar-space-2);
-  border-top: 1px solid var(--ar-rule);
-  padding-top: var(--ar-space-2);
+/* -- Boot splash: static in the initial HTML so it paints before the
+   Shiny session's first flush (folder mounts + first render can block for
+   seconds); bridge.js adds `.ar-boot-done` on the first shiny:idle. -- */
+.ar-boot {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ar-space-3);
+  background: var(--ar-desk);
+  transition: opacity 180ms ease;
 }
-.ar-add-gen-section summary {
-  cursor: pointer;
-  list-style: none;
+.ar-boot.ar-boot-done {
+  opacity: 0;
+  pointer-events: none;
 }
-.ar-add-gen-section summary::-webkit-details-marker {
-  display: none;
+.ar-boot-wordmark {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ar-ink);
+}
+.ar-boot-msg {
+  font-size: 12px;
+  color: var(--ar-ink-4);
+}
+.ar-boot-spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--ar-rule);
+  border-top-color: var(--ar-accent);
+  border-radius: 50%;
+  animation: ar-boot-spin 800ms linear infinite;
+}
+@keyframes ar-boot-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ============ 05 paper ============ */

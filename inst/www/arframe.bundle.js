@@ -1,5 +1,28 @@
 (() => {
   // srcjs/bridge.js
+  (function() {
+    var rendered = false;
+    var timer = null;
+    var done = function() {
+      var boot = document.querySelector(".ar-boot");
+      if (boot) boot.classList.add("ar-boot-done");
+      $(document).off(".arboot");
+    };
+    $(document).on("shiny:value.arboot", function() {
+      rendered = true;
+    });
+    $(document).on("shiny:busy.arboot", function() {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    });
+    $(document).on("shiny:idle.arboot", function() {
+      if (!rendered) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(done, 400);
+    });
+  })();
   $(document).on("click", "[data-ar-mode]", function() {
     Shiny.setInputValue("frame-mode", this.getAttribute("data-ar-mode"), {
       priority: "event"
@@ -248,7 +271,7 @@
       if (bodyBound) savedScroll = bodyBound.scrollTop;
     };
     var bindBody = function(dialog) {
-      var body = dialog.querySelector(".ar-add-body");
+      var body = dialog.querySelector(".ar-add-col-presets");
       if (!body || body === bodyBound) return;
       if (bodyBound) bodyBound.removeEventListener("scroll", onBodyScroll);
       bodyBound = body;

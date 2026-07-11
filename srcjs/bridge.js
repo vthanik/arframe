@@ -3,6 +3,39 @@
 // handlers are appended in Tasks 7/9; card pin in Task 10. See
 // docs/superpowers/specs/2026-07-02-arframe-galley-design-system.md #3.
 
+// Boot splash teardown: `.ar-boot` ships in the static HTML (app.R) so it
+// paints before the server's first flush. Drop it only once boot has
+// SETTLED: an idle that (a) follows a rendered value and (b) is not
+// re-entered by another busy cycle within 400ms. Two blink sources hide
+// behind that debounce: an early idle can fire before any output has
+// content (bare page, sections pop in), and right after the first render
+// every freshly-bound Setup input echoes its initial value once — a
+// commit storm whose recalculating dim reads as a whole-page blink. The
+// splash is opaque, so the storm plays out invisibly behind it.
+(function () {
+  var rendered = false;
+  var timer = null;
+  var done = function () {
+    var boot = document.querySelector(".ar-boot");
+    if (boot) boot.classList.add("ar-boot-done");
+    $(document).off(".arboot");
+  };
+  $(document).on("shiny:value.arboot", function () {
+    rendered = true;
+  });
+  $(document).on("shiny:busy.arboot", function () {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+  });
+  $(document).on("shiny:idle.arboot", function () {
+    if (!rendered) return;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(done, 400);
+  });
+})();
+
 $(document).on("click", "[data-ar-mode]", function () {
   Shiny.setInputValue("frame-mode", this.getAttribute("data-ar-mode"), {
     priority: "event",
@@ -409,7 +442,8 @@ document.addEventListener("DOMContentLoaded", function () {
   // overlay through Shiny's renderUI, which swaps `.ar-add-body` for a
   // fresh element with scrollTop = 0 -- the user watches the list snap
   // back to the top the moment they click. We shadow the scroll state in
-  // JS: on every scroll event on the CURRENT `.ar-add-body`, remember its
+  // JS: on every scroll event on the CURRENT preset column (the only list
+  // long enough to scroll since the two-column split), remember its
   // scrollTop; on every re-appearance, write it back before the browser
   // paints. Reset to 0 when the overlay closes so a next-open starts at
   // the top rather than wherever the previous session had scrolled.
@@ -419,7 +453,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (bodyBound) savedScroll = bodyBound.scrollTop;
   };
   var bindBody = function (dialog) {
-    var body = dialog.querySelector(".ar-add-body");
+    var body = dialog.querySelector(".ar-add-col-presets");
     if (!body || body === bodyBound) return;
     if (bodyBound) bodyBound.removeEventListener("scroll", onBodyScroll);
     bodyBound = body;

@@ -89,6 +89,25 @@ arframe <- function(project = NULL, data = NULL, folders = NULL, daemons = 2L) {
     # `100vh` and never fights bslib's fill-item sizing.
     shiny::div(
       class = "ar-app-root",
+      # Static boot splash: part of the initial HTML, so it paints the
+      # instant the page loads — folder mounts + the first flush can block
+      # the server for seconds, and without this the user stares at a
+      # blank body wondering whether anything is running. bridge.js adds
+      # `.ar-boot-done` (fade out) on the session's first shiny:idle.
+      shiny::div(
+        class = "ar-boot",
+        shiny::div(
+          class = "ar-appbar-brand",
+          shiny::span(class = "ar-appbar-mark", `aria-hidden` = "true"),
+          shiny::span(class = "ar-boot-wordmark", "arframe")
+        ),
+        shiny::div(class = "ar-boot-spinner", `aria-hidden` = "true"),
+        shiny::div(
+          class = "ar-boot-msg",
+          role = "status",
+          "Preparing your workspace\u2026"
+        )
+      ),
       mod_frame_ui(
         "frame",
         # Report mode is the full-width List-of-Contents surface plus a
