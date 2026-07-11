@@ -421,6 +421,13 @@
   help = NULL,
   count = NULL
 ) {
+  # A bare shiny.tag IS a list (name/attribs/children), so the is.list()
+  # branch below would strip its class and splice those three parts in as
+  # loose body elements (rendering as literal text, not markup) -- wrap it
+  # first. A tagList is class shiny.tag.list and stays on the list path.
+  if (inherits(body, "shiny.tag")) {
+    body <- list(body)
+  }
   body <- Filter(Negate(is.null), if (is.list(body)) body else list(body))
   if (length(body) == 0L) {
     return(NULL)

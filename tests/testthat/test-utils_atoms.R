@@ -136,3 +136,21 @@ test_that(".accordion_section elides to NULL when the body is empty, matching .o
   expect_null(.accordion_section("TITLE", NULL))
   expect_null(.accordion_section("TITLE", list(NULL, NULL)))
 })
+
+test_that(".accordion_section renders a BARE tag body as a real element, not text", {
+  # REGRESSION (Task 11 review): a bare shiny.tag IS a list, so the body
+  # normalization used to strip its class and splice name/attribs/children
+  # in as loose elements -- the tag rendered as escaped literal text
+  # ("fieldset", the attribs) instead of markup. A bare tag must render
+  # identically to the same tag wrapped in list().
+  bare <- as.character(.accordion_section(
+    "SLOT",
+    shiny::tags$div(class = "ar-probe", "x")
+  ))
+  expect_match(bare, '<div class="ar-probe">x</div>', fixed = TRUE)
+  wrapped <- as.character(.accordion_section(
+    "SLOT",
+    list(shiny::tags$div(class = "ar-probe", "x"))
+  ))
+  expect_identical(bare, wrapped)
+})
