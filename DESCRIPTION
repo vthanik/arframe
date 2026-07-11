@@ -36,9 +36,6 @@ Suggests:
     testthat (>= 3.0.0),
     withr
 Remotes:
-    vthanik/arpillar,
-    vthanik/artoo,
-    vthanik/datasetviewer,
-    vthanik/tabular@5dfd80ca5bcb728b9905d731ed07ea650f02ee90
+    vthanik/arpillar
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.0.0

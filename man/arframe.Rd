@@ -17,7 +17,7 @@ each name becomes the catalog-visible dataset name (e.g. \code{c(ADSL = "adsl.pa
 \item{folders}{\emph{Study folders to mount before launch.} \verb{<character>: default NULL}. Paths to directories of dataset files; every recognized
 file (\code{.parquet}/\code{.xpt}/\code{.json}) is registered under a library node
 named for the folder, and appears in Data mode's SOURCES tree. This is
-the folder-first on-ramp -- point at an ADaM directory and the whole
+the folder-first on-ramp — point at an ADaM directory and the whole
 catalog populates.}
 
 \item{daemons}{\emph{Background render workers for async export.} \verb{<integer(1)>: default 2}. The size of the mirai daemon pool the Export package button
