@@ -1,9 +1,9 @@
-# The help system (spec 2026-07-10 inspector-consolidation, section 4). A `?`
+# The help system (spec: inspector-consolidation, section 4). A `?`
 # icon on every Setup card and inspector section opens an IN-DEPTH modal, in
 # the datasetviewer Filter-help style: a bold heading, plain-language prose on
 # what the section does and *why it exists in a submission workflow*, and
 # worked ADaM examples in bordered code blocks. This registry replaces the old
-# inline gray helper-text paragraphs (user call 2026-07-10: "any level of
+# inline gray helper-text paragraphs (user call: "any level of
 # user should understand after reading it, not just two words").
 #
 # Mechanism (small; the writing is the work): `.help_icon(ns, topic)` posts
@@ -45,7 +45,7 @@
 #' `stopPropagation()` so a click opens the modal WITHOUT toggling the
 #' surrounding `<details>` accordion or bubbling to the card. Posts
 #' `{topic, nonce}` to the module's shared `help_open` observer (the id-less
-#' `title_edit`/`cell_edit` idiom -- one observer, not one per section).
+#' `title_edit`/`cell_edit` idiom — one observer, not one per section).
 #' @param ns *The module namespace function.* From `session$ns`.
 #' @param topic *A `.HELP_TOPICS` key.* `<character(1)>`.
 #' @noRd
@@ -65,7 +65,7 @@
 }
 
 #' Open the help modal for a topic. Unknown topics are a silent no-op (never
-#' errors -- a stale nonce or a topic without an entry just does nothing).
+#' errors — a stale nonce or a topic without an entry just does nothing).
 #' Follows `.confirm_delete_modal()`'s pattern: build the dialog, then
 #' `tagAppendAttributes()` the scoping class onto the `.modal` root so
 #' `.ar-help-modal` never bleeds onto datasetviewer's own dialogs.
@@ -79,7 +79,7 @@
   m <- shiny::modalDialog(
     entry(),
     easyClose = TRUE,
-    footer = NULL,
+    footer = shiny::modalButton("Dismiss"),
     size = "l"
   )
   shiny::showModal(shiny::tagAppendAttributes(m, class = "ar-help-modal"))
@@ -94,7 +94,7 @@
 #     is `page` (title "Page & Style"), not `page_style`.
 #   * Inspector adds the schema-region groups (`.OPT_SECTIONS` labels), the
 #     table-layout groups (`.opt_layout_sections`), and every listing editor
-#     (`.opt_listing_sections`) -- each is a real rendered section whose old
+#     (`.opt_listing_sections`) — each is a real rendered section whose old
 #     inline helper paragraph was absorbed here.
 .HELP_REQUIRED <- c(
   # Setup cards.
@@ -107,25 +107,25 @@
   "summaries",
   "footnotes",
   "team",
-  # Inspector -- core sections.
+  # Inspector — core sections.
   "roles",
   "title",
   "footnotes_out",
   "order",
   "filters",
   "population",
-  # Inspector -- Options schema-region groups (.OPT_SECTIONS).
+  # Inspector — Options schema-region groups (.OPT_SECTIONS).
   "options_rows",
   "options_axes",
   "options_series",
   "options_legend",
   "options_options",
-  # Inspector -- Options table-layout groups (.opt_layout_sections).
+  # Inspector — Options table-layout groups (.opt_layout_sections).
   "options_columns",
   "options_page",
   "options_spans",
   "options_pageby",
-  # Inspector -- listing editors (.opt_listing_sections).
+  # Inspector — listing editors (.opt_listing_sections).
   "listing_sort",
   "listing_transpose",
   "listing_formats",

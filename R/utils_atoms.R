@@ -23,74 +23,11 @@
   cli::cli_abort(msg, ..., class = "arframe_error_input", .envir = .envir)
 }
 
-# Semantic name -> Font Awesome 6 icon id.
-.fa_names <- c(
-  plus = "plus",
-  close = "xmark",
-  pin = "thumbtack",
-  pencil = "pen",
-  grip = "grip-vertical",
-  kebab = "ellipsis-vertical",
-  search = "magnifying-glass",
-  table = "table",
-  figure = "chart-line",
-  listing = "list",
-  database = "database",
-  import = "file-import",
-  export = "download",
-  code = "code",
-  check = "check",
-  warn = "triangle-exclamation",
-  undo = "arrow-rotate-left",
-  redo = "arrow-rotate-right",
-  open = "folder-open",
-  save = "floppy-disk",
-  trash = "trash-can",
-  copy = "copy",
-  folder_plus = "folder-plus",
-  package = "box-archive",
-  arrow_right = "arrow-right",
-  calendar = "calendar",
-  eye = "eye",
-  chevrons_left = "angles-left",
-  chevrons_right = "angles-right",
-  chevron_right = "chevron-right",
-  play = "play",
-  info = "circle-info",
-  # Mode-nav glyphs (the left sidebar).
-  report = "file-lines",
-  logs = "terminal",
-  gear = "gear",
-  review = "clipboard-check"
-)
-
-#' An inline workspace icon by semantic name (HTML to drop into a label/button).
-#'
-#' fontawesome's `fa()` defaults `margin-left`/`margin-right` to `auto`, which
-#' shoves the icon around inside any full-width flex row (a TOC entry, a card
-#' header); pin both to `0px`.
-#' @noRd
-.icon <- function(name, size = 16) {
-  if (!name %in% names(.fa_names)) {
-    .abort_app(
-      c(
-        "Unknown icon name {.val {name}}.",
-        "i" = "See {.code .fa_names} for the registered set."
-      ),
-      call = rlang::caller_env()
-    )
-  }
-  fontawesome::fa(
-    unname(.fa_names[name]),
-    height = paste0(size, "px"),
-    fill = "currentColor",
-    margin_left = "0px",
-    margin_right = "0px"
-  )
-}
+# The icon system (`.fa_names`/`.icon`, `.TYPE_ICONS`/`.type_icon`,
+# `.CHROME_GLYPHS`/`.glyph`) lives in utils_icons.R.
 
 #' A small info icon plus its detail rendered inline. The icon is chrome
-#' -- it signals "info about the selection" -- and the detail sits right
+#' — it signals "info about the selection" — and the detail sits right
 #' next to it so users never have to hover-and-wait for a tooltip. The
 #' native `title` still carries the same text for screen-reader parity.
 #' @noRd
@@ -150,10 +87,10 @@
 )
 
 #' A status pill: a mono-caps word with a leading status dot on a soft-fill
-#' capsule (the dot + fill are CSS -- `.ar-stamp::before` / `.ar-stamp-*`).
+#' capsule (the dot + fill are CSS — `.ar-stamp::before` / `.ar-stamp-*`).
 #'
 #' Maps the oracle's status vocabulary to the five Galley states. Colour never
-#' carries the signal alone -- the word is always present, and `aria-label`
+#' carries the signal alone — the word is always present, and `aria-label`
 #' repeats it as a full sentence for screen readers.
 #' @param status *One of `"ready"`, `"draft"`, `"needs_data"`, `"broken"`,
 #'   `"stale"`.* `<character(1)>: required`.
@@ -176,42 +113,8 @@
   )
 }
 
-# Generator id -> inline SVG body (16x16 viewBox, stroke-only house style).
-# Keyed by TYPE (the 7 `arpillar::generators()` ids: summary/crosstab/
-# occurrence/listing/km/line/box), not by `kind` ("table"/"figure"/
-# "listing") -- every preset sharing a generator (e.g. every AE occurrence
-# preset) reads the same glyph, so the icon signals output FAMILY while the
-# row label still distinguishes the specific table/figure/listing.
-.TYPE_ICONS <- list(
-  summary = '<circle cx="3" cy="4.3" r="0.7"/><path d="M5.5 4.3 H13"/><circle cx="3" cy="8" r="0.7"/><path d="M5.5 8 H13"/><circle cx="3" cy="11.7" r="0.7"/><path d="M5.5 11.7 H10.5"/>',
-  crosstab = '<rect x="2" y="2.5" width="12" height="11" rx="1.4"/><path d="M6.3 2.5 V13.5 M10.1 2.5 V13.5 M2 6.2 H14 M2 9.8 H14"/>',
-  occurrence = '<path d="M2.6 3.2 H9"/><path d="M3.8 3.2 V11.3"/><path d="M3.8 7.25 H5.4"/><path d="M6.6 7.25 H13.4"/><path d="M3.8 11.3 H5.4"/><path d="M6.6 11.3 H13.4"/>',
-  # A page of raw rows: document outline + per-row rules, the appendix-16.2
-  # data-listing motif (distinct from summary's stat bullets).
-  listing = '<rect x="3" y="2" width="10" height="12" rx="1.4"/><path d="M5.2 5 H10.8 M5.2 7.4 H10.8 M5.2 9.8 H10.8 M5.2 12.2 H8.6"/>',
-  km = '<path d="M2.4 2 V13.6 H14"/><path d="M3 3.6 H6 V7 H9.2 V10.3 H12.8"/>',
-  line = '<path d="M2.4 2 V13.6 H14"/><path d="M3.4 11.2 L6.6 6.6 L9.6 9 L13 4.4"/><circle cx="6.6" cy="6.6" r="0.5" fill="currentColor" stroke="none"/><circle cx="13" cy="4.4" r="0.5" fill="currentColor" stroke="none"/>',
-  box = '<rect x="5.4" y="5" width="5.2" height="6" rx="0.8"/><path d="M5.4 8 H10.6"/><path d="M8 5 V2.6 M6.6 2.6 H9.4"/><path d="M8 11 V13.4 M6.6 13.4 H9.4"/>'
-)
-
-#' An inline per-generator-type SVG icon (HTML), keyed by the render TYPE
-#' (`"summary"`/`"crosstab"`/`"occurrence"`/`"listing"`/`"km"`/`"line"`/
-#' `"box"`) rather than `kind` ("table"/"figure"/"listing") -- falls back to
-#' the `summary` glyph for an unrecognized type so a generator not yet wired
-#' to a glyph still renders something instead of erroring.
-#' @noRd
-.type_icon <- function(type, size = 16L) {
-  inner <- .TYPE_ICONS[[type]] %||% .TYPE_ICONS[["summary"]]
-  shiny::HTML(sprintf(
-    '<svg class="ar-type-icon" width="%d" height="%d" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">%s</svg>',
-    size,
-    size,
-    inner
-  ))
-}
-
 #' A Shiny action button that uses Bootstrap variant classes (`btn-primary`,
-#' `btn-outline-secondary`, `btn-danger`, ...) WITHOUT shiny's `btn-default` --
+#' `btn-outline-secondary`, `btn-danger`, ...) WITHOUT shiny's `btn-default` —
 #' so the variant owns the colour and there is no dark default hover/active
 #' fill to fight. Shiny binds any `.action-button` by its id, so this behaves
 #' exactly like `shiny::actionButton()`.
@@ -238,7 +141,7 @@
 }
 
 #' A "confirm delete" modal (the non-blocking Shiny-native confirm the user
-#' asked for -- NOT a `window.confirm()`). A Cancel button dismisses; the
+#' asked for — NOT a `window.confirm()`). A Cancel button dismisses; the
 #' danger "Delete" posts to `confirm_id`, which the caller wires to the actual
 #' removal. Shared by Data (datasets) and the Report LoC (outputs).
 #' @param confirm_id *The namespaced id of the confirm button.*
@@ -294,7 +197,7 @@
 #' A stat tile: a big mono value with a small label, an optional signed
 #' delta, and an optional leading icon.
 #'
-#' The value renders in the mono "instrument" face -- stat tiles carry
+#' The value renders in the mono "instrument" face — stat tiles carry
 #' machine facts (subject/record counts, dataset dims), never prose.
 #' @param value *The headline figure.* `<character(1)>`.
 #' @param label *What it measures.* `<character(1)>`.
@@ -350,7 +253,7 @@
 #' The shared variable/param picker: a `selectizeInput` whose per-option
 #' render (type-chip + NAME + muted CDISC label) is defined ONCE in the JS
 #' bundle (srcjs/bridge.js `window.arframePickerOption` / `arframePickerItem`)
-#' and referenced here by name -- no render markup lives in the R modules.
+#' and referenced here by name — no render markup lives in the R modules.
 #' Each choice's LABEL is the packed `"name\x1ftype\x1flabel"` string the
 #' render splits; the VALUE is whatever the server consumes.
 #'
@@ -423,7 +326,7 @@
 ) {
   # A bare shiny.tag IS a list (name/attribs/children), so the is.list()
   # branch below would strip its class and splice those three parts in as
-  # loose body elements (rendering as literal text, not markup) -- wrap it
+  # loose body elements (rendering as literal text, not markup) — wrap it
   # first. A tagList is class shiny.tag.list and stays on the list path.
   if (inherits(body, "shiny.tag")) {
     body <- list(body)

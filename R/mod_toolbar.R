@@ -1,19 +1,19 @@
-# The canvas toolbar (2026-07-04, explorer-style): Run / .rtf / Output|Code
+# The canvas toolbar (explorer-style): Run / .rtf / Output|Code
 # live at the TOP of the desk, not in the inspector footer. The visible
 # controls are a Preact component (srcjs/toolbar.js) rendered into the
-# mount div below; this module owns everything server-side -- the Run
-# re-typeset, the per-output RTF download, the code-view flag -- and
+# mount div below; this module owns everything server-side — the Run
+# re-typeset, the per-output RTF download, the code-view flag — and
 # pushes display state to the client via the "ar-toolbar" custom message.
 # The Preact side posts plain namespaced inputs (view / run / rtf_click),
 # so the store stays the only state owner (all state in rv, never DOM).
 
 #' The canvas toolbar UI: the Preact mount point, a quiet icon toggle for
-#' the docked inspector (`panel_toggle`, 2026-07-10 -- the inspector's pill
+#' the docked inspector (`panel_toggle` — the inspector's pill
 #' strip lost its own click-to-collapse affordance when the icon rail was
 #' removed, so the re-open/fold control moved here), plus a hidden download
 #' link (a browser download must be initiated by an <a>; the Preact .rtf
 #' button posts `rtf_click` and the server relays an `ar-click` to this
-#' link -- the same pattern as the frame's Export package).
+#' link — the same pattern as the frame's Export package).
 #' @param id *The module namespace.* `<character(1)>: required`.
 #' @noRd
 mod_toolbar_ui <- function(id) {
@@ -30,7 +30,12 @@ mod_toolbar_ui <- function(id) {
       type = "button",
       class = "ar-tb-icon-btn action-button",
       `aria-label` = "Toggle inspector panel",
-      .icon("chevrons_right", 14)
+      # The sidebar glyph pair (`.CHROME_GLYPHS`, utils_icons.R): filled
+      # variant shows while the inspector is OPEN (click = close), outline
+      # while collapsed (click = open). CSS keyed off `.ar-insp-collapsed`
+      # flips them — no server round-trip.
+      .glyph("panel_close"),
+      .glyph("panel_open")
     ),
     shiny::tagAppendAttributes(
       shiny::downloadLink(ns("rtf"), label = NULL, class = "ar-hidden-dl"),
@@ -44,7 +49,7 @@ mod_toolbar_ui <- function(id) {
 #' `run_nonce` so the paper re-typesets fresh), the per-output `.rtf`
 #' download through the export-identical seam, the Output|Code segmented
 #' view driving `rv$code_view`, and the state push that keeps the Preact
-#' component honest (code_view / ready / stale; `running` is reserved --
+#' component honest (code_view / ready / stale; `running` is reserved —
 #' Run is synchronous today).
 #' @param id *The module namespace, matching `mod_toolbar_ui()`.*
 #'   `<character(1)>: required`.
@@ -79,7 +84,7 @@ mod_toolbar_server <- function(id, store) {
       session$sendCustomMessage("ar-click", list(id = ns("rtf")))
     })
 
-    # The docked inspector's fold/re-open toggle (2026-07-10): the pill
+    # The docked inspector's fold/re-open toggle: the pill
     # strip itself no longer doubles as a collapse control, so this quiet
     # icon button flips `insp_collapsed` and mirrors it the same way
     # `mod_frame.R`'s `input$collapse` observer does.
@@ -95,7 +100,7 @@ mod_toolbar_server <- function(id, store) {
       )
     })
 
-    # The per-output RTF -- the SAME render seam as export (decision #7's
+    # The per-output RTF — the SAME render seam as export (decision #7's
     # one-spec rule): tables through render_rtf, figures through
     # render_figure_rtf.
     output$rtf <- shiny::downloadHandler(
@@ -138,7 +143,7 @@ mod_toolbar_server <- function(id, store) {
     )
     # Keep the download output non-suspended: the anchor lives under
     # `.ar-hidden-dl` (`display: none`), which Shiny normally treats as
-    # not-visible and suspends -- leaving the <a>'s href stuck at `#`, so
+    # not-visible and suspends — leaving the <a>'s href stuck at `#`, so
     # a programmatic .click() falls back to the current page URL and
     # macOS's save dialog offers `download.html`. Must run AFTER the
     # `output$rtf <-` assignment; `outputOptions()` errors otherwise.

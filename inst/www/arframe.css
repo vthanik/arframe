@@ -1948,7 +1948,9 @@ select.ar-input-flat {
    the rail used -- a tab switch is a pure CSS pane flip, no remount. -- */
 .ar-insp-strip {
   display: inline-flex;
-  align-self: flex-start;
+  /* Centered in the panel at ANY drag-resized width (the parent is a
+     column flex, so align-self centers on the cross axis). */
+  align-self: center;
   flex-shrink: 0;
   gap: 2px;
   margin: var(--ar-space-3) var(--ar-space-3) 0;
@@ -2031,7 +2033,7 @@ select.ar-input-flat {
   justify-content: center;
   width: 28px;
   height: 28px;
-  margin-right: var(--ar-space-3);
+  margin-right: var(--ar-space-1);
   border: none;
   border-radius: var(--ar-radius);
   background: transparent;
@@ -2042,11 +2044,24 @@ select.ar-input-flat {
   background: var(--ar-accent-weak);
   color: var(--ar-ink);
 }
+/* The toggle's glyph pair (`.glyph()`, utils_icons.R): filled-column
+   variant while the inspector is open (click = close), outline variant
+   while collapsed (click = open). */
+.ar-tb-icon-btn .ar-glyph-panel-open,
+.ar-insp-collapsed .ar-tb-icon-btn .ar-glyph-panel-close {
+  display: none;
+}
+.ar-insp-collapsed .ar-tb-icon-btn .ar-glyph-panel-open {
+  display: inline;
+}
 .ar-tb-row {
   display: flex;
   align-items: center;
   gap: var(--ar-space-2);
-  padding: 0 var(--ar-space-3);
+  /* Right side stays tight (space-1): the panel-toggle button follows as a
+     sibling and carries its own 4px margin -- a full space-3 here doubled
+     the visual gap after Run. */
+  padding: 0 var(--ar-space-1) 0 var(--ar-space-3);
 }
 .ar-tb-spacer {
   flex: 1 1 auto;
@@ -4243,6 +4258,19 @@ select.ar-input-flat {
   padding: var(--ar-space-5) var(--ar-space-6);
   max-height: 72vh;
   overflow-y: auto;
+}
+/* Dismiss footer: same quiet sizing as the confirm modal's buttons. */
+.ar-help-modal .modal-footer {
+  border-top: none;
+  padding: 0 var(--ar-space-6) var(--ar-space-5);
+}
+.ar-help-modal .modal-footer .btn {
+  height: 32px;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--ar-radius);
+  margin: 0;
 }
 .ar-help-h {
   margin: 0 0 var(--ar-space-4);
