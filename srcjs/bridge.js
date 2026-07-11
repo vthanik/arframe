@@ -405,15 +405,92 @@ document.addEventListener("DOMContentLoaded", function () {
   var slot = document.querySelector(".ar-add-overlay-slot");
   if (!slot) return;
   var seen = null;
+  // Scroll preservation: picking a preset/generator re-renders the whole
+  // overlay through Shiny's renderUI, which swaps `.ar-add-body` for a
+  // fresh element with scrollTop = 0 -- the user watches the list snap
+  // back to the top the moment they click. We shadow the scroll state in
+  // JS: on every scroll event on the CURRENT `.ar-add-body`, remember its
+  // scrollTop; on every re-appearance, write it back before the browser
+  // paints. Reset to 0 when the overlay closes so a next-open starts at
+  // the top rather than wherever the previous session had scrolled.
+  var savedScroll = 0;
+  var bodyBound = null;
+  var onBodyScroll = function () {
+    if (bodyBound) savedScroll = bodyBound.scrollTop;
+  };
+  var bindBody = function (dialog) {
+    var body = dialog.querySelector(".ar-add-body");
+    if (!body || body === bodyBound) return;
+    if (bodyBound) bodyBound.removeEventListener("scroll", onBodyScroll);
+    bodyBound = body;
+    body.addEventListener("scroll", onBodyScroll, { passive: true });
+    body.scrollTop = savedScroll;
+  };
+  // Sync the active-row class + teleport the picker element to sit right
+  // after the currently active row. The server owns the pick state via
+  // `data-add-picked="preset:<id>"` / `"generator:<id>"` on `.ar-add-card`;
+  // this reads that attribute and reflects it in the DOM every time the
+  // dialog re-renders, so a search keystroke that swaps out the lib list
+  // preserves the highlight AND keeps the picker inline next to the pick.
+  var applyPick = function (dialog) {
+    var picked = dialog.getAttribute("data-add-picked") || "";
+    dialog.querySelectorAll(".ar-add-lib-row-active").forEach(function (el) {
+      if (el.getAttribute("data-add-row") !== picked) {
+        el.classList.remove("ar-add-lib-row-active");
+      }
+    });
+    var activeRow = null;
+    if (picked) {
+      activeRow = dialog.querySelector(
+        '[data-add-row="' + picked + '"]',
+      );
+      if (activeRow) activeRow.classList.add("ar-add-lib-row-active");
+    }
+    var pickerSlot = dialog.querySelector(".ar-add-picker-slot");
+    if (!pickerSlot) return;
+    if (activeRow) {
+      // Insert the slot right after the active row when it isn't already
+      // there -- avoids DOM churn on every mutation event.
+      if (activeRow.nextElementSibling !== pickerSlot) {
+        activeRow.insertAdjacentElement("afterend", pickerSlot);
+      }
+    }
+  };
   new MutationObserver(function () {
     var dialog = slot.querySelector(".ar-add-card");
     if (dialog && dialog !== seen) {
       seen = dialog;
       dialog.focus();
+      bindBody(dialog);
+      applyPick(dialog);
+    } else if (dialog) {
+      // Same `.ar-add-card` frame, but its `.ar-add-body` or a nested
+      // uiOutput may have been replaced (search keystroke, picker refresh).
+      // Rebind + restore scroll + re-apply pick highlight/teleport.
+      bindBody(dialog);
+      applyPick(dialog);
     } else if (!dialog) {
       seen = null;
+      bodyBound = null;
+      savedScroll = 0;
     }
-  }).observe(slot, { childList: true, subtree: true });
+  }).observe(slot, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["data-add-picked"],
+  });
+  // Instant client-side highlight on click: fire BEFORE the server round-
+  // trip so the eye sees the pick land immediately, then the picker
+  // re-renders in place under `applyPick`.
+  slot.addEventListener("click", function (e) {
+    var row = e.target.closest("[data-add-row]");
+    if (!row) return;
+    var dialog = row.closest(".ar-add-card");
+    if (!dialog) return;
+    dialog.setAttribute("data-add-picked", row.getAttribute("data-add-row"));
+    applyPick(dialog);
+  });
 });
 
 // Footnote register filter: client-side, no server round-trip. Matches the

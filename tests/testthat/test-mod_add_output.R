@@ -222,7 +222,9 @@ test_that("selecting ae_overall in the library defaults the dataset picker to AD
       session$flushReact()
       session$setInputs(pick_preset = "ae_overall")
       session$flushReact()
-      html <- output$overlay$html
+      # The picker lives in `output$picker` now -- split off `output$overlay`
+      # so a preset click no longer re-renders the whole card (no flash).
+      html <- output$picker$html
       expect_match(html, 'value="ADAE" selected', fixed = TRUE)
     }
   )
@@ -333,7 +335,9 @@ test_that("switching to a different preset recomputes the default, not carrying 
       # win, not the leftover ADVS override from demographics.
       session$setInputs(pick_preset = "ae_overall")
       session$flushReact()
-      html <- output$overlay$html
+      # The picker lives in `output$picker` now -- split off `output$overlay`
+      # so a preset click no longer re-renders the whole card (no flash).
+      html <- output$picker$html
       expect_match(html, 'value="ADAE" selected', fixed = TRUE)
       expect_no_match(html, 'value="ADVS" selected', fixed = TRUE)
     }
@@ -357,7 +361,10 @@ test_that("a search keystroke while a picker is open preserves the user's datase
 
       session$setInputs(search = "demog")
       session$flushReact()
-      html <- output$overlay$html
+      # The user's ADVS override persists across a search keystroke: the
+      # search re-renders `output$overlay` (the shell + rows) but the
+      # picker is a separate uiOutput that does not react to `input$search`.
+      html <- output$picker$html
       expect_match(html, 'value="ADVS" selected', fixed = TRUE)
     }
   )
@@ -426,7 +433,9 @@ test_that("rv$bridge_dataset pre-selects the preset picker, then clears after ad
       session$flushReact()
       session$setInputs(pick_preset = "ae_soc_pt")
       session$flushReact()
-      html <- output$overlay$html
+      # The picker lives in `output$picker` now -- split off `output$overlay`
+      # so a preset click no longer re-renders the whole card (no flash).
+      html <- output$picker$html
       expect_match(html, 'value="ADAE" selected', fixed = TRUE)
 
       # testServer does not run the client JS that syncs a freshly-mounted
@@ -457,7 +466,7 @@ test_that("rv$bridge_dataset pre-selects the generator picker too", {
       session$flushReact()
       session$setInputs(pick_generator = "line")
       session$flushReact()
-      html <- output$overlay$html
+      html <- output$picker$html
       expect_match(html, 'value="ADVS" selected', fixed = TRUE)
     }
   )

@@ -1,7 +1,7 @@
 # The Add-output overlay (design spec #4, "Add output"): a centred dialog
-# shown when `store$rv$adding` is TRUE. Two sections -- the searchable
+# shown when `store$rv$adding` is TRUE. Two sections — the searchable
 # preset library grouped by domain, and a bare-generator "start from
-# scratch" path -- both end at either `add_from_preset()` or
+# scratch" path — both end at either `add_from_preset()` or
 # `add_from_generator()` (fct_store.R), which already append + select +
 # close nothing: THIS module clears `rv$adding` itself once the mutation
 # lands.
@@ -18,7 +18,7 @@
 .PRESET_DOMAINS <- c("Safety", "Efficacy", "PK", "General")
 
 #' One preset library row: id/label/domain/kind/generator id/generator
-#' label/number. `generator` is the row glyph key (`.type_icon()`) -- every
+#' label/number. `generator` is the row glyph key (`.type_icon()`) — every
 #' preset sharing a generator (e.g. every AE occurrence preset) reads the
 #' same icon, distinct from `kind` ("table"/"figure") which only splits
 #' presets into the two coarse TOC groups.
@@ -89,7 +89,7 @@
 
 #' The catalog dataset whose columns cover the MOST of `preset`'s role
 #' vars, or `NULL` when no catalog dataset covers even one. Ties break by
-#' `catalog_grid()`'s own (insertion) order -- the first-registered
+#' `catalog_grid()`'s own (insertion) order — the first-registered
 #' best-covering dataset wins, so the default is stable across a
 #' re-render.
 #' @noRd
@@ -131,13 +131,18 @@
 
 #' The Add-output overlay UI: an in-flow backdrop + a `--ar-card` dialog,
 #' server-rendered end to end (`uiOutput`) so it can react to `rv$adding`
-#' without a second visibility mechanism -- the caller composes this
+#' without a second visibility mechanism — the caller composes this
 #' directly into the workspace (see `arframe()`), and it renders nothing
 #' (`NULL`) while `rv$adding` is `FALSE`.
 #' @param id *The module namespace.* `<character(1)>: required`.
 #' @noRd
 mod_add_output_ui <- function(id) {
   ns <- shiny::NS(id)
+  # ONE slot for the whole overlay; `output$overlay` renders the shell and
+  # `output$picker` renders JUST the dataset picker into a nested slot the
+  # shell owns. Splitting these keeps a preset/generator click from
+  # re-rendering the whole card (visible flash) -- only the small picker
+  # slot re-renders, and the row highlight is a client-side class toggle.
   shiny::uiOutput(ns("overlay"), class = "ar-add-overlay-slot")
 }
 
@@ -146,6 +151,10 @@ mod_add_output_ui <- function(id) {
 #' `actionLink`-style row, posting `input$pick_preset`).
 #' @noRd
 .library_row_ui <- function(ns, row, active) {
+  # `data-add-row` (kind:id) is the CLIENT-side pick handle. bridge.js's
+  # delegated click handler toggles the active class + posts to the shared
+  # `pick_preset` / `pick_generator` input, so a row highlight lands
+  # BEFORE the server round-trip -- no whole-overlay re-render, no flash.
   click_js <- sprintf(
     "Shiny.setInputValue('%s', '%s', {priority: 'event'})",
     ns("pick_preset"),
@@ -156,6 +165,7 @@ mod_add_output_ui <- function(id) {
       "ar-add-lib-row",
       if (active) "ar-add-lib-row-active" else NULL
     ),
+    `data-add-row` = paste0("preset:", row$id),
     onclick = click_js,
     .type_icon(row$generator, 13),
     shiny::tags$span(class = "ar-add-lib-label", row$label),
@@ -178,6 +188,7 @@ mod_add_output_ui <- function(id) {
       "ar-add-gen-row",
       if (active) "ar-add-lib-row-active" else NULL
     ),
+    `data-add-row` = paste0("generator:", gen$id),
     onclick = click_js,
     .type_icon(gen$id, 13),
     shiny::tags$div(
@@ -193,7 +204,7 @@ mod_add_output_ui <- function(id) {
 #' dataset (the preset path's best-match default, or a live
 #' `rv$bridge_dataset`), a server-rendered warning slot that reacts to the
 #' LIVE picker value (see `output$picker_warning`, not built statically
-#' here -- a warning computed once off `preselect` would go stale the
+#' here — a warning computed once off `preselect` would go stale the
 #' moment the user overrides the dropdown away from the auto-suggested
 #' dataset), and the primary Add action.
 #' @noRd
@@ -233,7 +244,7 @@ mod_add_output_ui <- function(id) {
 #' picker hidden) or `list(kind = "preset"|"generator", id = <chr>)`.
 #' `live_dataset` is the caller's tracked "user override for the CURRENT
 #' pick" value (`NULL` before the user has touched the dropdown, or the
-#' instant a NEW preset/generator is picked -- see
+#' instant a NEW preset/generator is picked — see
 #' `mod_add_output_server()`'s `override_dataset` reactiveVal). Threading
 #' it through here lets a re-render triggered by something else (a search
 #' keystroke) preserve an in-progress manual dataset choice instead of
@@ -241,13 +252,13 @@ mod_add_output_ui <- function(id) {
 #'
 #' `search` (used to FILTER the library rows) and `search_seed` (used to
 #' SEED the search `textInput`'s `value=`) are deliberately two different
-#' reads of the same underlying `input$search`, not one -- the caller
+#' reads of the same underlying `input$search`, not one — the caller
 #' passes an UN-ISOLATED read for `search` (so a keystroke re-filters the
 #' list) and an `isolate()`d read for `search_seed` (so re-rendering the
 #' textInput widget for any OTHER reason does not seed it from the very
 #' value the client just sent, which would re-mount the widget, echo that
 #' value straight back to the server, and self-trigger a SECOND renderUI
-#' cycle for `output$overlay` -- verified: this was silently swallowing
+#' cycle for `output$overlay` — verified: this was silently swallowing
 #' the open-focus message, because the second cycle replaced the dialog
 #' DOM node the first cycle's focus command was about to land on).
 #' @noRd
@@ -262,30 +273,6 @@ mod_add_output_ui <- function(id) {
   groups <- .library_groups(.library_rows(), search)
   gens <- arpillar::generators()
 
-  picker <- NULL
-  if (!is.null(picked)) {
-    if (identical(picked$kind, "preset")) {
-      pr <- arpillar::preset(picked$id)
-      preselect <- live_dataset %||%
-        store$rv$bridge_dataset %||%
-        .best_dataset(store$con, pr)
-      picker <- .dataset_picker_ui(
-        ns,
-        choices = arpillar::catalog_grid(store$con)$name,
-        preselect = preselect,
-        add_input_id = "add_preset"
-      )
-    } else {
-      preselect <- live_dataset %||% store$rv$bridge_dataset
-      picker <- .dataset_picker_ui(
-        ns,
-        choices = arpillar::catalog_grid(store$con)$name,
-        preselect = preselect,
-        add_input_id = "add_generator"
-      )
-    }
-  }
-
   shiny::tags$div(
     class = "ar-add-backdrop",
     onclick = sprintf(
@@ -296,6 +283,16 @@ mod_add_output_ui <- function(id) {
       class = "ar-add-card",
       id = ns("dialog"),
       tabindex = "-1",
+      # The active-row handle. bridge.js reads this off the card, decides
+      # which row wears the active class, and teleports the picker slot
+      # next to that row -- so a search keystroke that RE-renders the
+      # overlay preserves the visual pick without the server re-emitting
+      # per-row active flags.
+      `data-add-picked` = if (is.null(picked)) {
+        NA
+      } else {
+        paste0(picked$kind, ":", picked$id)
+      },
       shiny::tags$div(
         class = "ar-add-header",
         .label("ADD OUTPUT"),
@@ -326,16 +323,7 @@ mod_add_output_ui <- function(id) {
             shiny::tagList(
               shiny::tags$div(class = "ar-label ar-add-lib-domain", g$domain),
               lapply(g$rows, function(row) {
-                active <- identical(picked$kind, "preset") &&
-                  identical(picked$id, row$id)
-                # The picker renders INLINE, right after the row the user
-                # just clicked -- not appended after the whole (up to 20-
-                # row) library list, which would strand it far below the
-                # trigger the user's eye is still on.
-                shiny::tagList(
-                  .library_row_ui(ns, row, active),
-                  if (active) picker
-                )
+                .library_row_ui(ns, row, active = FALSE)
               })
             )
           })
@@ -344,20 +332,19 @@ mod_add_output_ui <- function(id) {
           class = "ar-add-gen-section",
           # Force-open whenever a generator is the active pick -- a bare
           # <details> defaults to closed, and a re-render triggered by
-          # something else (a search keystroke) rebuilds this element from
-          # scratch, which would otherwise re-collapse it and hide the open
-          # dataset picker underneath.
+          # something else (a search keystroke) rebuilds this element
+          # from scratch, which would otherwise re-collapse it and hide
+          # the open dataset picker underneath.
           open = if (identical(picked$kind, "generator")) NA,
           shiny::tags$summary(.label("Start from a generator")),
           lapply(gens, function(gen) {
-            active <- identical(picked$kind, "generator") &&
-              identical(picked$id, gen$id)
-            shiny::tagList(
-              .generator_row_ui(ns, gen, active),
-              if (active) picker
-            )
+            .generator_row_ui(ns, gen, active = FALSE)
           })
-        )
+        ),
+        # The picker's stable slot. `output$picker` writes here; bridge.js
+        # teleports this element to sit right after the active row on
+        # every render, so a click no longer replaces the whole card.
+        shiny::uiOutput(ns("picker"), class = "ar-add-picker-slot")
       )
     )
   )
@@ -367,7 +354,7 @@ mod_add_output_ui <- function(id) {
 
 #' The Add-output overlay server: renders the overlay (or nothing) off
 #' `store$rv$adding`, tracks which preset/generator is picked as local
-#' module state (`picked`, `search` -- ephemeral UI state, not document
+#' module state (`picked`, `search` — ephemeral UI state, not document
 #' state, so it lives in a moduleServer reactiveVal rather than the
 #' store), and wires every Add/close/dismiss path.
 #' @param id *The module namespace, matching `mod_add_output_ui()`.*
@@ -390,7 +377,7 @@ mod_add_output_server <- function(id, store) {
     # Reset the ephemeral pick/search state and hand focus back to the
     # `+ Add output` trigger (mod_contents.R's namespace + input id are
     # fixed at the app-composition level, like `.frame_bar()`'s reach into
-    # `contents-add_output` via `arframe.js`'s "ar-focus" handler) -- every
+    # `contents-add_output` via `arframe.js`'s "ar-focus" handler) — every
     # close path (X, backdrop, Esc, or a successful Add) goes through this
     # one function so none of the four can leave stale pick/search state
     # for the next open.
@@ -404,12 +391,17 @@ mod_add_output_server <- function(id, store) {
 
     # Track the user's live override WITHOUT making `output$overlay` depend
     # on `input$picker_dataset` directly (that would re-render, and so
-    # recreate/churn, the selectize widget on every dataset pick -- exactly
+    # recreate/churn, the selectize widget on every dataset pick — exactly
     # what `output$picker_warning` exists to avoid needing).
     shiny::observeEvent(input$picker_dataset, {
       override_dataset(input$picker_dataset)
     })
 
+    # `output$overlay` deliberately does NOT depend on `picked()` or
+    # `override_dataset()` any more: those two now drive `output$picker`
+    # ALONE, so a preset/generator click re-renders the small picker slot
+    # and NOT the whole card (no more visible flash on selection). `picked`
+    # is `isolate()`'d so its updates never re-fire this render.
     output$overlay <- shiny::renderUI({
       if (!isTRUE(store$rv$adding)) {
         return(NULL)
@@ -418,14 +410,44 @@ mod_add_output_server <- function(id, store) {
         store,
         ns,
         input$search %||% "",
-        picked(),
-        override_dataset(),
+        shiny::isolate(picked()),
+        shiny::isolate(override_dataset()),
         search_seed = shiny::isolate(input$search) %||% ""
       )
     })
 
+    # The dataset picker: renders into the shell's stable `.ar-add-picker
+    # -slot`. Depends on `picked()` (which preset/generator was chosen)
+    # and `override_dataset()` (a live user override to the auto-suggested
+    # default). NULL when no pick is active.
+    output$picker <- shiny::renderUI({
+      p <- picked()
+      if (is.null(p)) {
+        return(NULL)
+      }
+      if (identical(p$kind, "preset")) {
+        pr <- arpillar::preset(p$id)
+        preselect <- override_dataset() %||%
+          store$rv$bridge_dataset %||%
+          .best_dataset(store$con, pr)
+        return(.dataset_picker_ui(
+          ns,
+          choices = arpillar::catalog_grid(store$con)$name,
+          preselect = preselect,
+          add_input_id = "add_preset"
+        ))
+      }
+      preselect <- override_dataset() %||% store$rv$bridge_dataset
+      .dataset_picker_ui(
+        ns,
+        choices = arpillar::catalog_grid(store$con)$name,
+        preselect = preselect,
+        add_input_id = "add_generator"
+      )
+    })
+
     # The missing-vars warning, split out of `output$overlay` into its own
-    # `uiOutput` so it can react to the LIVE `input$picker_dataset` value --
+    # `uiOutput` so it can react to the LIVE `input$picker_dataset` value —
     # `output$overlay` deliberately does NOT depend on `picker_dataset`
     # (re-rendering the whole dialog, and so the selectize widget, on every
     # dataset pick would churn/reset that control); this output alone
@@ -463,7 +485,7 @@ mod_add_output_server <- function(id, store) {
     # mount of the search `textInput` triggers Shiny's normal "a freshly
     # bound input posts its own current value back once" behavior, which
     # (since this render depends on `input$search` for live filtering)
-    # causes ONE extra, unavoidable renderUI cycle right after open --
+    # causes ONE extra, unavoidable renderUI cycle right after open —
     # verified empirically. A server-sent "ar-focus" message from a sibling
     # observer has no ordering guarantee against that extra cycle
     # replacing the very dialog DOM node the message is targeting, so the

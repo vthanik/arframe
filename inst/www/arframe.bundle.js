@@ -242,15 +242,70 @@
     var slot = document.querySelector(".ar-add-overlay-slot");
     if (!slot) return;
     var seen = null;
+    var savedScroll = 0;
+    var bodyBound = null;
+    var onBodyScroll = function() {
+      if (bodyBound) savedScroll = bodyBound.scrollTop;
+    };
+    var bindBody = function(dialog) {
+      var body = dialog.querySelector(".ar-add-body");
+      if (!body || body === bodyBound) return;
+      if (bodyBound) bodyBound.removeEventListener("scroll", onBodyScroll);
+      bodyBound = body;
+      body.addEventListener("scroll", onBodyScroll, { passive: true });
+      body.scrollTop = savedScroll;
+    };
+    var applyPick = function(dialog) {
+      var picked = dialog.getAttribute("data-add-picked") || "";
+      dialog.querySelectorAll(".ar-add-lib-row-active").forEach(function(el) {
+        if (el.getAttribute("data-add-row") !== picked) {
+          el.classList.remove("ar-add-lib-row-active");
+        }
+      });
+      var activeRow = null;
+      if (picked) {
+        activeRow = dialog.querySelector(
+          '[data-add-row="' + picked + '"]'
+        );
+        if (activeRow) activeRow.classList.add("ar-add-lib-row-active");
+      }
+      var pickerSlot = dialog.querySelector(".ar-add-picker-slot");
+      if (!pickerSlot) return;
+      if (activeRow) {
+        if (activeRow.nextElementSibling !== pickerSlot) {
+          activeRow.insertAdjacentElement("afterend", pickerSlot);
+        }
+      }
+    };
     new MutationObserver(function() {
       var dialog = slot.querySelector(".ar-add-card");
       if (dialog && dialog !== seen) {
         seen = dialog;
         dialog.focus();
+        bindBody(dialog);
+        applyPick(dialog);
+      } else if (dialog) {
+        bindBody(dialog);
+        applyPick(dialog);
       } else if (!dialog) {
         seen = null;
+        bodyBound = null;
+        savedScroll = 0;
       }
-    }).observe(slot, { childList: true, subtree: true });
+    }).observe(slot, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-add-picked"]
+    });
+    slot.addEventListener("click", function(e3) {
+      var row = e3.target.closest("[data-add-row]");
+      if (!row) return;
+      var dialog = row.closest(".ar-add-card");
+      if (!dialog) return;
+      dialog.setAttribute("data-add-picked", row.getAttribute("data-add-row"));
+      applyPick(dialog);
+    });
   });
   document.addEventListener("input", function(e3) {
     if (!e3.target.classList.contains("ar-foot-filter")) return;
