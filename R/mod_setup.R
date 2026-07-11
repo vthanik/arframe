@@ -202,25 +202,9 @@ mod_setup_server <- function(id, store) {
       }
     })
 
-    # Seed the theme's populations library on FIRST render so outputs and
-    # the {analysis_set} token see them. One-shot; subsequent renders read
-    # what the user has since edited.
-    shiny::observeEvent(store$rv$report, once = TRUE, {
-      r <- store$rv$report
-      pops <- r@theme$populations %||% list()
-      if (length(pops) == 0L) {
-        theme <- r@theme
-        theme$populations <- .POP_SEEDS
-        if (is.null(theme$default_population)) {
-          theme$default_population <- "safety"
-        }
-        commit(
-          store,
-          S7::set_props(r, theme = theme),
-          label = "seed populations"
-        )
-      }
-    })
+    # (Populations seeding moved to `new_store()` — a first-render commit
+    # here invalidated every report-dependent output right after the page
+    # painted, which read as a whole-page blink on open.)
 
     # Structural render gate. `sections` re-renders only when the STRUCTURE
     # changes — a row added or removed, a catalog mounted, the default

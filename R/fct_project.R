@@ -202,16 +202,25 @@ save_touched <- function(store) {
 #' The one refresh path (Stage 3 consolidation).
 #'
 #' Rescans on-disk outputs (`scan_and_merge()`), garbage-collects stale
-#' presence files, and bumps `catalog_nonce` so every reactive that
-#' watches team state (the Setup > Team feed, the Sources list) picks up
-#' the change. Debounced upstream by the caller — both the manual
-#' refresh button and the tab-focus event route through this helper so
-#' there is one place to add or reorder steps.
+#' presence files, and — when there is anything to pick up — bumps
+#' `catalog_nonce` so every reactive that watches team state (the Setup >
+#' Team feed, the Sources list) sees the change. Debounced upstream by the
+#' caller — both the manual refresh button and the tab-focus event route
+#' through this helper so there is one place to add or reorder steps.
 #' @noRd
 .refresh_all <- function(store) {
-  scan_and_merge(store)
+  changed <- isTRUE(scan_and_merge(store))
   tryCatch(.gc_presence(store$rv$path), error = function(e) NULL)
-  store$rv$catalog_nonce <- store$rv$catalog_nonce + 1L
+  # Bump only when something can actually be new: the nonce re-renders every
+  # catalog-gated surface at once (all of Setup's section cards, the LoC,
+  # Data), so an unconditional bump made the page visibly blink every time
+  # the browser tab regained focus — worst on a fresh no-project launch,
+  # where the scan is a guaranteed no-op. With a project bound the bump
+  # stays unconditional because it is also what refreshes the Team
+  # feed/presence, which scan_and_merge() does not track.
+  if (changed || !is.null(store$rv$path)) {
+    store$rv$catalog_nonce <- store$rv$catalog_nonce + 1L
+  }
   invisible(NULL)
 }
 
@@ -257,14 +266,18 @@ save_touched <- function(store) {
 #' in-memory report) are added to the first page. Deleted outputs (in mtimes
 #' but no longer on disk) log a soft banner; the object is left in the report
 #' until the user confirms removal.
+#'
+#' Returns (invisibly) TRUE when the scan merged or dropped anything, FALSE
+#' when disk and memory already agreed — `.refresh_all()` uses this to skip
+#' the catalog-nonce bump (and so the wholesale re-render) on a no-op scan.
 #' @noRd
 scan_and_merge <- function(store) {
   if (is.null(store$rv$path)) {
-    return(invisible(NULL))
+    return(invisible(FALSE))
   }
   outputs_dir <- file.path(store$rv$path, "outputs")
   if (!dir.exists(outputs_dir)) {
-    return(invisible(NULL))
+    return(invisible(FALSE))
   }
   disk_files <- list.files(
     outputs_dir,
@@ -334,5 +347,5 @@ scan_and_merge <- function(store) {
       sprintf("refreshed %d output(s) from disk", length(new_objs))
     )
   }
-  invisible(NULL)
+  invisible(length(new_objs) > 0L || length(vanished) > 0L)
 }

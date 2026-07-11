@@ -77,6 +77,11 @@
         label = "Safety Analysis Set",
         dataset = "ADSL",
         filter = 'SAFFL == "Y"'
+      ),
+      itt = list(
+        label = "Intent-to-Treat",
+        dataset = "ADSL",
+        filter = 'ITTFL == "Y"'
       )
     )
     commit(store, S7::set_props(r, theme = theme))
@@ -577,11 +582,14 @@ test_that("a population change marks the proof STALE (it subsets the data)", {
     mod_contents_server,
     args = list(store = store),
     {
+      # "itt", not "safety": new_store() seeds default_population = "safety",
+      # so an explicit "safety" resolves to the SAME subset and rightly stays
+      # fresh — only a change to a different set flips the proof stale.
       session$setInputs(
         cell_edit = list(
           id = "outR",
           field = "population",
-          value = "safety",
+          value = "itt",
           nonce = 1
         )
       )

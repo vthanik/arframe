@@ -24,6 +24,19 @@ new_store <- function(con, report = NULL) {
       pages = list(arpillar::page(id = "p1"))
     )
   }
+  # Seed the populations library at CONSTRUCTION, not in a post-render
+  # observer: a first-render commit invalidates every report-dependent
+  # output right after the page paints, and Shiny's `.recalculating`
+  # opacity dip reads as a whole-page blink on open (user report,
+  # 2026-07-11). Seeding here means the first render already has them.
+  if (length(report@theme$populations %||% list()) == 0L) {
+    theme <- report@theme
+    theme$populations <- .POP_SEEDS
+    if (is.null(theme$default_population)) {
+      theme$default_population <- "safety"
+    }
+    report <- S7::set_props(report, theme = theme)
+  }
   undo <- new.env(parent = emptyenv())
   undo$stack <- list()
   undo$redo <- list()

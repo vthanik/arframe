@@ -149,3 +149,43 @@ test_that(".emit_programs is a no-op when the store has no project path", {
 
   expect_null(shiny::isolate(.emit_programs(store)))
 })
+
+test_that(".refresh_all skips the nonce bump on a no-op scan (tab-focus blink)", {
+  # A tab-focus ar_refresh with NO project bound must not bump
+  # catalog_nonce: the bump re-renders every catalog-gated surface (all of
+  # Setup's cards at once), which read as a visible page blink on focus.
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+
+  before <- shiny::isolate(store$rv$catalog_nonce)
+  shiny::isolate(.refresh_all(store))
+  expect_identical(shiny::isolate(store$rv$catalog_nonce), before)
+
+  # With a project bound the bump is unconditional -- it also carries the
+  # Team feed/presence refresh, which scan_and_merge() does not track.
+  dir <- withr::local_tempdir()
+  shiny::isolate(store$rv$path <- dir)
+  shiny::isolate(.refresh_all(store))
+  expect_identical(shiny::isolate(store$rv$catalog_nonce), before + 1L)
+})
+
+test_that("scan_and_merge reports whether the scan changed anything", {
+  fx <- .demo_project_store()
+  withr::defer(arpillar::engine_close(fx$con))
+  store <- fx$store
+
+  # No outputs/ dir yet: nothing to scan.
+  expect_false(shiny::isolate(scan_and_merge(store)))
+
+  # A fresh spec on disk merges -> TRUE; a second scan with nothing new -> FALSE.
+  outputs_dir <- file.path(fx$dir, "outputs")
+  dir.create(outputs_dir)
+  obj <- shiny::isolate(.find_object(store$rv$report, fx$ids[[1]]))
+  arpillar::object_to_json(
+    obj,
+    file.path(outputs_dir, "t-14-1-1-demographics.json")
+  )
+  expect_true(shiny::isolate(scan_and_merge(store)))
+  expect_false(shiny::isolate(scan_and_merge(store)))
+})
