@@ -1,4 +1,4 @@
-# User identity + audit-trail meta stamping. No auth, no accounts -- the OS
+# User identity + audit-trail meta stamping. No auth, no accounts — the OS
 # username plus an optional ARFRAME_USER env var covers every real-world case
 # a folder-shared workspace needs (OneDrive / SharePoint / SAN mount).
 
@@ -28,7 +28,7 @@
 #' Stamp an audit-trail action on an S7 object's `@meta` slot
 #'
 #' `action` is one of `"create"` (sets created_by/at AND modified_by/at),
-#' `"modify"` (sets modified_by/at, clears any prior `reviewed` block --
+#' `"modify"` (sets modified_by/at, clears any prior `reviewed` block —
 #' every edit invalidates a QC signature), or `"review"` (sets reviewed = {by,
 #' at, notes}). Returns a NEW object via `S7::set_props()`; the caller commits
 #' it into the store.

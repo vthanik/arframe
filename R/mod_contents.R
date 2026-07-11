@@ -1,5 +1,5 @@
-# The Report mode List-of-Contents (LoC): a Data-mode mirror (2026-07-08,
-# decision #12.3). A CONTENTS rail (left) filters the flat editable table by
+# The Report mode List-of-Contents (LoC): a Data-mode mirror (decision
+# #12.3). A CONTENTS rail (left) filters the flat editable table by
 # kind (TABLES/FIGURES/LISTINGS, read off the type->generator map); the table
 # lists every output in flat kind-rank + `options$number` order (the canonical
 # TLF order, so there is no manual drag-reorder), stamps its status, shows its
@@ -7,7 +7,7 @@
 # single-click selects; double-click / Enter (or the toolbar Edit) drills
 # (`drill_open()`); the breadcrumb / Esc return (`drill_close()`). The toolbar
 # Duplicate / Delete + the text filter round out the manage surface. Every
-# mutation routes through the injected store -- this module holds no draft
+# mutation routes through the injected store — this module holds no draft
 # state of its own.
 
 # ---- kind lookup ------------------------------------------------------
@@ -16,7 +16,7 @@
 #'
 #' `arpillar::generators()` is keyed by engine TYPE (`"summary"`,
 #' `"crosstab"`, `"occurrence"`, `"km"`, `"line"`, `"box"`), which IS the
-#' render `type` an `object` actually carries -- so this is a direct
+#' render `type` an `object` actually carries — so this is a direct
 #' name -> `$kind` projection, not a reverse index (the old
 #' `arpillar::templates()` was keyed by preset/template id instead, which
 #' needed one). No generator currently has `kind == "listing"`; the
@@ -33,7 +33,7 @@
 #'
 #' An `object@type` outside the known map (a generator not yet wired to a
 #' render leg) falls back to the `listing` group rather than being silently
-#' dropped -- every output the report holds must appear somewhere (see
+#' dropped — every output the report holds must appear somewhere (see
 #' `.toc_rows()`'s `%||% "listing"` fallback). The `prefix` also backs the
 #' fallback auto-number (`.toc_rows()`) and `.next_number()`'s
 #' (`utils_report.R`) auto-suggest for a generator-seeded (preset-less) new
@@ -51,12 +51,12 @@
 #' number, status, and the two inline-editable option values (number_label,
 #' population).
 #'
-#' `number` prefers `obj@options$number` -- the number a preset seeded or
-#' `add_from_generator()` auto-suggested -- falling back to the kind-scoped
+#' `number` prefers `obj@options$number` — the number a preset seeded or
+#' `add_from_generator()` auto-suggested — falling back to the kind-scoped
 #' 1-based document-order index only when that option is absent or blank
 #' (e.g. an object built by hand, outside either add path). `status` folds
-#' in `rv$broken` ahead of the oracle -- a broken id always shows ERROR
-#' regardless of what `output_status()` would otherwise report -- then
+#' in `rv$broken` ahead of the oracle — a broken id always shows ERROR
+#' regardless of what `output_status()` would otherwise report — then
 #' `rv$stale` (a heavy edit awaiting Run). `type` is `obj@type` verbatim
 #' (the `.type_icon()` glyph key), distinct from `kind` which only splits
 #' rows into the coarse groups. `number_label` / `population` carry the raw
@@ -80,7 +80,7 @@
     kind <- kinds[[i]]
     grp <- .TOC_GROUPS[[kind]]
     counters[[kind]] <<- counters[[kind]] + 1L
-    # Exact `[[` -- `$number` partial-matches `number_label` when a user has
+    # Exact `[[` — `$number` partial-matches `number_label` when a user has
     # cleared the number but kept the label (R's dollar partial matching).
     seeded_number <- obj@options[["number"]]
     number <- if (length(seeded_number) == 1L && nzchar(seeded_number)) {
@@ -91,7 +91,7 @@
     status <- if (obj@id %in% broken) {
       "broken"
     } else if (obj@id %in% stale) {
-      # The stale flag (run semantics, decision #8) outranks the oracle --
+      # The stale flag (run semantics, decision #8) outranks the oracle —
       # the config is ready, but its proof awaits a Run.
       "stale"
     } else {
@@ -120,7 +120,7 @@
 #' The "MODIFIED" cell for one output: its `outputs/<id>.json` file mtime
 #' (`store$mtimes`, populated by open_project()/save_touched()), formatted
 #' `YYYY-MM-DD HH:MM`. An em-dash when no project is on disk yet (in-memory
-#' session) or the file has not been written -- there is no other per-output
+#' session) or the file has not been written — there is no other per-output
 #' timestamp to fall back to (the activity log is batch-level).
 #' @noRd
 .loc_modified_str <- function(mtimes, id) {
@@ -172,7 +172,7 @@
 }
 
 #' The output ids in the exact order the LoC displays them (flat kind-rank,
-#' then number within kind) -- so keyboard Up/Down walks the SAME order the eye
+#' then number within kind) — so keyboard Up/Down walks the SAME order the eye
 #' sees. Walks ALL outputs regardless of the active rail filter; a filtered-out
 #' row can still be reached by arrow (a minor edge, kept lazy).
 #' @noRd
@@ -194,7 +194,7 @@
 #' rail (left) filters the main table by kind; the manage toolbar carries a
 #' text filter plus Edit / Duplicate / Delete (acting on the selected row) and
 #' `+ Add output`; the server-rendered editable table fills the rest. `.ar-loc`
-#' is the flex ROW that holds the two columns -- the desk + inspector live in a
+#' is the flex ROW that holds the two columns — the desk + inspector live in a
 #' sibling `.ar-report-desk` that the `ar-report-open` class reveals on drill.
 #' @param id *The module namespace.* `<character(1)>: required`.
 #' @noRd
@@ -256,7 +256,7 @@ mod_contents_ui <- function(id) {
 # ---- contents rail ------------------------------------------------------
 
 #' One rail output row: type glyph + mono number + (truncated) title + status
-#' stamp -- the compact twin of a main-table row, and the Report-mode twin of
+#' stamp — the compact twin of a main-table row, and the Report-mode twin of
 #' Data's `.src_dataset_row()`. Carries `data-ar-id`; a single click posts
 #' `input$open` through the delegated `.ar-loc-nav` handler, so clicking any
 #' output (from the list OR while already drilled) opens/switches it into edit
@@ -284,9 +284,9 @@ mod_contents_ui <- function(id) {
 #' count), each nesting its output rows (icon + number + title + status).
 #' Clicking a folder body filters the main table to that kind (`input$group`);
 #' re-clicking the active folder clears the filter (the "All outputs" root that
-#' used to clear it was removed 2026-07-08). The chevron collapses the folder's
+#' used to clear it was removed). The chevron collapses the folder's
 #' outputs (`input$loc_toggle`); a nested output opens/switches it into edit
-#' mode (`input$open`, the drill input) -- so you can hop between outputs while
+#' mode (`input$open`, the drill input) — so you can hop between outputs while
 #' drilled. `open` (`store$rv$report_open`) lights the row in edit; `collapsed`
 #' holds the folders whose outputs are hidden.
 #' @noRd
@@ -313,7 +313,7 @@ mod_contents_ui <- function(id) {
     sel <- if (identical(active, k)) "ar-toc-row-sel ar-data-ds-sel" else NULL
     is_collapsed <- k %in% collapsed
     # Chevron (collapse) and folder body (filter) are separate hit zones, so a
-    # toggle click never also filters -- the Data `.sources_tree()` idiom.
+    # toggle click never also filters — the Data `.sources_tree()` idiom.
     shiny::tags$div(
       class = paste("ar-src-group", if (is_collapsed) "ar-src-collapsed"),
       shiny::tags$div(
@@ -450,7 +450,7 @@ mod_contents_ui <- function(id) {
 #' One LoC table row: NUMBER (a small type glyph inlined ahead of the mono
 #' number input) + three more inline cells (LABEL / TITLE / POPULATION) +
 #' status stamp + MODIFIED. Each editable cell is a native `<input>`/`<select>`
-#' with NO Shiny id -- its `onchange` posts one `cell_edit {id, field, value,
+#' with NO Shiny id — its `onchange` posts one `cell_edit {id, field, value,
 #' nonce}` to the shared server observer (commit on blur/change, never per
 #' keystroke). The row carries `data-ar-id` for the delegated select/drill
 #' handlers and `data-ar-hay` for the text filter (both in bridge.js).
@@ -535,7 +535,7 @@ mod_contents_ui <- function(id) {
     shiny::tags$span(class = "ar-loc-crumb-title", obj@title),
     shiny::tags$div(class = "ar-bar-spacer"),
     # X closes the drill back to the List-of-Contents (same as the Contents
-    # link + Esc) -- the Report twin of Data's open-dataset close button.
+    # link + Esc) — the Report twin of Data's open-dataset close button.
     shiny::tags$button(
       id = ns("drill_close"),
       type = "button",
@@ -618,7 +618,7 @@ mod_contents_server <- function(id, store) {
     })
 
     # The report body is hidden in other modes, and the LoC surface is hidden
-    # while drilled (the desk shows instead) -- keep all three computing so a
+    # while drilled (the desk shows instead) — keep all three computing so a
     # mode switch or a breadcrumb-return never lands on a blank surface.
     shiny::outputOptions(output, "rail", suspendWhenHidden = FALSE)
     shiny::outputOptions(output, "table", suspendWhenHidden = FALSE)
@@ -626,8 +626,8 @@ mod_contents_server <- function(id, store) {
 
     # A CONTENTS folder body narrows the rail's output list AND the main table
     # to that kind; re-clicking the active folder clears back to all (the "All
-    # outputs" root that used to clear it was removed 2026-07-08). Does NOT
-    # close an open drill -- the rail persists, so filtering it is just "find
+    # outputs" root that used to clear it was removed). Does NOT
+    # close an open drill — the rail persists, so filtering it is just "find
     # another output to switch to".
     shiny::observeEvent(input$group, {
       k <- input$group
@@ -641,7 +641,7 @@ mod_contents_server <- function(id, store) {
     })
 
     # A folder chevron collapses/expands its nested outputs (server-held so a
-    # re-render keeps the state) -- the Report twin of Data's `src_toggle`.
+    # re-render keeps the state) — the Report twin of Data's `src_toggle`.
     shiny::observeEvent(input$loc_toggle, {
       k <- input$loc_toggle
       cur <- store$rv$loc_collapsed
@@ -762,7 +762,7 @@ mod_contents_server <- function(id, store) {
 
     # Toolbar Edit / Duplicate / Delete act on the SELECTED row (the Data-mode
     # View/Delete idiom: always enabled, a no-op when nothing is selected).
-    # Edit drills into the paper + inspector -- Data's "View data" twin.
+    # Edit drills into the paper + inspector — Data's "View data" twin.
     shiny::observeEvent(input$edit, {
       if (!is.null(store$rv$selected)) {
         drill_open(store, store$rv$selected)
@@ -817,7 +817,7 @@ mod_contents_server <- function(id, store) {
     })
 
     # Keyboard nav (Task 17): Up/Down walk the selection through the ids in
-    # DISPLAY order (group order, number-sorted -- matching the eye), posted
+    # DISPLAY order (group order, number-sorted — matching the eye), posted
     # by bridge.js's report-mode keydown map; the first arrow with nothing
     # selected picks the first output. The payload nonce makes a repeated
     # same-direction press a fresh event.

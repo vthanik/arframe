@@ -9,14 +9,14 @@
 #   6. Summaries     (Continuous rows + Categorical rules + Precision)
 #   7. Team          (roster + activity + presence)
 #
-# Design (Stage 1, 2026-07-06 rebuild):
+# Design:
 #   * `.SETUP_SPEC` is the single declarative registry of every scalar
 #     value input the module owns. `.wire_all()` installs one observer
-#     per entry -- dead bindings become structurally impossible. Adding
+#     per entry — dead bindings become structurally impossible. Adding
 #     a new field means one row in the spec + a renderer placement at
 #     the declared id.
 #   * Structural mutations (add-row / delete-row, folder pickers) stay
-#     hand-wired -- their semantics are diverse enough that a
+#     hand-wired — their semantics are diverse enough that a
 #     declarative registry buys nothing.
 #   * The store's autosave observer already writes `setup.yml` on every
 #     commit; every entry here rides that path.
@@ -31,7 +31,7 @@
 # Page margins coerce: a "top, right, bottom, left" (or single "all sides")
 # comma string -> a length-1 or length-4 non-negative numeric vector, the
 # shape the engine's `theme$page$margins` / `.margins_opt()` consumes. NULL
-# (blank or unparseable) drops the edit, keeping the prior value -- the same
+# (blank or unparseable) drops the edit, keeping the prior value — the same
 # validation the retired per-output margins control used.
 .as_margins <- function(v) {
   raw <- trimws(v %||% "")
@@ -67,9 +67,9 @@
   # "Add a variable" picker, managed by dedicated add/remove observers
   # (see `mod_setup_server`). Stored as a comma-separated string.
   # ---- Treatment ----------------------------------------------------------
-  # Treatment is a dynamic ROW LIST (`theme$treatment$vars`, 2026-07-10),
+  # Treatment is a dynamic ROW LIST (`theme$treatment$vars`),
   # managed by dedicated observers (`trt_var_set` / `trt_basis_set` /
-  # `trt_var_add` / `trt_var_delete`) -- not a scalar `.wire_all` input.
+  # `trt_var_add` / `trt_var_delete`) — not a scalar `.wire_all` input.
   # Row 1's column doubles as `treatment$trtvar` (the arm-decode source).
   # ---- Output directories -----------------------------------------------
   list(id = "paths_programs_dir", path = c("paths", "programs_dir")),
@@ -135,7 +135,7 @@ mod_setup_ui <- function(id) {
   shiny::div(
     class = "ar-setup",
     # shinyFiles binds its client-side handler at UI-build time to buttons
-    # that already exist in the DOM -- a button rendered later inside a
+    # that already exist in the DOM — a button rendered later inside a
     # renderUI never gets the binding. Instantiate the two pickers here in
     # the static UI; CSS teleports them into the Data section headers
     # (see `.ar-setup [data-ar-adam-pick]` / `[data-ar-sdtm-pick]`).
@@ -159,16 +159,16 @@ mod_setup_ui <- function(id) {
     ),
     # Two decoupled outputs inside a client-owned visibility wrapper. The
     # wrapper's `ar-setup-tab-<active>` class (swapped client-side on a tab
-    # click) drives which section card is visible via CSS -- so neither
+    # click) drives which section card is visible via CSS — so neither
     # server render restamps it, and a commit never bounces the active tab.
     # `tabstrip` reacts to the report (live completion badges); `sections`
     # reacts ONLY to structural changes (row add/delete, catalog mounts), so
-    # typing in a field -- which commits on change but adds no rows -- never
+    # typing in a field — which commits on change but adds no rows — never
     # re-renders, and never steals focus from, the input being edited.
     # A plain block wrapper is the grid item (stretches to fill the centered
     # 1120px column, exactly as the old single uiOutput did). `.ar-setup-dash`
     # keeps its container-query context (`container-type: inline-size`) INSIDE
-    # it -- making it the direct grid item instead collapses it to min-content.
+    # it — making it the direct grid item instead collapses it to min-content.
     shiny::div(
       class = "ar-setup-shell",
       shiny::div(
@@ -223,8 +223,8 @@ mod_setup_server <- function(id, store) {
     })
 
     # Structural render gate. `sections` re-renders only when the STRUCTURE
-    # changes -- a row added or removed, a catalog mounted, the default
-    # population moved -- never on a scalar field commit. Every structural
+    # changes — a row added or removed, a catalog mounted, the default
+    # population moved — never on a scalar field commit. Every structural
     # mutation observer below calls `bump_sections()`; scalar edits ride
     # `.wire_all` -> commit -> autosave WITHOUT touching this, so the field
     # under the cursor is never rebuilt mid-type.
@@ -315,7 +315,7 @@ mod_setup_server <- function(id, store) {
     # The default-population star lives in a section body, so moving it needs
     # a structural re-render (the scalar commit itself is handled by
     # `.wire_all`). Everything else in `.SETUP_SPEC` is a plain field whose
-    # value the DOM already holds -- no re-render wanted.
+    # value the DOM already holds — no re-render wanted.
     shiny::observeEvent(
       input$top_default_population,
       bump_sections(),
@@ -323,7 +323,7 @@ mod_setup_server <- function(id, store) {
     )
 
     # Changing the population dataset changes which columns the Subject ID
-    # picker offers -- re-render so `.items_meta` reflects the new dataset.
+    # picker offers — re-render so `.items_meta` reflects the new dataset.
     # Safe now that the picker holds no selection state (it lives in chips).
     shiny::observeEvent(
       input$data_pop_dataset,
@@ -419,7 +419,7 @@ mod_setup_server <- function(id, store) {
 
     # Typing a valid directory straight into the ADaM/SDTM path field (not only
     # the Browse picker) also mounts it, so the catalog stays in sync with the
-    # committed path -- the mount is the missing half of the Setup->Data seam.
+    # committed path — the mount is the missing half of the Setup->Data seam.
     lapply(c("adam", "sdtm"), function(kind) {
       shiny::observeEvent(
         input[[paste0("data_", kind, "_dir")]],
@@ -890,7 +890,7 @@ mod_setup_server <- function(id, store) {
     # Continuous statistic rows. Only the LABEL is a free-text input now
     # (`cont_label_*`); the stats vector is mutated by add / remove chip
     # events, and row order by drag. This observer tracks label edits only
-    # and preserves each row's stats. Format is gone -- the engine infers
+    # and preserves each row's stats. Format is gone — the engine infers
     # the join from the atoms.
     shiny::observe({
       label_ids <- grep("^cont_label_[0-9]+$", names(input), value = TRUE)
@@ -1016,7 +1016,7 @@ mod_setup_server <- function(id, store) {
         theme$summaries <- list()
       }
       rows <- .cont_rows_or_seed(theme)
-      # Append a blank row (label + empty stats -- no format).
+      # Append a blank row (label + empty stats — no format).
       rows <- c(
         rows,
         list(list(label = "", stats = character(0)))
@@ -1048,7 +1048,7 @@ mod_setup_server <- function(id, store) {
 
     # Running header/footer: each row is 3 inputs (left/center/right).
     # The observer packs them into `list(left = <chr>, center = <chr>,
-    # right = <chr>)` -- the shape tabular's page-band consumer expects.
+    # right = <chr>)` — the shape tabular's page-band consumer expects.
     lapply(c("pagehead", "pagefoot"), function(key) {
       shiny::observe({
         band <- .collect_band_rows(input, key)
@@ -1123,7 +1123,7 @@ mod_setup_server <- function(id, store) {
 }
 
 # Reassemble a band from `page_<key>_(left|center|right)_<i>` inputs into
-# `list(left = <chr>, center = <chr>, right = <chr>)` -- matches
+# `list(left = <chr>, center = <chr>, right = <chr>)` — matches
 # `arpillar:::.band_opt`'s expected shape. Empty trailing rows are pruned.
 .collect_band_rows <- function(input, key) {
   side_ids <- lapply(c("left", "center", "right"), function(side) {
@@ -1359,7 +1359,7 @@ mod_setup_server <- function(id, store) {
 
 .setup_study <- function(ns, store) {
   s <- store$rv$report@theme$study %||% list()
-  # One flat grid -- the Identity/Extraction sub-labels were noise on a
+  # One flat grid — the Identity/Extraction sub-labels were noise on a
   # five-field section, and Status (draft/final) is dropped (unused).
   shiny::div(
     class = "ar-setup-grid",
@@ -1372,7 +1372,7 @@ mod_setup_server <- function(id, store) {
       "Indication (optional)",
       s$indication %||% ""
     ),
-    # Native `<input type="date">` -- the OS provides its own picker; no JS
+    # Native `<input type="date">` — the OS provides its own picker; no JS
     # library needed. Reads/writes ISO `YYYY-MM-DD`, what `data_date` stores.
     shiny::div(
       class = "ar-setup-field",
@@ -1388,7 +1388,7 @@ mod_setup_server <- function(id, store) {
         value = s$data_date %||% "",
         # A native `<input type="date">` is NOT matched by Shiny's text input
         # binding (text/search/url/email only), so without this it never
-        # posts -- `data_date` stayed empty and the Study badge counted it
+        # posts — `data_date` stayed empty and the Study badge counted it
         # missing. Inline onchange mirrors the seg-control / tab-strip idiom.
         onchange = sprintf(
           "Shiny.setInputValue('%s', this.value, {priority: 'event'})",
@@ -1401,7 +1401,7 @@ mod_setup_server <- function(id, store) {
 
 # ---- Paths section (merges Data + Preferences + Sources, Stage 2) --------
 
-#' Setup > Paths: every filesystem directory in one flat grid -- the two
+#' Setup > Paths: every filesystem directory in one flat grid — the two
 #' data-source directories (ADaM + SDTM) and the four output directories.
 #' Population / treatment BINDINGS (dataset, subject id, treatment var) moved
 #' to the Populations and Treatment sections (they are data config, not
@@ -1585,7 +1585,7 @@ s_study <- function(store) {
 
 # One selected subject-id column as a removable chip: "A NAME x". The x
 # posts `{name, nonce}` to the shared `data_subject_remove` observer via an
-# inline onclick (the `mod_card_roles` remove idiom -- one observer, not one
+# inline onclick (the `mod_card_roles` remove idiom — one observer, not one
 # per chip).
 .subject_chip <- function(ns, name) {
   shiny::span(
@@ -1688,7 +1688,7 @@ s_study <- function(store) {
 #' across ALL treatment variables (planned + actual), in row order. The two
 #' estimand columns usually share one level set; an estimand-specific level
 #' (e.g. a rescue arm only in the actual column) still surfaces. Empty on
-#' any probe failure -- the caller falls back to its seeds.
+#' any probe failure — the caller falls back to its seeds.
 #' @noRd
 .trt_arm_levels <- function(store, vars, dataset) {
   vals <- character(0)
@@ -1714,7 +1714,7 @@ s_study <- function(store) {
 #' One treatment-variable row: the shared variable picker (re-seeded with
 #' the committed column, bare-name values) + a Planned/Actual basis select +
 #' delete. Dynamic rows post through SHARED inputs (`trt_var_set` /
-#' `trt_basis_set` / `trt_var_delete`) with the row index baked in -- no
+#' `trt_basis_set` / `trt_var_delete`) with the row index baked in — no
 #' per-row observer to leak inside the renderUI.
 #' @noRd
 .trt_row <- function(ns, i, row, items, deletable) {
@@ -1786,7 +1786,7 @@ s_study <- function(store) {
 
 #' Setup > Treatment: the treatment-variable rows (each a column + its
 #' Planned/Actual estimand; `+ Add treatment variable` appends one) and the
-#' arm decode. Row 1 is the primary variable -- picking a new column there
+#' arm decode. Row 1 is the primary variable — picking a new column there
 #' auto-fills `arms` from its data levels; the running header / footer
 #' resolves `{arm_label}`. An output's Options > Treatment lists these rows
 #' by name.
@@ -1920,7 +1920,7 @@ s_study <- function(store) {
 
 # One arm-decode cell: a text input (value or label) that posts a targeted
 # `{i, field, value}` edit on change. It carries NO Shiny input id, so Shiny
-# does not bind it as a scalar input -- the only channel is `arm_edit`, which
+# does not bind it as a scalar input — the only channel is `arm_edit`, which
 # a drag reorder cannot fight (contrast a bulk index-order rebuild).
 .arm_field <- function(ns, i, field, value, mono = FALSE, placeholder = NULL) {
   cls <- paste0("ar-input-flat ar-arm-", field, if (mono) " ar-mono" else "")
@@ -1946,7 +1946,7 @@ s_study <- function(store) {
 # CDISC canonical analysis-set seed. Rendered as an editable row when the
 # theme's populations library is empty so users see the shape without
 # hand-writing setup.yml. Once a user edits or adds, the theme takes over.
-# Only SAFFL is seeded -- it is the one subject-level flag present across the
+# Only SAFFL is seeded — it is the one subject-level flag present across the
 # ADaM pilot ADSL; the efficacy/FAS seed was dropped (no FASFL in the data).
 # Users add their own analysis sets via "+ Add analysis set".
 .POP_SEEDS <- list(
@@ -1963,7 +1963,7 @@ s_study <- function(store) {
 
 # Name-seed a set's estimand basis when it declares none: a safety set implies
 # actual treatment, an efficacy / ITT / FAS / PP set implies planned. Anything
-# else defers ("auto"). Used only as the DISPLAYED default -- `.collect_pops()`
+# else defers ("auto"). Used only as the DISPLAYED default — `.collect_pops()`
 # persists actual/planned, drops auto, so an un-inferrable set stays clean.
 .basis_from_name <- function(id, label) {
   hay <- tolower(paste(id %||% "", label %||% ""))
@@ -1983,8 +1983,8 @@ s_study <- function(store) {
 
 # Setup > Populations: the population DATASET binding (which ADaM dataset
 # defines the population + the subject key). The analysis-set library moved
-# to its own section (`.setup_analysis_sets`, 2026-07-07) so the two
-# concepts -- "what is a subject" vs "which filtered sets exist" -- each get
+# to its own section (`.setup_analysis_sets`) so the two
+# concepts — "what is a subject" vs "which filtered sets exist" — each get
 # a tab. Empty when no catalog is mounted yet.
 .setup_populations <- function(ns, store) {
   pb <- .pop_bindings(store)
@@ -2006,7 +2006,7 @@ s_study <- function(store) {
     # Subject-id: a chip list of chosen columns (image: "A USUBJID x") fed by
     # the shared rich "Add a variable" picker (`.eligible_picker`, the same
     # component the Roles panel uses). The picker is always empty and only
-    # ADDS -- the selected state lives in the server-rendered chips, so the
+    # ADDS — the selected state lives in the server-rendered chips, so the
     # selectize-in-renderUI `selected` quirk cannot bite. Columns come from
     # the population dataset only; a chosen name is excluded from the picker.
     local({
@@ -2032,7 +2032,7 @@ s_study <- function(store) {
 
 # Setup > Analysis sets: the editable analysis-set library (CDISC canonical
 # safety / FAS / PP / PK seeds), one row per set with id / label / dataset /
-# filter and a default-set star. Its own tab as of 2026-07-07.
+# filter and a default-set star. Its own tab.
 .setup_analysis_sets <- function(ns, store) {
   pops <- store$rv$report@theme$populations %||% list()
   if (length(pops) == 0L) {
@@ -2191,9 +2191,9 @@ s_study <- function(store) {
 
 # ---- Footnotes section ----------------------------------------------------
 
-#' Setup > Footnotes: the study-level footnote register -- the single source
+#' Setup > Footnotes: the study-level footnote register — the single source
 #' of truth for footnotes reused across the whole report. Moved out of Page &
-#' Style into its own section (2026-07-07); an output references an entry by
+#' Style into its own section; an output references an entry by
 #' its `@KEY` (a per-output key picker lands in Report mode).
 #' @noRd
 .setup_footnotes <- function(ns, store) {
@@ -2204,7 +2204,7 @@ s_study <- function(store) {
 # rendered as `foot_key_<i>` + `foot_text_<i>` pairs; the observer in
 # `mod_setup_server` rebuilds the register from the current inputs.
 # Reference from any output's footnote as `@KEY` (expanded at render /
-# export time -- see `.with_footnotes`).
+# export time — see `.with_footnotes`).
 .footnote_register <- function(ns, store) {
   reg <- store$rv$report@theme$footnotes %||% list()
   if (length(reg) == 0L) {
@@ -2431,8 +2431,8 @@ s_study <- function(store) {
     min = "Min",
     max = "Max"
   )
-  # Section order (2026-07-07): the two settings blocks that shape every
-  # table -- Arm column headers, then Categorical rules -- sit on top; the
+  # Section order: the two settings blocks that shape every
+  # table — Arm column headers, then Categorical rules — sit on top; the
   # Continuous "summarise" table and its Precision follow; the Decimals-by
   # table is last because it grows with the dataset.
   shiny::tagList(
@@ -2550,7 +2550,7 @@ s_study <- function(store) {
 # A rich, searchable "add" per-row picker: the shared chip + name + muted-label
 # options (rendered once by the JS bridge, srcjs/bridge.js), always empty (it
 # only ADDS). Emits a raw `<select data-ar-picker>` in the bridge's `add-row`
-# mode -- on pick the bridge posts `{value, nonce, i}` to the SHARED observer
+# mode — on pick the bridge posts `{value, nonce, i}` to the SHARED observer
 # named `target_input` (the row index `i` travels in `data-ar-picker-extra`),
 # then clears. No per-row Shiny observer, so nothing leaks inside the dynamic
 # renderUI. `items` is a data.frame(value, name, sub, type) with type
@@ -2570,7 +2570,7 @@ s_study <- function(store) {
     stats::setNames(items$value, packed)
   }
   # onChange posts `{i, value, nonce}` to the SHARED observer `target_input`
-  # (the row index is baked in here), then clears -- so there is no per-row
+  # (the row index is baked in here), then clears — so there is no per-row
   # Shiny observer to leak inside the dynamic renderUI. The one-line hook
   # carries per-row wiring, not presentation; the render lives in the bundle.
   onchange <- sprintf(
@@ -2604,7 +2604,7 @@ s_study <- function(store) {
     type = character(0),
     stringsAsFactors = FALSE
   )
-  # Decimals apply only to numeric fields, so offer measure columns only --
+  # Decimals apply only to numeric fields, so offer measure columns only —
   # flags / dates / other categoricals are never rounded. PARAMCD detection
   # below still reads the FULL `items` (PARAMCD is itself a category column).
   num_items <- items[items$type == "measure", , drop = FALSE]
@@ -2666,7 +2666,7 @@ s_study <- function(store) {
   out[!out$value %in% chosen, , drop = FALSE]
 }
 
-# Distinct (PARAMCD, PARAM) rows for a BDS dataset -- the decimals-by param
+# Distinct (PARAMCD, PARAM) rows for a BDS dataset — the decimals-by param
 # picker shows PARAMCD as the name and PARAM as the muted description. Reads
 # the dataset's DuckDB view name from arpillar's catalog registry (a public S7
 # slot, keyed `"<library>::<name>"`) and runs a direct query on the shared
@@ -2746,10 +2746,10 @@ s_study <- function(store) {
 }
 
 # The VARIABLE / PARAM cell: the chosen names as chips + the rich searchable
-# add-picker. Multiple variables/params share one row's `dp` -- e.g. WEIGHTBL
+# add-picker. Multiple variables/params share one row's `dp` — e.g. WEIGHTBL
 # + HEIGHTBL at 1 dp in one row, BMIBL at 2 in another. The picker posts the
 # encoded value `{i, value}` to the shared `dec_name_add` observer (add-one-
-# at-a-time, no shift-multiselect; leak-free -- no per-row Shiny observer).
+# at-a-time, no shift-multiselect; leak-free — no per-row Shiny observer).
 .dec_names_cell <- function(ns, i, store, dataset, names_enc) {
   shiny::div(
     class = "ar-setup-field",
@@ -2874,8 +2874,8 @@ s_study <- function(store) {
 # label plus an ordered list of stat atoms. The engine infers the join
 # from the atoms (1 -> bare, mean+sd -> "a (b)", other pairs -> "a, b"),
 # so there is no format template.
-# Mirror arpillar's `.MEASURE_ROWS` (the engine's default block) EXACTLY -- same
-# labels, same order -- so the Setup editor, the inspector's Statistics list,
+# Mirror arpillar's `.MEASURE_ROWS` (the engine's default block) EXACTLY — same
+# labels, same order — so the Setup editor, the inspector's Statistics list,
 # and the rendered paper agree when the theme carries no continuous rows.
 .CONT_SEEDS <- list(
   list(label = "n", stats = "n"),
@@ -2887,7 +2887,7 @@ s_study <- function(store) {
 
 # The continuous rows in play: the theme's list, or the canonical seeds when
 # the theme carries none. The arpillar default theme seeds an EMPTY list (not
-# NULL), so `%||%` alone would miss it -- and then the renderer (which shows
+# NULL), so `%||%` alone would miss it — and then the renderer (which shows
 # seeds for an empty list) would be out of sync with observers (which mutate
 # the theme). Both go through this helper so a first edit materializes the
 # seeds into the theme.
@@ -2913,7 +2913,7 @@ s_study <- function(store) {
       row$label %||% "",
       placeholder = "Row label"
     ),
-    # Stats cell: the chosen atoms as removable chips (in render order --
+    # Stats cell: the chosen atoms as removable chips (in render order —
     # the order the engine joins them), plus a native descriptive select
     # that appends one atom at a time (no shift-multiselect). The engine
     # infers the join from the atoms (1 -> bare, mean+sd -> "a (b)", other
@@ -2965,7 +2965,7 @@ s_study <- function(store) {
 
 # The "+ add statistic" control: the rich searchable add-picker over the
 # eligible atoms (name + description, measure chip). Picking one posts
-# `{i, stat, nonce}` to the shared `cont_stat_add` observer and clears --
+# `{i, stat, nonce}` to the shared `cont_stat_add` observer and clears —
 # leak-free (no per-row Shiny observer inside the dynamic renderUI).
 .cont_stat_add <- function(ns, i, eligible) {
   .rich_picker(
@@ -2980,7 +2980,7 @@ s_study <- function(store) {
 # Well-known continuous stat atoms; user can type any string but this
 # datalist gives autocomplete for the common ones. Rendered once
 # per module UI mount as a hidden `<datalist>`.
-# The continuous-statistic vocabulary a stat row can draw on -- the full
+# The continuous-statistic vocabulary a stat row can draw on — the full
 # standard set (count / central / spread / range / quantiles / CI of the mean
 # / geometric family for PK). Rendered as the `<datalist>` typeahead; the
 # per-statistic decimal offset for each is the Global TFL default until
@@ -3026,7 +3026,7 @@ s_study <- function(store) {
 
 #' Setup > Team: current user, activity feed, and who's working now.
 #' Wired to `.arframe/team.json`, `.arframe/activity/*.jsonl`, and
-#' `.arframe/presence/*.json` -- open the same project folder from
+#' `.arframe/presence/*.json` — open the same project folder from
 #' another machine and Refresh; teammates show up here.
 #' @noRd
 .setup_team <- function(ns, store) {
@@ -3048,7 +3048,7 @@ s_study <- function(store) {
       )
     ))
   }
-  # Simple roster only (2026-07-06 user feedback): "just list the user
+  # Simple roster only (user feedback): "just list the user
   # who has used / using the arframe". No You card, no activity feed,
   # no explainer paragraph. Users come from `.arframe/team.json`; the
   # current user is added automatically on save (see `save_touched`).
@@ -3291,12 +3291,12 @@ s_study <- function(store) {
 # ---- binding helpers ------------------------------------------------------
 
 # Iterate `.SETUP_SPEC` and install one `observeEvent` per entry via a
-# `lapply` closure -- the pattern shiny's `observeEvent(input[[nm]], ...)`
+# `lapply` closure — the pattern shiny's `observeEvent(input[[nm]], ...)`
 # reliably supports. Every scalar field carries the same semantics: read
 # the input, coerce, walk the nested theme path, commit only on genuine
 # change. `.theme_set()`'s idempotence guard drops no-op writes so the
 # module can safely re-render with pre-existing values without churning
-# the dirty bit. A NULL from `coerce` (parse failure -- e.g. non-integer
+# the dirty bit. A NULL from `coerce` (parse failure — e.g. non-integer
 # in a precision field) drops the edit silently; the user's next
 # keystroke re-attempts. `ignoreNULL = TRUE` skips the initial NULL and
 # is more robust in testServer than `ignoreInit = TRUE`.

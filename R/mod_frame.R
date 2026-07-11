@@ -1,8 +1,8 @@
 # The Galley frame: a top `.ar-topbar` (brand + horizontal mode nav + the
 # centered click-to-edit report title + global actions) over the five
-# mounted mode bodies -- report/data/qc/logs/setup. Layout only: every body is
+# mounted mode bodies — report/data/qc/logs/setup. Layout only: every body is
 # handed in by the caller as opaque tag content and all five stay MOUNTED at
-# once (draft state lives in the store, never the DOM -- see the
+# once (draft state lives in the store, never the DOM — see the
 # suspend-contract regression in test-fct_store.R). CSS shows only the one
 # matching `store$rv$mode` via the `ar-mode-*` class on `.ar-workspace`, set by
 # arframe.js's "ar-mode" handler; the nav items carry `data-ar-mode` (the same
@@ -30,7 +30,7 @@ mod_frame_ui <- function(
 ) {
   ns <- shiny::NS(id)
   shiny::div(
-    # Opens in Setup mode -- study configuration is the first stop.
+    # Opens in Setup mode — study configuration is the first stop.
     class = "ar-workspace ar-mode-setup",
     shiny::div(
       class = "ar-main",
@@ -126,7 +126,7 @@ mod_frame_ui <- function(
 }
 
 #' One app-bar nav item: a plain <button> (icon + label) the delegated click
-#' handler reads via `data-ar-mode`. No Shiny action-button wrapper -- the
+#' handler reads via `data-ar-mode`. No Shiny action-button wrapper — the
 #' input is posted from JS, so a bare <button> keeps the DOM minimal.
 #' @noRd
 .nav_item <- function(mode, label, icon) {
@@ -168,10 +168,10 @@ mod_frame_ui <- function(
 
 #' The Galley frame server: mode switching, undo/redo, report-title edit.
 #'
-#' All three concerns write through `store` only -- `rv$mode` for mode
+#' All three concerns write through `store` only — `rv$mode` for mode
 #' switching (mirrored to the client via the `ar-mode` message so CSS can show
 #' the right `.ar-body-*`), `commit()` for the title (a direct rename of the
-#' report itself, not an object -- `rename_output()`'s sibling), and
+#' report itself, not an object — `rename_output()`'s sibling), and
 #' `undo()`/`redo()` for the history buttons.
 #' @param id *The module namespace, matching `mod_frame_ui()`.*
 #'   `<character(1)>: required`.
@@ -184,7 +184,7 @@ mod_frame_server <- function(id, store) {
 
     # Activity-bar semantics: clicking another mode switches; clicking the
     # ACTIVE mode's item again toggles the adjacent panel (the contents
-    # rail) -- the explorer-style show/hide the user asked for. Collapse
+    # rail) — the explorer-style show/hide the user asked for. Collapse
     # state stays frame-owned in the store, mirrored via ar-collapse.
     shiny::observeEvent(input$mode, {
       if (identical(input$mode, store$rv$mode)) {
@@ -214,7 +214,7 @@ mod_frame_server <- function(id, store) {
 
     # Panel collapse (decision #8): the chevrons render inside the contents
     # rail and the inspector, but they post here through arframe.js's
-    # delegated `[data-ar-collapse]` handler -- collapse state is
+    # delegated `[data-ar-collapse]` handler — collapse state is
     # frame-owned in the store (never the DOM; the ar-collapse message
     # mirrors it to workspace classes for CSS).
     shiny::observeEvent(input$collapse, {
@@ -305,13 +305,13 @@ mod_frame_server <- function(id, store) {
     # zip is delivered by clicking the hidden download link.
     export <- export_task()
     # The in-flight export's staging dir + assembled zip path. A plain env
-    # (not reactive) -- only the click and status observers touch them, in
+    # (not reactive) — only the click and status observers touch them, in
     # order, and neither should invalidate anything downstream.
     ex <- new.env(parent = emptyenv())
 
     shiny::observeEvent(input$export_btn, {
       # Export-time source injection: the daemon sees only this JSON, and
-      # the success handler assembles the package from the SAME copy -- the
+      # the success handler assembles the package from the SAME copy — the
       # store's live report never carries a stamped date.
       report <- .report_for_export(store$rv$report)
       ex$report <- report
@@ -349,7 +349,7 @@ mod_frame_server <- function(id, store) {
         )
         # Persist this pass's renders into the project's output dir (Setup >
         # Paths `output_rtf_dir`, default ./output/) and prune stale slugs
-        # there -- the zip's staging tree above is temp and rebuilt fresh per
+        # there — the zip's staging tree above is temp and rebuilt fresh per
         # export; this dir is the durable on-disk record teammates see.
         # No-op without an open project folder.
         .sync_output_dir(store, rendered)

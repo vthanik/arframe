@@ -1,8 +1,8 @@
 # The on-page ghost shell (design spec #4/#7): when an output is not
 # "ready" (output_status() != "ready"), the paper renders a COMPLETE page
 # shell with a dashed ghost block standing in for each unfilled region,
-# instead of an empty canvas or a spinner. Pure and session-free -- no
-# Shiny input, no store, no reactive read -- so it is unit-testable with
+# instead of an empty canvas or a spinner. Pure and session-free — no
+# Shiny input, no store, no reactive read — so it is unit-testable with
 # zero session mounted, matching the app's "draft state lives in the store,
 # never the DOM" discipline (mod_paper.R supplies the click wiring).
 
@@ -12,7 +12,7 @@
 #' on, per the design spec's region table (#4): the treatment-arm slot
 #' governs the header band (`columns`), the content slot governs the body
 #' rows (`rows`), and a dataset/population/type problem is a title-block
-#' concern (`title`) -- there is no dataset picker or type switcher
+#' concern (`title`) — there is no dataset picker or type switcher
 #' elsewhere on the page. A figure's roles/(figure-only region) all land on
 #' `axes`, since the region table lists ONE figure region for the whole
 #' x/y/group (or time/censor/group) role set, unlike a table's separate
@@ -38,7 +38,7 @@
 #' addition should still land SOMEWHERE clickable rather than be dropped).
 #'
 #' `[`-subsetting a named character vector by an unmatched name returns
-#' `NA_character_`, not `NULL` -- `%||%` only replaces `NULL`, so the
+#' `NA_character_`, not `NULL` — `%||%` only replaces `NULL`, so the
 #' fallback is an explicit `is.na()` check, not a bare `%||%`.
 #' @noRd
 .ghost_region <- function(control_id) {
@@ -50,7 +50,7 @@
 
 #' The generator slot label for one `validate_output()` row, lowercased for
 #' the ghost hint ("assign treatment arms", not "Assign a treatment
-#' variable.") -- `arpillar::generator(type)$slots` is the authority for the
+#' variable.") — `arpillar::generator(type)$slots` is the authority for the
 #' display name; `validate_output()`'s own `message` is the fallback for a
 #' control_id with no matching slot (`"dataset"`, `"type"`, `"population"`,
 #' none of which name a role slot).
@@ -72,7 +72,7 @@
 
 #' One dashed ghost block: a `+` glyph and a mono hint, clickable via the
 #' same `data-ar-region` attribute a real furniture region carries (see
-#' `mod_paper.R`'s region-click delegation) -- clicking an unfilled slot
+#' `mod_paper.R`'s region-click delegation) — clicking an unfilled slot
 #' opens the galley card on the region that would fill it, exactly like
 #' clicking the eventual real content.
 #' @noRd
@@ -80,7 +80,7 @@
   # Read-only canvas: the ghost slot is a static "what's still missing"
   # indicator, not a click target (editing happens in the right rail). It
   # keeps the region class for shape/layout, but no `data-ar-region` /
-  # `role="button"` / `tabindex` -- nothing on the canvas is interactive.
+  # `role="button"` / `tabindex` — nothing on the canvas is interactive.
   shiny::tags$div(
     class = "ar-ghost-slot",
     shiny::span(class = "ar-ghost-plus", "+"),
@@ -102,12 +102,12 @@
 #' type) still renders a title-region ghost rather than an empty page.
 #'
 #' Pure and session-free: takes only `object`, returns `htmltools` tags, and
-#' never reads a Shiny input or the injected store -- unit-testable with
+#' never reads a Shiny input or the injected store — unit-testable with
 #' zero session mounted.
 #' @param object *The output to shell.* `<object>: required`. Any
 #'   `arpillar::object`; typically one whose `arpillar::output_status()` is
 #'   `"draft"` or `"needs_data"` (a `"ready"` object has nothing to ghost).
-#' @return *`<shiny.tag>`.* The ghost page body -- one `.ar-ghost-slot` div
+#' @return *`<shiny.tag>`.* The ghost page body — one `.ar-ghost-slot` div
 #'   per unmet region, in region order (title, then columns, then rows/axes).
 #' @noRd
 ghost_shell <- function(object) {
@@ -123,7 +123,7 @@ ghost_shell <- function(object) {
     )
   })
   # One ghost block per DISTINCT region (several unmet requirements can
-  # share a region, e.g. two figure roles both land on "axes") -- collapse
+  # share a region, e.g. two figure roles both land on "axes") — collapse
   # to the first hint seen for that region rather than stacking duplicate
   # blocks in the same page slot.
   seen <- character(0)

@@ -1,21 +1,21 @@
 # The Options pane (design spec #8, plan Task 11): the Options-tab content
-# of the docked inspector. Three stacked sections -- TITLE (editable TLF
+# of the docked inspector. Three stacked sections — TITLE (editable TLF
 # number + label word + title, per the addendum's editable-numbering
 # decision), FOOTNOTES (line editor; line 1 is the population statement by
 # convention), and the schema-generated option rows
 # (`arpillar::option_schema(type)`), grouped under micro-labels by the
 # paper region each key belongs to. Every commit goes through
 # `update_object()`; a value equal to the engine default REMOVES the key
-# (default-elision -- keeps report.json and `emit_code()` output minimal).
+# (default-elision — keeps report.json and `emit_code()` output minimal).
 #
-# v5 note: unlike the Roles pane, this pane never narrows on `rv$region` --
+# v5 note: unlike the Roles pane, this pane never narrows on `rv$region` —
 # all four option-owning regions (title/footnotes/series/legend) route to
 # this one tab, and the full stack is small enough to show whole. A `title`
 # region click additionally focuses the Title input (`ar-focus`).
 
 # ---- key -> paper-region grouping ----------------------------------------
 
-#' Which paper region an option key belongs to -- the plan's routing table
+#' Which paper region an option key belongs to — the plan's routing table
 #' (Task 11), used here as SECTION grouping labels, not as filters. A key
 #' this map has not seen lands in the trailing "options" group.
 #' @noRd
@@ -43,8 +43,8 @@
 # never inside the regular AXES-style schema grouping.
 .RANKS_KEYS <- c("hier_sort", "x_order")
 
-# Keys the pane never shows (user call 2026-07-10): the population comes from
-# Setup > Analysis sets via the Filters pane's POPULATION section -- there is
+# Keys the pane never shows: the population comes from
+# Setup > Analysis sets via the Filters pane's POPULATION section — there is
 # no per-output override. The engine still honours a legacy saved value.
 .HIDDEN_OPT_KEYS <- "population"
 
@@ -93,7 +93,7 @@
 
 #' The schema default for one option row, normalized to the type the
 #' parsed/committed value will carry (the schema stores km's int defaults
-#' as doubles -- `identical()` against a parsed `2L` needs the coercion).
+#' as doubles — `identical()` against a parsed `2L` needs the coercion).
 #' @noRd
 .opt_default <- function(row) {
   d <- row$default[[1]]
@@ -155,7 +155,7 @@
 #' The Treatment control's choices: Setup > Treatment's variables by NAME,
 #' each valued by its estimand basis (the token `arm_mode` carries), after
 #' "Auto" (defer to the bound analysis set's basis / generator convention).
-#' `vars` is the RESOLVED row list (`.trt_vars()` -- committed theme rows or
+#' `vars` is the RESOLVED row list (`.trt_vars()` — committed theme rows or
 #' the same seeds Setup displays), so the two surfaces never disagree. Two
 #' variables sharing a basis keep the first; no rows falls back to the bare
 #' estimand words.
@@ -181,7 +181,7 @@
 
 #' A blur/Enter-commit text input: a RAW <input> whose onchange posts the
 #' namespaced option input, so typing never commits per keystroke (audit
-#' note 2026-07-04) -- the value lands when the field loses focus or the
+#' note) — the value lands when the field loses focus or the
 #' user presses Enter. Shiny's own textInput would post on every keyup.
 #' @noRd
 .opt_change_input <- function(
@@ -249,7 +249,7 @@
 #' An int row's stepper: minus / numeric text / plus. The buttons post the
 #' shared `opt_step` input ({key, dir}); the observer reads the CURRENT
 #' committed value (never the DOM), steps it, and commits through the
-#' standard option path -- typing in the text input still works unchanged.
+#' standard option path — typing in the text input still works unchanged.
 #' @noRd
 .opt_int_control <- function(ns, key, value) {
   step_js <- function(dir) {
@@ -352,7 +352,7 @@
 #' The sortable level list for a `levels`-kind key, seeded from the
 #' committed order else the x variable's own distinct values. Reuses the
 #' `data-ar-sortable` JS contract the Contents TOC and Roles slots already
-#' bind. Returns `NULL` (row skipped) while the x slot is unfilled -- there
+#' bind. Returns `NULL` (row skipped) while the x slot is unfilled — there
 #' is nothing to order yet.
 #' @noRd
 .opt_levels_control <- function(con, ns, object, row) {
@@ -451,7 +451,7 @@
       value = isTRUE(current)
     ),
     # Treatment picks BY VARIABLE: the choices are Setup > Treatment's
-    # variables (value = each one's estimand basis -- the token the engine
+    # variables (value = each one's estimand basis — the token the engine
     # consumes), so the user selects TRT01A/TRT01P, never an abstract word.
     choice = if (identical(key, "arm_mode")) {
       shiny::selectInput(
@@ -535,7 +535,7 @@
     return(shiny::tagList(row_tag, status))
   }
   # The derived-precision contract (mean at d, SD at d+1, % always 1 dp) is
-  # documented in the ROWS help topic, not spelled out inline (2026-07-10).
+  # documented in the ROWS help topic, not spelled out inline.
   row_tag
 }
 
@@ -550,9 +550,9 @@
 }
 
 #' The TITLE section: number + label word (both editable, addendum
-#' decision -- numbering is SAP-shell driven metadata, never re-derived),
+#' decision — numbering is SAP-shell driven metadata, never re-derived),
 #' the title line, and the Appendix-I continuation title lines
-#' (`options$titles` -- "Title 2 .. Title X", centered under the main
+#' (`options$titles` — "Title 2 .. Title X", centered under the main
 #' title on paper).
 #' @noRd
 .opt_title_section <- function(ns, object) {
@@ -568,10 +568,10 @@
     character(0)
   }
   # Number / label / title are ID-LESS native inputs posting one shared
-  # `title_edit {field, value, nonce}` on blur/change -- a real Shiny id
+  # `title_edit {field, value, nonce}` on blur/change — a real Shiny id
   # here replays the PREVIOUS output's values on rebind when the drill
   # switches outputs, silently overwriting the new output's title/number
-  # (observed data-loss bug, 2026-07-10). The onchange idiom posts only
+  # (observed data-loss bug). The onchange idiom posts only
   # on a real user edit, so there is nothing to replay.
   edit_js <- function(field) {
     sprintf(
@@ -660,10 +660,10 @@
 
 #' One footnote line: a drag grip (footnote order is part of the output), a
 #' plain text input posting through the shared `fn_edit` input on change
-#' (blur/Enter -- footnotes are sentences, not live-typed previews), and a
+#' (blur/Enter — footnotes are sentences, not live-typed previews), and a
 #' remove button posting `fn_remove`. Footnote 1 renders ONLY as a
 #' footnote (the old promotion into the title block was removed
-#' 2026-07-04 -- the canvas shows what the options carry, nothing more).
+#' — the canvas shows what the options carry, nothing more).
 #' Dynamic per-line controls use the same single-shared-input pattern as
 #' `.assigned_row()`/`.toc_kebab()`.
 #' @noRd
@@ -755,7 +755,7 @@
     ,
     drop = FALSE
   ]
-  # The any-event LABEL edits only while the any-event row is on -- an
+  # The any-event LABEL edits only while the any-event row is on — an
   # editable label for a row the render omits is dead UI.
   if (all(c("overall_row", "overall_label") %in% schema$key)) {
     orow <- schema[schema$key == "overall_row", , drop = FALSE]
@@ -793,7 +793,7 @@
 # ---- ORDER section (relocated from the deleted mod_card_ranks.R) ----------
 
 #' Informational directive when the ORDER section has no drag surface to
-#' show yet -- e.g. "Assign an X variable in Roles first". Not a decorative
+#' show yet — e.g. "Assign an X variable in Roles first". Not a decorative
 #' placeholder: the sentence tells the user what to do to unlock the
 #' section. Rendered as a plain paragraph so no `.ar-*-empty` class ships
 #' (the redesign strips those), but the text is still there.
@@ -804,7 +804,7 @@
 
 #' The row-block order editor (summary/crosstab): one grip row per
 #' summarize item, dragging posts `rank_items` and commits through
-#' `.reorder_slot()` -- identical semantics to reordering inside the Roles
+#' `.reorder_slot()` — identical semantics to reordering inside the Roles
 #' fieldset, surfaced here because order IS the rank for a summary table.
 #' @noRd
 .order_items_section <- function(ns, object) {
@@ -848,11 +848,11 @@
 }
 
 #' The SOC/PT incidence order control (occurrence): the engine's
-#' `hier_sort` choice as an ID-LESS two-way pill -- native radio inputs
+#' `hier_sort` choice as an ID-LESS two-way pill — native radio inputs
 #' with NO Shiny id (only a shared `name` for mutual exclusion) whose
 #' onchange posts `{key, value, nonce}` to the shared `opt_edit` observer,
 #' the TITLE section's `title_edit` idiom. A real Shiny id here would
-#' replay a stale value across a drill switch on rebind (the 2026-07-10
+#' replay a stale value across a drill switch on rebind (the
 #' data-loss class); the onchange post only fires on a real user click, so
 #' there is nothing to replay. The pill reuses the structural classes the
 #' choice-pill CSS keys off (`.ar-opt-row .shiny-options-group
@@ -939,7 +939,7 @@
 #' The ORDER section: per-generator ordering controls, relocated from the
 #' deleted `mod_card_ranks.R` so ordering lives inside Options alongside
 #' every other per-object control (one docked pane, not four). `NULL` for
-#' km/listing -- nothing to rank there, so no empty-state clutter.
+#' km/listing — nothing to rank there, so no empty-state clutter.
 #' @noRd
 .opt_order_section <- function(con, ns, object) {
   switch(
@@ -954,7 +954,7 @@
 }
 
 #' The measure-statistic labels the study defines in Setup > Summaries
-#' (`theme$summaries$continuous`), in display order -- the BASE set both the
+#' (`theme$summaries$continuous`), in display order — the BASE set both the
 #' engine's `.stats_opt()` and the Options stats control select from. Empty
 #' when the study has not defined continuous rows (the control then falls back
 #' to the generator schema default). Mirrors the engine's row->label read.
@@ -991,7 +991,7 @@
 # The layout keys whose commits ride the generic `.commit_opt()` path
 # (text / int / choice kinds); margins has a dedicated observer. Geometry
 # (orientation / paper / font_family / font_size), header_n, and the
-# running bands moved to Setup study defaults (plan Phase 3) -- the render
+# running bands moved to Setup study defaults (plan Phase 3) — the render
 # leg still resolves any per-output value from presets/import.
 .LAYOUT_GENERIC_KEYS <- c(
   "total",
@@ -1013,7 +1013,7 @@
 }
 
 #' The dataset's column metadata straight off the engine (no store cache
-#' here -- the options pane redraws rarely), empty frame on failure.
+#' here — the options pane redraws rarely), empty frame on failure.
 #' @noRd
 .items_meta_for <- function(con, object) {
   tryCatch(
@@ -1033,7 +1033,7 @@
 #' The arm-column choices a spanning band can cover: the treatment
 #' variable's distinct values (engine pushdown) plus "Total" when the
 #' pooled column is on. Empty when the treatment slot is unfilled or the
-#' catalog is unreachable -- the section then shows its waiting hint.
+#' catalog is unreachable — the section then shows its waiting hint.
 #' @noRd
 .span_arm_choices <- function(con, object) {
   r <- .role_for_slot(object, "treatment")
@@ -1088,7 +1088,7 @@
       class = "ar-span-cols",
       `aria-label` = paste0("Spanning band ", i, " columns"),
       lapply(arms, function(a) {
-        # An arm claimed by an EARLIER band cannot go into this band --
+        # An arm claimed by an EARLIER band cannot go into this band —
         # tabular's `headers()` errors when the same column sits under
         # two bands. Render greyed + disabled + unchecked so the user
         # cannot compose the conflict at all.
@@ -1163,7 +1163,7 @@
 
 #' The layout sections (COLUMNS / PAGE & OUTPUT / SPANNING HEADER /
 #' SUBGROUP / PAGE BY), rendered off `arpillar::layout_schema()` for
-#' TABLE outputs only -- the figure legs ignore every layout key, so a
+#' TABLE outputs only — the figure legs ignore every layout key, so a
 #' figure never shows dead knobs. Geometry, header_n, and the running
 #' bands moved to Setup study defaults (plan Phase 3 dedup).
 #' @noRd
@@ -1188,7 +1188,7 @@
       )
     )
   }
-  # A listing has no stub column and no pooled arm -- those two knobs are
+  # A listing has no stub column and no pooled arm — those two knobs are
   # ARD-table concepts and never render for it. "Blank row between blocks"
   # stays: it governs the listing's subject-block blank row (group_skip on
   # the id column).
@@ -1206,7 +1206,7 @@
             # header (e.g. "Baseline\nCharacteristics") via CSS `field-sizing`.
             # Multi-line stays load-bearing: Enter inserts a real newline that
             # renders as a line break in the tabular stub column; blur commits.
-            # Full-width (block row), no fixed width -- CSS governs.
+            # Full-width (block row), no fixed width — CSS governs.
             .opt_change_textarea(
               ns,
               "opt_stub_label",
@@ -1246,12 +1246,12 @@
       "PAGE & OUTPUT",
       help = .help_icon(ns, "options_page"),
       rows = list(
-        # Margins moved to Setup > Page & Style (study-level, 2026-07-08): page
+        # Margins moved to Setup > Page & Style (study-level): page
         # geometry belongs with orientation / paper / font, not per-output. The
         # engine still honours a per-output `options$margins` override if one
         # was set, but arframe no longer exposes a control for it.
         # The "Total column pools across arms; a heavy edit" note moved to the
-        # COLUMNS help topic (2026-07-10).
+        # COLUMNS help topic.
         choice_row("width_mode")
       )
     ),
@@ -1311,7 +1311,7 @@
 
 # ---- UI ---------------------------------------------------------------
 
-#' The Options pane UI: a server-rendered section stack -- the option rows
+#' The Options pane UI: a server-rendered section stack — the option rows
 #' depend on the selected object's generator schema, so nothing here can
 #' be static.
 #' @param id *The module namespace.* `<character(1)>: required`.
@@ -1323,7 +1323,7 @@ mod_card_options_ui <- function(id) {
 
 # ---- server -------------------------------------------------------------
 
-#' Footnote count for the pane's redraw trigger -- add/remove changes the
+#' Footnote count for the pane's redraw trigger — add/remove changes the
 #' row set (needs a redraw); typing inside a line does not.
 #' @noRd
 .fn_count <- function(object) {
@@ -1331,7 +1331,7 @@ mod_card_options_ui <- function(id) {
 }
 
 #' Commit one schema-row option value: parse by kind, surface an invalid
-#' input as the inline message (NOT committed -- the last good value
+#' input as the inline message (NOT committed — the last good value
 #' stands), elide a value equal to the engine default, and skip a no-op
 #' (the value a freshly-rendered control posts on bind must never push an
 #' undo entry).
@@ -1380,10 +1380,10 @@ mod_card_options_ui <- function(id) {
 #' The Options pane server: renders the section stack for the selected
 #' object and wires every commit observer. The pane redraws on selection,
 #' roles digest (the levels seed + option row set can change), and
-#' footnote count -- deliberately NOT on every report commit, so typing in
+#' footnote count — deliberately NOT on every report commit, so typing in
 #' a text input never redraws the input mid-edit. (Known ceiling: an
 #' undo/redo while the pane is open can leave control VALUES stale until
-#' the next redraw trigger -- the store stays authoritative, only the
+#' the next redraw trigger — the store stays authoritative, only the
 #' control display lags.)
 #' @param id *The module namespace, matching `mod_card_options_ui()`.*
 #'   `<character(1)>: required`.
@@ -1403,7 +1403,7 @@ mod_card_options_server <- function(id, store) {
     # Structural edits made FROM this pane whose controls must repaint
     # (footnote reorder re-keys the rows; a stats add/remove changes the
     # row set; a stepper click must show the stepped value). Text commits
-    # never bump it -- typing must not redraw the input mid-edit.
+    # never bump it — typing must not redraw the input mid-edit.
     pane_redraw <- shiny::reactiveVal(0L)
 
     output$pane <- shiny::renderUI({
@@ -1438,7 +1438,7 @@ mod_card_options_server <- function(id, store) {
         .roles_digest(selected_object(store)),
         .fn_count(selected_object(store)),
         # Redraw when Setup > Summaries' continuous rows change so the stats
-        # list stays in step with the study base (a narrow trigger -- avoids
+        # list stays in step with the study base (a narrow trigger — avoids
         # the full-report redraw the text-commit path deliberately skips).
         .study_stat_labels(store$rv$report@theme),
         pane_redraw()
@@ -1463,7 +1463,7 @@ mod_card_options_server <- function(id, store) {
     shiny::outputOptions(output, "opt_msg", suspendWhenHidden = FALSE)
 
     # The listing generator's structured-option observers (sort / transpose
-    # / stacks) -- registered once here, inert for any other generator
+    # / stacks) — registered once here, inert for any other generator
     # (mod_card_listing.R).
     .listing_option_observers(input, output, session, store, pane_redraw)
 
@@ -1526,7 +1526,7 @@ mod_card_options_server <- function(id, store) {
       )
     })
 
-    # A `title` region click (open_card) focuses the Title input -- the
+    # A `title` region click (open_card) focuses the Title input — the
     # inspector tab flip is store-driven, so by the time the message lands
     # the Options pane is the visible one.
     shiny::observe({
@@ -1543,9 +1543,9 @@ mod_card_options_server <- function(id, store) {
 
     # ---- ORDER section commits (relocated from mod_card_ranks.R) ----
     # Row-block order (summary/crosstab): the SAME reconcile-and-commit the
-    # Roles fieldset drag uses -- one helper, two surfaces, zero drift.
+    # Roles fieldset drag uses — one helper, two surfaces, zero drift.
     # (occurrence's hier_sort and line/box's x_order commit through the
-    # EXISTING generic schema-row observers below -- see `.opt_order_section`
+    # EXISTING generic schema-row observers below — see `.opt_order_section`
     # for why no bespoke observer is needed for those two.)
     shiny::observeEvent(input$rank_items, {
       obj_id <- store$rv$selected
@@ -1562,7 +1562,7 @@ mod_card_options_server <- function(id, store) {
     })
 
     # One shared id-less post for schema-key edits whose controls must NOT
-    # carry a real Shiny id (the title_edit idiom -- an id'd control
+    # carry a real Shiny id (the title_edit idiom — an id'd control
     # replays its stale value across a drill switch on rebind). Routes to
     # the SAME `.commit_opt()` path as the generic per-key observers, so
     # default-elision and the identical-value no-op hold. Today only the
@@ -1641,7 +1641,7 @@ mod_card_options_server <- function(id, store) {
     })
 
     # A footnote drop: reconcile the dragged index order against the
-    # current lines (the Roles reorder discipline -- a stale/partial
+    # current lines (the Roles reorder discipline — a stale/partial
     # payload never loses a line), commit, and redraw so the index keys
     # match the new order.
     shiny::observeEvent(input$fn_reorder, {
@@ -1723,7 +1723,7 @@ mod_card_options_server <- function(id, store) {
       pane_redraw(pane_redraw() + 1L)
     })
 
-    # Margins moved to Setup > Page & Style (study-level, 2026-07-08) -- its
+    # Margins moved to Setup > Page & Style (study-level) — its
     # per-output observer + control were removed. The engine still resolves a
     # legacy `options$margins` override, but arframe writes only the study
     # default now (`theme$page$margins`, via `.SETUP_SPEC`'s `page_margins`).
@@ -1731,7 +1731,7 @@ mod_card_options_server <- function(id, store) {
     # ---- spanning header bands ----
     .commit_spans <- function(obj, spans, label) {
       if (length(spans) == 0L) {
-        spans <- NULL # no bands = the engine's default band -- elide
+        spans <- NULL # no bands = the engine's default band — elide
       }
       if (identical(spans, obj@options$spans)) {
         return()
@@ -1850,7 +1850,7 @@ mod_card_options_server <- function(id, store) {
       row
     }
 
-    # The effective statistic set the control DISPLAYS -- the same resolution
+    # The effective statistic set the control DISPLAYS — the same resolution
     # `.opt_stats_control()` and the engine's `.stats_opt()` use: the Setup
     # continuous-row base (else schema default), unset `options$stats` meaning
     # "all of base". Add/remove operate on THIS, so a custom Setup stat is
@@ -1872,7 +1872,7 @@ mod_card_options_server <- function(id, store) {
       }
       current <- .stats_current(obj, row)
       kept <- setdiff(current, input$opt_stat_rm$value)
-      # Never commit an empty set -- the engine would fall back to the full
+      # Never commit an empty set — the engine would fall back to the full
       # block anyway, which reads as "remove did nothing" in the UI.
       if (length(kept) == 0L || identical(kept, current)) {
         return()
@@ -1950,7 +1950,7 @@ mod_card_options_server <- function(id, store) {
     })
 
     # ---- schema-row commits ----
-    # One observer per known option key across every generator -- the same
+    # One observer per known option key across every generator — the same
     # bounded static-registration pattern as the Roles module's slot
     # observers. Each observer looks the row up in the SELECTED object's
     # own schema (defaults differ per generator) and no-ops when the key
@@ -1988,7 +1988,7 @@ mod_card_options_server <- function(id, store) {
           }
           before <- obj@options[[k]]
           .commit_opt(store, rv_err, obj, row, input[[input_id]])
-          # The any-event toggle shows/hides its label row -- repaint only on
+          # The any-event toggle shows/hides its label row — repaint only on
           # a REAL flip (a bind-time no-op post must not redraw-loop).
           if (identical(k, "overall_row")) {
             after <- selected_object(store)@options[[k]]
@@ -2030,7 +2030,7 @@ mod_card_options_server <- function(id, store) {
 
     # The universal layout keys (text / int / choice kinds) commit through
     # the same `.commit_opt()` path, with the row looked up in
-    # `layout_schema()` instead of the generator schema. Tables only --
+    # `layout_schema()` instead of the generator schema. Tables only —
     # the layout sections never render for a figure.
     for (lay_key in .LAYOUT_GENERIC_KEYS) {
       local({

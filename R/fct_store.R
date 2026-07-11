@@ -2,7 +2,7 @@
 # pointers + undo/redo + a two-stage ARD cache. Created once per session and
 # handed to every module server; modules communicate ONLY through it, never
 # with each other. ALL draft/edit state lives in `store$rv`, never in the
-# DOM -- a folded, lazy-mounted, or unmounted pane can never silently drop
+# DOM — a folded, lazy-mounted, or unmounted pane can never silently drop
 # configuration (the suspend-contract regression test proves this end to
 # end, with zero Shiny session mounted).
 
@@ -46,7 +46,7 @@ new_store <- function(con, report = NULL) {
       region = NULL,
       card = FALSE,
       pinned = FALSE,
-      # Data mode is the opening screen (user decision 2026-07-04): the
+      # Data mode is the opening screen: the
       # data on-ramp shows before the report it feeds. Must match
       # mod_frame_ui()'s initial ar-mode-* class.
       mode = "setup",
@@ -56,7 +56,7 @@ new_store <- function(con, report = NULL) {
       filter_draft = list(),
       # The open filter chip's draft index (NULL = no popover). Cleared on
       # selection change (the pane's seed observer); guarded against a
-      # stale index by every reader (chips + popover, 2026-07-04).
+      # stale index by every reader (chips + popover).
       filter_open = NULL,
       path = NULL,
       dirty = FALSE,
@@ -66,7 +66,7 @@ new_store <- function(con, report = NULL) {
       log = character(0),
       catalog_nonce = 0L,
       rail_collapsed = FALSE,
-      # Report CONTENTS rail hide flag -- INDEPENDENT of the Data `rail_collapsed`
+      # Report CONTENTS rail hide flag — INDEPENDENT of the Data `rail_collapsed`
       # so collapsing one mode's rail never leaks to the other (re-clicking the
       # active Report tab toggles this).
       loc_rail_collapsed = FALSE,
@@ -85,13 +85,13 @@ new_store <- function(con, report = NULL) {
       # collapsed. Server-held (not the DOM) so a tree re-render preserves
       # the expand/collapse state.
       src_collapsed = character(0),
-      # Report mode's drill pointer -- the Report-mode twin of `grid_dataset`
-      # (2026-07-08): NULL shows the List-of-Contents table, a non-NULL output
+      # Report mode's drill pointer — the Report-mode twin of `grid_dataset`
+      # NULL shows the List-of-Contents table, a non-NULL output
       # id drills into that output's paper + inspector. `drill_open()` sets it
       # (alongside `selected`); the `ar-report-open` workspace class mirrors
       # `!is.null()` for the layout gate.
       report_open = NULL,
-      # Open variable-peek rows in the Roles editor, by item name -- store-
+      # Open variable-peek rows in the Roles editor, by item name — store-
       # side (never the DOM) so a digest redraw or Sortable re-init cannot
       # fold an open peek.
       peek = character(0)
@@ -103,7 +103,7 @@ new_store <- function(con, report = NULL) {
     # output's `@dataset` there and has no per-object library), so the
     # SOURCE FOLDER a dataset came from and its original file KIND are
     # arframe-side UI concepts the catalog does not carry. Plain envs (not
-    # reactive) -- the explorer reads them under `catalog_nonce`, which
+    # reactive) — the explorer reads them under `catalog_nonce`, which
     # every mount/delete bumps.
     sources = new.env(parent = emptyenv()),
     kinds = new.env(parent = emptyenv()),
@@ -135,7 +135,7 @@ install_autosave <- function(store) {
         function() {
           # `later` fires OUTSIDE the reactive graph, so bare reads of
           # `store$rv$*` abort with "outside of reactive consumer". Wrap
-          # in `isolate()` -- the writes happen inside `save_touched`,
+          # in `isolate()` — the writes happen inside `save_touched`,
           # which walks the store non-reactively anyway.
           shiny::isolate({
             if (isTRUE(store$rv$dirty) && !is.null(store$rv$path)) {
@@ -232,11 +232,11 @@ selected_object <- function(store) {
 #' Apply `fn(object) -> object` to the object with `id`, then commit the
 #' rebuilt report. Siblings are untouched.
 #'
-#' **Run semantics (decision #8).** A HEAVY edit -- one that moves the ARD
-#' cache key (roles/filters/dataset/type) -- on an output that was READY
+#' **Run semantics (decision #8).** A HEAVY edit — one that moves the ARD
+#' cache key (roles/filters/dataset/type) — on an output that was READY
 #' before the edit marks its proof STALE (`rv$stale`): the paper stops
 #' auto re-collecting from DuckDB and shows the stale notice until Run
-#' re-typesets. A CHEAP edit (options/title/footnotes -- display-only, the
+#' re-typesets. A CHEAP edit (options/title/footnotes — display-only, the
 #' key is unchanged) renders live. A DRAFT output is never marked: filling
 #' its last slot is the ghost-fills-into-a-table payoff and must typeset
 #' immediately.
@@ -248,7 +248,7 @@ update_object <- function(store, id, fn, label = "") {
   }
   new_obj <- fn(obj)
   # A BROKEN output is exempt: its render failed, so no proof exists to go
-  # stale -- the fix-it edit must re-render live (the error-summary ->
+  # stale — the fix-it edit must re-render live (the error-summary ->
   # fixed-table loop), never demand a Run first.
   theme <- store$rv$report@theme
   if (
@@ -259,7 +259,7 @@ update_object <- function(store, id, fn, label = "") {
     store$rv$stale <- union(store$rv$stale, id)
   }
   # Stamp modified_by/at AND clear any Reviewed signature (every edit
-  # invalidates the QC stamp). Undo/redo does NOT stamp -- it just replays
+  # invalidates the QC stamp). Undo/redo does NOT stamp — it just replays
   # a prior snapshot.
   new_obj <- .stamp_meta(new_obj, "modify")
   new_report <- .replace_object(store$rv$report, id, new_obj)
@@ -285,7 +285,7 @@ update_object <- function(store, id, fn, label = "") {
 #' bind it to `dataset`, select it, and return its freshly minted id.
 #'
 #' `roles` are rebuilt off `dataset`'s own catalog entry, not copied
-#' verbatim from the preset -- a preset var absent from `dataset` still
+#' verbatim from the preset — a preset var absent from `dataset` still
 #' gets a `data_item()` (default `role_type = "category"`), it is never
 #' silently dropped, so a mismatched dataset (e.g. an AE-domain preset
 #' applied to a dataset without `AEDECOD`) surfaces at validate/render
@@ -301,7 +301,7 @@ add_from_preset <- function(store, preset_id, dataset) {
 #' Add a bare new output from a generator (`arpillar::generator()`), bind
 #' it to `dataset`, select it, and return its freshly minted id.
 #'
-#' No roles are filled in -- the "blank slate" counterpart to
+#' No roles are filled in — the "blank slate" counterpart to
 #' `add_from_preset()`. `options$number` is auto-suggested as the next
 #' free `<prefix>.<n>` within the generator's kind group (see
 #' `.next_number()`); `options$number_label` is the kind's TLF label
@@ -353,7 +353,7 @@ rename_output <- function(store, id, title) {
 # ---- ARD cache: the two-stage seam ---------------------------------------
 
 #' The ARD memo key for an output: `dataset + type + roles + filters` (+ the
-#' resolved population) -- deliberately EXCLUDING the DISPLAY `options`, so a
+#' resolved population) — deliberately EXCLUDING the DISPLAY `options`, so a
 #' display-only edit (decimals, cutoffs, ...) reuses the already-built ARD
 #' instead of recollecting from DuckDB. `options$population` is the one option
 #' folded in: it resolves (against `theme`) to a row filter + denominator
@@ -364,7 +364,7 @@ rename_output <- function(store, id, title) {
 #' Item `label`s are display-only too: `build_ard()` never reads them (the
 #' row headers consume them at the render_display stage), so a relabel
 #' re-renders live off the memoized ARD instead of stale-marking the proof.
-#' `role_type` stays in the key -- it genuinely changes the ARD (measure
+#' `role_type` stays in the key — it genuinely changes the ARD (measure
 #' stats vs category counts).
 #' @noRd
 .ard_key <- function(object, theme = list()) {
@@ -383,7 +383,7 @@ rename_output <- function(store, id, title) {
     object@filters
   )
   # Conditional appends: `total` (a pooled arm) and `page_by` (a second
-  # grouping level) change the ARD, so they are part of the key -- but
+  # grouping level) change the ARD, so they are part of the key — but
   # ONLY when set, so every earlier object keeps its legacy hash and
   # nothing goes stale on upgrade.
   if (isTRUE(object@options$total)) {
@@ -394,7 +394,7 @@ rename_output <- function(store, id, title) {
     parts$page_by <- as.character(pb)
   }
   # A listing bakes these into its SQL pull (ORDER BY / LIMIT / PIVOT), so
-  # they change the collected frame, not just the display -- key them.
+  # they change the collected frame, not just the display — key them.
   # Conditional, so an option-free listing keeps a stable hash.
   if (identical(object@type, "listing")) {
     for (k in c("sort", "limit", "transpose")) {
@@ -404,8 +404,8 @@ rename_output <- function(store, id, title) {
       }
     }
   }
-  # The bound analysis set changes the ARD -- it ANDs a row filter and (for
-  # occurrence) picks the denominator dataset -- and it resolves against the
+  # The bound analysis set changes the ARD — it ANDs a row filter and (for
+  # occurrence) picks the denominator dataset — and it resolves against the
   # THEME, so a Setup edit to the set's filter must invalidate the memo. Fold
   # the RESOLVED set in, but only when a population is bound, so an unbound
   # output keeps its legacy hash.
@@ -416,7 +416,7 @@ rename_output <- function(store, id, title) {
   paste0("ard::", rlang::hash(parts))
 }
 
-#' A keyed [arpillar::build_ard()] memo -- the two-stage render seam.
+#' A keyed [arpillar::build_ard()] memo — the two-stage render seam.
 #'
 #' Keys come from `.ard_key()` and are prefixed `"ard::"`: the one cache
 #' environment is shared with Add-output recommendation memos (`"rec::"`)
@@ -437,7 +437,7 @@ cached_ard <- function(store, object) {
 
 # ---- data sources (v5, decision #8) --------------------------------------
 
-# The file extensions arframe will register from a folder -- the formats
+# The file extensions arframe will register from a folder — the formats
 # arpillar::register_dataset() ingests (parquet directly; xpt/json via
 # artoo). Anything else in the folder is skipped.
 .DATA_EXTS <- c("parquet", "xpt", "json")
@@ -456,7 +456,7 @@ cached_ard <- function(store, object) {
 #' Mount every registerable dataset in `dir` into the WORK library,
 #' recording each dataset's source folder and file kind (keyed by name) and
 #' bumping `catalog_nonce`. A name already registered is skipped (not an
-#' error) -- re-mounting a folder is idempotent, and a same-named dataset in
+#' error) — re-mounting a folder is idempotent, and a same-named dataset in
 #' a second folder keeps the first (a WORK-flat namespace has one binding
 #' per name). Returns the number of datasets newly registered.
 #' @noRd
@@ -584,7 +584,7 @@ open_card <- function(store, region) {
   invisible(NULL)
 }
 
-#' Close the galley card -- a no-op while the card is pinned.
+#' Close the galley card — a no-op while the card is pinned.
 #' @noRd
 close_card <- function(store) {
   if (isTRUE(store$rv$pinned)) {
@@ -601,7 +601,7 @@ toggle_pin <- function(store) {
   invisible(NULL)
 }
 
-# ---- Report-mode drill (2026-07-08) ---------------------------------------
+# ---- Report-mode drill ---------------------------------------
 
 #' Drill into an output: open Report mode's paper + inspector on `id`.
 #'
@@ -616,7 +616,7 @@ drill_open <- function(store, id) {
   invisible(NULL)
 }
 
-#' Close the drill -- back to the List-of-Contents table (`report_open` NULL,
+#' Close the drill — back to the List-of-Contents table (`report_open` NULL,
 #' so `ar-report-open` drops and the LoC surface fills the report body).
 #' @noRd
 drill_close <- function(store) {
@@ -633,7 +633,7 @@ toggle_rail <- function(store) {
   invisible(NULL)
 }
 
-#' Toggle the docked inspector between full and folded (2026-07-10 -- the
+#' Toggle the docked inspector between full and folded (the
 #' icon strip is gone; the toolbar's `panel_toggle` button and the
 #' auto-fold-on-no-selection observer are the two callers).
 #' @noRd

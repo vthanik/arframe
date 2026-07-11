@@ -1,9 +1,9 @@
 # Pure walkers over the S7 document tree (report -> page -> object). Every
-# function here rebuilds the tree with S7::set_props() -- S7 properties are
+# function here rebuilds the tree with S7::set_props() — S7 properties are
 # immutable, so a "mutation" is always a brand-new report returned to the
 # caller, never an in-place x@prop <- value. fct_store.R's mutators are thin
 # wrappers over these plus a commit(). Construction (.object_from_preset /
-# .object_from_generator) reads arpillar::preset()/generator() -- the
+# .object_from_generator) reads arpillar::preset()/generator() — the
 # arpillar::template()/templates() API they replaced is gone.
 
 # ---- lookup -----------------------------------------------------------
@@ -83,7 +83,7 @@
 #' actual (TRTA) / planned (TRTP). Shared by `.roles_from_preset()`,
 #' `.missing_vars()`, and `.best_dataset()` so a preset that hard-codes
 #' "TRT01P" is treated as satisfied whenever the target dataset carries any
-#' of these -- no misleading "missing TRT01P" warning on ADAE, no penalty in
+#' of these — no misleading "missing TRT01P" warning on ADAE, no penalty in
 #' dataset auto-suggestion.
 #' @noRd
 .ARM_VAR_ALTS <- c("TRT01A", "TRT01P", "TRTA", "TRTP")
@@ -91,10 +91,10 @@
 #' Build the `roles` list for a preset: one [arpillar::role()] per slot,
 #' each holding one [arpillar::data_item()] per variable name in
 #' `preset$roles[[slot]]`, with `role_type` resolved off the catalog
-#' (defaulting to "category" for a variable absent from `dataset` --
+#' (defaulting to "category" for a variable absent from `dataset` —
 #' construction never silently drops a preset-listed var; fail loud belongs
 #' to the validate step) and `label` filled from the dataset's own CDISC
-#' metadata (`data_items()`' sidecar labels) -- a preset-seeded demographics
+#' metadata (`data_items()`' sidecar labels) — a preset-seeded demographics
 #' table says "Age" where the source says AGE, with no author-side label
 #' list to maintain. A dataset without labels degrades to the bare name
 #' exactly as before.
@@ -163,7 +163,7 @@
 }
 
 #' Build a bare object from a generator entry (`arpillar::generator()`),
-#' bound to `dataset`, with `id`, and no roles filled -- the "blank slate"
+#' bound to `dataset`, with `id`, and no roles filled — the "blank slate"
 #' path (as opposed to `.object_from_preset()`'s pre-filled one). `options`
 #' seeds `number` (auto-suggested via `.next_number()`) and `number_label`
 #' (`kind` title-cased: table -> "Table", figure -> "Figure",
@@ -199,7 +199,7 @@
 #' `.n` suffix already present in `existing_numbers` that shares the kind's
 #' prefix (so a mix of preset-seeded and generator-suggested numbers in the
 #' same document never collides). Starts at `.1` when none exist yet. The
-#' prefix comes from `.TOC_GROUPS` (`mod_contents.R`) -- the single table
+#' prefix comes from `.TOC_GROUPS` (`mod_contents.R`) — the single table
 #' mapping kind -> TOC numbering prefix, not duplicated here.
 #' @noRd
 .next_number <- function(kind, existing_numbers) {

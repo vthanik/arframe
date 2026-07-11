@@ -1,18 +1,18 @@
 # The typeset sheet (design spec #3/#4/#7): the render payoff. Renders the
 # SELECTED output through the exact same arpillar::render_spec()/
-# render_ggplot() seam the export leg uses -- screen == paper, one spec
+# render_ggplot() seam the export leg uses — screen == paper, one spec
 # object feeds both surfaces, never a second parallel renderer. When the
 # output is not ready, the ghost shell (utils_ghost.R) stands in; when a
 # ready render throws, the GOV.UK error summary renders instead and the id
 # is flagged in `rv$broken` (mod_contents.R's TOC stamp already reads that
 # flag). Region click delegation (arframe.js) routes every click on the
-# page's furniture -- real or ghost -- through `open_card()`.
+# page's furniture — real or ghost — through `open_card()`.
 
 # ---- title block ------------------------------------------------------
 
 #' The TLF number line: `"<number_label> <number>"`, falling back to the
 #' generator's own kind label (`"Table"`/`"Figure"`/`"Listing"`) when
-#' `options$number_label` is absent -- an object added by hand (outside
+#' `options$number_label` is absent — an object added by hand (outside
 #' both `add_from_preset()`/`add_from_generator()`) still gets a sensible
 #' label rather than showing a blank line.
 #' @noRd
@@ -26,10 +26,10 @@
   trimws(paste(label, number))
 }
 
-#' The real (non-ghost) title block: number line and title only -- what
+#' The real (non-ghost) title block: number line and title only — what
 #' the options actually carry, nothing fabricated (the old
 #' footnote-promoted "population line" was an audit liability: the canvas
-#' showed a line the spec did not, 2026-07-04). Wrapped in the `title`
+#' showed a line the spec did not). Wrapped in the `title`
 #' region so clicking it opens the card routed there. When the output
 #' carries filters, the Population tag (Task 12) renders below, wearing
 #' its OWN `filters` region.
@@ -51,14 +51,14 @@
   )
 }
 
-# Canvas flip (2026-07-04, supersedes decision #7): the canvas shows
-# tabular's FULL page render -- running header/footer bands included
+# Canvas flip (supersedes decision #7): the canvas shows
+# tabular's FULL page render — running header/footer bands included
 # (`chrome_onscreen = "auto"`, tabular's default). A ready table needs no
 # arframe-side markup; `.title_block()` remains for the ghost/stale/error
 # paths and the figure leg, where no tabular spec exists to carry it.
 #
 # The auto "Source: <dataset> - arframe <version> - <date>" provenance line
-# was removed 2026-07-09 (user call): a submission deliverable never carries
+# was removed (user call): a submission deliverable never carries
 # an arframe-branded default footnote. No source line is stamped anywhere;
 # a user-controlled source can return as a Setup field if wanted.
 
@@ -117,7 +117,7 @@
 #' those tokens (they would break its byte-deterministic emit), so the
 #' app stamps them at render/export time. The backend-resolved
 #' `{page}`/`{npages}` field codes pass through untouched, as do unknown
-#' `{tokens}` -- never silently drop what a user typed.
+#' `{tokens}` — never silently drop what a user typed.
 #'
 #' Recognised tokens:
 #'   * Chrome (independent of theme): `{datetime}`, `{program}`,
@@ -125,10 +125,10 @@
 #'   * Study meta (from `theme$study`): `{sponsor}`, `{protocol}`,
 #'     `{study}`, `{study_id}`, `{indication}`, `{data_date}`,
 #'     `{status}`.
-#'   * Population label: `{analysis_set}` -- the object's population
+#'   * Population label: `{analysis_set}` — the object's population
 #'     override, else `theme$default_population`, looked up in
 #'     `theme$populations`.
-#'   * Arm label: `{arm_label}` -- from `theme$arm$label` (per-object
+#'   * Arm label: `{arm_label}` — from `theme$arm$label` (per-object
 #'     arm-column resolution is a render-leg concern).
 #'
 #' `now` is injectable for tests; `theme` defaults to empty so callers
@@ -158,8 +158,8 @@
 }
 
 # Study-identity tokens a running header/footer REQUIRES: a band referencing
-# one but leaving it empty in Setup > Study errors the output -- fail loud,
-# never a blank in a submission header (2026-07-08, user call). `{indication}`
+# one but leaving it empty in Setup > Study errors the output — fail loud,
+# never a blank in a submission header (user call). `{indication}`
 # (Setup marks it optional) and `{status}` resolve to blank without erroring.
 .REQUIRED_STUDY_TOKENS <- c(
   "sponsor",
@@ -174,7 +174,7 @@
 #' (study meta from Setup > Study, chrome stamps like `{datetime}`), while
 #' `{page}`/`{npages}` stay as tabular's backend field codes. Shared by the
 #' screen canvas (`.try_render_table`) AND the `.rtf`/export legs (mod_toolbar,
-#' fct_export) so the deliverable and the screen never drift -- the ENGINE
+#' fct_export) so the deliverable and the screen never drift — the ENGINE
 #' rejects `{datetime}` as non-deterministic, so every render leg MUST stamp the
 #' bands here first. The object-level twin is `.with_chrome()` (per-output band
 #' overrides); every other study DISPLAY default (decimals, Summaries, arm)
@@ -183,7 +183,7 @@
 #' @details
 #' **Fail loud on a missing required token.** A band that references a
 #' `.REQUIRED_STUDY_TOKENS` entry Setup left empty raises `arframe_error_input`
-#' -- turned into the output's render error on screen, and (rightly) refusing to
+#' — turned into the output's render error on screen, and (rightly) refusing to
 #' emit a blank submission header into the `.rtf`.
 #' @noRd
 .with_band_chrome <- function(theme, object, now = NULL) {
@@ -201,13 +201,13 @@
   theme
 }
 
-#' Resolve one band's cells for a render (screen AND `.rtf`/export -- the study
+#' Resolve one band's cells for a render (screen AND `.rtf`/export — the study
 #' bands are stamped identically for both): (1) error on a referenced-but-empty
 #' required study token, (2) substitute every known token to a literal, (3)
 #' leave the `{page}`/`{npages}` field codes for tabular's backend to resolve.
 #' A non-list band (or empty) passes through untouched.
 #'
-#' Each side (`left`/`center`/`right`) is a CHARACTER VECTOR -- one entry per
+#' Each side (`left`/`center`/`right`) is a CHARACTER VECTOR — one entry per
 #' band row (Setup > Page & Style writes multiple rows). The resolve runs
 #' per-cell across the vector, so a 2-row band resolves both rows; the earlier
 #' single-cell assumption silently passed multi-row bands through raw.
@@ -235,7 +235,7 @@
     for (nm in names(toks)) {
       cell <- gsub(paste0("{", nm, "}"), toks[[nm]], cell, fixed = TRUE)
     }
-    # {page}/{npages} are tabular's own backend field codes -- leave them for
+    # {page}/{npages} are tabular's own backend field codes — leave them for
     # tabular to resolve; the canvas is continuous, so real page numbers are the
     # `.rtf`'s (decision #7 still holds for pagination, not for the bands).
     cell
@@ -253,7 +253,7 @@
 #' top-to-bottom editor rows onto tabular's pagehead "grows toward the table"
 #' convention: the engine draws index 1 nearest the table (bottom of the header
 #' band) and stacks upward, so without this the editor's top row renders last.
-#' Applied to `pagehead` ONLY -- `pagefoot` draws index 1 nearest the table
+#' Applied to `pagehead` ONLY — `pagefoot` draws index 1 nearest the table
 #' (its TOP row), which already matches the editor. `rev()` is a no-op on
 #' length-0/1 sides, so single-row bands are untouched.
 #' @noRd
@@ -267,7 +267,7 @@
 #' `{analysis_set}` resolver: the population attached to `object` (via
 #' `object@options$population`) wins; else `theme$default_population`;
 #' looked up in `theme$populations` for the display label. Returns NULL
-#' when no population applies -- caller drops the token from the token
+#' when no population applies — caller drops the token from the token
 #' map so an unresolved `{analysis_set}` passes through unchanged.
 #' @noRd
 .resolve_analysis_set <- function(object, theme) {
@@ -306,7 +306,7 @@
 #' `@KEY` resolves to the registered text; a mixed line like
 #' `"@SAFPOP; N is the enrolled count"` also resolves the leading `@KEY`
 #' at the start of the string. `@UNKNOWN` (no matching register entry)
-#' passes through as a literal -- never silently drop what a user typed.
+#' passes through as a literal — never silently drop what a user typed.
 #' @noRd
 .with_footnotes <- function(object, theme = list()) {
   register <- theme$footnotes %||% list()
@@ -347,7 +347,7 @@
 }
 
 #' `.with_footnotes()` + `.with_chrome()` mapped over every output of a
-#' report, plus the study running bands (`theme$page`) stamped -- the export
+#' report, plus the study running bands (`theme$page`) stamped — the export
 #' package's whole-report leg (both the async JSON handoff and the sync fallback
 #' build from the same injected copy). One `now` for the whole package so every
 #' output carries the same stamp; the report's own `theme` supplies study-meta
@@ -373,7 +373,7 @@
   # export read `theme$page` from this copy, and the engine rejects a live
   # `{datetime}`. Study bands are report-level (shared by every output), so one
   # stamp with the same `now`.
-  # ponytail: resolved against the first output -- a per-output band token
+  # ponytail: resolved against the first output — a per-output band token
   # ({program}) would need a per-object theme, which no study running band uses.
   objs <- .all_objects(report)
   if (length(objs) > 0L && is.list(theme$page)) {
@@ -389,7 +389,7 @@
 
 #' Build the code-view panel: a filename bar (Copy / Download .R / Close)
 #' above the `emit_code()` reproduction script in a mono `<pre>`. The
-#' script regenerates THIS output's RTF from bare arpillar -- the "R code
+#' script regenerates THIS output's RTF from bare arpillar — the "R code
 #' to reproduce it" a regulator or independent QC programmer runs. Copy is
 #' pure client JS (`[data-ar-copy]` targets the `<pre>`'s id); Download and
 #' Close are server-wired in `mod_paper_server()`.
@@ -436,7 +436,7 @@
   )
 }
 
-#' R syntax highlighting via `downlit::highlight()` -- the same mechanism
+#' R syntax highlighting via `downlit::highlight()` — the same mechanism
 #' pkgdown/tidyverse uses for rendered code chunks. Falls back to plain
 #' HTML-escaped text when highlighting fails (unparseable code), so the
 #' pre's textContent (what the Copy button reads) stays byte-identical to
@@ -472,7 +472,7 @@
     class = "ar-paper-stale ar-mono",
     shiny::tags$p(class = "ar-paper-stale-word", "STALE"),
     shiny::tags$p("Roles or filters changed since the last typeset."),
-    # U+2318 PLACE OF INTEREST SIGN + U+21B5 CARRIAGE RETURN -- the Run
+    # U+2318 PLACE OF INTEREST SIGN + U+21B5 CARRIAGE RETURN — the Run
     # shortcut glyphs (mod_card_ui's footer); \u escapes keep R/
     # ASCII-clean (R CMD check portability rule).
     shiny::tags$p("Run (\u2318\u21b5) re-typesets this proof.")
@@ -483,7 +483,7 @@
 
 #' One jump link in the error summary: the `validate_output()` message,
 #' clicking it posts the SAME region-click input a furniture/ghost region
-#' posts (`ns("region")`), routed through `.ghost_region()` -- so a jump
+#' posts (`ns("region")`), routed through `.ghost_region()` — so a jump
 #' link and clicking the corresponding ghost slot land on the identical
 #' card.
 #' @noRd
@@ -506,7 +506,7 @@
 #' plain headline and cleaned-up detail lines. A cli condition message
 #' (e.g. `arpillar_error_input`) is one headline followed by `\n`-joined
 #' bullet lines, each prefixed with a cli glyph (`x` -> "✖", `i` ->
-#' "ℹ", `*`/bullet -> "•", `v` -> "✔", `!` -- see
+#' "ℹ", `*`/bullet -> "•", `v` -> "✔", `!` — see
 #' `cli::cli_abort()`) and a space; rendering the raw string in a single
 #' `<p>` collapses the `\n`s into one run-on line with the glyph bleeding
 #' into the prose. The headline is `parts[[1]]` verbatim; each detail line
@@ -562,9 +562,9 @@
 
 # ---- UI ---------------------------------------------------------------
 
-#' The paper module UI (v5): the content-hugging galley artifact -- the
+#' The paper module UI (v5): the content-hugging galley artifact — the
 #' sheet slot (server-rendered end to end via `uiOutput`) plus a
-#' mounted-but-hidden `plotOutput` for the figure leg -- both containers
+#' mounted-but-hidden `plotOutput` for the figure leg — both containers
 #' stay mounted, a class flip on the sheet root picks which one shows
 #' (mirrors `mod_frame.R`'s "all bodies mount, CSS picks one" pattern).
 #' No fit/page toolbar (decision #7): the artifact hugs its content; page
@@ -576,8 +576,8 @@ mod_paper_ui <- function(id) {
   shiny::div(
     id = ns("desk"),
     class = "ar-desk-col",
-    # The canvas toolbar (2026-07-04): Run / .rtf / Output|Code at the top
-    # of the desk -- the Preact component mounts into this child module.
+    # The canvas toolbar: Run / .rtf / Output|Code at the top
+    # of the desk — the Preact component mounts into this child module.
     mod_toolbar_ui(ns("toolbar")),
     shiny::div(
       id = ns("sheet"),
@@ -589,7 +589,7 @@ mod_paper_ui <- function(id) {
         # A FIXED pixel height, not "auto": `plotOutput(height = "auto")`
         # sizes the graphics device off the CONTAINER's CSS height, and the
         # container has no image inside it (so no intrinsic height) until
-        # the first successful render -- a DRAFT/error figure's `req()`
+        # the first successful render — a DRAFT/error figure's `req()`
         # inside `renderPlot()` never draws anything, so an "auto"-height
         # container collapses toward zero and the base graphics device
         # throws "figure margins too large" trying to open at ~0px. A
@@ -601,7 +601,7 @@ mod_paper_ui <- function(id) {
     # The code view (decision #8): an alternate desk surface holding the
     # `emit_code()` reproduction script. Mounts alongside the sheet; the
     # `ar-showing-code` class on the desk (flipped by `rv$code_view`)
-    # picks which shows -- no unmount, so returning to the artifact is a
+    # picks which shows — no unmount, so returning to the artifact is a
     # class toggle, not a re-render.
     shiny::uiOutput(ns("code_slot"))
   )
@@ -625,15 +625,15 @@ mod_paper_server <- function(id, store) {
 
     # The whole sheet body: running head, title block (real or ghost), the
     # table/figure content (or its ghost), footnotes, source line. Gated to
-    # the same two triggers the brief specifies -- a report mutation
-    # (role/options/filters edit) or a selection change -- NOT a bare
+    # the same two triggers the brief specifies — a report mutation
+    # (role/options/filters edit) or a selection change — NOT a bare
     # `store$rv$report` read with no bindEvent, so an UNRELATED store write
     # (e.g. `rv$log`) never forces a re-render.
     #
     # Concurrent-mutator drag guard: `document.body.dataset.arDragging` is
     # set (arframe.js) for the physical duration of a Contents TOC drag.
-    # This observer stays a plain `bindEvent` -- it already only fires on
-    # the two named triggers, not continuously -- because the guard cannot
+    # This observer stays a plain `bindEvent` — it already only fires on
+    # the two named triggers, not continuously — because the guard cannot
     # live server-side at all: `req(!isTRUE(...))` has no way to read a DOM
     # dataset attribute, and the risk this guards against (a region click,
     # real or ghost, firing WHILE the flag is set) is a CLIENT input that
@@ -642,7 +642,7 @@ mod_paper_server <- function(id, store) {
     # of calling `Shiny.setInputValue()` while `arDragging` is set, and
     # `arFlushDeferredRegionClicks()` (called from `arInitSortables()`'s
     # `onEnd`, right after it clears the flag) posts any queued click the
-    # instant the drag ends -- see arframe.js's "THE CONCURRENT-MUTATOR
+    # instant the drag ends — see arframe.js's "THE CONCURRENT-MUTATOR
     # DRAG GUARD" section. No input this observer's `renderUI` depends on
     # (`store$rv$report`/`store$rv$selected`) can itself be driven by a
     # region click, so gating the click at its source is sufficient; there
@@ -675,7 +675,7 @@ mod_paper_server <- function(id, store) {
     # The class flip: table content shows the HTML slot, a figure shows the
     # plot slot, "not ready"/no-selection shows neither's real content
     # (the ghost markup lives INSIDE the HTML slot in that case, see
-    # `.render_sheet()`) -- one class read off the live object, applied via
+    # `.render_sheet()`) — one class read off the live object, applied via
     # a session message so neither container is ever unmounted/remounted.
     shiny::observe({
       obj <- selected_object(store)
@@ -694,10 +694,10 @@ mod_paper_server <- function(id, store) {
       shiny::bindEvent(store$rv$report, store$rv$selected)
 
     # Region clicks (real furniture, ghost slots, and error-summary jump
-    # links all post to this one input -- see the `[data-ar-region]`
+    # links all post to this one input — see the `[data-ar-region]`
     # delegated handler in arframe.js). The contract is a plain region
     # STRING; anything else (a stray browser script, an extension) is
-    # dropped -- a malformed payload must never take the session down.
+    # dropped — a malformed payload must never take the session down.
     shiny::observeEvent(input$region, {
       region <- input$region
       if (!is.character(region) || length(region) != 1L || !nzchar(region)) {
@@ -706,7 +706,7 @@ mod_paper_server <- function(id, store) {
       open_card(store, region)
     })
 
-    # The canvas context menu (bridge.js, 2026-07-04): "Add output" posts
+    # The canvas context menu (bridge.js): "Add output" posts
     # add_first; "Delete output" posts ctx_remove and is only offered by
     # the client when a TOC row is active, but the guard here keeps a
     # stale click honest.
@@ -736,7 +736,7 @@ mod_paper_server <- function(id, store) {
       shiny::bindEvent(store$rv$report, store$rv$selected)
 
     # Flip the desk between artifact and code view on every code_view
-    # change -- a class toggle, so neither surface is remounted.
+    # change — a class toggle, so neither surface is remounted.
     shiny::observe({
       session$sendCustomMessage(
         "ar-code-view",
@@ -749,7 +749,7 @@ mod_paper_server <- function(id, store) {
       store$rv$code_view <- FALSE
     })
 
-    # Download the reproduction script -- the same emit_code() the panel
+    # Download the reproduction script — the same emit_code() the panel
     # shows, written to disk (path arg) so it is byte-identical to the view.
     output$code_dl <- shiny::downloadHandler(
       filename = function() {
@@ -774,13 +774,13 @@ mod_paper_server <- function(id, store) {
       }
     )
 
-    # Born hidden (the app opens in Data mode, 2026-07-04): the desk's
+    # Born hidden (the app opens in Data mode): the desk's
     # surfaces must keep computing so Report mode never opens blank.
     shiny::outputOptions(output, "sheet_html_slot", suspendWhenHidden = FALSE)
     shiny::outputOptions(output, "sheet_figure", suspendWhenHidden = FALSE)
     shiny::outputOptions(output, "code_slot", suspendWhenHidden = FALSE)
     # `.ar-hidden-dl` is display:none, which suspends the download binding
-    # -- href stays `#`, so the programmatic click falls back to the page
+    # — href stays `#`, so the programmatic click falls back to the page
     # URL and saves `download.html`. See mod_toolbar.R.
     shiny::outputOptions(output, "code_dl", suspendWhenHidden = FALSE)
 
@@ -793,7 +793,7 @@ mod_paper_server <- function(id, store) {
 #' Build the whole sheet body: dispatches on selection / output_status /
 #' render success. The sheet is ALWAYS a complete page shell, never a bare
 #' spinner or blank div. A READY table is tabular's own full page render
-#' (canvas flip 2026-07-04); every other path (ghost, stale, error,
+#' (canvas flip); every other path (ghost, stale, error,
 #' figure) still paints the arframe title block / source line around its
 #' content.
 #' @noRd
@@ -802,7 +802,7 @@ mod_paper_server <- function(id, store) {
 
   if (is.null(obj)) {
     # The paper only shows when the LoC is drilled, which always carries a
-    # selection -- so a NULL here is the hidden list view (the renderUI still
+    # selection — so a NULL here is the hidden list view (the renderUI still
     # fires while hidden). Render nothing; the List-of-Contents owns the
     # empty state now, and fabricating one here would just be dead markup.
     return(NULL)
@@ -815,7 +815,7 @@ mod_paper_server <- function(id, store) {
     ))
   }
 
-  # Run semantics (decision #8): a heavy edit marked this proof stale --
+  # Run semantics (decision #8): a heavy edit marked this proof stale —
   # never auto re-collect from DuckDB; the notice stands in until Run.
   if (obj@id %in% store$rv$stale) {
     return(shiny::tagList(
@@ -848,8 +848,8 @@ mod_paper_server <- function(id, store) {
       result$content
     ))
   }
-  # Canvas flip (2026-07-04, supersedes decision #7's chrome-free galley):
-  # a READY table is tabular's own full page render -- title block,
+  # Canvas flip (supersedes decision #7's chrome-free galley):
+  # a READY table is tabular's own full page render — title block,
   # footnotes, source, and any running header/footer bands all come from
   # the spec, so the sheet adds NOTHING around it. Painting arframe's own
   # title/source here again would double-print them.
@@ -859,7 +859,7 @@ mod_paper_server <- function(id, store) {
 #' Render a table output through the export-identical seam
 #' (`cached_ard()` -> `arpillar::render_spec()` -> `htmltools::as.tags()`),
 #' catching an `arpillar_error_input` (a role names a column absent from
-#' the bound dataset -- the STATIC oracle predicts acceptance but the
+#' the bound dataset — the STATIC oracle predicts acceptance but the
 #' actual data does not match) or any other render-time error. Returns
 #' `list(ok, content, message)` so the caller never has to branch on
 #' whether `content` is meaningful.
@@ -869,7 +869,7 @@ mod_paper_server <- function(id, store) {
     {
       ard <- cached_ard(store, object)
       # Paper parity on screen: the canvas spec carries the SAME stamped
-      # source line and chrome literals the .rtf download gets -- tabular
+      # source line and chrome literals the .rtf download gets — tabular
       # renders the whole page (title block through source), the sheet
       # adds nothing.
       spec <- arpillar::render_spec(
@@ -907,12 +907,12 @@ mod_paper_server <- function(id, store) {
 #' Render a figure output: `output$sheet_figure` (a `renderPlot()`) already
 #' calls `render_ggplot()` for the ACTUAL pixels, so this leg only needs to
 #' confirm the render will not throw (a dry run) to decide ok/error and
-#' surface the right message -- `plotOutput` cannot report a render
+#' surface the right message — `plotOutput` cannot report a render
 #' exception back into `renderUI`'s own return value, so the dry run is
 #' what lets the SAME error-summary path used for tables also cover
 #' figures. `content` is the (already class-flipped, via
 #' `mod_paper_ui()`'s `ar-paper-figure-slot`) figure container placeholder
-#' -- the real pixels come from `output$sheet_figure` mounted alongside it.
+#' — the real pixels come from `output$sheet_figure` mounted alongside it.
 #' @noRd
 .try_render_figure <- function(store, object) {
   tryCatch(

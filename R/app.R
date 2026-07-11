@@ -1,6 +1,6 @@
 # The real launcher: opens the arpillar catalog, registers any named data
 # paths, seeds the injected store (from a saved project when given), and
-# mounts the Galley frame. One store per launch -- this is a local-first,
+# mounts the Galley frame. One store per launch — this is a local-first,
 # single-session desktop app (design spec's "report-as-project" paradigm),
 # not a multi-user Shiny deployment.
 
@@ -23,7 +23,7 @@
 #'   default NULL`. Paths to directories of dataset files; every recognized
 #'   file (`.parquet`/`.xpt`/`.json`) is registered under a library node
 #'   named for the folder, and appears in Data mode's SOURCES tree. This is
-#'   the folder-first on-ramp -- point at an ADaM directory and the whole
+#'   the folder-first on-ramp — point at an ADaM directory and the whole
 #'   catalog populates.
 #' @param daemons *Background render workers for async export.* `<integer(1)>:
 #'   default 2`. The size of the mirai daemon pool the Export package button
@@ -68,7 +68,7 @@ arframe <- function(project = NULL, data = NULL, folders = NULL, daemons = 2L) {
   }
 
   # The async-export daemon pool (Task 16): a per-launch, named compute
-  # profile (NEVER set at package load -- that would spawn processes on
+  # profile (NEVER set at package load — that would spawn processes on
   # `library(arframe)`). Torn down in `onStop()` below so a closed session
   # leaves no orphan daemons.
   if (daemons > 0L) {
@@ -80,7 +80,7 @@ arframe <- function(project = NULL, data = NULL, folders = NULL, daemons = 2L) {
     padding = 0,
     gap = 0,
     .head_assets(),
-    # A `position: relative` wrapper around the whole frame -- the Add-output
+    # A `position: relative` wrapper around the whole frame — the Add-output
     # overlay (mod_add_output.R) is an absolutely-positioned `inset: 0`
     # sibling of `mod_frame_ui()`'s output, so it needs a same-size
     # positioning ancestor. `.ar-workspace` (inside the frame) is the
@@ -93,7 +93,7 @@ arframe <- function(project = NULL, data = NULL, folders = NULL, daemons = 2L) {
         "frame",
         # Report mode is the full-width List-of-Contents surface plus a
         # sibling desk that the `ar-report-open` class reveals on drill
-        # (2026-07-08, mirrors Data's list<->grid). The breadcrumb sits above
+        # (mirrors Data's list<->grid). The breadcrumb sits above
         # the paper|inspector panes; `contents-crumb` is rendered by the
         # contents module.
         report_body = shiny::tagList(
@@ -120,7 +120,7 @@ arframe <- function(project = NULL, data = NULL, folders = NULL, daemons = 2L) {
   server <- function(input, output, session) {
     # Folder mounts run through the store (they read + bump the catalog
     # nonce and append to the log), so they must fire inside a live session
-    # AND under `isolate()` -- the server body is not itself a reactive
+    # AND under `isolate()` — the server body is not itself a reactive
     # consumer, so a bare `rv$` read there aborts. Mounting once at session
     # start is exactly right for a one-session-per-launch local app; the
     # nonce bump invalidates Data mode's first render.
@@ -147,7 +147,7 @@ arframe <- function(project = NULL, data = NULL, folders = NULL, daemons = 2L) {
 
     # Tab-focus refresh: bridge.js posts `ar_refresh` on visibilitychange;
     # `.refresh_all()` rescans the outputs folder AND garbage-collects
-    # stale presence files. (The manual Refresh button was removed 2026-07-07;
+    # stale presence files. (The manual Refresh button was removed;
     # visibilitychange is now the only trigger.)
     shiny::observeEvent(
       input[["ar_refresh"]],

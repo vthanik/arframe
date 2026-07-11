@@ -1,5 +1,5 @@
-# Project-folder workspace layer. The folder IS the format (design decision
-# 2026-07-06): setup.yml + outputs/*.json + manifest.csv. arframe wires the
+# Project-folder workspace layer. The folder IS the format:
+# setup.yml + outputs/*.json + manifest.csv. arframe wires the
 # store's `path`/`dirty`/`saved_at` fields; the load-bearing invariants are
 # atomic writes (delegated to arpillar::object_to_json) and no orphan deletion
 # (a colleague's output that isn't in our in-memory report survives).
@@ -23,7 +23,7 @@ open_project <- function(store, dir) {
   store$rv$path <- dir
   store$rv$dirty <- FALSE
   store$rv$saved_at <- Sys.time()
-  # Mount ADaM data the theme names -- shared with the arframe(project=)
+  # Mount ADaM data the theme names — shared with the arframe(project=)
   # startup so both entry points populate the catalog identically.
   .mount_theme_adam(store, report, dir)
   # Record output mtimes for scan_and_merge.
@@ -92,7 +92,7 @@ save_touched <- function(store) {
   if (is.null(store$rv$path)) {
     return(invisible(NULL))
   }
-  # Ponytail: v1 rewrites the whole folder on every save -- simple, correct,
+  # Ponytail: v1 rewrites the whole folder on every save — simple, correct,
   # relies on arpillar's atomic per-file writes so no reader sees a partial
   # state. A later stage can diff and write only the changed output.
   arpillar::report_to_folder(store$rv$report, store$rv$path)
@@ -139,10 +139,10 @@ save_touched <- function(store) {
   }
   dir.create(prog_dir, recursive = TRUE, showWarnings = FALSE)
   # Thread the study theme so the emitted programs reproduce the population
-  # filter, summaries, decimals, and chrome -- not just the roles/dataset.
+  # filter, summaries, decimals, and chrome — not just the roles/dataset.
   theme <- store$rv$report@theme
   objs <- .all_objects(store$rv$report)
-  # Slug filenames, not `<id>.R` -- must match the `{program}` chrome token
+  # Slug filenames, not `<id>.R` — must match the `{program}` chrome token
   # (`.study_tokens()` in mod_paper.R) so a printed program path resolves to
   # a real file on disk.
   slugs <- arpillar::output_slugs(store$rv$report)
@@ -162,7 +162,7 @@ save_touched <- function(store) {
     ),
     error = function(e) NULL
   )
-  # Prune stale programs -- a rename/re-slug leaves the OLD file behind
+  # Prune stale programs — a rename/re-slug leaves the OLD file behind
   # otherwise. Prune against the EXPECTED set (every current output's slug
   # + run-all.R), never against what this pass managed to write: a failed
   # emit for a still-present output must keep its last-known-good program
@@ -177,7 +177,7 @@ save_touched <- function(store) {
 #'
 #' Setup > Paths serialises an empty field as `""` (not NULL), so
 #' `paths$x %||% default` keeps the blank and resolves it against the
-#' project root -- spilling programs / renders into the root instead of
+#' project root — spilling programs / renders into the root instead of
 #' `programs/` / `output/`. Treat a blank string as unset.
 #' @noRd
 .path_or_default <- function(path, default) {
@@ -204,7 +204,7 @@ save_touched <- function(store) {
 #' Rescans on-disk outputs (`scan_and_merge()`), garbage-collects stale
 #' presence files, and bumps `catalog_nonce` so every reactive that
 #' watches team state (the Setup > Team feed, the Sources list) picks up
-#' the change. Debounced upstream by the caller -- both the manual
+#' the change. Debounced upstream by the caller — both the manual
 #' refresh button and the tab-focus event route through this helper so
 #' there is one place to add or reorder steps.
 #' @noRd

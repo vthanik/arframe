@@ -6,7 +6,7 @@
 #   <report>/
 #     outputs/     one .rtf per ready output (draft/query skipped + reported)
 #     programs/    one .R per output (emit_code) + run-all.R (emit_report_code)
-#     report.json  the full project spec (report_to_json) -- arframe re-opens it
+#     report.json  the full project spec (report_to_json) — arframe re-opens it
 #     manifest.csv file, number, title, dataset, status, timestamp
 #
 # The programs/ folder is the reproducibility record: hand it to a regulator
@@ -31,7 +31,7 @@
   path <- file.path(out_dir, paste0(slug, ".rtf"))
   # Thread the study theme so the sync export resolves study-level defaults
   # identically to the screen and the async daemon (fct_async.R). Stamp the
-  # running-band chrome tokens ({datetime}, study meta) to literals first --
+  # running-band chrome tokens ({datetime}, study meta) to literals first —
   # the engine rejects them, so without this the render throws and the output
   # is silently dropped from the package.
   theme <- .with_band_chrome(store$rv$report@theme, object)
@@ -66,13 +66,13 @@
 
 #' Build the export package tree under `dir` (created if absent), returning
 #' a summary `list(ready, skipped, dir, manifest)`. `stamp` is the ISO
-#' timestamp written into the manifest -- passed in (never `Sys.time()`
+#' timestamp written into the manifest — passed in (never `Sys.time()`
 #' inside) so a test can pin it.
 #'
 #' `rendered` selects the render leg. `NULL` (the default) renders every
 #' ready output synchronously here (the standalone/download path). A named
-#' `list(<id> = <path>)` -- the result of the async daemon task
-#' (`export_mirai()`) -- means the RTFs are ALREADY written into `outputs/`;
+#' `list(<id> = <path>)` — the result of the async daemon task
+#' (`export_mirai()`) — means the RTFs are ALREADY written into `outputs/`;
 #' this function then only classifies (present in the map -> ready, absent ->
 #' skipped/error) and assembles the cheap parts (programs, report.json,
 #' manifest). Either way the outputs/ filenames are the
@@ -105,7 +105,7 @@
   for (obj in objects) {
     status <- arpillar::output_status(obj)
     slug <- slugs[[obj@id]]
-    # Every output gets its reproduction program, ready or not -- the
+    # Every output gets its reproduction program, ready or not — the
     # program IS the record, and a draft's program documents intent.
     prog <- tryCatch(
       arpillar::emit_code(
@@ -133,7 +133,7 @@
       )
     } else {
       # A ready-but-render-failed output is reported as "error", a
-      # not-ready one by its status -- both land in the skipped set.
+      # not-ready one by its status — both land in the skipped set.
       reason <- if (identical(status, "ready")) "error" else status
       skipped <- c(skipped, obj@id)
       rows[[length(rows) + 1L]] <- .manifest_row(obj, reason, NA_character_)
@@ -171,14 +171,14 @@
 
 #' Sync this pass's rendered RTFs into the project's PERSISTENT output dir
 #' (Setup > Paths `output_rtf_dir`, default `./output/` under the project
-#' root -- resolved exactly like `.emit_programs()` resolves programs_dir),
+#' root — resolved exactly like `.emit_programs()` resolves programs_dir),
 #' then prune `*.rtf` there against the EXPECTED name set: every CURRENT
 #' output's slug, ready or not, never "what this pass rendered". So a
 #' per-output render failure, or an output flipping ready -> draft/error,
 #' keeps its last-known-good RTF; only a renamed-away or deleted output
 #' loses its file (the Task-4 `.emit_programs` prune semantics). `files` is
 #' the daemon's `id -> path` result; each is copied in (overwrite). A
-#' project-less session (`store$rv$path` NULL) is a silent no-op -- there
+#' project-less session (`store$rv$path` NULL) is a silent no-op — there
 #' is no persistent dir to sync.
 #' @noRd
 .sync_output_dir <- function(store, files) {
@@ -205,7 +205,7 @@
 
 #' Zip the export package `dir` into `zipfile`, rooted at the package
 #' folder so the archive extracts to a single `<report>/` directory.
-#' `.arframe/` (team state -- roster, activity log, presence) is stripped
+#' `.arframe/` (team state — roster, activity log, presence) is stripped
 #' from the staging directory before zipping so team churn never leaks
 #' into the sponsor deliverable.
 #' @noRd

@@ -1,10 +1,10 @@
 # The Roles editor (design spec #8's primary tab): content for the
 # `columns`/`rows`/`axes` card regions. Which slots show depends on the
 # region AND the selected object's generator (`arpillar::generator(type)
-# $slots`, the single contract the render legs/oracle already key off --
+# $slots`, the single contract the render legs/oracle already key off —
 # see fct_generators.R/fct_status.R in arpillar). Every commit goes through
 # `update_object()` (fct_store.R), which re-derives `output_status()` and
-# invalidates `rv$report` -- so filling a slot here is the whole "ghost
+# invalidates `rv$report` — so filling a slot here is the whole "ghost
 # fills into a real table" loop; this module never itself renders a paper.
 
 # ---- region -> slot filter -----------------------------------------------
@@ -12,7 +12,7 @@
 #' Which of a generator's slots the CURRENT region shows.
 #'
 #' `columns` is the treatment/arm slot; `rows` is the table-content slot
-#' (`summarize` OR `hierarchy` -- a generator has at most one of the two);
+#' (`summarize` OR `hierarchy` — a generator has at most one of the two);
 #' `axes` is every remaining (figure) slot. This mirrors
 #' `utils_ghost.R`'s `.GHOST_REGION_MAP` in reverse: that map sends a
 #' `validate_output()` control_id TO a region; this filter sends a region
@@ -20,11 +20,11 @@
 #' open land on the identical slot set.
 #' @noRd
 .region_slots <- function(region, slots) {
-  # v5: the docked Roles TAB is shown with no region focus (`region` NULL) --
+  # v5: the docked Roles TAB is shown with no region focus (`region` NULL) —
   # `switch()` aborts on a length-0 EXPR, and the right content there is the
   # FULL role-slot editor, not a region-filtered subset. Only an explicit
   # role-region (columns/rows/axes) narrows the set; ANY other region token
-  # ("title", "footnotes", a future one) falls back to the full set -- a
+  # ("title", "footnotes", a future one) falls back to the full set — a
   # stale non-roles region must never filter the pane down to nothing (the
   # empty-Roles regression).
   if (is.null(region) || length(region) != 1L) {
@@ -36,7 +36,7 @@
     columns = ids %in% "treatment",
     # `by` is a row-grouping dimension (nested stub bands), so it belongs with
     # the rows region alongside summarize/hierarchy. A listing's table content
-    # is its `id` + `columns` slots -- same region.
+    # is its `id` + `columns` slots — same region.
     rows = ids %in% c("summarize", "hierarchy", "by", "id", "columns"),
     axes = !ids %in%
       c("treatment", "summarize", "hierarchy", "by", "id", "columns"),
@@ -48,7 +48,7 @@
 # ---- slot alias resolution (mirrors the render legs / status oracle) ------
 
 #' The role-slot ALIAS set a canonical slot name accepts when searching
-#' `object@roles` -- deliberately pinned to the exact sets the render legs
+#' `object@roles` — deliberately pinned to the exact sets the render legs
 #' read (`fct_render_ard.R` `.arm_var`/`.summarize_items`,
 #' `fct_render_ggplot.R` `.figure_roles`, `fct_render_km.R` `.km_roles`)
 #' and `fct_status.R`'s `.SLOT_REQS`, so a variable this module drops onto
@@ -91,7 +91,7 @@
 # ---- eligible variables ---------------------------------------------------
 
 #' The dataset's column metadata (`data_items()`), memoized in the store
-#' cache PER CATALOG GENERATION -- the `catalog_nonce` in the key means an
+#' cache PER CATALOG GENERATION — the `catalog_nonce` in the key means an
 #' Add-output/import/delete gets a fresh column list on its next render,
 #' while the many readers of one render cycle (source row, every slot's
 #' picker, every assigned row's label line) share one `DESCRIBE`. Returns
@@ -130,7 +130,7 @@
 }
 
 #' `items` (a `.items_meta()` frame) filtered to what `slot$accepts`
-#' allows, minus names already assigned to `slot` on `object` -- the "only
+#' allows, minus names already assigned to `slot` on `object` — the "only
 #' eligible variables" contract (design spec #8: "Treatment arms won't
 #' offer a numeric").
 #' @noRd
@@ -141,7 +141,7 @@
 
 # ---- picker ---------------------------------------------------------------
 
-#' Pack one eligible-variable option as `"NAME\x1fTYPE\x1fLABEL"` -- `\x1f`
+#' Pack one eligible-variable option as `"NAME\x1fTYPE\x1fLABEL"` — `\x1f`
 #' (unit separator) cannot appear in a column name, a DuckDB type string,
 #' or a CDISC label, so splitting on it always recovers the fields cleanly;
 #' packing everything into the selectize VALUE (not just the label) is what
@@ -215,7 +215,7 @@
 #'
 #' Every per-item control is DYNAMIC (any dataset column name), so each
 #' posts through ONE shared input (`remove`/`peek`) via an inline onclick
-#' -- `Shiny.setInputValue({slot, name, nonce})` -- exactly
+#' — `Shiny.setInputValue({slot, name, nonce})` — exactly
 #' `mod_contents.R`'s `.toc_kebab()` pattern, rather than per-item
 #' `observeEvent`s that would need re-registering on every render.
 #' @noRd
@@ -278,9 +278,9 @@
 #' The engine facts behind one peek panel, memoized per catalog generation:
 #' a measure column gets its min/median/max landmarks + observed decimal
 #' precision; anything else gets its per-value counts. All pushed-down
-#' aggregates (`column_range`/`column_precision`/`value_counts`) -- the
+#' aggregates (`column_range`/`column_precision`/`value_counts`) — the
 #' column itself never leaves DuckDB. A failure yields an UNCACHED
-#' `kind = "error"` record (the next render retries -- a transient
+#' `kind = "error"` record (the next render retries — a transient
 #' catalog error must never poison the whole generation) and logs the
 #' condition so the field failure is diagnosable from the console strip.
 #' @noRd
@@ -328,10 +328,10 @@
 # tail into "+ n more values".
 .PEEK_BARS <- 6L
 
-#' The peek panel body: the display-label editor (a cheap commit -- labels
+#' The peek panel body: the display-label editor (a cheap commit — labels
 #' are display-only), the treat-as toggle when the slot accepts more than
 #' one role type AND the column is numeric (text can only ever be a
-#' category), and the live distribution -- value-count bars for a category,
+#' category), and the live distribution — value-count bars for a category,
 #' min/median/max + precision for a measure.
 #' @noRd
 .peek_panel <- function(store, ns, object, slot, item, meta) {
@@ -380,7 +380,7 @@
 
 # The levels editor renders up to this many rows; a higher-cardinality
 # category (SITEID, USUBJID-ish) keeps the distribution peek only.
-# ponytail: flat cap, no paging -- revisit if a real table needs more.
+# ponytail: flat cap, no paging — revisit if a real table needs more.
 .LEVELS_EDITOR_CAP <- 24L
 
 # The reserved `value` for the synthetic "Missing" level: a per-variable
@@ -392,14 +392,14 @@
 #' The per-variable LEVELS editor inside a category peek: drag order,
 #' include checkbox, DISPLAY AS recode, and "Add expected level" for
 #' dummy levels the data never observes (they render as zero rows). All
-#' edits are CHEAP (display-only) -- they re-render live off the cached
+#' edits are CHEAP (display-only) — they re-render live off the cached
 #' ARD, never marking the proof stale.
 #' @noRd
 .levels_editor <- function(ns, slot_id, item, facts) {
   observed <- names(facts$counts %||% integer(0))
   meta <- item@levels
   # Split the synthetic Missing override out of the ordinary level metadata:
-  # it is NOT a data level, so it never joins the sortable list -- it renders
+  # it is NOT a data level, so it never joins the sortable list — it renders
   # as its own row below, reusing the include checkbox to force the Missing row
   # ON/OFF for this variable (absent = the study `show_missing` rule).
   is_missing <- vapply(
@@ -478,7 +478,7 @@
   )
   # The synthetic Missing row: below the data levels, no grip/reorder and no
   # display-as (it is not a data level). Its include checkbox posts the reserved
-  # sentinel through the SAME `lvl_include` observer -- no new server wiring.
+  # sentinel through the SAME `lvl_include` observer — no new server wiring.
   missing_row <- shiny::tags$div(
     class = "ar-level-row ar-level-missing",
     shiny::tags$span(class = "ar-level-grip"),
@@ -506,7 +506,7 @@
       `data-ar-sortable-item` = ".ar-level-row",
       `data-ar-sortable-attr` = "data-ar-item",
       `data-ar-sortable-input` = ns("lvl_reorder"),
-      # ponytail: hand-rolled JSON -- slot ids and CDISC column names are
+      # ponytail: hand-rolled JSON — slot ids and CDISC column names are
       # [A-Za-z0-9_.], no escaping needed; avoids a jsonlite Import.
       `data-ar-sortable-extra` = sprintf(
         '{"slot":"%s","name":"%s"}',
@@ -572,7 +572,7 @@
 
 #' The per-variable decimal-places control on a measure peek. Writes THIS
 #' variable's raw precision into the study Decimals-by register
-#' (`theme$decimals_by`, `V|<name>`) -- the same knob Setup > Summaries
+#' (`theme$decimals_by`, `V|<name>`) — the same knob Setup > Summaries
 #' exposes, given top precedence by the engine's `.stat_dp()` over the
 #' study/output base (the "variable level" of the precision cascade). Blank =
 #' inherit. Study-wide by variable (not per-output; that needs engine work).
@@ -625,7 +625,7 @@
 
 #' Upsert THIS variable's raw decimals in the Decimals-by register: drop the
 #' `V|<name>` key from every existing rule, then (unless `dp` is `NA`) append a
-#' single-name rule for it -- so editing one variable never disturbs the dp of
+#' single-name rule for it — so editing one variable never disturbs the dp of
 #' others it may have shared a rule with. Returns the new rule list.
 #' @noRd
 .set_var_dp <- function(rules, name, dp) {
@@ -716,7 +716,7 @@
 # ---- one slot's fieldset --------------------------------------------------
 
 #' The legend's cardinality hint, straight from the generator's own
-#' `min`/`max` slot contract -- the engine's requirement, not a UI guess.
+#' `min`/`max` slot contract — the engine's requirement, not a UI guess.
 #' @noRd
 .cardinality_hint <- function(slot) {
   if (slot$max == 1L) {
@@ -730,13 +730,13 @@
 
 #' One slot's whole section: an accordion (`.accordion_section()`) whose
 #' summary carries the slot label + the cardinality hint + the shared Roles
-#' help icon, wrapping a `<fieldset>` (kept for a11y -- assistive tech still
+#' help icon, wrapping a `<fieldset>` (kept for a11y — assistive tech still
 #' groups the assigned rows/picker under a `<legend>`, now visually hidden
 #' since the visible label lives in the accordion summary instead). Body:
 #' assigned rows (sortable when `max > 1`, each with its peek panel), the
 #' "+ Add variable" picker row, and an inline `validate_output` message when
 #' this slot's control_id is among the object's unmet requirements (message
-#' text IDENTICAL to the oracle's own -- never reworded, so the ghost hint,
+#' text IDENTICAL to the oracle's own — never reworded, so the ghost hint,
 #' the error summary, and this inline message always agree).
 #' @noRd
 .slot_fieldset <- function(store, ns, object, slot, problems, items_meta) {
@@ -831,7 +831,7 @@
 }
 
 #' The SOURCE row at the top of the Roles pane: the dataset this output
-#' reads, its detected ADaM structure, and its dimensions -- the provenance
+#' reads, its detected ADaM structure, and its dimensions — the provenance
 #' the roles below are editing against. Read-only here; the dataset is
 #' chosen at Add-output time.
 #' @noRd
@@ -861,7 +861,7 @@
 }
 
 #' `validate_output()` messages NOT owned by any rendered slot fieldset
-#' (dataset-level problems, a future non-roles control) -- the checklist
+#' (dataset-level problems, a future non-roles control) — the checklist
 #' strip shows these, the slot-owned ones render inline in their own
 #' fieldsets, and nothing is ever double-reported.
 #' @noRd
@@ -896,7 +896,7 @@
 
 # ---- UI ---------------------------------------------------------------
 
-#' The Roles editor UI: a server-rendered slot list (`uiOutput`) -- the
+#' The Roles editor UI: a server-rendered slot list (`uiOutput`) — the
 #' set of slots shown depends on both the region and the selected
 #' object's generator, so it cannot be built statically here.
 #' @param id *The module namespace.* `<character(1)>: required`.
@@ -908,7 +908,7 @@ mod_card_roles_ui <- function(id) {
 
 # ---- server -------------------------------------------------------------
 
-#' A stable digest of `object@roles` -- the assigned slot/item set with
+#' A stable digest of `object@roles` — the assigned slot/item set with
 #' each item's `label` and `role_type`, order-sensitive (so a reorder, a
 #' relabel, or a treat-as flip all invalidate the render). Deliberately
 #' EXCLUDES everything else on the object (`filters`, `options`, `title`)
@@ -937,7 +937,7 @@ mod_card_roles_ui <- function(id) {
 }
 
 #' Apply `fn` to the single item named `item_name` inside the
-#' alias-matched role for `slot` -- the shared walk behind relabel and
+#' alias-matched role for `slot` — the shared walk behind relabel and
 #' retype, mirroring `.remove_item_from_slot()`'s own discipline. A no-op
 #' when no such role/item exists.
 #' @noRd
@@ -961,7 +961,7 @@ mod_card_roles_ui <- function(id) {
 }
 
 #' Set an item's display label (CHEAP: labels are display-only, excluded
-#' from the ARD key -- the proof re-renders live).
+#' from the ARD key — the proof re-renders live).
 #' @noRd
 .relabel_item <- function(object, slot, item_name, label) {
   .update_item(object, slot, item_name, function(it) {
@@ -981,7 +981,7 @@ mod_card_roles_ui <- function(id) {
 # ---- level metadata edits (all CHEAP: display-only) ------------------------
 
 #' Ensure a `@levels` entry for `value` exists, then apply `fn` to it.
-#' Entries stay once created (no trivial-entry elision -- an all-default
+#' Entries stay once created (no trivial-entry elision — an all-default
 #' entry only pins a position, which is itself information).
 #' @noRd
 .set_level_meta <- function(levels, value, fn) {
@@ -998,7 +998,7 @@ mod_card_roles_ui <- function(id) {
 #' Rebuild `@levels` in the dragged order, preserving each entry's fields;
 #' a value new to the metadata gets a bare entry (its position is now
 #' declared). Declared values missing from a stale/partial payload keep
-#' their entries, appended -- the `.reorder_slot()` reconcile discipline.
+#' their entries, appended — the `.reorder_slot()` reconcile discipline.
 #' @noRd
 .reorder_level_meta <- function(levels, order) {
   vals <- vapply(levels, function(m) as.character(m$value), character(1))
@@ -1009,7 +1009,7 @@ mod_card_roles_ui <- function(id) {
   c(out, levels[!vals %in% order])
 }
 
-#' Apply a `@levels` transform to one item -- every lvl_* observer's
+#' Apply a `@levels` transform to one item — every lvl_* observer's
 #' shared commit path.
 #' @noRd
 .edit_item_levels <- function(store, object, slot, item_name, label, fn) {
@@ -1070,7 +1070,7 @@ mod_card_roles_ui <- function(id) {
 #' Reorder the alias-matched role's items on `object` to `order` (a
 #' character vector of item names in the new order). Any name in `order`
 #' absent from the role's current items is dropped; any current item
-#' absent from `order` is appended at the end -- the same reconcile
+#' absent from `order` is appended at the end — the same reconcile
 #' discipline `mod_contents.R`'s own `input$reorder` observer uses, so a
 #' stale/partial drop payload never loses an item.
 #' @noRd
@@ -1116,7 +1116,7 @@ mod_card_roles_ui <- function(id) {
 
 #' The Roles editor server: renders the region-filtered slot list for the
 #' selected object's generator, and wires every add/remove/reorder input.
-#' Region content re-renders on `(rv$selected, roles digest)` ONLY -- never
+#' Region content re-renders on `(rv$selected, roles digest)` ONLY — never
 #' on a drag (which posts its own `reorder_<slot>` input, handled by a
 #' dedicated observer that commits directly without touching this
 #' `renderUI`'s own trigger set until the COMMIT lands, at which point the
@@ -1182,7 +1182,7 @@ mod_card_roles_server <- function(id, store) {
     # bounded, STATIC set of possible slot ids across every generator is
     # small and fixed (the union of every `.SLOT()` in
     # `arpillar::generators()`), so one `observeEvent` per known slot id
-    # is registered ONCE at module-mount time -- each observer is a no-op
+    # is registered ONCE at module-mount time — each observer is a no-op
     # unless its own `add_<slot>`/`reorder_<slot>` input actually fires.
     known_slot_ids <- unique(unlist(
       lapply(arpillar::generators(), function(g) {
@@ -1229,7 +1229,7 @@ mod_card_roles_server <- function(id, store) {
             )
             # No explicit picker-clear needed: `update_object()` reassigns
             # `store$rv$report`, which changes `.roles_digest()`, which
-            # re-triggers `output$slots`' own `renderUI` -- a FRESH
+            # re-triggers `output$slots`' own `renderUI` — a FRESH
             # `.eligible_picker()` is built from scratch (empty selection,
             # the just-added name already excluded from `choices`), so the
             # old widget is simply replaced rather than needing to be
@@ -1263,7 +1263,7 @@ mod_card_roles_server <- function(id, store) {
     }
 
     # One shared observer for every remove click, regardless of slot/item
-    # -- `.assigned_row()` posts `{slot, name}` straight off its own inline
+    # — `.assigned_row()` posts `{slot, name}` straight off its own inline
     # onclick (the `mod_contents.R` `.toc_kebab()` pattern), so this is a
     # single registration rather than one per (slot, item) pair that would
     # need re-registering on every render.
@@ -1328,7 +1328,7 @@ mod_card_roles_server <- function(id, store) {
     # Per-variable decimals (CHEAP: display-only; the engine applies precision
     # at render, so the paper re-typesets live off the theme change, no Run).
     # Writes the study Decimals-by register (`theme$decimals_by`, `V|<name>`),
-    # the same knob Setup > Summaries exposes -- study-wide by variable.
+    # the same knob Setup > Summaries exposes — study-wide by variable.
     shiny::observeEvent(input$dp_change, {
       req <- input$dp_change
       name <- req$name
@@ -1431,7 +1431,7 @@ mod_card_roles_server <- function(id, store) {
     })
 
     # The panes are always mounted and CSS-toggled (never remounted), so the
-    # slot editor must keep computing while hidden -- a suspended output
+    # slot editor must keep computing while hidden — a suspended output
     # would show a STALE (or empty) editor after a pure class-flip tab
     # switch. Same contract as mod_card_options/mod_card_filters.
     shiny::outputOptions(output, "slots", suspendWhenHidden = FALSE)

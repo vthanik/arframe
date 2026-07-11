@@ -1,13 +1,13 @@
 # A tiny bundled demo catalog: ADSL/ADVS/ADTTE/ADAE, written to parquet and
 # registered against a fresh arpillar catalog. Shared by the store tests, the
-# later shinytest2 apps, and screenshots -- one fixture builder, not a copy
+# later shinytest2 apps, and screenshots — one fixture builder, not a copy
 # per surface.
 
 #' A small demo catalog (ADSL/ADVS/ADTTE/ADAE), opened and registered
 #'
 #' Writes four minimal analysis-ready datasets to parquet under `dir` and
 #' registers each against a freshly opened [arpillar::engine_open()] catalog.
-#' The caller owns the returned catalog's lifecycle -- close it with
+#' The caller owns the returned catalog's lifecycle — close it with
 #' [arpillar::engine_close()].
 #' @param dir *Where to write the parquet files.* `<character(1)>: default
 #'   tempdir()`.
@@ -35,7 +35,7 @@
   )
 
   # RACE/DISCFL/DCDECOD/EXDOSE: fixed lookups (never RNG), matching the
-  # ADAE AEBODSYS/AEDECOD pattern below -- ADSL itself never calls
+  # ADAE AEBODSYS/AEDECOD pattern below — ADSL itself never calls
   # rnorm()/runif(), so these only need to stay deterministic themselves,
   # not sequence-safe against a stream. Coverage for the demographics/
   # disposition/exposure presets (arpillar::preset()) so they are fully
@@ -50,7 +50,7 @@
   adsl$DCDECOD <- ifelse(adsl$DISCFL == "Y", "ADVERSE EVENT", "COMPLETED")
   # Placebo = 0 mg; Xanomeline = the CDISC-pilot 81 mg/day dose.
   adsl$EXDOSE <- ifelse(adsl$TRT01P == "Placebo", 0, 81)
-  # RANDDT: a fixed date sequence (never RNG) -- the demo catalog's one
+  # RANDDT: a fixed date sequence (never RNG) — the demo catalog's one
   # temporal column, so the listing DATE FORMATS editor has a target.
   adsl$RANDDT <- as.Date("2024-01-15") + seq_len(nrow(adsl)) * 7L
 
@@ -67,7 +67,7 @@
     ),
     stringsAsFactors = FALSE
   )
-  # CHG: a fixed (non-RNG) change-from-baseline lookup keyed on visit --
+  # CHG: a fixed (non-RNG) change-from-baseline lookup keyed on visit —
   # 0 at Baseline by construction, a small fixed step thereafter. Appended
   # after AVAL so the rnorm() draw above is untouched; covers
   # mean_over_time's CHG role var.
@@ -83,11 +83,11 @@
   )
 
   # ADAE: occurrence-shaped (AEBODSYS/AEDECOD, the *TERM|*DECOD suffix
-  # detect_structure() keys on) -- a fixed lookup, not a random draw, so
+  # detect_structure() keys on) — a fixed lookup, not a random draw, so
   # appending it after ADVS/ADTTE never perturbs the rnorm()/runif() stream
   # those two already consume above. Two AE records per subject: a GI event
   # alternating Nausea/Vomiting (odd/even subject), plus a Cardiac
-  # Atrial-fibrillation event for every subject -- all three PTs across two
+  # Atrial-fibrillation event for every subject — all three PTs across two
   # SOCs appear at least once. TRTEMFL is the column both ae_overall/
   # ae_soc_pt presets filter on.
   gi_pt <- rep(c("Nausea", "Vomiting"), times = 6L)

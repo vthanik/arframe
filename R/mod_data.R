@@ -1,6 +1,6 @@
 # Data mode (design spec #5, decision #8): the datasetviewer "Manage Data"
 # surface in the Galley skin. A SOURCES tree (one node per mounted folder /
-# library) on the left; the explorer on the right -- a file-manager detail
+# library) on the left; the explorer on the right — a file-manager detail
 # table (name / folder / kind / cols / rows / size / status / modified) that
 # drills into a preview grid with a column picker. Full-width: the inspector
 # drops out (a dataset explorer needs the horizontal room). Every mutation
@@ -131,7 +131,7 @@
     )
   })
   shiny::tagList(
-    # No chevron (2026-07-04): re-clicking the active Data item on the
+    # No chevron: re-clicking the active Data item on the
     # activity rail is the one show/hide affordance for the left panel.
     shiny::tags$div(
       class = "ar-src-head",
@@ -146,7 +146,7 @@
     ),
     lapply(orphans, function(nm) .src_dataset_row(nm, open)),
     nodes
-    # "+ Add folder" removed from the rail (2026-07-08) -- the toolbar's
+    # "+ Add folder" removed from the rail — the toolbar's
     # "Import folder" is the single add-folder affordance, kept at the top.
   )
 }
@@ -225,7 +225,7 @@
 #' The full-dataset viewer for one open dataset: a breadcrumb (`< sources /
 #' <lib> / <name>`) above the embedded datasetviewer widget.
 #'
-#' datasetviewer owns the grid entirely -- it loads the dataset into an
+#' datasetviewer owns the grid entirely — it loads the dataset into an
 #' in-browser DuckDB, renders only the visible rows (virtualized), and does
 #' typed sort / filter / column select / a SAS-style property panel
 #' client-side. That is what lets Data mode find a specific subject in a large
@@ -254,7 +254,7 @@
       shiny::tags$span(class = "ar-dx-name", name),
       shiny::tags$div(class = "ar-bar-spacer"),
       # The list toolbar (filter/import/delete) is hidden while a dataset is
-      # open; this X is the only chrome needed here -- close the viewer.
+      # open; this X is the only chrome needed here — close the viewer.
       shiny::tags$button(
         id = ns("grid_close"),
         type = "button",
@@ -273,7 +273,7 @@
 # ---- UI -------------------------------------------------------------------
 
 #' The Data-mode UI: the SOURCES rail (left), the manage toolbar, and the
-#' explorer main (list or grid, server-rendered). Full-width -- there is no
+#' explorer main (list or grid, server-rendered). Full-width — there is no
 #' inspector column in Data mode.
 #' @param id *The module namespace.* `<character(1)>: required`.
 #' @noRd
@@ -307,7 +307,7 @@ mod_data_ui <- function(id) {
           variant = "primary",
           class = "ex-btn-sm ar-dx-tb"
         ),
-        # shinyFiles buttons escape a tagList label to text -- pass the
+        # shinyFiles buttons escape a tagList label to text — pass the
         # icon through their own `icon` slot instead. `btn-outline-secondary
         # ex-btn-sm` mirrors the Setup > Sources pickers so both on-ramps
         # wear one button dialect.
@@ -386,7 +386,7 @@ mod_data_server <- function(id, store) {
       )
 
     # The Data body starts CSS-hidden (Report is the default mode), and the
-    # mode switch is a pure client-side class flip the server never sees --
+    # mode switch is a pure client-side class flip the server never sees —
     # so Shiny would SUSPEND these outputs forever and Data mode would stay
     # blank. Every mode body is always mounted (the "all mount, CSS picks
     # one" frame contract), so rendering while hidden is correct. Set AFTER
@@ -459,7 +459,7 @@ mod_data_server <- function(id, store) {
     })
 
     # The embedded datasetviewer widget for the open dataset: fed the dataset's
-    # on-disk file (`dataset_path()` -- the parquet arpillar registered/
+    # on-disk file (`dataset_path()` — the parquet arpillar registered/
     # converted, labels intact), the widget does all row work in the browser.
     # Bound to `grid_dataset` so opening a new dataset re-inits it.
     output$dv <- datasetviewer::renderDatasetViewer({

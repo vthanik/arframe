@@ -1,11 +1,11 @@
 # The QC sheet (design spec 5.4, plan Task 15): the proof-check + run log.
-# QC mode swaps the desk to a paper-styled proof-check sheet -- one row per
+# QC mode swaps the desk to a paper-styled proof-check sheet — one row per
 # output (mono number + title + the SAME status stamp the TOC shows), each
 # not-ready output's validate_output() gaps listed as jump links, a summary
 # line, and below a rule the run log (newest first). QC is a document too, so
 # it wears the page chrome (a running head) the on-screen galley artifact
 # deliberately drops (decision #7). Every status read routes through
-# `.toc_rows()` -> `output_status()` -- no second predicate lives here.
+# `.toc_rows()` -> `output_status()` — no second predicate lives here.
 
 # ---- problems -------------------------------------------------------------
 
@@ -13,7 +13,7 @@
 #'
 #' A `"ready"` output has none. A `"broken"` render or a `"stale"` proof has
 #' no `validate_output()` row (both are "ready" to the static oracle), so
-#' each gets ONE synthesized entry routed to the title block -- the jump
+#' each gets ONE synthesized entry routed to the title block — the jump
 #' still lands somewhere actionable. Every other status (`"draft"`,
 #' `"needs_data"`) lists its real `validate_output()` gaps, each mapped to
 #' the page region that would fill it (`.ghost_region()`, shared with the
@@ -132,7 +132,7 @@
   total_n <- length(rows)
   shiny::tags$div(
     class = "ar-qc-sheet",
-    # U+2014 EM DASH -- \u escape keeps R/ ASCII-clean (portability rule).
+    # U+2014 EM DASH — \u escape keeps R/ ASCII-clean (portability rule).
     shiny::tags$div(
       class = "ar-qc-head ar-mono",
       paste0("Review \u2014 ", report@name)
@@ -165,7 +165,7 @@
     class = "ar-qc-sheet",
     shiny::tags$div(
       class = "ar-qc-head ar-mono",
-      # U+2014 EM DASH -- \u escape keeps R/ ASCII-clean (portability rule).
+      # U+2014 EM DASH — \u escape keeps R/ ASCII-clean (portability rule).
       paste0("Logs \u2014 ", report@name)
     ),
     .qc_log(log)
@@ -187,7 +187,7 @@ mod_qc_ui <- function(id) {
 }
 
 #' The Logs mode body: the same scrolling desk, holding the run-log sheet.
-#' Shares `mod_qc_server()`'s namespace -- one module renders both sheets.
+#' Shares `mod_qc_server()`'s namespace — one module renders both sheets.
 #' @param id *The module namespace, matching `mod_qc_ui()`.*
 #'   `<character(1)>: required`.
 #' @noRd
@@ -232,7 +232,7 @@ mod_qc_server <- function(id, store) {
 
     # A jump link: drill into the output (sets selected + report_open, so the
     # LoC opens straight onto its paper + inspector), flip to Report mode
-    # (mirror the class to the client -- setting rv$mode directly bypasses the
+    # (mirror the class to the client — setting rv$mode directly bypasses the
     # frame's own `ar-mode` send), and open the inspector on the mapped region.
     shiny::observeEvent(input$jump, {
       drill_open(store, input$jump$id)

@@ -1,8 +1,8 @@
-# The Filters pane (chips + editor, 2026-07-04 redesign): the Filters-tab
-# content of the docked inspector. POPULATION FIRST (2026-07-08: one chip per
+# The Filters pane (chips + editor): the Filters-tab
+# content of the docked inspector. POPULATION FIRST — one chip per
 # study analysis set from `theme$populations` / Setup > Analysis sets, the lit
 # chip = `options$population` or the study default; picking one writes
-# `options$population` -- the SAME field the TOC shows, and the engine subsets
+# `options$population` — the SAME field the TOC shows, and the engine subsets
 # via the set's filter), then one compact chip per ad-hoc predicate
 # (`AGE > 65 x`) and a `+ Filter` chip.
 # Clicking a chip opens THE editor card (GOV.UK stacked labelled controls:
@@ -10,13 +10,13 @@
 # range hint -> include missing); only one editor exists at a time, so
 # the old 12-slot per-row observer pool collapsed to one set. Rows live
 # in the store-side draft (`rv$filter_draft`, seeded from `object@filters`
-# on selection change; the open chip index is `rv$filter_open` -- never
-# the DOM); a row commits ONLY when complete -- the engine's `.filter_one`
+# on selection change; the open chip index is `rv$filter_open` — never
+# the DOM); a row commits ONLY when complete — the engine's `.filter_one`
 # is drop-tolerant and would silently skip an incomplete predicate, so
 # the chip wears an honest `incomplete` badge instead of letting it
 # vanish. Every commit is a HEAVY edit (filters key the ARD): on a
 # proofed output it marks the proof STALE (fct_store.R's run semantics);
-# the live count beside the pane label stays live regardless --
+# the live count beside the pane label stays live regardless —
 # `filter_count()` is a bare DuckDB COUNT, not a re-typeset.
 
 # ---- engine contract -------------------------------------------------------
@@ -26,7 +26,7 @@
 .FILTER_OPS <- c("==", "!=", "%in%", ">", "<", ">=", "<=", "is.na", "not.na")
 
 # The operator select shows these HUMANIZED names over the EXACT engine
-# values -- the posted value is always a member of .FILTER_OPS, never a
+# values — the posted value is always a member of .FILTER_OPS, never a
 # display string.
 .FILTER_OP_LABELS <- c(
   "is" = "==",
@@ -71,17 +71,17 @@
   paste0(column, " = Y")
 }
 
-# `.population_flags()` removed 2026-07-08: the POPULATION section no longer
-# derives chips from dataset `*FL` columns -- it lists the study's analysis-set
+# `.population_flags()` removed: the POPULATION section no longer
+# derives chips from dataset `*FL` columns — it lists the study's analysis-set
 # library (`theme$populations`, Setup > Analysis sets) and writes
 # `options$population`. `.POPULATION_FLAGS` / `.flag_label` / `.flag_filter`
 # stay: the paper's `.filters_tag_label` still names a hand-added flag filter.
 
 # The canonical safety-population predicate (the SAFFL chip's own output)
-# -- kept named because tests and the paper tag pin it.
+# — kept named because tests and the paper tag pin it.
 .SAFETY_FILTER <- list(column = "SAFFL", op = "==", value = "Y")
 
-# The selectize token standing in for a real NA level ("(missing)") --
+# The selectize token standing in for a real NA level ("(missing)") —
 # selectize cannot carry NA itself.
 .NA_TOKEN <- "__NA__"
 
@@ -108,7 +108,7 @@
 }
 
 #' The minimal committed shape for one complete row: no `value` on a
-#' null-test, no `include_missing` key when FALSE -- so a hand-built
+#' null-test, no `include_missing` key when FALSE — so a hand-built
 #' safety row and the preset's canonical shape are `identical()`.
 #' @noRd
 .filter_normalize <- function(f) {
@@ -156,7 +156,7 @@
   )
 }
 
-# ---- chips + editor UI (2026-07-04 redesign) ---------------------------
+# ---- chips + editor UI ---------------------------
 
 #' The compact chip text for one draft row: `SAFFL = Y`, `AGE > 65`,
 #' `RACE in 3 values`, `AEDECOD is missing`, or `New filter` before a
@@ -298,7 +298,7 @@
 
 #' The editor card for the open chip (GOV.UK-style stacked labelled
 #' controls): column picker, condition, type-aware value, include-missing,
-#' Done. Rendered inline below the chip row -- the open chip is
+#' Done. Rendered inline below the chip row — the open chip is
 #' highlighted, so no floating-popover positioning JS is needed and the
 #' narrow rail never clips it.
 #' @noRd
@@ -310,7 +310,7 @@
   } else {
     "category"
   }
-  # Packed NAME\x1fTYPE\x1fLABEL -- the re-seeded selection must match
+  # Packed NAME\x1fTYPE\x1fLABEL — the re-seeded selection must match
   # `.eligible_picker()`'s packing or selectize resets the row.
   selected <- if (has_col) {
     lab_hit <- items$label[items$name == row$column]
@@ -383,7 +383,7 @@ mod_card_filters_ui <- function(id) {
 
 # ---- server -------------------------------------------------------------
 
-#' Commit the draft's COMPLETE rows to the selected object -- a no-op when
+#' Commit the draft's COMPLETE rows to the selected object — a no-op when
 #' the committed set already matches (bind-time reposts and incomplete
 #' edits never push an undo entry).
 #' @noRd
@@ -427,7 +427,7 @@ mod_card_filters_server <- function(id, store) {
       .show_help(input$help_open$topic)
     })
 
-    # Selection change re-seeds the draft from the committed predicates --
+    # Selection change re-seeds the draft from the committed predicates —
     # a draft never survives across outputs, and neither does an open
     # editor (a stale filter_open would index into the wrong draft).
     shiny::observe({
@@ -468,9 +468,9 @@ mod_card_filters_server <- function(id, store) {
       open_i <- open_row()
       committed <- lapply(Filter(.filter_complete, draft), .filter_normalize)
       # POPULATION = the study's analysis-set library (Setup > Analysis sets,
-      # `theme$populations`), NOT raw dataset *FL flags (2026-07-08). Selecting
-      # one writes `options$population` -- the SAME field the TOC's POPULATION
-      # column shows, so the inspector and the LoC stay in sync -- and the
+      # `theme$populations`), NOT raw dataset *FL flags. Selecting
+      # one writes `options$population` — the SAME field the TOC's POPULATION
+      # column shows, so the inspector and the LoC stay in sync — and the
       # engine subsets via the set's `filter` (resolve_population -> build_ard).
       # Exactly one is always selected (options$population, else the study
       # default), mirroring the TOC (decision #12.3: every output has a
@@ -558,14 +558,14 @@ mod_card_filters_server <- function(id, store) {
         store$rv$filter_draft,
         store$rv$filter_open,
         # `report` too: the population chip highlight reads `options$population`,
-        # which the TOC's POPULATION column can also write -- rebind so a
+        # which the TOC's POPULATION column can also write — rebind so a
         # change from either surface moves the lit chip (two-way sync, #12.3).
         store$rv$report,
         ignoreNULL = FALSE
       )
 
     # The live count: filter_count() over the COMPLETE predicates only,
-    # debounced 300ms -- a half-built row never fires a query.
+    # debounced 300ms — a half-built row never fires a query.
     complete_preds <- shiny::reactive({
       lapply(Filter(.filter_complete, store$rv$filter_draft), .filter_normalize)
     })
@@ -599,8 +599,8 @@ mod_card_filters_server <- function(id, store) {
     shiny::outputOptions(output, "count", suspendWhenHidden = FALSE)
 
     # ---- population (analysis set) ----
-    # Picking a population writes `options$population` -- NOT a filter predicate
-    # (2026-07-08). This is the field the TOC POPULATION column reads, so the
+    # Picking a population writes `options$population` — NOT a filter predicate
+    # This is the field the TOC POPULATION column reads, so the
     # two sync; the engine applies the set's `filter` to subset. update_object
     # marks the proof STALE (a population change re-collects the data).
     shiny::observeEvent(input$pick_population, {
@@ -677,7 +677,7 @@ mod_card_filters_server <- function(id, store) {
 
     # ---- the editor observer set ----
     # ONE set of observers (f_col/f_op/f_val/f_miss) targets the single
-    # open row -- only one editor exists at a time (2026-07-04; replaces
+    # open row — only one editor exists at a time (replaces
     # the old 12-slot per-row pool). `val_seen` guards the value observer
     # against the init-NULL every freshly bound input posts once: NULL is
     # only meaningful ("user removed every selection") after a real post,
@@ -702,7 +702,7 @@ mod_card_filters_server <- function(id, store) {
         return()
       }
       # The packed half is the raw SQL type; the op default needs the
-      # ROLE type (measure vs category/date) -- look it up.
+      # ROLE type (measure vs category/date) — look it up.
       obj <- selected_object(store)
       if (is.null(obj)) {
         return()

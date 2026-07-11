@@ -1,9 +1,9 @@
 # Async export (design spec 5.3, plan Task 16): the whole-package render walks
-# every ready output through the engine -- each a fresh DuckDB collect plus an
+# every ready output through the engine — each a fresh DuckDB collect plus an
 # RTF typeset, heavy enough to freeze a single-process Shiny app for seconds.
 # `export_task()` moves it onto a mirai daemon so the galley stays live.
 #
-# A DuckDB connection NEVER crosses the daemon boundary -- it is a C handle
+# A DuckDB connection NEVER crosses the daemon boundary — it is a C handle
 # bound to THIS process. The daemon receives only the report JSON string and
 # the dataset file PATHS, and opens its OWN engine. The daemon expression
 # references base + arpillar only; arframe is not loaded there (so nothing
@@ -11,7 +11,7 @@
 
 #' The named dataset file paths every ready output in `report` reads from,
 #' resolved off the live catalog (`arpillar::dataset_path()`). A named list
-#' `list(<dataset> = <path>)` -- the daemon re-registers these before
+#' `list(<dataset> = <path>)` — the daemon re-registers these before
 #' rendering. Only ready outputs contribute (a draft has nothing to render),
 #' and each dataset appears once.
 #' @noRd
@@ -30,7 +30,7 @@
 #' The `id -> "<slug>.rtf"` filename map for every ready output. Computed on
 #' the main process (via `arpillar::output_slugs()`) and handed to the daemon
 #' so the RTFs it writes carry the SAME filenames the synchronous export tree
-#' uses -- the daemon never needs any arframe naming logic.
+#' uses — the daemon never needs any arframe naming logic.
 #' @noRd
 .export_names <- function(report) {
   ready <- Filter(
@@ -46,7 +46,7 @@
 
 #' Build the export mirai: render every ready output in the serialised report
 #' to `out_dir`, returning a NAMED character vector (`id -> path`) of the RTFs
-#' actually written. Self-contained -- the daemon opens its own engine from
+#' actually written. Self-contained — the daemon opens its own engine from
 #' `paths` and uses only arpillar, so no connection (and nothing arframe-side)
 #' has to serialise. A per-output render error is swallowed so one bad output
 #' does not sink the whole batch; the main process sees it missing from the
@@ -84,7 +84,7 @@ export_mirai <- function(report_json, paths, out_dir, names = list()) {
         path <- file.path(out_dir, fname)
         # Thread the study theme (Setup) into the export render so a
         # study-level default resolves identically to the live screen
-        # (mod_paper passes report@theme too) -- without it, export and
+        # (mod_paper passes report@theme too) — without it, export and
         # screen silently diverge on any theme-set display option.
         theme <- report@theme
         ok <- tryCatch(

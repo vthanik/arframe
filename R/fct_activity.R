@@ -1,5 +1,5 @@
 # Team activity log: append-only, per-user JSONL file. Concurrency: each
-# session writes ONLY to its own `.arframe/activity/<slug>.jsonl` -- no
+# session writes ONLY to its own `.arframe/activity/<slug>.jsonl` — no
 # shared file, no flock, no platform branching. Readers glob the folder
 # and merge on read.
 
