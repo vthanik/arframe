@@ -102,16 +102,20 @@
     path = c("summaries", "categorical", "header_stat")
   ),
   list(
-    id = "cat_level_format",
-    path = c("summaries", "categorical", "level_format")
-  ),
-  list(
     id = "cat_show_missing",
     path = c("summaries", "categorical", "show_missing")
   ),
   list(
     id = "cat_missing_label",
     path = c("summaries", "categorical", "missing_label")
+  ),
+  # The event-count (E) column study default (occurrence tables inherit it;
+  # a per-output override still wins). `cat_count_*` (base format + % sign)
+  # compose one template via a dedicated observer, not this table.
+  list(
+    id = "cat_event_column",
+    path = c("summaries", "categorical", "event_column"),
+    coerce = function(v) identical(v, "yes")
   ),
   # ---- Summaries: precision (previously dead) ----------------------------
   list(id = "decimals_n", path = c("decimals", "n"), coerce = .as_prec),
@@ -295,6 +299,49 @@ mod_setup_server <- function(id, store) {
     # top of file. Structural mutations (add/delete rows, folder pickers)
     # stay hand-wired below.
     .wire_all(input, store)
+
+    # Study-level count format: the base pill + % sign compose ONE template
+    # (theme$summaries$categorical$count_format), mirroring the per-output
+    # control. Either control's change recomposes from the committed state so
+    # the two stay one source of truth. (The E-column toggle rides `.wire_all`.)
+    local({
+      compose_count_fmt <- function() {
+        r <- store$rv$report
+        # Effective study state honours the legacy level_format enum, so the
+        # first pill/sign click on a legacy theme composes from what the
+        # engine renders rather than resetting to the default shape.
+        st <- .count_fmt_effective(NULL, r@theme)
+        pill <- as.character(input$cat_count_base %||% st$pill)
+        sign <- if (is.null(input$cat_count_sign)) {
+          st$sign
+        } else {
+          identical(input$cat_count_sign, "yes")
+        }
+        tpl <- .count_fmt_template(pill, sign)
+        if (is.null(tpl)) {
+          return()
+        }
+        theme <- .theme_set(
+          r@theme,
+          c("summaries", "categorical", "count_format"),
+          tpl
+        )
+        if (identical(theme, r@theme)) {
+          return()
+        }
+        commit(store, S7::set_props(r, theme = theme), label = "edit setup")
+      }
+      shiny::observeEvent(
+        input$cat_count_base,
+        compose_count_fmt(),
+        ignoreInit = TRUE
+      )
+      shiny::observeEvent(
+        input$cat_count_sign,
+        compose_count_fmt(),
+        ignoreInit = TRUE
+      )
+    })
 
     # The default-population star lives in a section body, so moving it needs
     # a structural re-render (the scalar commit itself is handled by
@@ -2374,6 +2421,11 @@ s_study <- function(store) {
 
 .setup_summaries <- function(ns, store) {
   s <- store$rv$report@theme$summaries %||% list()
+  # Study-level count format: the committed template parses to a base pill +
+  # % sign; the E column is its own toggle. Seeded through the EFFECTIVE
+  # resolver (object = NULL -> pure study state) so a legacy theme carrying
+  # only level_format ("n"/"pct") paints what the engine actually renders.
+  cf <- .count_fmt_effective(NULL, store$rv$report@theme)
   d <- store$rv$report@theme$decimals %||% list()
   # Canonical seed for the Explorer continuous-rows editor. Each row: label
   # + list of stat atoms + a format string ("a", "a (b)", "a - b", ...).
@@ -2452,14 +2504,31 @@ s_study <- function(store) {
           c("n", "total_n", "none"),
           s$categorical$header_stat %||% "none"
         ),
-        # Display labels distinct from stored values so the choices read
-        # clearly ("n (%)" not "n_pct"); `pct_n` dropped per user request.
+        # Count format (study default; a per-output override still wins). The
+        # base shape + % sign compose one template via the `cat_count_*`
+        # observer; the E column is a separate study toggle occurrence tables
+        # inherit. (Now pills, not free-text — the 2026-07-11 typo concern that
+        # kept this per-output-only is moot.)
         .seg_control(
           ns,
-          "cat_level_format",
-          "Level format",
-          c("n" = "n", "%" = "pct", "n (%)" = "n_pct"),
-          s$categorical$level_format %||% "n_pct"
+          "cat_count_base",
+          "Count format",
+          c("n (%)" = "n_pct", "n/N (%)" = "nN_pct"),
+          cf$pill
+        ),
+        .seg_control(
+          ns,
+          "cat_count_sign",
+          "Percent sign in cells",
+          c("Yes" = "yes", "No" = "no"),
+          if (isTRUE(cf$sign)) "yes" else "no"
+        ),
+        .seg_control(
+          ns,
+          "cat_event_column",
+          "Event count (E) column",
+          c("Yes" = "yes", "No" = "no"),
+          if (isTRUE(s$categorical$event_column)) "yes" else "no"
         ),
         .seg_control(
           ns,
@@ -2651,34 +2720,35 @@ s_study <- function(store) {
 }
 
 # Distinct (PARAMCD, PARAM) rows for a BDS dataset — the decimals-by param
-# picker shows PARAMCD as the name and PARAM as the muted description. Reads
-# the dataset's DuckDB view name from arpillar's catalog registry (a public S7
-# slot, keyed `"<library>::<name>"`) and runs a direct query on the shared
-# connection (`store$con@con`). Returns a data.frame(PARAMCD, PARAM) or NULL.
+# picker shows PARAMCD as the name and PARAM as the muted description. Goes
+# through the engine's exported `distinct_pairs()` (never hand-rolled SQL
+# against arpillar's internals — review finding) and is MEMOIZED per
+# (dataset, catalog_nonce): the decimals-by editor calls this once per row
+# per re-render, so an unmemoized pushdown re-ran the DISTINCT scan dozens
+# of times per Setup paint. Returns a data.frame(PARAMCD, PARAM) or NULL.
 .paramcd_pairs <- function(store, dataset) {
-  view_name <- tryCatch(
+  nonce <- shiny::isolate(store$rv$catalog_nonce)
+  key <- paste0("pairs::", dataset, "::", nonce)
+  hit <- store$cache[[key]]
+  if (!is.null(hit)) {
+    return(hit)
+  }
+  out <- tryCatch(
     {
-      reg <- store$con@registry
-      key <- paste0("WORK::", dataset)
-      if (exists(key, envir = reg, inherits = FALSE)) {
-        get(key, envir = reg)$view_name
-      } else {
-        NULL
-      }
+      p <- arpillar::distinct_pairs(store$con, dataset, "PARAMCD", "PARAM")
+      # Preserve the legacy frame shape callers index by name.
+      data.frame(
+        PARAMCD = p$key,
+        PARAM = p$label,
+        stringsAsFactors = FALSE
+      )
     },
     error = function(e) NULL
   )
-  if (is.null(view_name) || !nzchar(view_name)) {
-    return(NULL)
+  if (!is.null(out)) {
+    store$cache[[key]] <- out
   }
-  db <- store$con@con
-  qview <- DBI::dbQuoteIdentifier(db, view_name)
-  sql <- paste0(
-    "SELECT DISTINCT PARAMCD, PARAM FROM ",
-    qview,
-    " WHERE PARAMCD IS NOT NULL ORDER BY PARAMCD NULLS LAST LIMIT 200"
-  )
-  tryCatch(DBI::dbGetQuery(db, sql), error = function(e) NULL)
+  out
 }
 
 # Picker items for the continuous-statistic vocabulary: each eligible atom
@@ -3328,43 +3398,4 @@ s_study <- function(store) {
   }
   theme[[head]] <- new_parent
   theme
-}
-
-.bind_theme_field <- function(input, store, block, key) {
-  input_id <- paste0(block, "_", key)
-  shiny::observeEvent(
-    input[[input_id]],
-    {
-      val <- input[[input_id]]
-      r <- store$rv$report
-      theme <- r@theme
-      if (is.null(theme[[block]])) {
-        theme[[block]] <- list()
-      }
-      if (identical(theme[[block]][[key]], val)) {
-        return()
-      }
-      theme[[block]][[key]] <- val
-      commit(store, S7::set_props(r, theme = theme), label = "edit setup")
-    },
-    ignoreInit = TRUE
-  )
-}
-
-.bind_theme_top <- function(input, store, key) {
-  input_id <- paste0("top_", key)
-  shiny::observeEvent(
-    input[[input_id]],
-    {
-      val <- input[[input_id]]
-      r <- store$rv$report
-      theme <- r@theme
-      if (identical(theme[[key]], val)) {
-        return()
-      }
-      theme[[key]] <- val
-      commit(store, S7::set_props(r, theme = theme), label = "edit setup")
-    },
-    ignoreInit = TRUE
-  )
 }

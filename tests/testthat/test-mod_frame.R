@@ -163,3 +163,39 @@ test_that("arframe() launches: top app bar nav, all five bodies, per-mode switch
     }
   }
 })
+
+test_that("mod_frame_server: session start mirrors the store's mode to the client (stale-mode reload)", {
+  # Regression (2026-07-11): the store is per-LAUNCH and shared across
+  # browser sessions, but the static HTML hard-codes `ar-mode-setup`. A
+  # reload after working in Report left store$rv$mode = "report" while the
+  # fresh DOM painted Setup — the first Report click then matched the
+  # re-click branch and only toggled the rail ("Report does nothing until
+  # I click Data first"). The frame must send `ar-mode` with the store's
+  # mode at session start so DOM and store agree.
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  shiny::isolate(store$rv$mode <- "report") # a prior session left Report open
+
+  sent <- new.env()
+  server <- function(input, output, session) {
+    # Override the (discarding) MockShinySession sendCustomMessage BEFORE
+    # the module constructs, so the init sync is recorded.
+    base::unlockBinding("sendCustomMessage", session)
+    assign(
+      "sendCustomMessage",
+      function(type, message) {
+        if (identical(type, "ar-mode")) {
+          sent$mode <- message
+        }
+        if (identical(type, "ar-collapse")) sent$collapse <- message
+      },
+      envir = session
+    )
+    mod_frame_server("frame", store)
+  }
+  shiny::testServer(server, {
+    expect_identical(sent$mode, "report")
+    expect_false(sent$collapse$loc_rail)
+  })
+})

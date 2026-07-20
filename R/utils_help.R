@@ -25,12 +25,6 @@
   shiny::tags$p(class = "ar-help-p", ...)
 }
 
-#' An inline code chip (a column name or literal inside a sentence).
-#' @noRd
-.help_code <- function(x) {
-  shiny::tags$code(class = "ar-help-code", x)
-}
-
 #' A bordered worked-example block (one expression on its own line). Carries
 #' the `ar-help-code` class so every entry provably ships >= 1 example.
 #' @noRd
@@ -298,11 +292,19 @@
         "one decimal place:"
       ),
       .help_block("AGE: Mean 35.2  SD 8.14  (mean at d, SD at d+1)"),
-      .help_block("Percentages: 35.2% (always 1 dp)"),
+      .help_block("Percentages: 35.2% (dp from Precision > pct)"),
       .help_p(
-        "An individual output can override these in its Options > ROWS",
-        "section; until it does, it renders exactly the rows and decimals",
-        "you set here, so the package stays uniform by default."
+        "N FORMAT under Arm column headers is a small token template for",
+        "the (N=...) line beneath each treatment column: {n} is that",
+        "arm's population N, so (N={n}) renders (N=86)."
+      ),
+      .help_p(
+        "How the count cells themselves read \u2014 n, n (%), n/N (%),",
+        "and whether a literal % sign shows \u2014 is chosen per output in",
+        "its Options > Columns section, not here. An individual output can",
+        "override the statistics and decimals too; until it does, it",
+        "renders exactly what you set here, so the package stays uniform",
+        "by default."
       )
     )
   },
@@ -652,6 +654,27 @@
         "arm \u2014 it is a heavy change, because the engine has to",
         "re-collect the pooled numbers, so it takes effect on the next Run",
         "rather than live."
+      ),
+      .help_p(
+        "COUNT FORMAT sets how each count cell reads. Pick the shape, then",
+        "toggle whether the percent shows a literal % sign. The study default",
+        "lives at Setup > Summaries; a per-output value overrides it:"
+      ),
+      .help_block("n            \u2192  4"),
+      .help_block("n (%)        \u2192  4 (5.0)     % sign off"),
+      .help_block("n (%)        \u2192  4 (5.0%)    % sign on"),
+      .help_block("n/N (%)      \u2192  4/86 (4.7)"),
+      .help_p(
+        "The decimal places on the percent come from Setup > Summaries >",
+        "Precision (pct). Adverse-event tables add an EVENT COUNT (E) column",
+        "\u2014 a separate toggle that renders the event count in its OWN column",
+        "beside the subject count, under the arm's (N=x) header:"
+      ),
+      .help_block("n (%)    E   \u2192  5 (5.8)   7"),
+      .help_p(
+        "The stub label annotates itself from the shape (\"Sex, n (%)\"); a",
+        "cell carrying a literal % sign drops that annotation, since the",
+        "cells then describe themselves."
       )
     )
   },

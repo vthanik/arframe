@@ -11,7 +11,7 @@
 
 test_that(".SETUP_SPEC is non-empty and well-formed", {
   spec <- arframe:::.SETUP_SPEC
-  expect_gt(length(spec), 30L)
+  expect_gt(length(spec), 25L)
   # Every entry has id + path.
   for (e in spec) {
     expect_true(is.character(e$id) && length(e$id) == 1L)
@@ -87,7 +87,6 @@ test_that("wire_all round-trips every scalar entry into the theme", {
     page_font_size = "12",
     arm_show_header_n = "no",
     cat_show_missing = "always",
-    cat_level_format = "n_pct",
     cat_header_stat = "total_n"
   )
   shiny::testServer(
@@ -169,6 +168,23 @@ test_that("wire_all round-trip: individual bindings write to theme", {
       st$rv$report@theme$summaries$categorical$missing_label,
       "Not reported"
     )
+
+    # -- Summaries: count format (base pill + % sign compose ONE template via
+    # the dedicated observer; the E column is its own study toggle) --
+    session$setInputs(cat_count_base = "nN_pct")
+    expect_identical(
+      st$rv$report@theme$summaries$categorical$count_format,
+      "{n}/{N} ({p})"
+    )
+    session$setInputs(cat_count_sign = "yes")
+    expect_identical(
+      st$rv$report@theme$summaries$categorical$count_format,
+      "{n}/{N} ({p}%)"
+    )
+    session$setInputs(cat_event_column = "yes")
+    expect_true(st$rv$report@theme$summaries$categorical$event_column)
+    session$setInputs(cat_event_column = "no")
+    expect_false(st$rv$report@theme$summaries$categorical$event_column)
 
     # -- Decimals (previously dead) --
     session$setInputs(decimals_mean = "3")
@@ -292,15 +308,19 @@ test_that("cont_reorder permutes the continuous rows by the posted order", {
   })
 })
 
-test_that("Summaries drops pct_n and shows the clear level-format labels", {
+test_that("Summaries has NO count-format control (it lives per-output in Options)", {
+  # 2026-07-11 user call: count format is chosen per output (Options >
+  # Columns pills + % toggle), not in Setup. The Level-format enum, the
+  # short-lived %-sign toggle, and the count-format text input are all
+  # gone from Setup; N FORMAT (arm header) stays.
   ns <- shiny::NS("s")
   st <- .mk_store()
   html <- shiny::isolate(as.character(arframe:::.setup_summaries(ns, st)))
-  # pct_n is gone; the three remaining level formats keep their stored values.
-  expect_false(grepl('data-ar-seg-value="pct_n"', html, fixed = TRUE))
-  expect_true(grepl('data-ar-seg-value="n_pct"', html, fixed = TRUE))
-  # Display label reads "n (%)", not the raw "n_pct".
-  expect_true(grepl(">n (%)<", html, fixed = TRUE))
+  expect_false(grepl("cat_level_format", html, fixed = TRUE))
+  expect_false(grepl("cat_pct_symbol", html, fixed = TRUE))
+  expect_false(grepl("cat_count_format", html, fixed = TRUE))
+  # N FORMAT (arm-header template) is still a Setup control.
+  expect_true(grepl('id="s-arm_header_n_format"', html, fixed = TRUE))
   # Continuous rows are a sortable list.
   expect_true(grepl(
     'data-ar-sortable-input="s-cont_reorder"',

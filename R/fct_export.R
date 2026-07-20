@@ -103,7 +103,7 @@
   skipped <- character(0)
 
   for (obj in objects) {
-    status <- arpillar::output_status(obj)
+    status <- arpillar::output_status(obj, report@theme)
     slug <- slugs[[obj@id]]
     # Every output gets its reproduction program, ready or not — the
     # program IS the record, and a draft's program documents intent.

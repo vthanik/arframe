@@ -299,18 +299,14 @@
       tr$value %||% character(0)
     ))
   )
+  # Id-less native selects (the last known real-id exception, closed
+  # 2026-07-18): a drill-switch rebind can never replay a stale value —
+  # posts ride the same `tr_*` channels, so the observers are untouched.
   sel_row <- function(input_id, label, choices, selected) {
     shiny::tags$div(
       class = "ar-opt-row",
       shiny::tags$span(class = "ar-opt-label", label),
-      shiny::selectInput(
-        ns(input_id),
-        label = NULL,
-        choices = choices,
-        selected = selected,
-        selectize = FALSE,
-        width = "170px"
-      )
+      .opt_native_select(ns, input_id, choices, selected)
     )
   }
   numeric_cols <- items$name[items$type %in% "measure"]
@@ -707,18 +703,33 @@
   })
 
   # ---- transpose ----
-  # Re-derive the WHOLE option from the three inputs (Shiny holds each
-  # select's last post, so a half-built pick needs no store draft):
-  # committed only while param and value are both set and DISTINCT, else
-  # the key is absent — the engine's own completeness rule.
-  tr_commit <- function() {
+  # A module-local draft holds the half-built pick, RESEEDED from the
+  # committed spec on every selection change — so a drill switch can never
+  # bleed one output's param/value into another's (the old bound selects
+  # relied on Shiny's lingering input state, the admitted staleness hole).
+  # Each unbound post updates ONE dimension; the others come from the
+  # draft. Committed only while param and value are both set and DISTINCT,
+  # else the key is absent — the engine's own completeness rule.
+  tr_draft <- shiny::reactiveVal(list())
+  shiny::observeEvent(
+    store$rv$selected,
+    {
+      obj <- lst_obj()
+      tr_draft(if (is.null(obj)) list() else obj@options$transpose %||% list())
+    },
+    ignoreNULL = FALSE
+  )
+  tr_field <- function(field, raw) {
     obj <- lst_obj()
     if (is.null(obj)) {
       return()
     }
-    p <- as.character(input$tr_param %||% "")
-    v <- as.character(input$tr_value %||% "")
-    a <- as.character(input$tr_agg %||% "first")
+    d <- tr_draft()
+    d[[field]] <- as.character(raw %||% "")
+    tr_draft(d)
+    p <- as.character(d$param %||% "")
+    v <- as.character(d$value %||% "")
+    a <- as.character(d$agg %||% "first")
     if (!a %in% .LISTING_AGGS) {
       a <- "first"
     }
@@ -729,9 +740,9 @@
     }
     .commit_listing_key(store, obj, "transpose", value, "set transpose")
   }
-  shiny::observeEvent(input$tr_param, tr_commit())
-  shiny::observeEvent(input$tr_value, tr_commit())
-  shiny::observeEvent(input$tr_agg, tr_commit())
+  shiny::observeEvent(input$tr_param, tr_field("param", input$tr_param))
+  shiny::observeEvent(input$tr_value, tr_field("value", input$tr_value))
+  shiny::observeEvent(input$tr_agg, tr_field("agg", input$tr_agg))
 
   # ---- stacks ----
   shiny::observeEvent(input$stk_add, {

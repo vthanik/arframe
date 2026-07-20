@@ -49,12 +49,6 @@ ar_theme <- function() {
   )
 }
 
-#' Path to a packaged `www/` asset (a mockable seam for the absent-asset guard).
-#' @noRd
-.asset_path <- function(file) {
-  system.file("www", file, package = "arframe")
-}
-
 #' The Galley chrome stylesheets and the client bridge script, served from
 #' the package `www/` and linked into `<head>`. Linked (not inlined) so the
 #' `@font-face` rules' relative `url("fonts/...")` resolve against the

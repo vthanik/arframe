@@ -181,6 +181,12 @@ arframe <- function(project = NULL, data = NULL, folders = NULL, daemons = 2L) {
     # `.heartbeat()` is a no-op when there is no project OR the user is
     # generic; the observer stays cheap either way.
     presence_tick <- function() {
+      # A closed session ends its chain — without this guard every browser
+      # tab leaked an immortal 30s timer (and its captured store) for the
+      # life of the R process (review finding).
+      if (session$isClosed()) {
+        return(invisible(NULL))
+      }
       # `later` fires outside the reactive graph; `isolate()` lets us
       # read the store fields without an "outside of reactive consumer"
       # abort. `.heartbeat()` is a no-op when `path` is NULL, so the

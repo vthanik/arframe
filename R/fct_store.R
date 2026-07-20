@@ -59,8 +59,8 @@ new_store <- function(con, report = NULL) {
       region = NULL,
       card = FALSE,
       pinned = FALSE,
-      # Data mode is the opening screen: the
-      # data on-ramp shows before the report it feeds. Must match
+      # Setup mode is the opening screen (binding call #11): study config
+      # is the first thing a fresh project needs. Must match
       # mod_frame_ui()'s initial ar-mode-* class.
       mode = "setup",
       dataset = NULL,
@@ -123,7 +123,12 @@ new_store <- function(con, report = NULL) {
     # Output-file mtimes tracked by open_project() / save_touched() /
     # scan_and_merge() (fct_project.R). Keyed by basename; values are
     # numeric POSIX seconds. Empty until a project folder is opened.
-    mtimes = new.env(parent = emptyenv())
+    mtimes = new.env(parent = emptyenv()),
+    # Companion file sizes (same keys): a teammate's write landing within
+    # the filesystem's mtime granularity still changes the size almost
+    # always, so scan_and_merge() detects it (review finding: an
+    # mtime-only `>` compare missed same-tick writes).
+    fsizes = new.env(parent = emptyenv())
   )
 }
 
@@ -138,14 +143,27 @@ new_store <- function(con, report = NULL) {
 #' Called once per Shiny session, after `new_store()`.
 #' @noRd
 install_autosave <- function(store) {
+  # Generation counter for a TRAILING debounce: every dirty flip schedules
+  # a callback stamped with its generation, and only the callback matching
+  # the LATEST generation saves — earlier ones retire silently. A rapid
+  # edit burst therefore writes the folder ONCE, 0.5s after the final
+  # edit, instead of once per ~0.5s throughout the burst (review finding:
+  # each mid-burst save rewrote the whole project folder).
+  gen <- new.env(parent = emptyenv())
+  gen$n <- 0L
   shiny::observeEvent(
     store$rv$dirty,
     {
       if (!isTRUE(store$rv$dirty) || is.null(store$rv$path)) {
         return()
       }
+      gen$n <- gen$n + 1L
+      mine <- gen$n
       later::later(
         function() {
+          if (!identical(mine, gen$n)) {
+            return()
+          }
           # `later` fires OUTSIDE the reactive graph, so bare reads of
           # `store$rv$*` abort with "outside of reactive consumer". Wrap
           # in `isolate()` — the writes happen inside `save_touched`,
@@ -266,7 +284,7 @@ update_object <- function(store, id, fn, label = "") {
   theme <- store$rv$report@theme
   if (
     !identical(.ard_key(obj, theme), .ard_key(new_obj, theme)) &&
-      identical(arpillar::output_status(obj), "ready") &&
+      identical(arpillar::output_status(obj, theme), "ready") &&
       !(id %in% store$rv$broken)
   ) {
     store$rv$stale <- union(store$rv$stale, id)
@@ -332,11 +350,14 @@ add_from_generator <- function(store, generator_id, dataset) {
   .append_and_select(store, obj, label = "add output from generator")
 }
 
-#' Remove the output with `id`; clear a now-dangling selection.
+#' Remove the output with `id`; clear a now-dangling selection. The on-disk
+#' spec/program files are unlinked here (the ownership-scoped save GC never
+#' removes them — see `.unlink_output_files()`).
 #' @noRd
 remove_output <- function(store, id) {
   new_report <- .remove_object(store$rv$report, id)
   commit(store, new_report, label = "remove output")
+  .unlink_output_files(store, id)
   if (identical(store$rv$selected, id)) {
     store$rv$selected <- NULL
   }
@@ -406,6 +427,46 @@ rename_output <- function(store, id, title) {
   if (length(pb) == 1L && !is.na(pb) && nzchar(pb)) {
     parts$page_by <- as.character(pb)
   }
+  # ARD-shaping options the engine reads at build time (resolve.R /
+  # fct_render_ard.R): the estimand toggle (`arm_mode`, resolves WHICH arm
+  # column is collected), the explicit `arm`/`pop_arm` column overrides, and
+  # the occurrence `subject_id` dedup override. Omitting them served stale
+  # ARDs across edits (review finding). Keyed only when set to a non-default,
+  # so every earlier object keeps its legacy hash.
+  am <- object@options$arm_mode
+  if (
+    length(am) == 1L &&
+      !is.na(am) &&
+      nzchar(am) &&
+      !identical(as.character(am), "auto")
+  ) {
+    parts$arm_mode <- as.character(am)
+  }
+  for (k in c("arm", "pop_arm", "subject_id")) {
+    v <- object@options[[k]]
+    if (length(v) == 1L && !is.na(v) && nzchar(v)) {
+      parts[[k]] <- as.character(v)
+    }
+  }
+  if (identical(object@type, "occurrence")) {
+    # The "any adverse event" over-leg is ON by default; key an explicit OFF.
+    if (identical(object@options$overall_row, FALSE)) {
+      parts$overall_row <- FALSE
+    }
+    # The event-count leg mirrors the engine's resolve_option precedence
+    # (.occ_event_column_opt): a usable per-output value — including FALSE —
+    # beats the study theme; only then does the theme default apply. A plain
+    # OR here diverged from the engine once a per-output OFF became possible.
+    ev <- object@options$event_column
+    ev <- if (length(ev) == 1L && !is.na(ev)) {
+      isTRUE(ev)
+    } else {
+      isTRUE(theme$summaries$categorical$event_column)
+    }
+    if (ev) {
+      parts$occ_events <- TRUE
+    }
+  }
   # A listing bakes these into its SQL pull (ORDER BY / LIMIT / PIVOT), so
   # they change the collected frame, not just the display — key them.
   # Conditional, so an option-free listing keeps a stable hash.
@@ -425,6 +486,13 @@ rename_output <- function(store, id, title) {
   pop <- arpillar::resolve_population(object, theme)
   if (!is.null(pop$dataset) || length(pop$filter) > 0L) {
     parts$population <- list(dataset = pop$dataset, filter = pop$filter)
+    # The set's estimand basis steers the auto arm-column resolution
+    # (arm_mode "auto" defers to it), so a Setup edit to the basis must
+    # invalidate the memo. Folded only when the set carries one, so an
+    # unbound output keeps its legacy hash.
+    if (length(pop$basis) == 1L && !is.na(pop$basis)) {
+      parts$population$basis <- as.character(pop$basis)
+    }
   }
   paste0("ard::", rlang::hash(parts))
 }

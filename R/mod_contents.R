@@ -68,6 +68,10 @@
   if (length(objs) == 0L) {
     return(list())
   }
+  # `store$mtimes` is keyed by the on-disk filename — the SLUG since the
+  # slug-naming change, not `<id>.json` (review finding: an id-keyed lookup
+  # left the MODIFIED column an em-dash forever).
+  slugs <- arpillar::output_slugs(report)
   by_type <- .kind_by_type()
   kinds <- vapply(
     objs,
@@ -95,7 +99,7 @@
       # the config is ready, but its proof awaits a Run.
       "stale"
     } else {
-      arpillar::output_status(obj)
+      arpillar::output_status(obj, report@theme)
     }
     list(
       id = obj@id,
@@ -107,7 +111,7 @@
       status = status,
       number_label = obj@options$number_label %||% NA_character_,
       population = obj@options$population %||% NA_character_,
-      modified = .loc_modified_str(mtimes, obj@id)
+      modified = .loc_modified_str(mtimes, slugs[[obj@id]])
     )
   })
 }
@@ -117,17 +121,19 @@
 # eye-order is kind-rank then TLF number within kind.
 .LOC_KIND_RANK <- c(table = 1L, figure = 2L, listing = 3L)
 
-#' The "MODIFIED" cell for one output: its `outputs/<id>.json` file mtime
-#' (`store$mtimes`, populated by open_project()/save_touched()), formatted
+#' The "MODIFIED" cell for one output: its `outputs/<slug>.json` file mtime
+#' (`store$mtimes`, populated by open_project()/save_touched(), keyed by the
+#' on-disk SLUG filename — not the opaque id; review finding: an id-keyed
+#' lookup left the column an em-dash forever), formatted
 #' `YYYY-MM-DD HH:MM`. An em-dash when no project is on disk yet (in-memory
 #' session) or the file has not been written — there is no other per-output
 #' timestamp to fall back to (the activity log is batch-level).
 #' @noRd
-.loc_modified_str <- function(mtimes, id) {
-  if (is.null(mtimes)) {
+.loc_modified_str <- function(mtimes, slug) {
+  if (is.null(mtimes) || is.null(slug)) {
     return("\u2014")
   }
-  val <- mtimes[[paste0(id, ".json")]]
+  val <- mtimes[[paste0(slug, ".json")]]
   if (is.null(val) || is.na(val)) {
     return("\u2014")
   }
@@ -805,6 +811,9 @@ mod_contents_server <- function(id, store) {
           if (length(ids) == 1L) "" else "s"
         )
       )
+      # Deletion cleans its own on-disk spec/program files — the save GC is
+      # ownership-scoped and would otherwise leave them behind.
+      .unlink_output_files(store, ids)
       if (!is.null(store$rv$selected) && store$rv$selected %in% ids) {
         store$rv$selected <- NULL
       }

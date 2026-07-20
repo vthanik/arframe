@@ -865,8 +865,8 @@
 #' strip shows these, the slot-owned ones render inline in their own
 #' fieldsets, and nothing is ever double-reported.
 #' @noRd
-.orphan_problems <- function(object, slots) {
-  v <- arpillar::validate_output(object)
+.orphan_problems <- function(object, slots, theme = list()) {
+  v <- arpillar::validate_output(object, theme)
   if (nrow(v) == 0L) {
     return(character(0))
   }
@@ -1097,8 +1097,8 @@ mod_card_roles_ui <- function(id) {
 #' keyed so `.slot_fieldset()` can look up its own inline message by a
 #' plain `problems[[slot$slot]]`.
 #' @noRd
-.slot_problems <- function(object, slots) {
-  v <- arpillar::validate_output(object)
+.slot_problems <- function(object, slots, theme = list()) {
+  v <- arpillar::validate_output(object, theme)
   if (nrow(v) == 0L) {
     return(list())
   }
@@ -1159,10 +1159,14 @@ mod_card_roles_server <- function(id, store) {
       if (length(slots) == 0L) {
         return(NULL)
       }
-      problems <- .slot_problems(obj, slots)
+      problems <- .slot_problems(obj, slots, store$rv$report@theme)
       items_meta <- .items_meta(store, obj@dataset)
       shiny::tagList(
-        .roles_problem_strip(.orphan_problems(obj, slots)),
+        .roles_problem_strip(.orphan_problems(
+          obj,
+          slots,
+          store$rv$report@theme
+        )),
         .roles_source_row(store, obj),
         lapply(slots, function(s) {
           .slot_fieldset(store, ns, obj, s, problems, items_meta)

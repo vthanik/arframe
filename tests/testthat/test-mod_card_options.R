@@ -139,6 +139,184 @@ test_that("title inputs are id-less: no Shiny id to replay across a drill switch
   expect_match(html, "title_edit", fixed = TRUE)
 })
 
+# ---- count-format pills + % toggle (COLUMNS) -------------------------------
+
+test_that(".count_fmt_template composes the engine template from pill + sign", {
+  expect_identical(.count_fmt_template("n", FALSE), "{n}")
+  expect_identical(.count_fmt_template("n_pct", FALSE), "{n} ({p})")
+  expect_identical(.count_fmt_template("n_pct", TRUE), "{n} ({p}%)")
+  expect_identical(.count_fmt_template("nN_pct", FALSE), "{n}/{N} ({p})")
+  expect_identical(.count_fmt_template("nN_pct", TRUE), "{n}/{N} ({p}%)")
+  # No inline event token: the E count is a SEPARATE column (event_column).
+  expect_null(.count_fmt_template("n_pct_e", FALSE))
+})
+
+test_that(".count_fmt_choices is the base shape; E is a separate toggle", {
+  summ <- .count_fmt_choices("summary")
+  expect_identical(unname(summ), c("n", "n_pct", "nN_pct"))
+  occ <- .count_fmt_choices("occurrence")
+  # Occurrence offers n (%) / n/N (%); the event count E is NOT a pill variant.
+  expect_identical(unname(occ), c("n_pct", "nN_pct"))
+  expect_false(any(grepl("_e$", unname(occ))))
+})
+
+test_that(".count_fmt_state round-trips a template to pill + sign (forgiving)", {
+  mk <- function(fmt) {
+    arpillar::object(
+      id = "o",
+      type = "occurrence",
+      dataset = "ADAE",
+      options = if (is.null(fmt)) list() else list(count_format = fmt)
+    )
+  }
+  # Unset -> the engine default n (%).
+  expect_identical(
+    .count_fmt_state(mk(NULL)),
+    list(pill = "n_pct", sign = FALSE)
+  )
+  expect_identical(
+    .count_fmt_state(mk("{n}/{N} ({p}%)")),
+    list(pill = "nN_pct", sign = TRUE)
+  )
+  # The {p%} typo (sign inside the braces) is read as {p}%.
+  expect_identical(
+    .count_fmt_state(mk("{n} ({p%})")),
+    list(pill = "n_pct", sign = TRUE)
+  )
+  expect_identical(.count_fmt_state(mk("{n}")), list(pill = "n", sign = FALSE))
+})
+
+test_that("count_fmt observer composes pill+sign and commits count_format", {
+  fx <- .mco_demo_store() # a summary (demographics) output, selected
+  withr::defer(arpillar::engine_close(fx$con))
+
+  shiny::testServer(mod_card_options_server, args = list(store = fx$store), {
+    cur <- function() {
+      shiny::isolate(selected_object(store))@options$count_format
+    }
+
+    # Pick a shape (n/N (%)) -> the composed template commits.
+    session$setInputs(count_fmt = list(pill = "nN_pct", nonce = 1))
+    expect_identical(cur(), "{n}/{N} ({p})")
+
+    # Toggle the % sign ON: the pill dimension is re-derived from the
+    # committed template, so only the sign changes.
+    session$setInputs(count_fmt = list(sign = TRUE, nonce = 2))
+    expect_identical(cur(), "{n}/{N} ({p}%)")
+
+    # Switch shape back to n (%): sign (on) carries over.
+    session$setInputs(count_fmt = list(pill = "n_pct", nonce = 3))
+    expect_identical(cur(), "{n} ({p}%)")
+
+    # Returning to the engine-default shape KEEPS the explicit key: absent
+    # means "inherit the study theme", so eliding a default-equal choice
+    # would silently hand the decision back to the theme (the
+    # per-output-over-theme precedence bug caught in review).
+    session$setInputs(count_fmt = list(sign = FALSE, nonce = 4))
+    expect_identical(cur(), "{n} ({p})")
+  })
+})
+
+test_that("count_fmt observer commits the event_column toggle (occurrence)", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  store <- shiny::isolate(new_store(con))
+  id <- shiny::isolate(add_from_generator(store, "occurrence", "ADAE"))
+  shiny::isolate(store$rv$selected <- id)
+
+  shiny::testServer(mod_card_options_server, args = list(store = store), {
+    cur <- function() {
+      shiny::isolate(selected_object(store))@options$event_column
+    }
+    # The E-column dimension commits options$event_column independently of the
+    # base count template. An explicit FALSE must PERSIST (not elide to the
+    # absent key), or a study-level Setup default of TRUE could never be
+    # overridden off per output (review finding).
+    session$setInputs(count_fmt = list(event = TRUE, nonce = 1))
+    expect_true(isTRUE(cur()))
+    session$setInputs(count_fmt = list(event = FALSE, nonce = 2))
+    expect_identical(cur(), FALSE)
+  })
+})
+
+test_that("generic option value controls are id-less (no drill-switch replay)", {
+  # Regression (2026-07-18 review): flag checkboxes and choice
+  # radios/selects were REAL-ID Shiny inputs — the drill-switch replay
+  # data-loss class. They now render as unbound native controls whose
+  # onchange posts ride the SAME `opt_<key>` channels.
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  obj <- arpillar::object(id = "o1", type = "occurrence", dataset = "ADAE")
+  sch <- arpillar::option_schema("occurrence")
+  ns <- shiny::NS("card-options")
+
+  flag_row <- sch[sch$key == "overall_row", , drop = FALSE]
+  html <- as.character(.opt_control(con, ns, obj, flag_row))
+  expect_no_match(html, 'id="card-options-opt_', fixed = TRUE)
+  expect_match(html, "opt_overall_row", fixed = TRUE)
+
+  choice_row <- sch[sch$key == "arm_mode", , drop = FALSE]
+  html2 <- as.character(.opt_control(con, ns, obj, choice_row))
+  expect_no_match(html2, 'id="card-options-opt_', fixed = TRUE)
+  expect_match(html2, "opt_arm_mode", fixed = TRUE)
+})
+
+test_that(".count_fmt_effective: per-output beats theme; theme beats default", {
+  mk <- function(opts = list()) {
+    arpillar::object(
+      id = "o",
+      type = "occurrence",
+      dataset = "ADAE",
+      options = opts
+    )
+  }
+  theme <- list(
+    summaries = list(
+      categorical = list(count_format = "{n}/{N} ({p})", event_column = TRUE)
+    )
+  )
+  # Theme-only: controls paint the study state (the seed bug painted the
+  # engine default while the theme-driven render showed n/N + E).
+  st <- .count_fmt_effective(mk(), theme)
+  expect_identical(st$pill, "nN_pct")
+  expect_true(st$event)
+  # Per-output override wins on both dimensions — including explicit FALSE.
+  st2 <- .count_fmt_effective(
+    mk(list(count_format = "{n} ({p})", event_column = FALSE)),
+    theme
+  )
+  expect_identical(st2$pill, "n_pct")
+  expect_false(st2$event)
+  # Legacy level_format honoured when no count_format anywhere.
+  st3 <- .count_fmt_effective(
+    NULL,
+    list(summaries = list(categorical = list(level_format = "pct")))
+  )
+  expect_identical(st3$pill, "n_pct")
+  # Setup (object = NULL) sees the pure study state.
+  expect_false(.count_fmt_effective(NULL, list())$event)
+})
+
+test_that("count-format controls are id-less (no drill-switch replay)", {
+  con <- .demo_catalog()
+  withr::defer(arpillar::engine_close(con))
+  obj <- arpillar::object(
+    id = "o1",
+    type = "occurrence",
+    dataset = "ADAE",
+    options = list(event_column = TRUE)
+  )
+  html <- as.character(.count_fmt_rows(shiny::NS("card-options"), obj))
+  # The pills + checkboxes share a name for mutual exclusion but carry NO
+  # Shiny id; commits ride the shared `count_fmt` post.
+  expect_no_match(html, 'id="card-options-count_fmt', fixed = TRUE)
+  expect_match(html, "count_fmt", fixed = TRUE)
+  # Occurrence surfaces the E-column toggle (posts the `event` dimension),
+  # pre-checked from options$event_column.
+  expect_match(html, "Event count (E) column", fixed = TRUE)
+  expect_match(html, "event:", fixed = TRUE)
+})
+
 # ---- accordion sections (Task 11) ------------------------------------------
 
 test_that("every Options section renders as a default-open accordion", {

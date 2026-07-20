@@ -182,6 +182,26 @@ mod_frame_server <- function(id, store) {
   shiny::moduleServer(id, function(input, output, session) {
     output$title_display <- shiny::renderText(store$rv$report@name)
 
+    # Session-start sync: the static HTML hard-codes `ar-mode-setup`, but the
+    # store is PER-LAUNCH and shared across browser sessions — a reload (or a
+    # second tab) after working in Report leaves store$rv$mode = "report"
+    # while the fresh DOM paints Setup. The first Report click then matches
+    # the re-click branch below and only toggles the rail ("clicking Report
+    # does nothing until I visit Data first"). Mirror the store's mode and
+    # collapse flags to the client once, so DOM and store agree from the
+    # first click.
+    shiny::isolate({
+      session$sendCustomMessage("ar-mode", store$rv$mode)
+      session$sendCustomMessage(
+        "ar-collapse",
+        list(
+          rail = isTRUE(store$rv$rail_collapsed),
+          loc_rail = isTRUE(store$rv$loc_rail_collapsed),
+          insp = isTRUE(store$rv$insp_collapsed)
+        )
+      )
+    })
+
     # Activity-bar semantics: clicking another mode switches; clicking the
     # ACTIVE mode's item again toggles the adjacent panel (the contents
     # rail) — the explorer-style show/hide the user asked for. Collapse
