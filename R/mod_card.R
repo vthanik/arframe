@@ -37,30 +37,6 @@
   if (is.na(hit)) "options" else hit
 }
 
-# The region micro-label shown in the card header — the same word the
-# region token names, uppercased for the `.ar-label` treatment.
-.REGION_LABELS <- c(
-  columns = "COLUMNS",
-  rows = "ROWS",
-  axes = "AXES",
-  title = "TITLE",
-  footnotes = "FOOTNOTES",
-  series = "SERIES",
-  legend = "LEGEND",
-  filters = "FILTERS"
-)
-
-#' The card header's region label, falling back to the raw (uppercased)
-#' token for a region this map has not seen.
-#' @noRd
-.region_label <- function(region) {
-  if (is.null(region)) {
-    return("")
-  }
-  hit <- unname(.REGION_LABELS[region])
-  if (is.na(hit)) toupper(region) else hit
-}
-
 # ---- inspector tabs (pill-strip consolidation) -----------------
 
 #' The three inspector tabs, in display order. Ranks left this map —

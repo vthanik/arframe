@@ -156,7 +156,10 @@ mod_toolbar_server <- function(id, store) {
       obj <- selected_object(store)
       sel <- store$rv$selected
       ready <- !is.null(obj) &&
-        identical(arpillar::output_status(obj), "ready") &&
+        identical(
+          arpillar::output_status(obj, store$rv$report@theme),
+          "ready"
+        ) &&
         !(sel %in% store$rv$broken)
       session$sendCustomMessage(
         "ar-toolbar",

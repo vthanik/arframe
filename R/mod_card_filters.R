@@ -236,8 +236,8 @@
 
 #' The value control for the OPEN row: hidden for null-tests, numeric
 #' input with a live range hint for a measure comparison, multi selectize
-#' over the dataset's real levels labeled with their row counts otherwise
-#' (the NA level shows as "(missing)" via `.NA_TOKEN`).
+#' over the dataset's real levels otherwise (the NA level shows as
+#' "(missing)" via `.NA_TOKEN`).
 #' @noRd
 .flt_value_control <- function(con, ns, row, type, dataset) {
   if (row$op %in% c("is.na", "not.na")) {
@@ -250,10 +250,13 @@
       error = function(e) NULL
     )
     return(shiny::tagList(
-      shiny::textInput(
-        ns("f_val"),
-        label = NULL,
-        value = if (is.null(val)) "" else as.character(val[[1]]),
+      # Id-less (no Shiny binding): a chip-switch rebind can never replay the
+      # previous chip's value into this draft — posts to the same `f_val`
+      # channel on blur/Enter only.
+      .opt_change_input(
+        ns,
+        "f_val",
+        if (is.null(val)) "" else as.character(val[[1]]),
         placeholder = "value"
       ),
       if (!is.null(rng)) {
@@ -264,21 +267,13 @@
       }
     ))
   }
-  counts <- tryCatch(
-    arpillar::value_counts(con, dataset, row$column),
-    error = function(e) NULL
-  )
   levels <- tryCatch(
     arpillar::distinct_values(con, dataset, row$column, include_missing = TRUE),
     error = function(e) character(0)
   )
   labels <- vapply(
     levels,
-    function(lv) {
-      base <- if (is.na(lv)) "(missing)" else lv
-      n <- if (!is.null(counts) && !is.na(lv)) counts[lv] else NA
-      if (length(n) == 1L && !is.na(n)) sprintf("%s (%s) ", base, n) else base
-    },
+    function(lv) if (is.na(lv)) "(missing)" else lv,
     character(1)
   )
   choices <- stats::setNames(ifelse(is.na(levels), .NA_TOKEN, levels), labels)
@@ -339,12 +334,12 @@
       shiny::tags$div(
         class = "ar-flt-field",
         shiny::tags$label(class = "ar-flt-lbl", "Condition"),
-        shiny::selectInput(
-          ns("f_op"),
-          label = NULL,
-          choices = .FILTER_OP_LABELS,
-          selected = row$op,
-          selectize = FALSE
+        .opt_native_select(
+          ns,
+          "f_op",
+          .FILTER_OP_LABELS,
+          row$op,
+          width = "100%"
         )
       )
     },
@@ -356,10 +351,24 @@
       )
     },
     if (has_col && !row$op %in% c("is.na", "not.na")) {
-      shiny::checkboxInput(
-        ns("f_miss"),
-        label = "Include missing",
-        value = isTRUE(row$include_missing)
+      # Id-less labelled checkbox (structural twin of checkboxInput): posts
+      # this.checked to the same `f_miss` channel on a real click only.
+      shiny::tags$div(
+        class = "form-group shiny-input-container",
+        shiny::tags$div(
+          class = "checkbox",
+          shiny::tags$label(
+            shiny::tags$input(
+              type = "checkbox",
+              checked = if (isTRUE(row$include_missing)) NA,
+              onchange = sprintf(
+                "Shiny.setInputValue('%s', this.checked, {priority: 'event'})",
+                ns("f_miss")
+              )
+            ),
+            shiny::tags$span("Include missing")
+          )
+        )
       )
     },
     .action_btn(

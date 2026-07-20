@@ -19,7 +19,7 @@
 #' the page region that would fill it (`.ghost_region()`, shared with the
 #' ghost shell and the paper error summary).
 #' @noRd
-.qc_problems <- function(object, status) {
+.qc_problems <- function(object, status, theme = list()) {
   if (identical(status, "ready")) {
     return(list())
   }
@@ -35,7 +35,7 @@
       message = "Proof is stale; open the output and Run."
     )))
   }
-  v <- arpillar::validate_output(object)
+  v <- arpillar::validate_output(object, theme)
   if (nrow(v) == 0L) {
     return(list())
   }
@@ -75,7 +75,11 @@
 #' @noRd
 .qc_row <- function(ns, report, row) {
   obj <- .find_object(report, row$id)
-  problems <- if (is.null(obj)) list() else .qc_problems(obj, row$status)
+  problems <- if (is.null(obj)) {
+    list()
+  } else {
+    .qc_problems(obj, row$status, report@theme)
+  }
   shiny::tags$div(
     class = "ar-qc-row",
     shiny::tags$div(

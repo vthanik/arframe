@@ -535,8 +535,8 @@
 #' multi-line cli message reads as a short list, not a run-on line with a
 #' bullet glyph bleeding into the prose.
 #' @noRd
-.error_summary <- function(ns, id, object, msg) {
-  v <- arpillar::validate_output(object)
+.error_summary <- function(ns, id, object, msg, theme = list()) {
+  v <- arpillar::validate_output(object, theme)
   links <- if (nrow(v) > 0L) {
     lapply(seq_len(nrow(v)), function(i) {
       .error_jump_link(ns, .ghost_region(v$control_id[[i]]), v$message[[i]])
@@ -658,10 +658,15 @@ mod_paper_server <- function(id, store) {
       {
         obj <- selected_object(store)
         shiny::req(obj)
-        shiny::req(arpillar::output_status(obj) == "ready")
+        shiny::req(
+          arpillar::output_status(obj, store$rv$report@theme) == "ready"
+        )
         shiny::req(.is_figure_type(obj@type))
         p <- tryCatch(
-          arpillar::render_ggplot(store$con, obj),
+          # Shared memoized build (theme included) — the dry-run leg and
+          # this canvas leg render ONE pipeline per state, and the canvas
+          # pixels match the exported figure (screen == paper).
+          .fig_plot(store, obj),
           arpillar_error_input = function(e) NULL,
           error = function(e) NULL
         )
@@ -808,10 +813,10 @@ mod_paper_server <- function(id, store) {
     return(NULL)
   }
 
-  status <- arpillar::output_status(obj)
+  status <- arpillar::output_status(obj, store$rv$report@theme)
   if (!identical(status, "ready")) {
     return(shiny::tagList(
-      ghost_shell(obj)
+      ghost_shell(obj, store$rv$report@theme)
     ))
   }
 
@@ -832,11 +837,14 @@ mod_paper_server <- function(id, store) {
 
   if (!result$ok) {
     store$rv$broken <- union(store$rv$broken, obj@id)
-    log_line(store, paste0("render failed: ", obj@id, " -- ", result$message))
+    log_line(
+      store,
+      paste0("render failed: ", obj@id, " \u2014 ", result$message)
+    )
     err_id <- ns("problem")
     session$sendCustomMessage("ar-focus", list(id = err_id))
     return(shiny::tagList(
-      .error_summary(ns, err_id, obj, result$message),
+      .error_summary(ns, err_id, obj, result$message, store$rv$report@theme),
       .title_block(obj)
     ))
   }
@@ -914,10 +922,28 @@ mod_paper_server <- function(id, store) {
 #' `mod_paper_ui()`'s `ar-paper-figure-slot`) figure container placeholder
 #' — the real pixels come from `output$sheet_figure` mounted alongside it.
 #' @noRd
+#' The built figure plot for (object, theme), memoized in `store$cache` —
+#' the dry-run and the canvas renderPlot share ONE DuckDB collect + ggplot
+#' build per state (review finding: each leg re-ran the full pipeline per
+#' drill). Stamped by (object, theme); any edit invalidates.
+#' @noRd
+.fig_plot <- function(store, object) {
+  theme <- store$rv$report@theme
+  key <- paste0("fig::", object@id)
+  stamp <- rlang::hash(list(object, theme))
+  hit <- store$cache[[key]]
+  if (!is.null(hit) && identical(hit$stamp, stamp)) {
+    return(hit$plot)
+  }
+  p <- arpillar::render_ggplot(store$con, object, theme = theme)
+  store$cache[[key]] <- list(stamp = stamp, plot = p)
+  p
+}
+
 .try_render_figure <- function(store, object) {
   tryCatch(
     {
-      arpillar::render_ggplot(store$con, object, theme = store$rv$report@theme)
+      .fig_plot(store, object)
       list(ok = TRUE, content = shiny::tagList(), message = NULL)
     },
     arpillar_error_input = function(e) {

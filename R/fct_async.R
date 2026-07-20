@@ -17,14 +17,35 @@
 #' @noRd
 .export_dataset_paths <- function(store, report) {
   ready <- Filter(
-    function(o) identical(arpillar::output_status(o), "ready"),
+    function(o) identical(arpillar::output_status(o, report@theme), "ready"),
     .all_objects(report)
   )
-  datasets <- unique(vapply(ready, function(o) o@dataset, character(1)))
-  stats::setNames(
-    lapply(datasets, function(nm) arpillar::dataset_path(store$con, nm)),
-    datasets
-  )
+  # An occurrence output ALSO reads its resolved analysis-set denominator
+  # dataset (usually ADSL) — mirror the emit leg's .object_datasets() so the
+  # daemon's fresh engine can register it, or every AE table in the export
+  # fails on an unregistered denominator (review finding).
+  theme <- report@theme
+  datasets <- unique(unlist(lapply(ready, function(o) {
+    ds <- o@dataset
+    if (identical(o@type, "occurrence")) {
+      pop <- tryCatch(
+        arpillar::resolve_population(o, theme),
+        error = function(e) NULL
+      )
+      pd <- pop$dataset
+      if (length(pd) == 1L && !is.na(pd) && nzchar(pd)) {
+        ds <- c(ds, pd)
+      }
+    }
+    ds
+  })))
+  # A set naming an unregistered dataset drops here (the daemon-side
+  # build_ard applies its own fallback); never abort the export over it.
+  paths <- lapply(datasets, function(nm) {
+    tryCatch(arpillar::dataset_path(store$con, nm), error = function(e) NULL)
+  })
+  keep <- !vapply(paths, is.null, logical(1))
+  stats::setNames(paths[keep], datasets[keep])
 }
 
 #' The `id -> "<slug>.rtf"` filename map for every ready output. Computed on
@@ -34,7 +55,7 @@
 #' @noRd
 .export_names <- function(report) {
   ready <- Filter(
-    function(o) identical(arpillar::output_status(o), "ready"),
+    function(o) identical(arpillar::output_status(o, report@theme), "ready"),
     .all_objects(report)
   )
   slugs <- arpillar::output_slugs(report)
@@ -72,7 +93,7 @@ export_mirai <- function(report_json, paths, out_dir, names = list()) {
       )
       files <- character(0)
       for (obj in objs) {
-        if (!identical(arpillar::output_status(obj), "ready")) {
+        if (!identical(arpillar::output_status(obj, report@theme), "ready")) {
           next
         }
         g <- gens[[obj@type]]

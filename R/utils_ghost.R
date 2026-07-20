@@ -110,8 +110,8 @@
 #' @return *`<shiny.tag>`.* The ghost page body — one `.ar-ghost-slot` div
 #'   per unmet region, in region order (title, then columns, then rows/axes).
 #' @noRd
-ghost_shell <- function(object) {
-  v <- arpillar::validate_output(object)
+ghost_shell <- function(object, theme = list()) {
+  v <- arpillar::validate_output(object, theme)
   if (nrow(v) == 0L) {
     return(shiny::tagList())
   }

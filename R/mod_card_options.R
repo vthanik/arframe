@@ -43,10 +43,12 @@
 # never inside the regular AXES-style schema grouping.
 .RANKS_KEYS <- c("hier_sort", "x_order")
 
-# Keys the pane never shows: the population comes from
-# Setup > Analysis sets via the Filters pane's POPULATION section — there is
-# no per-output override. The engine still honours a legacy saved value.
-.HIDDEN_OPT_KEYS <- "population"
+# Keys the generic option pass never renders: `population` comes from
+# Setup > Analysis sets via the Filters pane's POPULATION section (no per-output
+# override; the engine still honours a legacy saved value), and `event_column`
+# has its own custom control in the COLUMNS section (`.count_fmt_rows()`), so
+# the generic flag renderer must skip it to avoid a double control.
+.HIDDEN_OPT_KEYS <- c("population", "event_column")
 
 # Display order + micro-label for the option-row groups.
 .OPT_SECTIONS <- c(
@@ -233,6 +235,104 @@
   )
 }
 
+#' An id-less native checkbox: NO Shiny input binding, so a drill-switch
+#' rebind can never replay a stale value onto the newly drilled output (the
+#' known data-loss class). `onchange` posts `this.checked` to the SAME
+#' `opt_<key>` channel the bound control used — the per-key observers are
+#' untouched, and a post now happens only on a REAL click (no bind-time
+#' seed post to guard against).
+#' @noRd
+.opt_flag_input <- function(ns, input_id, value) {
+  js <- sprintf(
+    "Shiny.setInputValue('%s', this.checked, {priority: 'event'})",
+    ns(input_id)
+  )
+  shiny::tags$div(
+    class = "form-group shiny-input-container",
+    shiny::tags$div(
+      class = "checkbox",
+      shiny::tags$label(
+        shiny::tags$input(
+          type = "checkbox",
+          checked = if (isTRUE(value)) NA,
+          onchange = js
+        ),
+        shiny::tags$span()
+      )
+    )
+  )
+}
+
+#' An id-less pill group: native radios sharing only a `name` for mutual
+#' exclusion (never a Shiny id), posting `this.value` to the `opt_<key>`
+#' channel on a real click — the hier_sort ORDER-pill idiom, generalized.
+#' @noRd
+.opt_pill_group <- function(ns, input_id, choices, current) {
+  labs <- names(choices)
+  if (is.null(labs)) {
+    labs <- as.character(choices)
+  }
+  js <- sprintf(
+    "Shiny.setInputValue('%s', this.value, {priority: 'event'})",
+    ns(input_id)
+  )
+  pills <- lapply(seq_along(choices), function(i) {
+    shiny::tags$label(
+      class = "radio-inline",
+      shiny::tags$input(
+        type = "radio",
+        name = ns(paste0(input_id, "_r")),
+        value = choices[[i]],
+        checked = if (
+          identical(as.character(current), as.character(choices[[i]]))
+        ) {
+          NA
+        },
+        onchange = js
+      ),
+      shiny::tags$span(labs[[i]])
+    )
+  })
+  shiny::tags$div(class = "shiny-options-group", pills)
+}
+
+#' An id-less native `<select>`: posts `this.value` to the `opt_<key>`
+#' channel on change; no Shiny binding to replay across a drill switch.
+#' @noRd
+.opt_native_select <- function(
+  ns,
+  input_id,
+  choices,
+  current,
+  width = "170px"
+) {
+  labs <- names(choices)
+  if (is.null(labs)) {
+    labs <- as.character(choices)
+  }
+  js <- sprintf(
+    "Shiny.setInputValue('%s', this.value, {priority: 'event'})",
+    ns(input_id)
+  )
+  opts <- lapply(seq_along(choices), function(i) {
+    shiny::tags$option(
+      value = choices[[i]],
+      selected = if (
+        identical(as.character(current), as.character(choices[[i]]))
+      ) {
+        NA
+      },
+      labs[[i]]
+    )
+  })
+  shiny::tags$select(
+    class = "form-control ar-opt-select",
+    style = paste0("width:", width, ";"),
+    onchange = js,
+    opts
+  )
+}
+
 #' A text input carrying `inputmode="numeric"` — the plan's int control
 #' (mobile numeric keyboard, no spinner chrome; blur/Enter commit).
 #' @noRd
@@ -412,21 +512,20 @@
       shiny::tags$div(
         class = "ar-opt-row",
         shiny::tags$span(class = "ar-opt-label", "Show legend"),
-        shiny::checkboxInput(ns("opt_legend_show"), label = NULL, value = show)
+        .opt_flag_input(ns, "opt_legend_show", show)
       ),
       if (show) {
         shiny::tags$div(
           class = "ar-opt-row ar-opt-row-block",
           shiny::tags$span(class = "ar-opt-label", "Position"),
-          shiny::radioButtons(
-            ns(input_id),
-            label = NULL,
-            choices = .opt_choice_named(setdiff(
+          .opt_pill_group(
+            ns,
+            input_id,
+            .opt_choice_named(setdiff(
               as.character(row$choices[[1]]),
               "none"
             )),
-            selected = current,
-            inline = TRUE
+            current
           )
         )
       }
@@ -445,40 +544,26 @@
       if (is.null(current)) "" else paste(current, collapse = ", ")
     ),
     text = .opt_change_input(ns, input_id, current %||% ""),
-    flag = shiny::checkboxInput(
-      ns(input_id),
-      label = NULL,
-      value = isTRUE(current)
-    ),
+    flag = .opt_flag_input(ns, input_id, isTRUE(current)),
     # Treatment picks BY VARIABLE: the choices are Setup > Treatment's
     # variables (value = each one's estimand basis — the token the engine
     # consumes), so the user selects TRT01A/TRT01P, never an abstract word.
     choice = if (identical(key, "arm_mode")) {
-      shiny::selectInput(
-        ns(input_id),
-        label = NULL,
-        choices = .arm_mode_choices(trt_vars),
-        selected = current,
-        selectize = FALSE,
-        width = "170px"
-      )
+      .opt_native_select(ns, input_id, .arm_mode_choices(trt_vars), current)
     } else if (identical(key, "group_display")) {
       # Three long labels never fit the docked pane as a pill group.
-      shiny::selectInput(
-        ns(input_id),
-        label = NULL,
-        choices = .opt_choice_named(row$choices[[1]]),
-        selected = current,
-        selectize = FALSE,
-        width = "170px"
+      .opt_native_select(
+        ns,
+        input_id,
+        .opt_choice_named(row$choices[[1]]),
+        current
       )
     } else {
-      shiny::radioButtons(
-        ns(input_id),
-        label = NULL,
-        choices = .opt_choice_named(row$choices[[1]]),
-        selected = current,
-        inline = TRUE
+      .opt_pill_group(
+        ns,
+        input_id,
+        .opt_choice_named(row$choices[[1]]),
+        current
       )
     },
     levels = if (identical(key, "stats")) {
@@ -847,6 +932,189 @@
   )
 }
 
+#' The count-format pill choices per generator: the BASE count-cell shape.
+#' Occurrence offers n (%) / n/N (%); the event-count (E) column is a SEPARATE
+#' toggle (`.count_fmt_rows()`), not a pill variant. Summary/crosstab add a
+#' bare-n option. Values are canonical keys `.count_fmt_template()` maps onto
+#' the engine template.
+#' @noRd
+.count_fmt_choices <- function(type) {
+  if (identical(type, "occurrence")) {
+    c("n (%)" = "n_pct", "n/N (%)" = "nN_pct")
+  } else {
+    c("n" = "n", "n (%)" = "n_pct", "n/N (%)" = "nN_pct")
+  }
+}
+
+#' Compose the engine template from a pill key + the % sign toggle.
+#' @noRd
+.count_fmt_template <- function(pill, sign) {
+  p <- if (isTRUE(sign)) "{p}%" else "{p}"
+  switch(
+    pill,
+    n = "{n}",
+    n_pct = paste0("{n} (", p, ")"),
+    nN_pct = paste0("{n}/{N} (", p, ")"),
+    NULL
+  )
+}
+
+#' Parse a count-format template into its pill key + % sign flag. Shared by
+#' the per-output control (`.count_fmt_state()`) and the study-level Setup
+#' control (`.setup_summaries()`). Forgiving: any hand-edited template maps to
+#' the nearest pill by token content; an unset/blank template is the engine
+#' default "{n} ({p})".
+#' @noRd
+.count_fmt_parse <- function(tpl) {
+  tpl <- if (length(tpl) == 1L && !is.na(tpl) && nzchar(tpl)) {
+    gsub("{p%}", "{p}%", as.character(tpl), fixed = TRUE)
+  } else {
+    "{n} ({p})"
+  }
+  has <- function(tok) grepl(tok, tpl, fixed = TRUE)
+  list(
+    pill = paste0(
+      if (has("{N}")) "nN" else "n",
+      if (has("{p}")) "_pct" else ""
+    ),
+    sign = grepl("%", gsub("\\{[nNp]\\}", "", tpl))
+  )
+}
+
+#' Derive the pill key + sign flag from the per-output committed template.
+#' @noRd
+.count_fmt_state <- function(object) {
+  .count_fmt_parse(object@options$count_format)
+}
+
+#' The EFFECTIVE count-format state — what the render will actually do.
+#' Per-output `options$count_format` wins; else the study theme's template
+#' (Setup > Summaries), honouring the legacy `level_format` enum exactly as
+#' the engine's `.count_format_opt()` does; else the engine default.
+#' `event` resolves the same way: a usable per-output `options$event_column`
+#' beats the theme flag. Pass `object = NULL` for the pure study-level state
+#' (the Setup pane seed). Controls seeded from this can never contradict the
+#' rendered table (review finding: options-only seeding painted an unchecked
+#' E toggle while the theme-driven E column rendered).
+#' @noRd
+.count_fmt_effective <- function(object, theme = list()) {
+  cr <- theme$summaries$categorical %||% list()
+  v <- if (is.null(object)) NULL else object@options$count_format
+  tpl <- if (length(v) == 1L && !is.na(v) && nzchar(v)) {
+    as.character(v)
+  } else {
+    t <- cr$count_format
+    if (length(t) == 1L && !is.na(t) && nzchar(t)) {
+      as.character(t)
+    } else {
+      switch(
+        as.character(cr$level_format %||% "n_pct")[[1L]],
+        n = "{n}",
+        pct = "{p}",
+        "{n} ({p})"
+      )
+    }
+  }
+  ev <- if (is.null(object)) NULL else object@options$event_column
+  event <- if (length(ev) == 1L && !is.na(ev)) {
+    isTRUE(ev)
+  } else {
+    isTRUE(cr$event_column)
+  }
+  c(.count_fmt_parse(tpl), list(event = event))
+}
+
+#' The COLUMNS-section count-format rows: an id-less pill group (the
+#' hier_sort idiom — native radios sharing only a `name`) plus an id-less
+#' "% sign" checkbox. Both post `{pill | sign, nonce}` to `count_fmt`; the
+#' shared observer composes the template and commits through
+#' `.commit_opt()` with `keep_default = TRUE` (theme-backed keys keep the
+#' explicit value). Seeded from the EFFECTIVE state (per-output over study
+#' theme) so the controls always paint what the render does.
+#' @noRd
+.count_fmt_rows <- function(ns, object, theme = list()) {
+  st <- .count_fmt_effective(object, theme)
+  choices <- .count_fmt_choices(object@type)
+  pill_js <- sprintf(
+    "Shiny.setInputValue('%s', {pill: this.value, nonce: Date.now()}, {priority: 'event'})",
+    ns("count_fmt")
+  )
+  sign_js <- sprintf(
+    "Shiny.setInputValue('%s', {sign: this.checked, nonce: Date.now()}, {priority: 'event'})",
+    ns("count_fmt")
+  )
+  event_js <- sprintf(
+    "Shiny.setInputValue('%s', {event: this.checked, nonce: Date.now()}, {priority: 'event'})",
+    ns("count_fmt")
+  )
+  pills <- lapply(seq_along(choices), function(i) {
+    shiny::tags$label(
+      class = "radio-inline",
+      shiny::tags$input(
+        type = "radio",
+        name = ns("count_fmt_pill"),
+        value = choices[[i]],
+        checked = if (identical(st$pill, choices[[i]])) NA,
+        onchange = pill_js
+      ),
+      shiny::tags$span(names(choices)[[i]])
+    )
+  })
+  shiny::tagList(
+    shiny::tags$div(
+      class = "ar-opt-row ar-opt-row-block",
+      shiny::tags$span(class = "ar-opt-label", "Count format"),
+      shiny::tags$div(class = "shiny-options-group", pills)
+    ),
+    shiny::tags$div(
+      class = "ar-opt-row",
+      shiny::tags$span(class = "ar-opt-label", "Percent sign in cells"),
+      # Structural twin of shiny::checkboxInput() (so it aligns with the
+      # Total / Blank-row checkboxes above) but WITHOUT a Shiny id: a raw
+      # <input onchange> has no input binding to replay a stale value on a
+      # drill-switch rebind (the id-less pane rule); it posts the sign
+      # dimension to the shared `count_fmt` observer only on real clicks.
+      shiny::tags$div(
+        class = "form-group shiny-input-container",
+        shiny::tags$div(
+          class = "checkbox",
+          shiny::tags$label(
+            shiny::tags$input(
+              type = "checkbox",
+              checked = if (isTRUE(st$sign)) NA,
+              onchange = sign_js
+            ),
+            shiny::tags$span()
+          )
+        )
+      )
+    ),
+    # Occurrence only: the event-count (E) column is a SEPARATE toggle (not a
+    # count-format pill variant); its onchange posts the `event` dimension to
+    # the shared `count_fmt` observer, which commits options$event_column.
+    if (identical(object@type, "occurrence")) {
+      shiny::tags$div(
+        class = "ar-opt-row",
+        shiny::tags$span(class = "ar-opt-label", "Event count (E) column"),
+        shiny::tags$div(
+          class = "form-group shiny-input-container",
+          shiny::tags$div(
+            class = "checkbox",
+            shiny::tags$label(
+              shiny::tags$input(
+                type = "checkbox",
+                checked = if (isTRUE(st$event)) NA,
+                onchange = event_js
+              ),
+              shiny::tags$span()
+            )
+          )
+        )
+      )
+    }
+  )
+}
+
 #' The SOC/PT incidence order control (occurrence): the engine's
 #' `hier_sort` choice as an ID-LESS two-way pill — native radio inputs
 #' with NO Shiny id (only a shared `name` for mutual exclusion) whose
@@ -1167,7 +1435,7 @@
 #' figure never shows dead knobs. Geometry, header_n, and the running
 #' bands moved to Setup study defaults (plan Phase 3 dedup).
 #' @noRd
-.opt_layout_sections <- function(con, ns, object) {
+.opt_layout_sections <- function(con, ns, object, theme = list()) {
   if (.is_figure_type(object@type)) {
     return(NULL)
   }
@@ -1178,12 +1446,11 @@
     shiny::tags$div(
       class = "ar-opt-row",
       shiny::tags$span(class = "ar-opt-label", row_of(key)$label),
-      shiny::selectInput(
-        ns(paste0("opt_", key)),
-        label = NULL,
-        choices = .LAYOUT_CHOICES[[key]],
-        selected = cur(key),
-        selectize = FALSE,
+      .opt_native_select(
+        ns,
+        paste0("opt_", key),
+        .LAYOUT_CHOICES[[key]],
+        cur(key),
         width = width
       )
     )
@@ -1222,22 +1489,26 @@
             class = "ar-opt-label",
             "Blank row between blocks"
           ),
-          shiny::checkboxInput(
-            ns("opt_group_skip"),
-            label = NULL,
-            value = !identical(cur("group_skip"), FALSE)
+          .opt_flag_input(
+            ns,
+            "opt_group_skip",
+            !identical(cur("group_skip"), FALSE)
           )
         ),
         if (!is_listing) {
           shiny::tags$div(
             class = "ar-opt-row",
             shiny::tags$span(class = "ar-opt-label", "Total column"),
-            shiny::checkboxInput(
-              ns("opt_total"),
-              label = NULL,
-              value = isTRUE(cur("total"))
-            )
+            .opt_flag_input(ns, "opt_total", isTRUE(cur("total")))
           )
+        },
+        if (!is_listing) {
+          # Count format: PILLS + a % sign toggle composing the engine's
+          # options$count_format template — no free-text (a typed template
+          # invited `{p%}`-style typos, observed live 2026-07-11). ID-LESS
+          # per the pane convention; occurrence adds the E-column toggle.
+          # Seeded from the EFFECTIVE state (per-output over study theme).
+          .count_fmt_rows(ns, object, theme)
         },
         NULL
       )
@@ -1274,13 +1545,11 @@
               class = "ar-opt-label",
               "Page by (one table per level)"
             ),
-            shiny::selectInput(
-              ns("opt_page_by"),
-              label = NULL,
-              choices = c("None" = "", cats),
-              selected = cur("page_by") %||% "",
-              selectize = FALSE,
-              width = "170px"
+            .opt_native_select(
+              ns,
+              "opt_page_by",
+              c("None" = "", cats),
+              cur("page_by") %||% ""
             )
           )
         },
@@ -1336,7 +1605,7 @@ mod_card_options_ui <- function(id) {
 #' (the value a freshly-rendered control posts on bind must never push an
 #' undo entry).
 #' @noRd
-.commit_opt <- function(store, rv_err, object, row, raw) {
+.commit_opt <- function(store, rv_err, object, row, raw, keep_default = FALSE) {
   kind <- row$kind
   if (kind %in% c("int", "numvec", "text")) {
     parsed <- .opt_parse(kind, as.character(raw %||% ""))
@@ -1354,8 +1623,23 @@ mod_card_options_ui <- function(id) {
     value <- isTRUE(raw)
   } else {
     value <- as.character(raw)
+    # A numeric-typed choice (e.g. ci_level 0.9/0.95) must store a NUMBER:
+    # HTML posts strings, the engine consumes the value arithmetically, and
+    # a character "0.95" also never compares identical to the numeric schema
+    # default (review finding).
+    if (is.numeric(.opt_default(row))) {
+      num <- suppressWarnings(as.numeric(value))
+      if (length(num) == 1L && !is.na(num)) {
+        value <- num
+      }
+    }
   }
-  if (!is.null(value) && identical(value, .opt_default(row))) {
+  # Elide a schema-default value to "no key" ONLY for plain engine options.
+  # A THEME-BACKED key (count_format / event_column) must keep the user's
+  # explicit value: absent means "inherit the study default", so eliding a
+  # default-equal choice would silently hand the decision back to the theme
+  # (per-output-over-theme precedence bug, caught in review).
+  if (!keep_default && !is.null(value) && identical(value, .opt_default(row))) {
     value <- NULL
   }
   if (identical(value, object@options[[row$key]])) {
@@ -1429,7 +1713,7 @@ mod_card_options_server <- function(id, store) {
         ),
         .opt_order_section(store$con, ns, obj),
         .opt_listing_sections(store$con, ns, obj),
-        .opt_layout_sections(store$con, ns, obj),
+        .opt_layout_sections(store$con, ns, obj, store$rv$report@theme),
         shiny::uiOutput(ns("opt_msg"))
       )
     }) |>
@@ -1585,6 +1869,63 @@ mod_card_options_server <- function(id, store) {
         return()
       }
       .commit_opt(store, rv_err, obj, row, input$opt_edit$value)
+    })
+
+    # Count-format pills + % sign toggle (COLUMNS section): each post
+    # carries ONE dimension ({pill} or {sign}); the other is re-derived
+    # from the EFFECTIVE state (per-output over study theme) so a sign-only
+    # toggle on a theme-inheriting output never rewrites the shape. Both
+    # theme-backed keys commit with keep_default = TRUE: an explicit choice
+    # persists even when it equals the engine default, otherwise the theme
+    # would silently win back (per-output-over-theme precedence).
+    shiny::observeEvent(input$count_fmt, {
+      obj <- selected_object(store)
+      if (is.null(obj) || .is_figure_type(obj@type)) {
+        return()
+      }
+      # The event-count (E) column dimension commits independently of the base
+      # count template (options$event_column, from option_schema not layout).
+      if (!is.null(input$count_fmt$event)) {
+        schema <- tryCatch(
+          arpillar::option_schema(obj@type),
+          error = function(e) NULL
+        )
+        row <- if (is.null(schema)) {
+          NULL
+        } else {
+          schema[schema$key == "event_column", , drop = FALSE]
+        }
+        if (!is.null(row) && nrow(row) == 1L) {
+          .commit_opt(
+            store,
+            rv_err,
+            obj,
+            row,
+            isTRUE(input$count_fmt$event),
+            keep_default = TRUE
+          )
+        }
+        return()
+      }
+      st <- .count_fmt_effective(obj, store$rv$report@theme)
+      pill <- as.character(input$count_fmt$pill %||% st$pill)
+      sign <- if (is.null(input$count_fmt$sign)) {
+        st$sign
+      } else {
+        isTRUE(input$count_fmt$sign)
+      }
+      tpl <- .count_fmt_template(pill, sign)
+      if (is.null(tpl)) {
+        return()
+      }
+      .commit_opt(
+        store,
+        rv_err,
+        obj,
+        .layout_row("count_format"),
+        tpl,
+        keep_default = TRUE
+      )
     })
 
     # ---- footnote commits ----

@@ -3614,8 +3614,25 @@ select.ar-input-flat {
   font-family: "IBM Plex Mono", monospace;
   font-size: 11px;
 }
+/* The multi-value selectize (Value control) is not a native <select> and
+   not `.ar-picker`-wrapped, so size it here to match the pane's controls. */
+.ar-flt-pop .selectize-input,
+.ar-flt-pop .selectize-input input,
+.ar-flt-pop .selectize-dropdown {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+}
+.ar-flt-pop .selectize-input {
+  min-height: 0;
+  padding: 5px 8px;
+  line-height: 1.4;
+}
 .ar-flt-done {
   font-size: 11px;
+  /* Primary action sits at the right end of the editor card (dialog
+     action-row convention). */
+  display: block;
+  margin-left: auto;
 }
 .ar-flt-badge {
   font-size: 9px;

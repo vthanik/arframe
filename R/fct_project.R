@@ -163,14 +163,65 @@ save_touched <- function(store) {
     error = function(e) NULL
   )
   # Prune stale programs — a rename/re-slug leaves the OLD file behind
-  # otherwise. Prune against the EXPECTED set (every current output's slug
-  # + run-all.R), never against what this pass managed to write: a failed
-  # emit for a still-present output must keep its last-known-good program
-  # ("the program IS the record"), not lose it to the prune.
-  expected <- c(paste0(unname(slugs), ".R"), "run-all.R")
+  # otherwise. Prune against the EXPECTED set: every current output's slug
+  # PLUS every surviving outputs/*.json basename on disk — the spec GC is
+  # ownership-scoped (a concurrent teammate's spec survives our save), so
+  # its surviving basenames are exactly the programs that must survive too
+  # (review finding: pruning against our slugs alone deleted teammates'
+  # programs). Never against what this pass managed to write: a failed emit
+  # for a still-present output keeps its last-known-good program ("the
+  # program IS the record"). run-all.R never prunes.
+  outputs_dir <- file.path(store$rv$path, "outputs")
+  disk_specs <- sub(
+    "\\.json$",
+    "",
+    list.files(outputs_dir, pattern = "\\.json$")
+  )
+  expected <- c(
+    paste0(unname(slugs), ".R"),
+    paste0(disk_specs, ".R"),
+    "run-all.R"
+  )
   stale <- setdiff(list.files(prog_dir, pattern = "\\.R$"), expected)
   unlink(file.path(prog_dir, stale))
   invisible(prog_dir)
+}
+
+#' Unlink the on-disk spec + program files of DELETED outputs. The save-time
+#' GC is ownership-scoped (it never removes an id it does not know — that
+#' file may be a concurrent teammate's), so deletion cleans its own files
+#' here: scan outputs/*.json for the deleted ids, drop each match plus its
+#' same-basename programs/<base>.R. Undo-safe: Cmd-Z restores the object in
+#' the store and the next autosave re-emits both files. An unreadable spec
+#' is left alone (never delete on a parse error).
+#' @noRd
+.unlink_output_files <- function(store, ids) {
+  root <- store$rv$path
+  if (is.null(root) || length(ids) == 0L) {
+    return(invisible(NULL))
+  }
+  outputs_dir <- file.path(root, "outputs")
+  paths <- store$rv$report@theme$paths %||% list()
+  prog_dir <- .path_or_default(paths$programs_dir, "./programs/")
+  if (!.is_absolute_path(prog_dir)) {
+    prog_dir <- file.path(root, sub("^\\./", "", prog_dir))
+  }
+  for (f in list.files(outputs_dir, pattern = "\\.json$")) {
+    fid <- tryCatch(
+      {
+        j <- jsonlite::read_json(file.path(outputs_dir, f))
+        # The spec envelope nests the object (`$object$id`); fall back to a
+        # bare top-level id for any pre-envelope file.
+        as.character(j$object$id %||% j$id)
+      },
+      error = function(e) character(0)
+    )
+    if (length(fid) == 1L && fid %in% ids) {
+      unlink(file.path(outputs_dir, f))
+      unlink(file.path(prog_dir, sub("\\.json$", ".R", f)))
+    }
+  }
+  invisible(NULL)
 }
 
 #' A Setup > Paths entry, or a default when it is unset OR blank.
@@ -232,6 +283,9 @@ save_touched <- function(store) {
   } else {
     rm(list = ls(store$mtimes), envir = store$mtimes)
   }
+  if (!is.null(store$fsizes)) {
+    rm(list = ls(store$fsizes), envir = store$fsizes)
+  }
   if (is.null(store$rv$path)) {
     return(invisible(NULL))
   }
@@ -248,6 +302,7 @@ save_touched <- function(store) {
     info <- file.info(f)
     if (!is.na(info$mtime)) {
       store$mtimes[[basename(f)]] <- as.numeric(info$mtime)
+      store$fsizes[[basename(f)]] <- as.numeric(info$size)
     }
   }
   invisible(NULL)
@@ -293,8 +348,15 @@ scan_and_merge <- function(store) {
     fname <- basename(f)
     info <- file.info(f)
     disk_mtime <- as.numeric(info$mtime)
+    disk_size <- as.numeric(info$size)
     old_mtime <- store$mtimes[[fname]] %||% -Inf
-    if (disk_mtime > old_mtime) {
+    old_size <- store$fsizes[[fname]] %||% NA_real_
+    # `>` alone misses a write landing within the filesystem's timestamp
+    # granularity (review finding); a same-tick write almost always moves
+    # the byte size, so compare both.
+    changed <- disk_mtime > old_mtime ||
+      (disk_mtime == old_mtime && !identical(disk_size, old_size))
+    if (changed) {
       obj <- tryCatch(
         arpillar::object_from_json(f),
         error = function(e) NULL
@@ -304,6 +366,7 @@ scan_and_merge <- function(store) {
         changed_ids <- c(changed_ids, obj@id)
       }
       store$mtimes[[fname]] <- disk_mtime
+      store$fsizes[[fname]] <- disk_size
     }
   }
 
@@ -311,6 +374,12 @@ scan_and_merge <- function(store) {
   vanished <- setdiff(known, seen_on_disk)
   for (v in vanished) {
     rm(list = v, envir = store$mtimes)
+    if (
+      !is.null(store$fsizes) &&
+        exists(v, envir = store$fsizes, inherits = FALSE)
+    ) {
+      rm(list = v, envir = store$fsizes)
+    }
   }
   if (length(vanished) > 0L) {
     log_line(
